@@ -168,10 +168,26 @@ L'audit de la fusion des sauvegardes a montré que les restrictions de validatio
 
 - Les professeurs non principaux peuvent toujours mettre à jour les appréciations de matière dans leur périmètre de classe ; l'affectation précise par matière reste à auditer.
 - Tests ajoutés pour la falsification du statut de publication et la modification d'un bulletin déjà publié.
-- Commits : `2ee67c0` (serveur), `3705b90` (tests).
-- CI à vérifier.
+- Commits : `2ee67c0` (serveur), `3705b90` (tests), puis `1b8514e` (isolation des fixtures de test).
+- CI réussie : [run #43307416629](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43307416629).
 
 
 ### Validation des droits de bulletin — résultat CI
 
 Le premier test de non-régression a échoué à cause d'un défaut dans le test lui-même : la projection utilisée par le test partageait les mêmes objets Python que sa fixture source, contrairement à une requête HTTP réelle sérialisée en JSON. Le test a été corrigé pour isoler la charge utile avec une copie profonde. Le workflow complet est maintenant réussi sur le commit `1b8514e` : [GitHub Actions #43307416629](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43307416629).
+
+
+## Correctif messagerie — confidentialité du CCI
+
+- Un message reçu par un professeur exposait auparavant la liste complète des destinataires BCC/CCI.
+- La projection serveur masque maintenant le champ `bcc` pour les destinataires ; l'expéditeur conserve sa liste complète.
+- Test de non-régression : le destinataire ne voit aucun autre destinataire CCI, tandis que l'expéditeur conserve la liste.
+- Commits : `20dedb6` (serveur), `1db7f79` (test). CI réussie : [run #43307062966](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43307062966).
+
+## Renforcement des bulletins — identité et suppression
+
+- La fusion serveur rattache désormais un bulletin existant à son identité initiale : un professeur ne peut pas le déplacer vers un autre élève ou une autre classe en falsifiant les champs d'identité.
+- Un bulletin publié reste conservé même si le client tente de le retirer de la collection envoyée ; les modifications/suppressions de bulletins publiés restent réservées à la direction.
+- Tests ajoutés pour le déplacement d'identité et la suppression d'un bulletin publié.
+- Commits : `955b904` (serveur), `575403d` (tests). CI réussie : [run #43307614719](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43307614719).
+- Le contrôle fin des matières réellement enseignées par le professeur reste à auditer.
