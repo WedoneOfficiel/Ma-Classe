@@ -129,8 +129,9 @@ La route `POST /api/bulletin-pdf` reçoit le contenu du bulletin depuis le navig
 
 - Ce constat ne révèle pas les données d'un autre élève : le PDF est construit à partir du corps transmis par le client.
 - En revanche, le document peut présenter comme officiellement publié un contenu falsifié côté navigateur. Le PDF ne doit donc pas être considéré comme une preuve d'authenticité.
-- Correction à prévoir : transmettre l'identifiant du bulletin et vérifier côté serveur l'existence, la classe autorisée et l'état de publication ; idéalement, générer le contenu à partir des données serveur plutôt que de faire confiance aux moyennes et commentaires du client.
-- Statut : **constat confirmé, non corrigé**. Ne pas considérer l'export PDF comme document officiel garanti avant ce correctif.
+- Correction appliquée : le navigateur transmet maintenant `bulletinId` ; le serveur vérifie que le bulletin existe, que l'élève correspond à la classe enregistrée et que le professeur est affecté à cette classe. Le nom de l'élève, la classe, la période et l'état/date de publication sont repris de la base, pas du JSON client.
+- Limite restante : les moyennes, appréciations, statistiques et compétences du PDF sont encore calculées côté navigateur et transmises au serveur. L'export est lié à un bulletin autorisé, mais ne garantit pas encore l'authenticité de toutes les valeurs.
+- Statut : **contrôle d'identité, de périmètre et de publication corrigé ; génération entièrement serveur encore à faire**.
 
 Les correctifs de confidentialité des empreintes et de révocation des sessions sont documentés plus haut. CI réussie sur les commits serveur/test concernés ; le run de révocation après adaptation du test est [#43306000415](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43306000415).
 
@@ -142,3 +143,20 @@ Le serveur refuse maintenant l'export PDF officiel si le bulletin enregistré n'
 - Commits : `508df20` (contrôle serveur), `1a011c0` (test).
 - La génération utilise encore les moyennes, appréciations, statistiques et compétences transmis par le navigateur. Ces valeurs doivent faire l'objet d'une prochaine étape de recalcul/validation côté serveur avant de considérer le PDF comme une preuve intégrale de l'exactitude des résultats.
 - CI du nouveau lot : à vérifier.
+
+
+## Correctif Cloud — refus par défaut hors de l'espace Cloud
+
+- `_cloud_path_allowed` renvoyait auparavant `True` pour tout chemin qui ne commençait pas par `cloud/`. Cela pouvait rendre des métadonnées Cloud atypiques trop permissives.
+- Les chemins hors de `cloud/` sont maintenant refusés par défaut ; les chemins Cloud continuent de passer par les contrôles d'espace, de propriétaire, de classe et de partage.
+- Test ajouté pour les chemins `general/` et `lessons/`.
+- Commits : `5ff9364` (serveur), `4c92f9c` (test). CI réussie : [run #43306325378](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43306325378).
+
+## Correctif PDF — contrôle serveur du bulletin
+
+- `POST /api/bulletin-pdf` exige désormais un `bulletinId` valide.
+- Le serveur vérifie l'existence du bulletin, la cohérence bulletin/élève/classe et l'appartenance du professeur à la classe.
+- L'identité affichée et l'état/date de publication sont reconstruits depuis la base.
+- Test HTTP ajouté : bulletin inexistant refusé (404), bulletin d'une autre classe refusé au professeur (403).
+- Commits : `a661d36` (serveur), `5713ba6` (client), `59bb9cf` (tests). CI réussie : [run #43306723332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43306723332).
+- Limite : les données chiffrées et appréciations du PDF sont encore transmises par le client ; une génération complète depuis la base reste nécessaire avant de qualifier le PDF de preuve officielle.
