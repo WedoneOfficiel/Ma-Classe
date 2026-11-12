@@ -74,6 +74,7 @@ class TeacherDataScopeTests(unittest.TestCase):
             'competencyLibrary':[{'id':'comp'}],
             'evaluationTemplates':[{'id':'template'}],
             'evaluationCriteriaLibrary':[{'id':'criteria'}],
+            'settings':{'rooms':['Salle A'],'termMode':'trimestres','terms':[],'competencyLevels':['Fragile','Bien'],'privateApiKey':'do-not-expose'},
             'privateFutureCollection':[{'secret':'private'}],
             'secretConfig':{'apiToken':'do-not-expose'}
         })
@@ -82,6 +83,8 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(view['competencyLibrary'],data['competencyLibrary'])
         self.assertEqual(view['evaluationTemplates'],data['evaluationTemplates'])
         self.assertEqual(view['evaluationCriteriaLibrary'],data['evaluationCriteriaLibrary'])
+        self.assertEqual(view['settings'],{'rooms':['Salle A'],'termMode':'trimestres','terms':[],'competencyLevels':['Fragile','Bien']})
+        self.assertNotIn('privateApiKey',view['settings'])
         self.assertNotIn('privateFutureCollection',view)
         self.assertNotIn('secretConfig',view)
 
