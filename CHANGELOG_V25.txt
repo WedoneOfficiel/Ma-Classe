@@ -215,3 +215,9 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - Le serveur refuse désormais tout démarrage sur une adresse non-loopback ; l'ancienne configuration se contentait d'afficher un avertissement et démarrait malgré tout.
 - Test de régression sur 0.0.0.0, IP LAN, :: et les trois adresses loopback autorisées.
 - CI en cours de validation sur 75207b5 et f1fa7d0.
+
+
+Validation CI complémentaire — 12/11/2026
+- Verrouillage localhost : tests complets réussis, run 43310801471 (f1fa7d0).
+- Scripts Fedora + suites JavaScript/Python : run 43310869800 (ebb910a) réussi.
+- Documentation : run 43310879305 (8ccbba9) réussi.
