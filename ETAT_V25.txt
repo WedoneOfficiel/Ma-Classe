@@ -152,3 +152,9 @@ AUTORISATIONS BULLETINS — PROTECTION DU PROFESSEUR PRINCIPAL
 - Les appréciations par matière restent modifiables dans le périmètre classe ; le contrôle précis de l'affectation matière doit encore être audité.
 - Tests ajoutés : non-PP ne peut pas valider/publier/modifier overall ; bulletin publié immuable pour un professeur.
 - Commits : 2ee67c0 (serveur), 3705b90 (tests). CI à confirmer.
+
+
+VALIDATION DU CONTRÔLE PP — CI
+-----------------------------
+- Le premier test a révélé un défaut du test : la projection de données partageait les objets de la fixture, ce qui modifiait artificiellement la source avant la fusion. La fixture est maintenant copiée en profondeur pour simuler le transfert HTTP JSON.
+- CI complète réussie sur 1b8514e : run 43307416629.
