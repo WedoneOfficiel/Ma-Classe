@@ -243,3 +243,11 @@ SESSIONS — RÉVOCATION APRÈS CHANGEMENT DE MOT DE PASSE
 - Après modification du mot de passe, toutes les autres sessions du même compte sont supprimées ; la session courante reste valide.
 - Test HTTP de non-régression : session secondaire refusée (401) après rotation, session courante toujours autorisée.
 - CI complète JS + Python réussie : run 43309742779, commits serveur 96c4c5c et test 3001ed2.
+
+
+BULLETIN PDF — CONTRÔLE DE PÉRIMÈTRE RENFORCÉ
+--------------------------------------------
+- Moyenne générale recalculée à partir des seules évaluations de la classe du bulletin.
+- Absences et retards comptabilisés uniquement depuis les feuilles de présence de cette même classe.
+- Test avec données interclasses mal rattachées : note et absence étrangères ignorées.
+- CI complète JS + Python réussie : runs 43310140332 et 43310145774.
