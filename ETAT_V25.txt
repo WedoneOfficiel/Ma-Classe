@@ -226,3 +226,13 @@ PROJECTION — COHÉRENCE DE CLASSE DES DONNÉES IMBRIQUÉES
 - Les liens élève/séance/classe d'un rendu existant sont préservés depuis la base lors d'une sauvegarde professeur.
 - Commits : 67451c8, f9fc214, 91db610.
 - CI réussie : run 43308611502.
+
+ 
+BULLETINS PDF — SOURCE DE VÉRITÉ SERVEUR
+---------------------------------------
+- La route /api/bulletin-pdf exige un bulletin existant, validé et publié, un élève réellement rattaché à la classe du bulletin, et une classe accessible au professeur.
+- Le navigateur ne fournit plus que bulletinId ; les moyennes, statistiques, appréciations, compétences, présences, identité, classe et période envoyées par le client sont ignorées.
+- Le serveur reconstruit le contenu du PDF à partir de la base : résultats par matière, moyennes de classe, appréciations, moyenne générale, compétences et absences/retards.
+- Tests couvrant les données canoniques et une tentative de falsification des valeurs côté client.
+- CI complète JS + Python réussie : run 43309419995, commit e1af32a.
+- Version conservée : V25.0.7 (correctif incrémental).
