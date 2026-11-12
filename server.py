@@ -851,6 +851,10 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','same-origin')
         self.send_header('X-Frame-Options','DENY')
+        # Les fichiers importés/téléversés ne doivent jamais pouvoir exécuter
+        # du HTML/JavaScript actif sur l'origine de l'application.
+        if urlparse(getattr(self,'path','')).path.startswith('/data/uploads/'):
+            self.send_header('Content-Security-Policy',"sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'")
         super().end_headers()
     def _safe_static_path(self,path):
         if path in ('/','/index.html','/_all.js'):
