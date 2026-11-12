@@ -170,3 +170,8 @@ L'audit de la fusion des sauvegardes a montré que les restrictions de validatio
 - Tests ajoutés pour la falsification du statut de publication et la modification d'un bulletin déjà publié.
 - Commits : `2ee67c0` (serveur), `3705b90` (tests).
 - CI à vérifier.
+
+
+### Validation des droits de bulletin — résultat CI
+
+Le premier test de non-régression a échoué à cause d'un défaut dans le test lui-même : la projection utilisée par le test partageait les mêmes objets Python que sa fixture source, contrairement à une requête HTTP réelle sérialisée en JSON. Le test a été corrigé pour isoler la charge utile avec une copie profonde. Le workflow complet est maintenant réussi sur le commit `1b8514e` : [GitHub Actions #43307416629](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43307416629).
