@@ -121,3 +121,15 @@ L'audit de la projection `/api/data` a révélé que le profil du professeur con
 - Le test HTTP d'intégration vérifie désormais qu'après restauration d'une sauvegarde qui supprime les comptes, les cookies de session précédemment ouverts ne permettent plus d'accéder à l'API.
 - Le premier run CI du correctif serveur seul a échoué parce que le test simulait des sessions sans comptes persistés, alors que la nouvelle vérification exige un compte actif en base. Le test a été corrigé pour conserver les comptes pendant les scénarios normaux, puis vérifier leur révocation après restauration. Le run du commit de test `7638d4f` est réussi : [GitHub Actions #43306000415](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43306000415). Les runs des trois mises à jour documentaires sont également réussis.
 - Serveur : commit `ed26a79` ; test : commit `7638d4f`.
+
+
+## Point d'audit suivant — génération PDF des bulletins
+
+La route `POST /api/bulletin-pdf` reçoit le contenu du bulletin depuis le navigateur et construit le PDF à partir de ce contenu. Le navigateur n'envoie actuellement aucun identifiant de bulletin ; le serveur ne retrouve donc pas l'enregistrement correspondant dans la base. En particulier, la mention « Bulletin publié officiellement » est déclenchée par les champs `published` et `publishedAt` fournis par le client, et non par une vérification serveur de la publication.
+
+- Ce constat ne révèle pas les données d'un autre élève : le PDF est construit à partir du corps transmis par le client.
+- En revanche, le document peut présenter comme officiellement publié un contenu falsifié côté navigateur. Le PDF ne doit donc pas être considéré comme une preuve d'authenticité.
+- Correction à prévoir : transmettre l'identifiant du bulletin et vérifier côté serveur l'existence, la classe autorisée et l'état de publication ; idéalement, générer le contenu à partir des données serveur plutôt que de faire confiance aux moyennes et commentaires du client.
+- Statut : **constat confirmé, non corrigé**. Ne pas considérer l'export PDF comme document officiel garanti avant ce correctif.
+
+Les correctifs de confidentialité des empreintes et de révocation des sessions sont documentés plus haut. CI réussie sur les commits serveur/test concernés ; le run de révocation après adaptation du test est [#43306000415](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43306000415).
