@@ -94,3 +94,5 @@ Correctif de durcissement post-import — 12/11/2026
 - Aucun test de cette livraison n'est déclaré exécuté dans la session.
 
 - Complément sécurité : filtrage champ par champ de settings dans la projection professeur ; seuls les champs fonctionnels connus sont transmis. Test dédié contre la fuite d'un champ privé ajouté à settings.
+
+- Validation CI : succès sur le commit f379a8c (run 43305047329) ; 31 tests JavaScript, 7 scripts Python, contrôle syntaxique JS et compilation Python réussis.
