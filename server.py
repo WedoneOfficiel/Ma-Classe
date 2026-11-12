@@ -576,7 +576,7 @@ def _merge_student_data(current,incoming,user):
                 file_path=_safe_upload_path(name)
                 if not os.path.isfile(file_path) or os.path.islink(file_path): continue
             except (ValueError,OSError): continue
-            safe_files.append({k:item[k] for k in ('name','url','size') if k in item})
+            safe_files.append({'name':name,'url':'/data/uploads/'+name,'size':os.path.getsize(file_path)})
         safe['files']=safe_files
         safe['file']=safe_files[0] if safe_files else None
         safe['status']='submitted' if entry.get('status')=='submitted' and safe_files else 'draft'
@@ -585,6 +585,11 @@ def _merge_student_data(current,incoming,user):
         else:
             safe.pop('submittedAt',None)
         new_own[ident]=safe
+    # Un élève ne peut ni effacer un rendu déjà envoyé ni le faire disparaître en
+    # l'omettant du JSON qu'il renvoie.
+    for ident,previous in old_own.items():
+        if previous.get('status')!='draft':
+            new_own.setdefault(ident,dict(previous))
     merged['submissions']=[x for x in old if str(x.get('studentId') or '')!=sid]+list(new_own.values())
     return merged
 
