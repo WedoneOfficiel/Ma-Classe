@@ -256,7 +256,7 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
     for subject in subjects:
         record=subject_data.get(subject,{})
         rows.append({'subject':subject,'studentAverage':subject_average(student_id,subject),'classStats':stats([subject_average(st.get('id'),subject) for st in students]),'comment':record.get('comment','') if isinstance(record,dict) else ''})
-    overall_evaluations=[e for e in evaluations if in_term(e)]
+    overall_evaluations=[e for e in evaluations if str(e.get('classId') or '')==class_id and in_term(e)]
     overall_average=average(overall_evaluations,student_id)
     overall_stats=stats([average(overall_evaluations,st.get('id')) for st in students])
     competency_names=set(); competency_ratings={}
@@ -274,7 +274,7 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
     competencies=[{'name':name,'level':labels.get(sorted(competency_ratings.get(name,[]),key=lambda x:x[0],reverse=True)[0][1],'—') if competency_ratings.get(name) else '—'} for name in sorted(competency_names,key=lambda x:x.casefold())]
     absences=late=0
     for sheet in database.get('attendance',[]) or []:
-        if not isinstance(sheet,dict): continue
+        if not isinstance(sheet,dict) or str(sheet.get('classId') or '')!=class_id: continue
         date=str(sheet.get('date') or '')
         if term and ((term.get('start') and date<str(term.get('start'))) or (term.get('end') and date>str(term.get('end')))): continue
         for row in sheet.get('rows',[]) or []:
