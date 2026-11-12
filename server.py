@@ -454,11 +454,11 @@ def _merge_teacher_data(current,incoming,user):
         for entry in new_scope.values():
             item=dict(entry)
             previous=None
-            if key in ('bulletins','evaluations'):
+            if key in ('bulletins','evaluations','submissions'):
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
-                    # L'identité d'un bulletin ou d'une évaluation existante est immuable côté professeur.
-                    fields=('studentId','classId','termId') if key=='bulletins' else ('classId',)
+                    # Les associations d'un bulletin, d'une évaluation ou d'un rendu sont immuables côté professeur.
+                    fields={'bulletins':('studentId','classId','termId'),'evaluations':('classId',),'submissions':('studentId','lessonId','classId')}[key]
                     for field in fields:
                         item[field]=previous.get(field)
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
