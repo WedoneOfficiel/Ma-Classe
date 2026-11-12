@@ -711,8 +711,18 @@ class Handler(SimpleHTTPRequestHandler):
         if not entry: return None
         if entry['expires']<time.time():
             SESSIONS.pop(token,None); return None
+        # Revalider le compte à chaque requête : une désactivation, suppression
+        # ou modification de rôle prend effet sans attendre l'expiration du cookie.
+        session_user=entry.get('user') if isinstance(entry.get('user'),dict) else {}
+        user_id=str(session_user.get('id') or '')
+        data=_load_database()
+        current=next((u for u in data.get('users',[]) or [] if isinstance(u,dict) and str(u.get('id'))==user_id and u.get('active') is not False and u.get('role') in ('admin','teacher')),None)
+        if not current:
+            SESSIONS.pop(token,None); return None
+        safe_user={k:current.get(k,'') for k in ('id','role','teacherId','name')}
+        entry['user']=safe_user
         entry['expires']=time.time()+SESSION_TTL
-        return entry['user']
+        return safe_user
     def _require_auth(self, roles=('admin','teacher')):
         user=self._session_user()
         if not user:
