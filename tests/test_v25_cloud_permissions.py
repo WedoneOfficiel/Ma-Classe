@@ -38,6 +38,15 @@ class CloudPermissionTests(unittest.TestCase):
         server.UPLOADS = self.old_uploads
         self.tmp.cleanup()
 
+    def test_cloud_paths_use_real_upload_root_when_base_path_is_a_symlink(self):
+        # macOS peut exposer /var comme un lien vers /private/var.
+        # Les chemins relatifs doivent utiliser le même chemin réel.
+        self.assertEqual(
+            server._uploads_relative(server._safe_upload_path('cloud/personal/users/t1/a.pdf')),
+            'cloud/personal/users/t1/a.pdf'
+        )
+        self.assertTrue(server._cloud_path_allowed(self.t1, 'cloud/personal/users/t1/a.pdf'))
+
     def test_non_cloud_path_is_never_authorized_as_cloud(self):
         self.assertFalse(server._cloud_path_allowed(self.t1, 'general/secret.pdf'))
         self.assertFalse(server._cloud_path_allowed(self.t2, 'lessons/private.pdf'))
