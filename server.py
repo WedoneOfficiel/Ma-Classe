@@ -344,12 +344,10 @@ def _teacher_visible_data(data,user):
     class_ids=_teacher_class_ids(data,user)
     student_ids={str(x.get('id')) for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids}
     lesson_ids={str(x.get('id')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids}
-    out={}
-    # Les paramètres et matières sont des référentiels partagés, mais ne sont jamais
-    # réécrits par un professeur dans _merge_teacher_data.
-    for key,value in data.items():
-        if key not in ('classes','students','teachers','users','schedule','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','auditLog','mailFolders','mailboxV2','messages'):
-            out[key]=value
+    # Seuls les référentiels explicitement partagés sont transmis aux professeurs.
+    # Une nouvelle clé ajoutée à la base reste privée par défaut jusqu'à validation.
+    shared_keys=('settings','subjects','competencyLibrary','evaluationTemplates','evaluationCriteriaLibrary','schemaVersion','schemaMigratedAt')
+    out={key:data[key] for key in shared_keys if key in data}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
     out['teachers']=[x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tids]
