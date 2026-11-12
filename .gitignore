@@ -1,0 +1,12 @@
+# Données locales : ne jamais publier les données d'un établissement
+data/maclasse.json
+data/uploads/
+data/backups/
+
+# Environnement Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Système
+.DS_Store
