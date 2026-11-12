@@ -128,10 +128,22 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('@media(prefers-reduced-transparency:reduce)', html)
         self.assertIn('.toast{background:#242426!important;color:#fff!important', html)
 
-    def test_system_light_enhancements_do_not_leak_into_explicit_dark(self):
+    def test_automatic_light_inherits_the_explicit_light_appearance(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .side', html)
-        self.assertNotIn('@media(prefers-color-scheme:light){ .side', html)
+        self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .side', html)
+        self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .focusCard', html)
+        self.assertIn('html[data-mc-theme="light"] body', html)
+
+    def test_timetable_uses_a_dedicated_full_width_page_architecture(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        js = (ROOT / "_all.js").read_text(encoding="utf-8")
+        for selector in ('.scheduleControlPanel', '.scheduleDateControls',
+                         '.scheduleActionControls', '.scheduleFilters',
+                         '.scheduleCalendarSurface', '.scheduleMonthGrid'):
+            self.assertIn(selector, html)
+        self.assertIn('class="scheduleControlPanel"', js)
+        self.assertIn('class="scheduleCalendarSurface"', js)
+        self.assertIn('class="scheduleMonthGrid"', js)
 
     def test_date_and_time_controls_follow_selected_color_scheme(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
