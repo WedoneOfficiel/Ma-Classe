@@ -70,6 +70,13 @@ class ThemeControlsTests(unittest.TestCase):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
         self.assertIn('html[data-mc-theme="system"] .v15Bubble', html)
 
+    def test_dark_theme_student_space_mail_and_translucent_surfaces(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for selector in ('.v14WeekDay', '.mailList', '.mailReply',
+                         '.v12Workspace', '.v12StatStrip .v12Stat'):
+            self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
+        self.assertIn('html[data-mc-theme="system"] .mailList', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
