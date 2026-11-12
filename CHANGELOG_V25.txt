@@ -203,3 +203,9 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - La fusion des sauvegardes professeur vérifie désormais le périmètre depuis l'enregistrement stocké et préserve les liens de classe/élève/séance/période des objets concernés.
 - Tests de déplacement falsifié d'élève, séance, présence et pièce jointe entre classes attribuées.
 - CI complète réussie : runs 43310380105 et 43310387814.
+
+
+12/11/2026 — Préparation de l'installation Fedora
+- Ajout d'un installateur, d'un lanceur et d'un guide Fedora dédiés.
+- Ajout du contrôle de syntaxe des deux scripts à la CI.
+- L'installation et les performances sur le PC physique restent à vérifier.
