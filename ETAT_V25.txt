@@ -190,3 +190,12 @@ VALIDATION CI — ÉVALUATIONS
 --------------------------
 - Le premier test de déplacement d'évaluation remplaçait à tort toutes les notes, y compris la note légitime. Le test a été corrigé pour conserver la note d'origine et ajouter une injection d'élève d'une autre classe.
 - Suite complète JavaScript + Python réussie sur 6075e94 : run 43308092780.
+
+
+PRÉSENCES ET TRAVAUX RENDUS — CONTRÔLES INTERCLASSE
+--------------------------------------------------
+- Présences : les lignes imbriquées sont filtrées sur les élèves de la classe exacte de la feuille.
+- Travaux rendus : séance obligatoire dans une classe affectée au professeur ; l'élève doit appartenir à la classe de cette séance ; une incohérence conserve l'enregistrement précédent.
+- Pour évaluations, présences et travaux rendus, le contrôle de périmètre d'un enregistrement existant se base sur sa classe déjà stockée, pas sur une classe falsifiée dans la requête.
+- Tests ajoutés contre l'injection d'élèves interclasse.
+- Suite complète JS + Python réussie sur 3fe990d : run 43308354602.
