@@ -198,6 +198,32 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertNotIn('Faux',str(result))
         self.assertNotEqual(result['average'],forged['average'])
 
+    def test_teacher_cannot_move_existing_student_or_lesson_between_assigned_classes(self):
+        data=copy.deepcopy(self.data)
+        data['teachers'][0]['classIds']=['c1','c2']
+        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        view=copy.deepcopy(server._teacher_visible_data(data,user))
+        view['students'][0]['classId']='c2'
+        view['lessons'][0]['classId']='c2'
+        merged=server._merge_teacher_data(data,view,user)
+        self.assertEqual(next(x for x in merged['students'] if x['id']=='s1')['classId'],'c1')
+        self.assertEqual(next(x for x in merged['lessons'] if x['id']=='l1')['classId'],'c1')
+
+    def test_teacher_cannot_move_existing_attendance_or_attachment_between_assigned_classes(self):
+        data=copy.deepcopy(self.data)
+        data['teachers'][0]['classIds']=['c1','c2']
+        data['attachments']=[{'id':'att1','classId':'c1','studentId':'s1','lessonId':'l1','name':'copie.pdf'}]
+        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        view=copy.deepcopy(server._teacher_visible_data(data,user))
+        view['attendance'][0]['classId']='c2'
+        view['attachments'][0]['classId']='c2'
+        view['attachments'][0]['studentId']='s2'
+        view['attachments'][0]['lessonId']='l2'
+        merged=server._merge_teacher_data(data,view,user)
+        self.assertEqual(next(x for x in merged['attendance'] if x['id']=='a1')['classId'],'c1')
+        saved=next(x for x in merged['attachments'] if x['id']=='att1')
+        self.assertEqual((saved['classId'],saved['studentId'],saved['lessonId']),('c1','s1','l1'))
+
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
