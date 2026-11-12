@@ -326,3 +326,14 @@ Pour un test avec un second ordinateur connecté à la même box privée, lance 
 - La messagerie élève et le Cloud élève restent volontairement masqués/non activés tant que les autorisations spécifiques ne sont pas auditées.
 - Tests ajoutés : intégration HTTP de connexion et de cloisonnement, envoi de rendu, accès aux fichiers et tests unitaires de projection/fusion.
 - Validation CI du lot : réussite Ubuntu + macOS Apple Silicon, run GitHub Actions #43318282845.
+
+
+## Préférences d'apparence — 12/11/2026
+
+- Ajout d'un choix explicite dans Paramètres : Automatique (suit le système), Clair et Sombre.
+- Le choix est mémorisé localement sur chaque navigateur/appareil ; il ne modifie pas les données scolaires partagées entre les utilisateurs.
+- Le thème est appliqué dès le chargement, y compris avant la connexion, puis immédiatement lors d'un changement dans les paramètres.
+- Première harmonisation des surfaces, champs, boutons, tableaux, calendriers, messages, badges et notifications en clair/sombre afin de réduire les contrastes incohérents.
+- Test de non-régression ajouté pour la présence des trois choix, la persistance locale et les feuilles de style explicites.
+- Commits : `299e560` (préférences), `1e36676` (styles), `596e95d` (tests).
+- Limite : cette première passe doit encore être vérifiée visuellement dans Firefox sur les pages et composants réels. La CI automatise la présence des règles et les tests existants, mais ne remplace pas une recette visuelle exhaustive.
