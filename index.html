@@ -1147,6 +1147,58 @@ body{
 }
 
 
+
+/* MaClasse V25 — thèmes explicites : clair, sombre et automatique */
+:root{color-scheme:light dark}
+html[data-mc-theme="dark"]{color-scheme:dark}
+html[data-mc-theme="light"]{color-scheme:light}
+@media(prefers-color-scheme:dark){
+ html[data-mc-theme="light"]{color-scheme:light}
+}
+html[data-mc-theme="dark"]{
+ --ink:#f5f5f7;--muted:#a1a1aa;--blue:#4da3ff;--blue2:rgba(10,132,255,.18);--navy:#f5f5f7;
+ --paper:#242426;--bg:#171719;--line:rgba(235,235,245,.16);--green:#55c477;--green2:rgba(48,209,88,.16);
+ --red:#ff6961;--red2:rgba(255,69,58,.16);--orange:#ffb340;--orange2:rgba(255,159,10,.16);
+ --purple:#b69cff;--purple2:rgba(191,145,255,.16);--mc-surface:rgba(44,44,46,.88);--mc-surface-soft:rgba(44,44,46,.68);
+ --mc-divider:rgba(235,235,245,.14);--mc-liquid:rgba(44,44,46,.72);--mc-liquid-strong:rgba(44,44,46,.88);
+ --mc-liquid-line:rgba(255,255,255,.12);--ui-text:#f5f5f7;--ui-text-2:#b5b5bc;--ui-line:rgba(235,235,245,.14);
+ --content-bg:rgba(44,44,46,.78);--glass2:rgba(44,44,46,.72);--ui-control-hover:rgba(255,255,255,.10);
+}
+html[data-mc-theme="dark"] body{background:radial-gradient(circle at 10% 0%,rgba(10,132,255,.12),transparent 30%),radial-gradient(circle at 90% 12%,rgba(120,90,220,.08),transparent 28%),#171719!important;color:#f5f5f7!important}
+html[data-mc-theme="dark"] .side{background:rgba(30,30,32,.94)!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.12)!important}
+html[data-mc-theme="dark"] .top,html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .bulletin,html[data-mc-theme="dark"] .modal,html[data-mc-theme="dark"] .searchResults,html[data-mc-theme="dark"] .v12Workspace{background:rgba(42,42,45,.94)!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.13)!important}
+html[data-mc-theme="dark"] .btn,html[data-mc-theme="dark"] .tab,html[data-mc-theme="dark"] .input,html[data-mc-theme="dark"] .select,html[data-mc-theme="dark"] select,html[data-mc-theme="dark"] textarea,html[data-mc-theme="dark"] .rich,html[data-mc-theme="dark"] .metric,html[data-mc-theme="dark"] .file,html[data-mc-theme="dark"] .drop,html[data-mc-theme="dark"] .message,html[data-mc-theme="dark"] .chip,html[data-mc-theme="dark"] .submissionFile,html[data-mc-theme="dark"] .lessonEntry,html[data-mc-theme="dark"] .dayBtn{background:rgba(55,55,59,.92)!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.14)!important}
+html[data-mc-theme="dark"] .btn.primary,html[data-mc-theme="dark"] .tab.active,html[data-mc-theme="dark"] .cloudTab.active{background:#0a84ff!important;color:#fff!important;border-color:#0a84ff!important}
+html[data-mc-theme="dark"] .table th,html[data-mc-theme="dark"] .field label,html[data-mc-theme="dark"] .muted,html[data-mc-theme="dark"] .hint,html[data-mc-theme="dark"] .pageSub,html[data-mc-theme="dark"] .dayBtn .count{color:#b5b5bc!important}
+html[data-mc-theme="dark"] .table td,html[data-mc-theme="dark"] .table th,html[data-mc-theme="dark"] .modalfoot{border-color:rgba(255,255,255,.12)!important}
+html[data-mc-theme="dark"] .table tr:hover td,html[data-mc-theme="dark"] .btn:hover,html[data-mc-theme="dark"] .tab:hover{background-color:rgba(255,255,255,.08)!important}
+html[data-mc-theme="dark"] .daycol,html[data-mc-theme="dark"] .daycolHeader,html[data-mc-theme="dark"] .dayname,html[data-mc-theme="dark"] .dayrow,html[data-mc-theme="dark"] .hours,html[data-mc-theme="dark"] .hour{background-color:#29292c!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.12)!important}
+html[data-mc-theme="dark"] .course,html[data-mc-theme="dark"] .event{background:rgba(10,132,255,.18)!important;color:#f5f5f7!important;border-color:rgba(105,177,255,.32)!important}
+html[data-mc-theme="dark"] .course b,html[data-mc-theme="dark"] .course small,html[data-mc-theme="dark"] .event b,html[data-mc-theme="dark"] .event small{color:#e8f2ff!important}
+html[data-mc-theme="dark"] .notice{background:rgba(10,132,255,.16)!important;color:#c9e2ff!important}
+html[data-mc-theme="dark"] .notice.warn{background:rgba(255,159,10,.16)!important;color:#ffd18a!important}
+html[data-mc-theme="dark"] .pill{background:rgba(255,255,255,.10)!important;color:#e5e5ea!important}
+html[data-mc-theme="dark"] .pill.blue{background:rgba(10,132,255,.18)!important;color:#a9d2ff!important}
+html[data-mc-theme="dark"] .pill.green{background:rgba(48,209,88,.16)!important;color:#8de5a6!important}
+html[data-mc-theme="dark"] .pill.red{background:rgba(255,69,58,.16)!important;color:#ffaaa5!important}
+html[data-mc-theme="dark"] .pill.orange{background:rgba(255,159,10,.16)!important;color:#ffd18a!important}
+html[data-mc-theme="dark"] .pill.purple{background:rgba(191,145,255,.16)!important;color:#d5baff!important}
+html[data-mc-theme="dark"] a{color:#7dbbff}
+html[data-mc-theme="dark"] input[type="date"],html[data-mc-theme="dark"] input[type="time"]{color-scheme:dark}
+html[data-mc-theme="light"]{--ink:#1d1d1f;--muted:#6e6e73;--blue:#0071e3;--blue2:#eaf3ff;--navy:#1d1d1f;--paper:#fff;--bg:#f5f5f7;--line:rgba(60,60,67,.16);--green:#248a3d;--green2:#eaf7ed;--red:#d70015;--red2:#fff0f1;--orange:#9a6700;--orange2:#fff7df;--purple:#6e56cf;--purple2:#f1efff;--mc-divider:rgba(60,60,67,.12);--ui-text:#1d1d1f;--ui-text-2:#5f636b;--ui-line:rgba(60,60,67,.12);--content-bg:rgba(255,255,255,.92);--glass2:rgba(255,255,255,.92)}
+html[data-mc-theme="light"] body{background:var(--bg)!important;color:var(--ink)!important}
+html[data-mc-theme="light"] .side{background:rgba(246,246,248,.96)!important;color:var(--ink)!important;border-color:rgba(60,60,67,.12)!important}
+html[data-mc-theme="light"] .top,html[data-mc-theme="light"] .card,html[data-mc-theme="light"] .bulletin,html[data-mc-theme="light"] .modal,html[data-mc-theme="light"] .searchResults,html[data-mc-theme="light"] .v12Workspace{background:rgba(255,255,255,.94)!important;color:var(--ink)!important;border-color:rgba(60,60,67,.14)!important}
+html[data-mc-theme="light"] .btn,html[data-mc-theme="light"] .tab,html[data-mc-theme="light"] .input,html[data-mc-theme="light"] .select,html[data-mc-theme="light"] select,html[data-mc-theme="light"] textarea,html[data-mc-theme="light"] .rich,html[data-mc-theme="light"] .metric,html[data-mc-theme="light"] .file,html[data-mc-theme="light"] .drop,html[data-mc-theme="light"] .message,html[data-mc-theme="light"] .chip,html[data-mc-theme="light"] .submissionFile,html[data-mc-theme="light"] .lessonEntry,html[data-mc-theme="light"] .dayBtn{background:rgba(255,255,255,.94)!important;color:var(--ink)!important;border-color:rgba(60,60,67,.16)!important}
+html[data-mc-theme="light"] .btn.primary,html[data-mc-theme="light"] .tab.active,html[data-mc-theme="light"] .cloudTab.active{background:#0071e3!important;color:#fff!important;border-color:#0071e3!important}
+html[data-mc-theme="light"] .table th,html[data-mc-theme="light"] .field label,html[data-mc-theme="light"] .muted,html[data-mc-theme="light"] .hint,html[data-mc-theme="light"] .pageSub{color:#626269!important}
+html[data-mc-theme="light"] .table td,html[data-mc-theme="light"] .table th,html[data-mc-theme="light"] .modalfoot{border-color:rgba(60,60,67,.12)!important}
+html[data-mc-theme="light"] .course,html[data-mc-theme="light"] .event{background:#eaf3ff!important;color:#174d9d!important;border-color:rgba(0,113,227,.22)!important}
+html[data-mc-theme="light"] .course b,html[data-mc-theme="light"] .course small,html[data-mc-theme="light"] .event b,html[data-mc-theme="light"] .event small{color:#174d9d!important}
+html[data-mc-theme="light"] .notice{background:#eaf3ff!important;color:#1558a0!important}
+html[data-mc-theme="light"] .notice.warn{background:#fff7df!important;color:#855000!important}
+html[data-mc-theme="light"] input[type="date"],html[data-mc-theme="light"] input[type="time"]{color-scheme:light}
+
 </style>
 
 
