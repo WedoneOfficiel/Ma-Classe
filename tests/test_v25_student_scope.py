@@ -59,18 +59,21 @@ class StudentScopeTests(unittest.TestCase):
         with open(file_path,'w') as f: f.write('travail')
         incoming=server._student_visible_data(self.data,self.user)
         incoming['students'][0]['first']='Falsification'
-        incoming['submissions'].append({'id':'new','studentId':'s1','lessonId':'l1','status':'submitted','files':[{'name':'submissions/s1/work.txt','url':'/data/uploads/submissions/s1/work.txt','size':7}],'corrected':True,'correctionComment':'fake'})
+        incoming['submissions']=[]  # même omis du JSON, un rendu envoyé doit rester conservé
+        incoming['submissions'].append({'id':'new','studentId':'s1','lessonId':'l1','status':'submitted','files':[{'name':'submissions/s1/work.txt','url':'/data/uploads/submissions/s2/private.txt','size':7}],'corrected':True,'correctionComment':'fake'})
         incoming['submissions'].append({'id':'forged','studentId':'s2','lessonId':'l1','status':'submitted'})
         merged=server._merge_student_data(self.data,incoming,self.user)
         self.assertEqual(next(x for x in merged['students'] if x['id']=='s1')['first'],'Alice')
         created=next(x for x in merged['submissions'] if x['id']=='new')
         self.assertEqual(created['studentId'],'s1')
         self.assertEqual(created['status'],'submitted')
+        self.assertEqual(created['files'][0]['url'],'/data/uploads/submissions/s1/work.txt')
         self.assertNotIn('corrected',created)
         self.assertNotIn('correctionComment',created)
         self.assertFalse(any(x['id']=='forged' for x in merged['submissions']))
         original=next(x for x in merged['submissions'] if x['id']=='old')
         self.assertEqual(original['correctionComment'],'Prof feedback')
+        self.assertTrue(any(x['id']=='old' for x in merged['submissions']))
 
     def test_student_file_access_is_limited_to_referenced_own_files(self):
         folder=os.path.join(server.UPLOADS,'submissions','s1')
