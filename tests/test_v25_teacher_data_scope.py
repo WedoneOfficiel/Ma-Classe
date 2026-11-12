@@ -160,7 +160,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['submissions'][0]['studentId']='s2'
         merged=server._merge_teacher_data(data,view,user)
-        self.assertFalse(any(x.get('id')=='sub1' and x.get('studentId')=='s2' for x in merged['submissions']))
+        self.assertTrue(any(x.get('id')=='sub1' and x.get('studentId')=='s1' for x in merged['submissions']))
 
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
