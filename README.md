@@ -280,3 +280,12 @@ Les scripts sont contrôlés par `bash -n` dans le workflow CI. Cela valide leur
 Le serveur refusait déjà les chemins d'accès non autorisés, mais son ancienne configuration pouvait encore démarrer sur une interface réseau si `MACLASSE_HOST` était modifié. Ce n'est plus possible : le démarrage s'arrête avec une erreur si l'adresse demandée n'est pas une adresse loopback (`127.0.0.1`, `localhost` ou `::1`). L'écoute réseau n'est donc pas seulement déconseillée par la documentation ; elle est bloquée par le code.
 
 - Test dédié des adresses loopback acceptées et des adresses réseau refusées.
+
+
+## Audit supplémentaire des conversations et du partage de messages — 12/11/2026
+
+- Une conversation historique existante ne peut plus être réaffectée à une autre classe/enseignant ni voir ses participants ou son contenu réécrits via une sauvegarde professeur.
+- Les seules modifications conservées sur ces conversations sont les états personnels de lecture, d'archivage, de suppression, de favori et de classement du professeur connecté.
+- Les nouveaux messages de la messagerie V2 valident désormais aussi `sharedWith` : un partage vers un élève hors des classes attribuées est refusé, comme un destinataire `to`/`cc`/`bcc` invalide.
+- Tests de régression ajoutés pour la falsification d'une conversation et le partage à un élève hors périmètre. Les commits de code/test sont `15f9218`, `f07a1c7`, `07d26cf` et `9dfe6f9`.
+- Les workflows déclenchés par ces commits doivent être consultés avant de considérer ce lot validé.
