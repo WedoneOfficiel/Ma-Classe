@@ -197,3 +197,9 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - Les calculs serveur de moyenne générale et d'assiduité ignorent désormais toute évaluation ou feuille de présence rattachée à une autre classe.
 - Test de non-régression avec données interclasses mal rattachées.
 - CI complète réussie : runs 43310140332 et 43310145774.
+
+
+12/11/2026 — Protection des rattachements de classe existants
+- La fusion des sauvegardes professeur vérifie désormais le périmètre depuis l'enregistrement stocké et préserve les liens de classe/élève/séance/période des objets concernés.
+- Tests de déplacement falsifié d'élève, séance, présence et pièce jointe entre classes attribuées.
+- CI complète réussie : runs 43310380105 et 43310387814.
