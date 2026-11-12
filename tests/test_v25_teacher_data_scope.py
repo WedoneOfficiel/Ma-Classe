@@ -6,7 +6,7 @@ class TeacherDataScopeTests(unittest.TestCase):
     def setUp(self):
         self.data={
             'settings':{'schoolName':'École test'},
-            'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
+            'classes':[{'id':'c1','name':'6A','principalTeacherId':'t2'},{'id':'c2','name':'6B','principalTeacherId':'t2'}],
             'teachers':[{'id':'t1','classIds':['c1']},{'id':'t2','classIds':['c2']}],
             'users':[{'id':'u1','role':'teacher','teacherId':'t1'},{'id':'u2','role':'teacher','teacherId':'t2'}],
             'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'}],
@@ -68,6 +68,30 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual([g['studentId'] for g in next(x for x in merged['evaluations'] if x['id']=='e1')['grades']],['s1'])
         self.assertEqual([r['studentId'] for r in next(x for x in merged['attendance'] if x['id']=='a1')['rows']],['s1'])
         self.assertFalse(any(x.get('id')=='forged-sub' for x in merged['submissions']))
+
+    def test_non_principal_teacher_cannot_validate_publish_or_change_overall(self):
+        data=copy.deepcopy(self.data)
+        data['bulletins']=[{'id':'b1','studentId':'s1','classId':'c1','termId':'t1','subjectData':{'Maths':{'comment':'Ancienne appréciation'}},'overall':'Avis du PP','validated':False,'published':False}]
+        view=server._teacher_visible_data(data,self.user)
+        view['bulletins'][0].update({'overall':'Avis falsifié','validated':True,'validatedAt':'2026-11-12','published':True,'publishedAt':'2026-11-12'})
+        view['bulletins'][0]['subjectData']['Maths']['comment']='Appréciation modifiée'
+        merged=server._merge_teacher_data(data,view,self.user)
+        saved=merged['bulletins'][0]
+        self.assertEqual(saved['overall'],'Avis du PP')
+        self.assertFalse(saved['validated'])
+        self.assertFalse(saved['published'])
+        self.assertNotIn('publishedAt',saved)
+        self.assertEqual(saved['subjectData']['Maths']['comment'],'Appréciation modifiée')
+
+    def test_non_principal_teacher_cannot_edit_published_bulletin(self):
+        data=copy.deepcopy(self.data)
+        original={'id':'b1','studentId':'s1','classId':'c1','termId':'t1','subjectData':{'Maths':{'comment':'Officiel'}},'overall':'Avis officiel','validated':True,'published':True,'publishedAt':'2026-11-12'}
+        data['bulletins']=[original]
+        view=server._teacher_visible_data(data,self.user)
+        view['bulletins'][0]['overall']='Falsifié'
+        view['bulletins'][0]['subjectData']['Maths']['comment']='Falsifié'
+        merged=server._merge_teacher_data(data,view,self.user)
+        self.assertEqual(merged['bulletins'][0],original)
 
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
