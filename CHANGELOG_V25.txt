@@ -109,3 +109,10 @@ Correctif de durcissement post-import — 12/11/2026
 - La suppression/désactivation d'un compte ou le retrait de son rôle autorisé révoque immédiatement sa session au lieu d'attendre 12 heures.
 - Ajout d'un test HTTP vérifiant la révocation des sessions après restauration d'une base sans comptes.
 - Commits : ed26a79, 7638d4f. CI réussie sur le test d'intégration (run 43306000415) et sur les trois commits documentaires suivants.
+
+
+12/11/2026 — Audit en cours : export PDF des bulletins
+- Constat : l'API de génération PDF fait confiance au contenu et au statut « publié » envoyés par le navigateur ; aucun bulletinId n'est transmis pour vérifier la publication réelle en base.
+- Risque : production d'un PDF présentant un contenu client comme officiellement publié. Ce point concerne l'authenticité du document, pas une fuite de données serveur.
+- Correction à réaliser : lier l'export à un bulletin identifié et vérifier côté serveur son accès et son état de publication.
+- Statut : ouvert, non corrigé.
