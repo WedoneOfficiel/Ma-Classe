@@ -1437,6 +1437,29 @@ html[data-mc-theme="dark"] input[type="file"]::file-selector-button{background:#
  html[data-mc-theme="system"] input[type="file"]::file-selector-button{background:#38383b!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.16)!important}
 }
 
+
+/* V25.1 — états de survol/focus sans retour intempestif au blanc */
+html[data-mc-theme="dark"] .searchResult:hover,html[data-mc-theme="dark"] .dayBtn:hover,
+html[data-mc-theme="dark"] .eventEdit:hover,html[data-mc-theme="dark"] .lessonTopBar .tab:hover{
+ background:#3a3a3e!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.20)!important
+}
+html[data-mc-theme="dark"] .input:focus,html[data-mc-theme="dark"] .select:focus,
+html[data-mc-theme="dark"] textarea:focus,html[data-mc-theme="dark"] .rich:focus{
+ background:#38383b!important;color:#f5f5f7!important;border-color:#4da3ff!important
+}
+html[data-mc-theme="dark"] .eventGroup{background:rgba(255,255,255,.12)!important;color:#f5f5f7!important}
+@media(prefers-color-scheme:dark){
+ html[data-mc-theme="system"] .searchResult:hover,html[data-mc-theme="system"] .dayBtn:hover,
+ html[data-mc-theme="system"] .eventEdit:hover,html[data-mc-theme="system"] .lessonTopBar .tab:hover{
+  background:#3a3a3e!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.20)!important
+ }
+ html[data-mc-theme="system"] .input:focus,html[data-mc-theme="system"] .select:focus,
+ html[data-mc-theme="system"] textarea:focus,html[data-mc-theme="system"] .rich:focus{
+  background:#38383b!important;color:#f5f5f7!important;border-color:#4da3ff!important
+ }
+ html[data-mc-theme="system"] .eventGroup{background:rgba(255,255,255,.12)!important;color:#f5f5f7!important}
+}
+
 </style>
 
 
