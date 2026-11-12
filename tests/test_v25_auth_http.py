@@ -79,7 +79,7 @@ def run():
             'users':[],
             'teachers':[{'id':'teacher-local','classIds':['c1']},{'id':'t2','classIds':['c2']}],
             'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
-            'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'},{'id':'s3','classId':'c1','first':'Camille'}],
+            'students':[{'id':'s1','classId':'c1','first':'Alice','notes':'note interne confidentielle'},{'id':'s2','classId':'c2','first':'Bob'},{'id':'s3','classId':'c1','first':'Camille'}],
             'lessons':[{'id':'l1','classId':'c1','homework':{'title':'Exercice','requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'title':'Devoir','requiresSubmission':True}}],
             'evaluations':[{'id':'e1','classId':'c1','published':True,'grades':[{'studentId':'s1','value':15},{'studentId':'s3','value':8}]},{'id':'e2','classId':'c2','published':True,'grades':[{'studentId':'s2','value':18}]},{'id':'e3','classId':'c1','published':False,'grades':[{'studentId':'s1','value':19}]}],
             'attendance':[{'id':'a1','classId':'c1','rows':[{'studentId':'s1','status':'present'},{'studentId':'s3','status':'absent'}]}], 'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b2','studentId':'s2','classId':'c2','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b3','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':False},{'id':'b4','studentId':'s3','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'}], 'attachments':[], 'submissions':[{'id':'sub1','studentId':'s1','lessonId':'l1','status':'submitted'},{'id':'sub3','studentId':'s3','lessonId':'l1','status':'submitted'}], 'schedule':[], 'conversations':[{'id':'private-mail','participantIds':['s3']}], 'cloudItems':[{'id':'private-cloud','ownerId':'s3'}], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test','terms':[{'id':'term1','name':'Trimestre 1'}]}
@@ -131,6 +131,7 @@ def run():
         assert status==200
         student_view=json.loads(student_raw)
         assert [x['id'] for x in student_view['students']]==['s1']
+        assert 'notes' not in student_view['students'][0]
         assert [x['id'] for x in student_view['classes']]==['c1']
         assert [x['id'] for x in student_view['lessons']]==['l1']
         assert [x['id'] for x in student_view['evaluations']]==['e1']
