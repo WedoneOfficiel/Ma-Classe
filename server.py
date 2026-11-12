@@ -1302,9 +1302,9 @@ class Handler(SimpleHTTPRequestHandler):
                     pp=[x for x in parent_path.split('/') if x not in ('','.','..')]
                     base=_safe_upload_path(parent_path)
                     if not os.path.isdir(base): return self._json({'error':'Dossier parent introuvable.'},400)
-                    target_dir=os.path.join(base,safe(obj.get('name','folder')))
-                    target_dir=os.path.abspath(target_dir)
-                    if os.path.commonpath([target_dir,os.path.abspath(UPLOADS)])!=os.path.abspath(UPLOADS): return self._json({'error':'Chemin invalide'},400)
+                    target_dir=os.path.realpath(os.path.join(base,safe(obj.get('name','folder'))))
+                    uploads_root=os.path.realpath(UPLOADS)
+                    if os.path.commonpath([target_dir,uploads_root])!=uploads_root: return self._json({'error':'Chemin invalide'},400)
                     os.makedirs(target_dir,exist_ok=False)
                     return self._json({'ok':True,'path':_uploads_relative(target_dir)})
                 parts += ['folders',safe(obj.get('id','folder'))]
