@@ -919,6 +919,8 @@ class Handler(SimpleHTTPRequestHandler):
                 database=_load_database()
                 bulletin=next((x for x in database.get('bulletins',[]) or [] if isinstance(x,dict) and str(x.get('id'))==bulletin_id),None)
                 if not bulletin: return self._json({'error':'Bulletin introuvable.'},404)
+                if bulletin.get('validated') is not True or bulletin.get('published') is not True or not bulletin.get('publishedAt'):
+                    return self._json({'error':'Seul un bulletin validé et officiellement publié peut être exporté.'},403)
                 student_id=str(bulletin.get('studentId') or '')
                 class_id=str(bulletin.get('classId') or '')
                 student_record=next((x for x in database.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
