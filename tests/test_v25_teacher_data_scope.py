@@ -66,4 +66,23 @@ class TeacherDataScopeTests(unittest.TestCase):
         merged=server._merge_teacher_data(self.data,view,self.user)
         self.assertEqual(merged['settings'],{'schoolName':'École test'})
 
+
+    def test_projection_exposes_only_explicitly_shared_top_level_keys(self):
+        data=copy.deepcopy(self.data)
+        data.update({
+            'subjects':[{'id':'math'}],
+            'competencyLibrary':[{'id':'comp'}],
+            'evaluationTemplates':[{'id':'template'}],
+            'evaluationCriteriaLibrary':[{'id':'criteria'}],
+            'privateFutureCollection':[{'secret':'private'}],
+            'secretConfig':{'apiToken':'do-not-expose'}
+        })
+        view=server._teacher_visible_data(data,self.user)
+        self.assertEqual(view['subjects'],data['subjects'])
+        self.assertEqual(view['competencyLibrary'],data['competencyLibrary'])
+        self.assertEqual(view['evaluationTemplates'],data['evaluationTemplates'])
+        self.assertEqual(view['evaluationCriteriaLibrary'],data['evaluationCriteriaLibrary'])
+        self.assertNotIn('privateFutureCollection',view)
+        self.assertNotIn('secretConfig',view)
+
 if __name__=='__main__': unittest.main()
