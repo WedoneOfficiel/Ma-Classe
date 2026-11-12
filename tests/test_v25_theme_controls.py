@@ -84,6 +84,12 @@ class ThemeControlsTests(unittest.TestCase):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
         self.assertIn('html[data-mc-theme="system"] .v14StudentHero', html)
 
+    def test_legacy_system_dark_media_is_scoped_to_system_preference(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn('@media(prefers-color-scheme:dark){:root{', html)
+        self.assertIn('@media(prefers-color-scheme:dark){html[data-mc-theme="system"]{', html)
+        self.assertIn('html[data-mc-theme="light"]{color-scheme:light}', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
