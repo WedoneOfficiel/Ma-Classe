@@ -79,3 +79,14 @@ Commits : fe0b449 (serveur), f13eeda (test), 5e4b301 (workflow), 71fab97 (.gitig
 - Complément : l'objet settings transmis aux professeurs est maintenant filtré champ par champ (rooms, termMode, terms, competencyLevels, courseAppearanceMigrationV205). Les autres champs, y compris toute future clé sensible, ne sont pas exposés.
 - Test de régression étendu pour vérifier qu'un champ privé ajouté à settings n'est pas transmis.
 - Commits complémentaires : ffaf34b (filtrage settings), f379a8c (test).
+
+
+CORRECTIF DE CONFIDENTIALITÉ DES COMPTES PROFESSEURS — 12/11/2026
+-----------------------------------------------------------------
+- L'audit de GET /api/data a détecté que le profil du professeur connecté était transmis avec son empreinte passwordHash (et un éventuel ancien champ password).
+- Même protégée par PBKDF2, une empreinte ne doit pas être exposée au navigateur : elle pourrait permettre des tentatives de cassage hors ligne.
+- La projection professeur retire désormais passwordHash et password de son propre profil, tout en conservant les champs d'identité utiles à l'interface.
+- Les sauvegardes professeur préservaient déjà les comptes côté serveur ; aucune modification de ce comportement.
+- Test de non-régression ajouté : test_teacher_projection_never_exposes_password_material.
+- Commits : fbaf4ff (serveur), f6f994b (test).
+- GitHub Actions du lot : à vérifier après exécution ; aucune recette Firefox n'est revendiquée.
