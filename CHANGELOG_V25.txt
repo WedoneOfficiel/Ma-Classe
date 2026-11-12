@@ -108,4 +108,4 @@ Correctif de durcissement post-import — 12/11/2026
 - Les sessions authentifiées sont maintenant rapprochées du compte actif en base à chaque requête.
 - La suppression/désactivation d'un compte ou le retrait de son rôle autorisé révoque immédiatement sa session au lieu d'attendre 12 heures.
 - Ajout d'un test HTTP vérifiant la révocation des sessions après restauration d'une base sans comptes.
-- Commits : ed26a79, 7638d4f. Résultat CI à confirmer.
+- Commits : ed26a79, 7638d4f. CI réussie sur le test d'intégration (run 43306000415) et sur les trois commits documentaires suivants.
