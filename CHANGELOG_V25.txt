@@ -228,3 +228,11 @@ Validation CI complémentaire — 12/11/2026
 - Préservation des seuls états personnels de conversation.
 - Validation des destinataires `sharedWith` dans la messagerie V2, avec contrôle du périmètre des élèves.
 - Tests de régression ajoutés ; CI en cours au moment de cette entrée.
+
+
+12/11/2026 — Préparation de l'installation Mac Apple Silicon
+- Vérification explicite macOS + architecture arm64 native.
+- Environnement Python .venv obligatoire et compilation du serveur après installation.
+- Lanceur macOS simplifié : vérification des dépendances, ouverture de Firefox si présent, serveur local sur 127.0.0.1 et arrêt par Ctrl+C.
+- Documentation de sauvegarde avant mise à jour et rappel des limites de sécurité locales.
+- La CI vérifie la syntaxe des lanceurs macOS ; aucun test réel sur le Mac M5/macOS 27 n'est revendiqué.
