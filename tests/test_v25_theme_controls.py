@@ -128,6 +128,11 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('@media(prefers-reduced-transparency:reduce)', html)
         self.assertIn('.toast{background:#242426!important;color:#fff!important', html)
 
+    def test_system_light_enhancements_do_not_leak_into_explicit_dark(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .side', html)
+        self.assertNotIn('@media(prefers-color-scheme:light){ .side', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
