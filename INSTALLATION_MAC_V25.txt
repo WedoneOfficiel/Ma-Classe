@@ -33,8 +33,8 @@ SÉCURITÉ ET LIMITES ACTUELLES
 - Le lanceur habituel reste strictement limité à 127.0.0.1.
 - Pour un essai ponctuel sur une box privée isolée, utilise Lancer-MaClasse-Reseau.command : il lie le serveur à l'IPv4 privée précise du Mac, sans écouter sur toutes les interfaces. Le lanceur refuse de démarrer tant que les mots de passe initiaux admin/admin et enseignant/enseignant fonctionnent encore : connecte-toi d'abord en local et change les deux.
 - HTTP sur le LAN n'est pas chiffré : données fictives uniquement, jamais de vrais dossiers scolaires, mots de passe réutilisés ou réseau partagé. N'utilise pas ce mode sur le réseau de l'établissement et ne configure aucune redirection de ports.
-- Les comptes élèves individuels ne sont pas activés à ce stade.
-- Le mode LAN est expérimental ; HTTPS, pare-feu, contrôle d'accès complet et tests multi-appareils restent à valider avant toute utilisation réelle.
+- Les comptes élèves individuels sont disponibles en première tranche : la direction peut les créer depuis Administration → Utilisateurs. Le portail affiche les données personnelles, l'emploi du temps, les cours, les résultats publiés, la vie scolaire et permet les rendus de devoirs. La messagerie et le Cloud élève restent désactivés.
+- Le mode LAN est expérimental ; HTTP n'est pas chiffré. HTTPS, pare-feu, audit complet des autorisations, messagerie/Cloud élève et tests multi-appareils restent à valider avant toute utilisation réelle.
 
 SAUVEGARDE AVANT MISE À JOUR
 1. Arrête le serveur avec Ctrl+C.
