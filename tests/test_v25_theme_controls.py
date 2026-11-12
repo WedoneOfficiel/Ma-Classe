@@ -95,6 +95,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('@media(prefers-color-scheme:dark){html[data-mc-theme="system"]{', html)
         self.assertIn('html[data-mc-theme="light"]{color-scheme:light}', html)
 
+    def test_explicit_dark_theme_defines_all_shared_surface_tokens(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for token in ('--ui-bg:#171719', '--ui-surface-solid:#2c2c2e',
+                      '--glass-bg:rgba(52,52,55,.58)', '--mc-bg:#171719',
+                      '--ui-text-3:#98989f'):
+            self.assertIn(token, html[html.index('variables de thème explicites'):])
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
