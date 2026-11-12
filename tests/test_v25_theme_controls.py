@@ -184,6 +184,12 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('--surface:var(--ui-surface-solid)', html)
         self.assertIn('--primary:var(--ui-blue)', html)
 
+    def test_dark_primary_actions_use_readable_white_text_backgrounds(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] .btn.primary', html)
+        self.assertIn('background:#0066cc!important;border-color:#0066cc!important;color:#fff!important', html)
+        self.assertIn('html[data-mc-theme="system"] .btn.primary', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
