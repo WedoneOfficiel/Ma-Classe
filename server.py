@@ -464,7 +464,9 @@ def _cloud_path_allowed(user,relative,write=False):
         target=_safe_upload_path(rel)
         rel=os.path.relpath(target,UPLOADS).replace(os.sep,'/')
         parts=rel.split('/')
-        if not parts or parts[0]!='cloud': return True
+        # Cette fonction ne valide que des chemins Cloud : tout autre espace
+        # doit être refusé par défaut, jamais considéré comme autorisé.
+        if not parts or parts[0]!='cloud': return False
         if user.get('role')=='admin': return True
         data=_load_database(); items=data.get('cloudItems') if isinstance(data.get('cloudItems'),list) else []
         # Le dossier racine peut ne pas avoir de métadonnée : contrôler son espace.
