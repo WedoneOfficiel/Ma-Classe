@@ -178,8 +178,8 @@ class ThemeControlsTests(unittest.TestCase):
         import re
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
-        declared = set(re.findall(r'(--[\\w-]+)\\s*:', html))
-        referenced = set(re.findall(r'var\\(\\s*(--[\\w-]+)', js))
+        declared = set(re.findall(r'(--[\w-]+)\s*:', html))
+        referenced = set(re.findall(r'var\(\s*(--[\w-]+)', js))
         self.assertEqual(referenced - declared, set())
         self.assertIn('--surface:var(--ui-surface-solid)', html)
         self.assertIn('--primary:var(--ui-blue)', html)
