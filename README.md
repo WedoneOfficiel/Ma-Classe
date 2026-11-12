@@ -101,3 +101,14 @@ Après chaque lot de changements :
 | V25.0.7 | Restauration d'archives ZIP et validation des archives |
 
 *Historique vérifié à partir des fichiers sources et du commit d'import ; les limites de recette restent celles indiquées plus haut.*
+
+
+## Correctif de confidentialité des comptes enseignants — 12/11/2026
+
+L'audit de la projection `/api/data` a révélé que le profil du professeur connecté était transmis avec son champ `passwordHash`. Même salée et dérivée par PBKDF2, une empreinte ne doit pas être distribuée au navigateur : elle pourrait faciliter une attaque hors ligne en cas de récupération de la réponse API.
+
+- La projection professeur conserve les informations de profil nécessaires, mais retire systématiquement `passwordHash` et tout ancien champ `password`.
+- La fusion des sauvegardes professeur continuait déjà à préserver les comptes côté serveur ; ce correctif concerne la lecture et la confidentialité.
+- Test dédié ajouté dans `tests/test_v25_teacher_data_scope.py`.
+- Commits : `fbaf4ff` (serveur), `f6f994b` (test).
+- La validation GitHub Actions du nouveau commit doit être consultée avant de considérer le lot validé.
