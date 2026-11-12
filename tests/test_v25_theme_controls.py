@@ -44,6 +44,12 @@ class ThemeControlsTests(unittest.TestCase):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
         self.assertIn('html[data-mc-theme="system"] .gradebookMatrix th:first-child', html)
 
+    def test_dark_theme_hover_and_focus_states_never_flash_light(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] .eventEdit:hover', html)
+        self.assertIn('html[data-mc-theme="dark"] .input:focus', html)
+        self.assertIn('html[data-mc-theme="system"] .searchResult:hover', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
