@@ -85,7 +85,7 @@ def run():
             'attendance':[{'id':'a1','classId':'c1','rows':[{'studentId':'s1','status':'present'},{'studentId':'s3','status':'absent'}]}], 'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b2','studentId':'s2','classId':'c2','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b3','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':False},{'id':'b4','studentId':'s3','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'}], 'attachments':[], 'submissions':[{'id':'sub1','studentId':'s1','lessonId':'l1','status':'submitted'},{'id':'sub3','studentId':'s3','lessonId':'l1','status':'submitted'}], 'schedule':[], 'conversations':[{'id':'private-mail','participantIds':['s3']}], 'cloudItems':[{'id':'private-cloud','ownerId':'s3'}], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test','terms':[{'id':'term1','name':'Trimestre 1'}]}
         }
         # Conserver les comptes authentifiés pendant le test de cloisonnement.
-        seeded['users']=[admin_record,teacher_record,{'id':'u-student-s1','role':'student','studentId':'s1','username':'alice','name':'Alice','active':True,'mustChangePassword':True,'passwordHash':sha('eleve-test')}]
+        seeded['users']=[admin_record,teacher_record]
         (app/'data'/'maclasse.json').write_text(json.dumps(seeded))
         status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
         assert status==404
@@ -116,8 +116,81 @@ def run():
         assert next(x for x in persisted['students'] if x['id']=='s1')['first']=='Alicia'
         assert next(x for x in persisted['students'] if x['id']=='s2')['first']=='Bob'
         assert next(x for x in persisted['classes'] if x['id']=='c2')['name']=='6B'
+        # La direction crée un compte élève ; le serveur génère directement une empreinte PBKDF2.
+        status,_,created_account=call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice','password':'eleveTestTresFort!'},admin)
+        assert status==200 and json.loads(created_account)['user']['mustChangePassword']
+        created_record=json.loads((app/'data'/'maclasse.json').read_text())
+        student_record=next(u for u in created_record['users'] if u.get('role')=='student')
+        assert student_record['passwordHash'].startswith('pbkdf2_sha256        assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']
+        student_cookie=student_headers.get('Set-Cookie').split(';')[0]
+        assert call(base,'/api/data',cookie=student_cookie)[0]==428
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'eleveTestTresFort!','newPassword':'unMotDePasseEleveTresSolide!'},student_cookie)[0]==200
+        status,student_read_headers,student_raw=call(base,'/api/data',cookie=student_cookie)
+        assert status==200
+        student_view=json.loads(student_raw)
+        assert [x['id'] for x in student_view['students']]==['s1']
+        assert [x['id'] for x in student_view['classes']]==['c1']
+        assert [x['id'] for x in student_view['lessons']]==['l1']
+        assert [x['id'] for x in student_view['evaluations']]==['e1']
+        assert [g['studentId'] for g in student_view['evaluations'][0]['grades']]==['s1']
+        assert [r['studentId'] for r in student_view['attendance'][0]['rows']]==['s1']
+        assert [x['id'] for x in student_view['bulletins']]==['b1']
+        assert [x['id'] for x in student_view['submissions']]==['sub1']
+        assert student_view['conversations']==[] and student_view['cloudItems']==[]
+        assert all('passwordHash' not in u and 'password' not in u for u in student_view['users'])
+        # L'élève peut déposer dans son dossier de rendu, mais pas dans celui d'un camarade.
+        upload_request=urllib.request.Request(base+'/api/upload',data=b'travail fictif',headers={'Cookie':student_cookie,'Origin':base,'X-Filename':'travail.txt','X-Upload-Folder':'submissions/s1'},method='POST')
+        with urllib.request.urlopen(upload_request,timeout=5) as response:
+            assert response.status==200
+            uploaded=json.loads(response.read())
+        student_view['students'][0]['first']='Usurpation'
+        student_view['submissions'].append({'id':'sub-s1','studentId':'s1','lessonId':'l1','status':'submitted','submittedAt':'2026-11-12T12:00:00Z','files':[uploaded],'correctionComment':'commentaire forgé','corrected':True})
+        status,student_save_headers,_=call(base,'/api/save','POST',student_view,student_cookie,extra_headers={'If-Match':student_read_headers.get('X-MaClasse-Revision')})
+        assert status==200
+        persisted_student=json.loads((app/'data'/'maclasse.json').read_text())
+        assert next(x for x in persisted_student['students'] if x['id']=='s1')['first']=='Alice'
+        saved_submission=next(x for x in persisted_student['submissions'] if x['id']=='sub-s1')
+        assert saved_submission['status']=='submitted' and saved_submission['studentId']=='s1'
+        assert 'correctionComment' not in saved_submission and not saved_submission.get('corrected')
+        assert call(base,'/data/uploads/'+uploaded['name'],cookie=student_cookie)[0]==200
+        (uploads/'submissions'/'s3').mkdir(parents=True,exist_ok=True)
+        (uploads/'submissions'/'s3'/'autre.txt').write_text('fichier privé')
+        assert call(base,'/data/uploads/submissions/s3/autre.txt',cookie=student_cookie)[0]==403
+        bad_upload=urllib.request.Request(base+'/api/upload',data=b'non',headers={'Cookie':student_cookie,'Origin':base,'X-Filename':'autre.txt','X-Upload-Folder':'submissions/s3'},method='POST')
+        try:
+            urllib.request.urlopen(bad_upload,timeout=5)
+            raise AssertionError('Un élève ne doit pas déposer dans le dossier d’un autre.')
+        except urllib.error.HTTPError as error:
+            assert error.code==403
+        assert call(base,'/api/data',cookie=teacher)[0]==200
+        # La restauration ZIP complète est réservée à la direction et remplace aussi les uploads.
+        archive=io.BytesIO()
+        with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
+            z.writestr('data/maclasse.json',json.dumps({'classes':[{'id':'restored','name':'Restaurée'}],'students':[{'id':'rs1','classId':'restored'}],'users':[]}))
+            z.writestr('data/uploads/restored.txt','fichier restauré')
+        def restore(cookie):
+            req=urllib.request.Request(base+'/api/backup/restore',data=archive.getvalue(),headers={'Cookie':cookie,'Origin':base,'Content-Type':'application/zip'},method='POST')
+            try:
+                with urllib.request.urlopen(req,timeout=5) as response:return response.status,response.read()
+            except urllib.error.HTTPError as error:return error.code,error.read()
+        assert restore(teacher)[0]==403
+        status,restore_body=restore(admin)
+        assert status==200 and json.loads(restore_body)['restored']['files']==1
+        restored=json.loads((app/'data'/'maclasse.json').read_text())
+        assert restored['classes'][0]['id']=='restored'
+        assert (app/'data'/'uploads'/'restored.txt').read_text()=='fichier restauré'
+        # Une restauration qui supprime les comptes doit révoquer les sessions déjà ouvertes.
+        assert call(base,'/api/data',cookie=teacher)[0]==401
+        assert call(base,'/api/data',cookie=admin)[0]==401
+        print('OK — authentification HTTP, révocation des sessions, projections professeur/élève, cloisonnement des données, conflits, rôles et restauration ZIP admin.')
+    finally:
+        process.terminate(); process.wait(timeout=5); shutil.rmtree(temp,ignore_errors=True)
+
+if __name__=='__main__': run()
+)
+        assert call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice2','password':'eleveTestTresFort!'},admin)[0]==409
         # Compte élève individuel : authentification, changement initial et projection strictement personnelle.
-        status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleve-test'})
+        status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
         assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']
         student_cookie=student_headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/data',cookie=student_cookie)[0]==428
