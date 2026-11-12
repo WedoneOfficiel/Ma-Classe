@@ -30,6 +30,13 @@ jobs:
         run: node --check _all.js
       - name: Vérifier les lanceurs macOS
         run: bash -n Installer-MaClasse.command Lancer-MaClasse.command
+      - name: Afficher la plateforme du runner macOS
+        run: |
+          uname -a
+          python -c "import platform; print(platform.platform(), platform.machine())"
+      - name: Tester réellement l'installateur Apple Silicon
+        if: runner.arch == 'ARM64'
+        run: ./Installer-MaClasse.command
       - name: Exécuter tous les tests JavaScript
         shell: bash
         run: |
