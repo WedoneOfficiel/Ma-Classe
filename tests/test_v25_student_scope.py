@@ -22,11 +22,11 @@ class StudentScopeTests(unittest.TestCase):
             'students':[{'id':'s1','classId':'c1','first':'Alice','notes':'note interne confidentielle'},{'id':'s2','classId':'c1','first':'Bob'},{'id':'s3','classId':'c2','first':'Chloé'}],
             'schedule':[{'id':'slot1','classId':'c1','teacherId':'t1'},{'id':'slot2','classId':'c2','teacherId':'t2'}],
             'teachers':[{'id':'t1','first':'Prof A'},{'id':'t2','first':'Prof B'}],
-            'lessons':[{'id':'l1','classId':'c1','homework':{'requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'requiresSubmission':True}}],
+            'lessons':[{'id':'l1','classId':'c1','homework':{'requiresSubmission':True}},{'id':'l1b','classId':'c1','homework':{'requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'requiresSubmission':True}}],
             'evaluations':[{'id':'e1','classId':'c1','published':True,'grades':[{'studentId':'s1','value':14},{'studentId':'s2','value':7}]},{'id':'e2','classId':'c1','published':False,'grades':[{'studentId':'s1','value':19}]}],
             'attendance':[{'id':'a1','classId':'c1','rows':[{'studentId':'s1','status':'present'},{'studentId':'s2','status':'absent'}]}],
             'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','validated':True,'published':True},{'id':'b2','studentId':'s2','classId':'c1','validated':True,'published':True}],
-            'submissions':[{'id':'old','studentId':'s1','lessonId':'l1','classId':'c1','status':'submitted','corrected':True,'correctionComment':'Prof feedback'},{'id':'other','studentId':'s2','lessonId':'l1','classId':'c1','status':'submitted'}],
+            'submissions':[{'id':'old','studentId':'s1','lessonId':'l1b','classId':'c1','status':'submitted','corrected':True,'correctionComment':'Prof feedback'},{'id':'other','studentId':'s2','lessonId':'l1','classId':'c1','status':'submitted'}],
             'attachments':[],'conversations':[{'id':'private','participantIds':['s2']}],
             'cloudItems':[{'id':'private','ownerId':'s2'}],'notifications':[],'settings':{'schoolName':'private','terms':[]}
         }
@@ -42,7 +42,7 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual([x['id'] for x in view['students']],['s1'])
         self.assertNotIn('notes',view['students'][0])
         self.assertEqual([x['id'] for x in view['classes']],['c1'])
-        self.assertEqual([x['id'] for x in view['lessons']],['l1'])
+        self.assertEqual([x['id'] for x in view['lessons']],['l1','l1b'])
         self.assertEqual([x['id'] for x in view['evaluations']],['e1'])
         self.assertEqual([x['studentId'] for x in view['evaluations'][0]['grades']],['s1'])
         self.assertEqual([x['studentId'] for x in view['attendance'][0]['rows']],['s1'])
