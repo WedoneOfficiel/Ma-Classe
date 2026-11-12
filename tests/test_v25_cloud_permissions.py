@@ -38,6 +38,10 @@ class CloudPermissionTests(unittest.TestCase):
         server.UPLOADS = self.old_uploads
         self.tmp.cleanup()
 
+    def test_non_cloud_path_is_never_authorized_as_cloud(self):
+        self.assertFalse(server._cloud_path_allowed(self.t1, 'general/secret.pdf'))
+        self.assertFalse(server._cloud_path_allowed(self.t2, 'lessons/private.pdf'))
+
     def test_personal_space_is_private(self):
         self.assertTrue(server._cloud_path_allowed(self.t1, 'cloud/personal/users/t1/a.pdf'))
         self.assertFalse(server._cloud_path_allowed(self.t2, 'cloud/personal/users/t1/a.pdf'))
