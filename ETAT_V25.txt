@@ -108,8 +108,10 @@ POINT D'AUDIT À CORRIGER — AUTHENTICITÉ DES BULLETINS PDF
 - Le client ne transmet pas d'identifiant de bulletin ; le serveur ne vérifie donc ni l'enregistrement source, ni l'appartenance à une classe, ni l'état réel de publication.
 - La mention « Bulletin publié officiellement » dépend actuellement des booléens/dates fournis par le client. Un client modifié peut donc faire produire un PDF qui affirme une publication non vérifiée.
 - Il ne s'agit pas d'une lecture de données serveur non autorisée : le contenu PDF vient du corps envoyé par le client. Le risque concerne l'intégrité et l'authenticité du document.
-- Correction prévue : ajouter bulletinId dans la requête, vérifier l'accès à la classe et l'état réel du bulletin, puis privilégier une génération depuis les données serveur. À défaut, ne jamais apposer la mention officielle sur la seule foi du client.
-- Statut : constat confirmé par lecture de server.py et de l'appel dans _all.js ; non corrigé à ce stade.
+- Correction réalisée : _all.js transmet bulletinId ; server.py vérifie l'existence du bulletin, la cohérence élève/classe et l'affectation du professeur à la classe. L'identité et le statut/date de publication proviennent de la base.
+- Tests HTTP : bulletin inexistant = 404 ; bulletin d'une autre classe = 403.
+- Limite restante : moyennes, statistiques, appréciations et compétences restent transmises par le navigateur ; les valeurs ne sont pas encore toutes recalculées depuis la base côté serveur.
+- Statut : contrôle d'identité/périmètre/publication corrigé ; génération entièrement serveur encore nécessaire pour garantir le contenu.
 
 CI des correctifs précédents : succès sur les commits serveur/test ; test de révocation des sessions validé par le run 43306000415.
 
@@ -122,3 +124,22 @@ COMPLÉMENT — CONTRÔLE DU STATUT POUR L'EXPORT PDF
 - Commits : 508df20 (serveur), 1a011c0 (test).
 - Limite restante : moyennes, statistiques, appréciations et compétences PDF restent encore fournies par le client. Il faut les recalculer ou les vérifier côté serveur avant de certifier l'intégrité complète du document.
 - CI à confirmer.
+
+
+CORRECTIF CLOUD — REFUS PAR DÉFAUT HORS CLOUD
+---------------------------------------------
+- _cloud_path_allowed refusait auparavant les chemins invalides, mais autorisait par erreur les chemins valides situés hors cloud/.
+- Les chemins non Cloud sont maintenant refusés par défaut.
+- Test ajouté pour general/ et lessons/.
+- Commits : 5ff9364 (serveur), 4c92f9c (test).
+- CI réussie : run 43306325378.
+
+CORRECTIF EXPORT PDF — CONTRÔLE DU BULLETIN SOURCE
+-------------------------------------------------
+- Le client transmet bulletinId ; le serveur retrouve le bulletin et vérifie sa cohérence avec l'élève et la classe.
+- Un professeur ne peut générer le PDF que pour une classe qui lui est affectée ; un bulletin inexistant renvoie 404, un bulletin hors périmètre 403.
+- Le nom de l'élève, la classe, la période et le statut/date de publication sont déterminés depuis la base, et non depuis le JSON client.
+- Limite : notes, moyennes, appréciations et compétences restent fournies par le client. Ne pas considérer le PDF comme preuve d'authenticité complète avant génération serveur de ces valeurs.
+- Commits : a661d36, 5713ba6, 59bb9cf.
+- CI réussie : run 43306723332.
+- Version inchangée : V25.0.7.
