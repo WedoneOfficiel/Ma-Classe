@@ -99,8 +99,8 @@ def run():
         assert status==200
         view=json.loads(raw)
         assert [x['id'] for x in view['classes']]==['c1']
-        assert [x['id'] for x in view['students']]==['s1']
-        assert [g['studentId'] for g in view['evaluations'][0]['grades']]==['s1']
+        assert [x['id'] for x in view['students']]==['s1','s3']
+        assert [g['studentId'] for g in view['evaluations'][0]['grades']]==['s1','s3']
         view['students'][0]['first']='Alicia'
         original_revision=read_headers.get('X-MaClasse-Revision')
         status,_,missing=call(base,'/api/save','POST',view,teacher)
