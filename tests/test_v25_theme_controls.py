@@ -43,12 +43,12 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="light"]', html)
 
 
-    def test_system_dark_mode_has_complete_cross_platform_surface_rules(self):
+    def test_dark_mode_has_complete_cross_platform_surface_rules(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn('html[data-mc-theme="system"]{', html)
+        self.assertIn('html[data-mc-theme="dark"]{', html)
         self.assertIn('color-scheme:dark;', html)
-        self.assertIn('html[data-mc-theme="system"] .mc-select-trigger', html)
-        self.assertIn('html[data-mc-theme="system"] .lessonModeBlue.active', html)
+        self.assertIn('html[data-mc-theme="dark"] .mc-select-trigger', html)
+        self.assertIn('html[data-mc-theme="dark"] .lessonModeBlue.active', html)
 
     def test_dark_theme_covers_document_profile_and_assessment_modules(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -61,13 +61,13 @@ class ThemeControlsTests(unittest.TestCase):
         for selector in ('.nav button.active', '.gradebookMatrix th:first-child',
                          '.miniKpi', '.mc-select-menu', '.folderBox'):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
-        self.assertIn('html[data-mc-theme="system"] .gradebookMatrix th:first-child', html)
+        self.assertIn('html[data-mc-theme="dark"] .gradebookMatrix th:first-child', html)
 
     def test_dark_theme_hover_and_focus_states_never_flash_light(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .eventEdit:hover', html)
         self.assertIn('html[data-mc-theme="dark"] .input:focus', html)
-        self.assertIn('html[data-mc-theme="system"] .searchResult:hover', html)
+        self.assertIn('html[data-mc-theme="dark"] .searchResult:hover', html)
 
     def test_dark_theme_native_checkboxes_and_assessment_levels(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -80,33 +80,33 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] .mcSelectMenu', html)
         self.assertIn('html[data-mc-theme="dark"] .mcSelectOption.selected', html)
         self.assertIn('html[data-mc-theme="dark"] .btn.dark', html)
-        self.assertIn('html[data-mc-theme="system"] .mcSelectMenu', html)
+        self.assertIn('html[data-mc-theme="dark"] .mcSelectMenu', html)
 
     def test_dark_theme_calendar_attendance_and_messaging_states(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         for selector in ('.statusBtn.on.present', '.eventEdit', '.dayBtn .count',
                          '.v15Bubble', '.v15Thread.active'):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
-        self.assertIn('html[data-mc-theme="system"] .v15Bubble', html)
+        self.assertIn('html[data-mc-theme="dark"] .v15Bubble', html)
 
     def test_dark_theme_student_space_mail_and_translucent_surfaces(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         for selector in ('.v14WeekDay', '.mailList', '.mailReply',
                          '.v12Workspace', '.v12StatStrip .v12Stat'):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
-        self.assertIn('html[data-mc-theme="system"] .mailList', html)
+        self.assertIn('html[data-mc-theme="dark"] .mailList', html)
 
     def test_dark_theme_overlays_student_hero_and_mail_rows(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         for selector in ('.v12CommandPanel', '.v125SearchResults', '.v14StudentHero',
                          '.mailRow.active', '.mailMessageHead', '.mailQuoted'):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
-        self.assertIn('html[data-mc-theme="system"] .v14StudentHero', html)
+        self.assertIn('html[data-mc-theme="dark"] .v14StudentHero', html)
 
-    def test_legacy_system_dark_media_is_scoped_to_system_preference(self):
+    def test_legacy_system_dark_media_rules_are_consolidated(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertNotIn('@media(prefers-color-scheme:dark){:root{', html)
-        self.assertIn('@media(prefers-color-scheme:dark){html[data-mc-theme="system"]{', html)
+        self.assertNotIn('@media(prefers-color-scheme:dark){html[data-mc-theme="dark"]{', html)
         self.assertIn('html[data-mc-theme="light"]{color-scheme:light}', html)
 
     def test_explicit_dark_theme_defines_all_shared_surface_tokens(self):
@@ -124,7 +124,7 @@ class ThemeControlsTests(unittest.TestCase):
     def test_dark_theme_focus_visibility_and_reduced_motion_accessibility(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] button:focus-visible', html)
-        self.assertIn('html[data-mc-theme="system"] button:focus-visible', html)
+        self.assertIn('html[data-mc-theme="dark"] button:focus-visible', html)
         self.assertIn('@media(prefers-reduced-motion:reduce)', html)
 
     def test_reduced_transparency_keeps_toast_text_contrast(self):
@@ -134,15 +134,15 @@ class ThemeControlsTests(unittest.TestCase):
 
     def test_explicit_and_automatic_dark_share_one_effective_dark_stylesheet(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertNotIn('@media(prefers-color-scheme:dark){html[data-mc-theme="system"]', html)
+        self.assertNotIn('@media(prefers-color-scheme:dark){html[data-mc-theme="dark"]', html)
         self.assertIn('html[data-mc-theme="dark"] .mcSelectTrigger', html)
         self.assertIn('html[data-mc-theme="dark"] .v12Workspace', html)
         self.assertIn('html[data-mc-theme="dark"] .schedulePage', html)
 
     def test_automatic_light_inherits_the_explicit_light_appearance(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .side', html)
-        self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .focusCard', html)
+        self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="dark"] .side', html)
+        self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="dark"] .focusCard', html)
         self.assertIn('html[data-mc-theme="light"] body', html)
 
     def test_timetable_uses_a_dedicated_full_width_page_architecture(self):
@@ -160,7 +160,7 @@ class ThemeControlsTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] input[type="date"]', html)
         self.assertIn('html[data-mc-theme="dark"] input[type="time"]', html)
-        self.assertIn('html[data-mc-theme="system"] input[type="date"]', html)
+        self.assertIn('html[data-mc-theme="dark"] input[type="date"]', html)
 
     def test_dark_theme_overrides_glass_borders_and_focus_tokens(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -170,7 +170,7 @@ class ThemeControlsTests(unittest.TestCase):
     def test_dark_theme_placeholder_contrast(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] input::placeholder', html)
-        self.assertIn('html[data-mc-theme="system"] input::placeholder', html)
+        self.assertIn('html[data-mc-theme="dark"] input::placeholder', html)
 
     def test_dark_theme_modal_close_control(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -180,7 +180,7 @@ class ThemeControlsTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .avatar', html)
         self.assertIn('html[data-mc-theme="dark"] .profile360Avatar', html)
-        self.assertIn('html[data-mc-theme="system"] .activityIcon', html)
+        self.assertIn('html[data-mc-theme="dark"] .activityIcon', html)
         self.assertIn(':root{--soft:rgba(118,118,128,.10)}', html)
 
     def test_legacy_component_tokens_resolve_to_shared_design_tokens(self):
@@ -211,7 +211,7 @@ class ThemeControlsTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .btn.primary', html)
         self.assertIn('background:#0066cc!important;border-color:#0066cc!important;color:#fff!important', html)
-        self.assertIn('html[data-mc-theme="system"] .btn.primary', html)
+        self.assertIn('html[data-mc-theme="dark"] .btn.primary', html)
 
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
