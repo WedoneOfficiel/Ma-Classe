@@ -174,7 +174,7 @@ RENFORCEMENT BULLETINS — IDENTITÉ ET SUPPRESSION
 - Tests dédiés : identité non modifiable et suppression d'un bulletin publié refusée.
 - Commits : 955b904 (serveur), 575403d (tests).
 - CI réussie : run 43307614719.
-- Limite restante : contrôle serveur de l'affectation précise des matières enseignées.
+- Contrôle matière réalisé : les appréciations sont limitées aux matières listées dans teachers[].subjects, côté interface et côté serveur. Limite : cette liste est globale au professeur, pas affectée par classe.
 
 
 ÉVALUATIONS — CLOISONNEMENT PAR CLASSE EXACTE
@@ -208,3 +208,21 @@ FICHIERS TÉLÉVERSÉS — CSP ET PROTECTION XSS
 - Test HTTP de non-régression sur un fichier HTML téléversé.
 - Les travaux rendus existants conservent leur élève et leur séance d'origine ; les réassociations falsifiées sont rejetées.
 - CI complète JS + Python réussie sur 91db610 : run 43308611502.
+
+
+BULLETINS — DROITS PAR MATIÈRE
+-----------------------------
+- Le serveur filtre maintenant subjectData selon les matières listées dans la fiche du professeur (teachers[].subjects).
+- La fonction d'interface canEditBulletinSubject manquante a été rétablie ; l'interface et le serveur utilisent la même liste de matières.
+- Un professeur ne peut ni modifier une appréciation d'une matière non attribuée, ni ajouter une nouvelle matière à son bulletin.
+- Commits : 8437b3a (serveur), 6db9412 (interface), be30a63 (test).
+- CI réussie : run 43308130018.
+- Limite : affectation des matières par classe non modélisée.
+
+PROJECTION — COHÉRENCE DE CLASSE DES DONNÉES IMBRIQUÉES
+-------------------------------------------------------
+- Notes et présences filtrées selon la classe exacte de l'évaluation/feuille.
+- Bulletins, pièces jointes et travaux rendus filtrés lorsque les identifiants élève/classe/séance ne concordent pas.
+- Les liens élève/séance/classe d'un rendu existant sont préservés depuis la base lors d'une sauvegarde professeur.
+- Commits : 67451c8, f9fc214, 91db610.
+- CI réussie : run 43308611502.
