@@ -513,7 +513,7 @@ def _teacher_visible_data(data,user):
 def _student_can_access_upload(user,relative,write=False):
     try:
         sid=str(user.get('studentId') or '')
-        rel=str(relative or '').replace('\\\\','/').lstrip('/')
+        rel=str(relative or '').replace(chr(92),'/').lstrip('/')
         target=_safe_upload_path(rel)
         rel=_uploads_relative(target)
         if not sid or rel.startswith('cloud/'):
@@ -570,10 +570,12 @@ def _merge_student_data(current,incoming,user):
         safe_files=[]
         for item in files:
             if not isinstance(item,dict): continue
-            name=str(item.get('name') or '').replace('\\\\','/').lstrip('/')
+            name=str(item.get('name') or '').replace(chr(92),'/').lstrip('/')
             if not name.startswith(f'submissions/{sid}/'): continue
-            try: _safe_upload_path(name)
-            except ValueError: continue
+            try:
+                file_path=_safe_upload_path(name)
+                if not os.path.isfile(file_path) or os.path.islink(file_path): continue
+            except (ValueError,OSError): continue
             safe_files.append({k:item[k] for k in ('name','url','size') if k in item})
         safe['files']=safe_files
         safe['file']=safe_files[0] if safe_files else None
@@ -603,9 +605,11 @@ def _student_visible_data(data,user):
         out['settings']={k:settings[k] for k in ('rooms','termMode','terms','competencyLevels') if k in settings}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id]
     out['students']=[dict(student_record)]
-    out['teachers']=[]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
+    teacher_ids={str(x.get('teacherId')) for x in out['schedule'] if x.get('teacherId')}
+    teacher_ids.update(str(x.get('teacherId')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and x.get('teacherId'))
+    out['teachers']=[x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id')) in teacher_ids]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
     out['evaluations']=[]
     for item in data.get('evaluations',[]) or []:
