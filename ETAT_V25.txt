@@ -283,3 +283,9 @@ VALIDATION CI — INSTALLATION FEDORA ET DÉMARRAGE LOCAL
 - Tests complets JavaScript + Python réussis après le verrouillage localhost : run 43310801471 (commit f1fa7d0).
 - Workflow complet incluant les scripts Fedora réussi : run 43310869800 (commit ebb910a).
 - Documentation complète validée : run 43310879305 (commit 8ccbba9).
+
+
+Audit messagerie/conversations — 12/11/2026
+- Conversations historiques : propriétaire, classe, participants, titre, date et messages préservés depuis la base. Seuls les états personnels du professeur (lecture/archivage/suppression/favori/classement) peuvent évoluer.
+- Messagerie V2 : `sharedWith` est maintenant soumis aux mêmes contrôles de destinataires que `to`, `cc` et `bcc`; pas de partage vers un élève hors des classes du professeur.
+- Tests ajoutés ; validation CI à vérifier sur les derniers commits.
