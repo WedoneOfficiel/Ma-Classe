@@ -37,6 +37,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] .finderItem', html)
         self.assertIn('html[data-mc-theme="dark"] .v206CriterionRow', html)
 
+    def test_dark_theme_covers_secondary_navigation_and_document_controls(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for selector in ('.nav button.active', '.gradebookMatrix th:first-child',
+                         '.miniKpi', '.mc-select-menu', '.folderBox'):
+            self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
+        self.assertIn('html[data-mc-theme="system"] .gradebookMatrix th:first-child', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
