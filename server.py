@@ -914,6 +914,28 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/bulletin-pdf':
             try:
                 payload=json.loads(body.decode('utf-8'))
+                if not isinstance(payload,dict): return self._json({'error':'Données de bulletin invalides.'},400)
+                bulletin_id=str(payload.get('bulletinId') or '')
+                database=_load_database()
+                bulletin=next((x for x in database.get('bulletins',[]) or [] if isinstance(x,dict) and str(x.get('id'))==bulletin_id),None)
+                if not bulletin: return self._json({'error':'Bulletin introuvable.'},404)
+                student_id=str(bulletin.get('studentId') or '')
+                class_id=str(bulletin.get('classId') or '')
+                student_record=next((x for x in database.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
+                class_record=next((x for x in database.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),None)
+                if not student_record or not class_record or str(student_record.get('classId') or '')!=class_id:
+                    return self._json({'error':'Bulletin incohérent ou élève introuvable.'},409)
+                if user.get('role')=='teacher' and class_id not in _teacher_class_ids(database,user):
+                    return self._json({'error':'Ce bulletin ne relève pas de vos classes.'},403)
+                term_id=str(bulletin.get('termId') or '')
+                term_record=next((x for x in (database.get('settings',{}).get('terms',[]) if isinstance(database.get('settings'),dict) else []) or [] if isinstance(x,dict) and str(x.get('id'))==term_id),None)
+                # L'identité et le statut de publication proviennent de la base,
+                # jamais des valeurs libres envoyées par le navigateur.
+                payload['student']={'name':' '.join(str(student_record.get(k) or '').strip() for k in ('first','last')).strip()}
+                payload['className']=str(class_record.get('name') or '—')
+                payload['termName']=str((term_record or {}).get('name') or 'Période')
+                payload['published']=bool(bulletin.get('published'))
+                payload['publishedAt']=str(bulletin.get('publishedAt') or '')
                 from io import BytesIO
                 from datetime import datetime
                 from reportlab.lib import colors
