@@ -419,6 +419,10 @@ def _merge_teacher_data(current,incoming,user):
                 ident=str(x.get('id') or '')
                 previous=next((z for z in current.get('bulletins',[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==ident),None)
                 return _teacher_record_class_id(previous or x,current,key) in allowed
+            if key in ('evaluations','attendance','submissions'):
+                ident=str(x.get('id') or '')
+                previous=next((z for z in current.get(key,[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==ident),None)
+                return _teacher_record_class_id(previous or x,current,key) in allowed
             return _teacher_record_class_id(x,current,key) in allowed
         old_scope={str(x.get('id')):x for x in old if x.get('id') and in_scope(x)}
         new_scope={str(x.get('id')):x for x in new if x.get('id') and in_scope(x)}
@@ -440,11 +444,17 @@ def _merge_teacher_data(current,incoming,user):
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
                 lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
-                if not lesson or str(lesson.get('classId') or '') not in allowed: continue
+                if not lesson or str(lesson.get('classId') or '') not in allowed: 
+                    if previous: safe_new.append(dict(previous))
+                    continue
                 lesson_class=str(lesson.get('classId') or '')
                 student=next((st for st in current.get('students',[]) or [] if isinstance(st,dict) and str(st.get('id'))==str(item.get('studentId') or '')),None)
-                if item.get('studentId') and (not student or str(student.get('classId') or '')!=lesson_class): continue
-                if item.get('classId') and str(item.get('classId'))!=lesson_class: continue
+                if item.get('studentId') and (not student or str(student.get('classId') or '')!=lesson_class):
+                    if previous: safe_new.append(dict(previous))
+                    continue
+                if item.get('classId') and str(item.get('classId'))!=lesson_class:
+                    if previous: safe_new.append(dict(previous))
+                    continue
                 item['classId']=lesson_class
             if key=='evaluations':
                 # Les notes doivent concerner des élèves de la classe exacte de l'évaluation,
