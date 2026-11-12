@@ -175,3 +175,12 @@ RENFORCEMENT BULLETINS — IDENTITÉ ET SUPPRESSION
 - Commits : 955b904 (serveur), 575403d (tests).
 - CI réussie : run 43307614719.
 - Limite restante : contrôle serveur de l'affectation précise des matières enseignées.
+
+
+ÉVALUATIONS — CLOISONNEMENT PAR CLASSE EXACTE
+--------------------------------------------
+- L'identité classId d'une évaluation existante ne peut plus être modifiée par une sauvegarde professeur.
+- Les notes ne sont conservées que si l'élève appartient à la classe exacte de l'évaluation (pas uniquement à une autre classe également attribuée au professeur).
+- Tests ajoutés pour le déplacement d'une évaluation et l'injection d'une note d'un élève d'une autre classe.
+- Commits : d4fe63f (serveur), 077d30f (tests). CI à confirmer.
+- Le schéma ne fournit pas actuellement de lien professeur/matière suffisamment explicite ; les permissions restent à ce stade basées sur les classes attribuées.
