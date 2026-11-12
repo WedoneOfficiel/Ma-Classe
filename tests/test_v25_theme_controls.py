@@ -23,5 +23,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"]', html)
         self.assertIn('html[data-mc-theme="light"]', html)
 
+
+    def test_theme_layer_covers_reported_and_interactive_components(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] .statMini', html)
+        self.assertIn('html[data-mc-theme="light"] .statMini', html)
+        self.assertIn('html[data-mc-theme="dark"] .lessonModeGreen.active', html)
+        self.assertIn('--mc-card-padding', html)
+
 if __name__ == "__main__":
     unittest.main()
