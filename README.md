@@ -273,3 +273,10 @@ L'audit des sauvegardes professeur a révélé un autre cas à verrouiller : un 
 Ajout de scripts dédiés au PC Linux hébergeant MaClasse : `Installer-MaClasse-Fedora.sh` crée un environnement Python isolé et installe les dépendances ; `Lancer-MaClasse-Fedora.sh` démarre le serveur sur son adresse locale. Le guide `INSTALLATION_FEDORA_V25.txt` détaille les étapes, les comptes initiaux, les sauvegardes et les limites de sécurité.
 
 Les scripts sont contrôlés par `bash -n` dans le workflow CI. Cela valide leur syntaxe, pas encore leur exécution sur le PC Fedora réel ni les performances avec Firefox et Spotify ouverts simultanément.
+
+
+## Verrouillage strict de l'écoute localhost
+
+Le serveur refusait déjà les chemins d'accès non autorisés, mais son ancienne configuration pouvait encore démarrer sur une interface réseau si `MACLASSE_HOST` était modifié. Ce n'est plus possible : le démarrage s'arrête avec une erreur si l'adresse demandée n'est pas une adresse loopback (`127.0.0.1`, `localhost` ou `::1`). L'écoute réseau n'est donc pas seulement déconseillée par la documentation ; elle est bloquée par le code.
+
+- Test dédié des adresses loopback acceptées et des adresses réseau refusées.
