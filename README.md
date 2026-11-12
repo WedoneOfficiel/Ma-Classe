@@ -231,3 +231,13 @@ Le contrôle des travaux rendus a également été renforcé : un rendu existant
 - À la sauvegarde, les associations élève/séance/classe d'un rendu existant sont conservées depuis l'enregistrement serveur ; le client ne peut pas déplacer le rendu vers un autre élève ou une autre séance.
 - Commits : `67451c8` (projection), `f9fc214` (tests), `91db610` (préservation de l'identité du rendu).
 - CI réussie : [run #43308611502](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308611502).
+
+
+## Bulletins PDF — contenu reconstruit côté serveur
+
+Le point d'intégrité de l'export PDF est maintenant corrigé de bout en bout. Le navigateur ne fournit plus que `bulletinId` ; après vérification de l'existence, de l'élève, de la classe, de la publication et du périmètre du professeur, le serveur reconstruit lui-même le document à partir de la base : identité, période, appréciation générale, matières, moyennes, statistiques, appréciations de matière, compétences et absences/retards. Les valeurs calculées envoyées par le navigateur sont ignorées.
+
+- Le calcul serveur reprend les règles métier existantes : barèmes sur 20, coefficients, groupes, périodes, publication des évaluations pour les moyennes par matière et niveaux de compétences.
+- Test unitaire ajouté avec des valeurs falsifiées côté client ; le constructeur n'utilise que les enregistrements canoniques.
+- CI complète réussie sur `e1af32a` : [GitHub Actions #43309419995](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43309419995).
+- La version applicative reste V25.0.7 : correctif incrémental de sécurité, sans changement du numéro de version.
