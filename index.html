@@ -1614,6 +1614,27 @@ html[data-mc-theme="dark"] .activityIcon{background:rgba(10,132,255,.18)!importa
  --card:var(--ui-surface);--border:var(--ui-line);--page-bg:var(--ui-bg);--primary:var(--ui-blue);--success:var(--ui-green);--surface:var(--ui-surface-solid);--surface2:var(--ui-surface-2);--surface-hover:var(--ui-hover);--input-bg:var(--ui-control-bg);--ui-panel:var(--ui-surface)
 }
 
+
+/* V25.1 — contraste WCAG des actions bleues en thème sombre */
+html[data-mc-theme="dark"] .btn.primary,html[data-mc-theme="dark"] .tab.active,
+html[data-mc-theme="dark"] .cloudTab.active,html[data-mc-theme="dark"] .dayBtn.active,
+html[data-mc-theme="dark"] .lessonModeNeutral.active,html[data-mc-theme="dark"] .btn.dark{
+ background:#0066cc!important;border-color:#0066cc!important;color:#fff!important
+}
+html[data-mc-theme="dark"] .v15Unread,html[data-mc-theme="dark"] .mailCount,
+html[data-mc-theme="dark"] .v15StudentMsgBadge{background:#0066cc!important;color:#fff!important}
+html[data-mc-theme="dark"] .v12Notify .badge{background:#c62828!important;color:#fff!important}
+@media(prefers-color-scheme:dark){
+ html[data-mc-theme="system"] .btn.primary,html[data-mc-theme="system"] .tab.active,
+ html[data-mc-theme="system"] .cloudTab.active,html[data-mc-theme="system"] .dayBtn.active,
+ html[data-mc-theme="system"] .lessonModeNeutral.active,html[data-mc-theme="system"] .btn.dark{
+  background:#0066cc!important;border-color:#0066cc!important;color:#fff!important
+ }
+ html[data-mc-theme="system"] .v15Unread,html[data-mc-theme="system"] .mailCount,
+ html[data-mc-theme="system"] .v15StudentMsgBadge{background:#0066cc!important;color:#fff!important}
+ html[data-mc-theme="system"] .v12Notify .badge{background:#c62828!important;color:#fff!important}
+}
+
 </style>
 
 
