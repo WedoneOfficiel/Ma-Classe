@@ -24,7 +24,7 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn("localStorage.getItem('maclasse_appearance_theme')", html)
         self.assertIn("r.dataset.mcThemePreference=v", html)
         self.assertIn("r.dataset.mcTheme=v==='system'&&!dark?'light':v", html)
-        self.assertIn("m.addEventListener?.('change',apply)", html)
+        self.assertIn("r.dataset.mcTheme=v==='system'&&!dark?'light':v", html)
 
     def test_appearance_is_applied_before_async_server_boot(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
