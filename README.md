@@ -289,3 +289,12 @@ Le serveur refusait déjà les chemins d'accès non autorisés, mais son ancienn
 - Les nouveaux messages de la messagerie V2 valident désormais aussi `sharedWith` : un partage vers un élève hors des classes attribuées est refusé, comme un destinataire `to`/`cc`/`bcc` invalide.
 - Tests de régression ajoutés pour la falsification d'une conversation et le partage à un élève hors périmètre. Les commits de code/test sont `15f9218`, `f07a1c7`, `07d26cf` et `9dfe6f9`.
 - Les workflows déclenchés par ces commits doivent être consultés avant de considérer ce lot validé.
+
+
+## Cible de livraison macOS Apple Silicon — 12/11/2026
+
+- La plateforme cible est un Mac Apple Silicon (puce M5, macOS 27), et non Fedora.
+- L'installateur vérifie macOS, arm64 natif et Python >= 3.10, crée .venv, installe requirements.txt et compile server.py.
+- Le lanceur exige l'environnement installé, ouvre Firefox si disponible (sinon le navigateur par défaut) et démarre le serveur sur 127.0.0.1:8765.
+- Le workflow vérifie la syntaxe des deux lanceurs macOS. Une CI verte ne remplace pas l'essai réel sur le Mac M5/macOS 27.
+- La V25 reste une édition locale de validation, pas une version autorisée pour un usage scolaire réel en réseau : les comptes élèves, l'audit complet des autorisations et les tests fonctionnels restent des conditions de livraison.
