@@ -1373,9 +1373,17 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({'name':rel,'url':'/data/uploads/'+rel,'size':len(body)})
         self.send_error(404)
 
+def _assert_loopback_host(host):
+    if str(host or '').strip().lower() not in ('127.0.0.1','localhost','::1'):
+        raise ValueError('MaClasse V25 est strictement locale : MACLASSE_HOST doit rester sur 127.0.0.1, localhost ou ::1.')
+
+
 if __name__=='__main__':
     os.chdir(ROOT)
-    if HOST not in ('127.0.0.1','localhost','::1'):
-        print('ATTENTION : écoute réseau activée. Ne pas utiliser avant activation de l’authentification serveur.')
+    try:
+        _assert_loopback_host(HOST)
+    except ValueError as error:
+        print(f'ERREUR DE SÉCURITÉ : {error}')
+        raise SystemExit(2)
     print(f'MaClasse V{APP_VERSION} — http://{HOST}:{PORT}')
     ThreadingHTTPServer((HOST,PORT),Handler).serve_forever()
