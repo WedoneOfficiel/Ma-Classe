@@ -31,6 +31,12 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="system"] .mc-select-trigger', html)
         self.assertIn('html[data-mc-theme="system"] .lessonModeBlue.active', html)
 
+    def test_dark_theme_covers_document_profile_and_assessment_modules(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] .docRoot', html)
+        self.assertIn('html[data-mc-theme="dark"] .finderItem', html)
+        self.assertIn('html[data-mc-theme="dark"] .v206CriterionRow', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
