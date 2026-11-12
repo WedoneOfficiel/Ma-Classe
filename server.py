@@ -1119,7 +1119,8 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            if not self._require_auth(): return
+            allowed_roles=('admin','teacher','student') if path=='/api/data' else ('admin','teacher')
+            if not self._require_auth(roles=allowed_roles): return
         if path.startswith('/data/uploads/'):
             rel=path[len('/data/uploads/'):]
             try: _safe_upload_path(rel)
@@ -1160,7 +1161,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if not user or not valid:
                         user=None
                     else:
-                        must_change=password in ('admin','enseignant')
+                        must_change=password in ('admin','enseignant') or user.get('mustChangePassword') is True
                         if legacy:
                             user['passwordHash']=_password_hash(password)
                             tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
@@ -1194,6 +1195,7 @@ class Handler(SimpleHTTPRequestHandler):
                     target=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('id'))==str(user.get('id'))),None)
                     if not target or not _password_verify(current_password,target.get('passwordHash',''))[0]: return self._json({'error':'Mot de passe actuel incorrect.'},401)
                     target['passwordHash']=new_hash
+                    target['mustChangePassword']=False
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE)
