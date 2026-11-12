@@ -515,23 +515,27 @@ def _merge_teacher_data(current,incoming,user):
         old=[x for x in current.get(key,[]) or [] if isinstance(x,dict)]
         new=[x for x in incoming.get(key,[]) or [] if isinstance(x,dict)]
         def in_scope(x):
+            ident=str(x.get('id') or '')
+            stored=next((z for z in old if ident and str(z.get('id') or '')==ident),None)
+            scope_record=stored or x
             if key=='cloudItems':
+                x=scope_record
                 return _cloud_path_allowed(user,x.get('serverName',''),write=True) or _cloud_grant(x,user,current,write=True)
             if key=='conversations':
-                return str(x.get('teacherId') or '')==tid or str(x.get('classId') or '') in allowed or tid in {str(v) for v in x.get('participantIds',[]) or []}
+                return str(scope_record.get('teacherId') or '')==tid or str(scope_record.get('classId') or '') in allowed or tid in {str(v) for v in scope_record.get('participantIds',[]) or []}
             if key=='notifications':
-                sid=str(x.get('studentId') or '')
-                return sid in {str(z.get('id')) for z in current.get('students',[]) or [] if isinstance(z,dict) and str(z.get('classId') or '') in allowed} or str(x.get('teacherId') or '')==tid
-            if key=='mailFolders': return str(x.get('teacherId') or '')==tid or str(x.get('ownerId') or '')==tid
+                sid=str(scope_record.get('studentId') or '')
+                return sid in {str(z.get('id')) for z in current.get('students',[]) or [] if isinstance(z,dict) and str(z.get('classId') or '') in allowed} or str(scope_record.get('teacherId') or '')==tid
+            if key=='mailFolders': return str(scope_record.get('teacherId') or '')==tid or str(scope_record.get('ownerId') or '')==tid
             if key=='bulletins':
                 ident=str(x.get('id') or '')
                 previous=next((z for z in current.get('bulletins',[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==ident),None)
-                return _teacher_record_class_id(previous or x,current,key) in allowed
+                return _teacher_record_class_id(previous or scope_record,current,key) in allowed
             if key in ('evaluations','attendance','submissions'):
                 ident=str(x.get('id') or '')
                 previous=next((z for z in current.get(key,[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==ident),None)
                 return _teacher_record_class_id(previous or x,current,key) in allowed
-            return _teacher_record_class_id(x,current,key) in allowed
+            return _teacher_record_class_id(scope_record,current,key) in allowed
         old_scope={str(x.get('id')):x for x in old if x.get('id') and in_scope(x)}
         new_scope={str(x.get('id')):x for x in new if x.get('id') and in_scope(x)}
         # Une entrée soumise avec un ID existant hors périmètre ne peut jamais la modifier.
@@ -542,13 +546,24 @@ def _merge_teacher_data(current,incoming,user):
         for entry in new_scope.values():
             item=dict(entry)
             previous=None
-            if key in ('bulletins','evaluations','submissions'):
+            if key in ('students','schedule','lessons','attendance','attachments','bulletins','evaluations','submissions'):
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
-                    # Les associations d'un bulletin, d'une évaluation ou d'un rendu sont immuables côté professeur.
-                    fields={'bulletins':('studentId','classId','termId'),'evaluations':('classId',),'submissions':('studentId','lessonId','classId')}[key]
+                    # Les liens de périmètre d'un enregistrement existant ne sont pas modifiables
+                    # par le professeur : classe, élève, séance et période restent canoniques.
+                    fields={
+                        'students':('classId',),
+                        'schedule':('classId',),
+                        'lessons':('classId',),
+                        'attendance':('classId',),
+                        'attachments':('classId','studentId','lessonId'),
+                        'bulletins':('studentId','classId','termId'),
+                        'evaluations':('classId',),
+                        'submissions':('studentId','lessonId','classId')
+                    }[key]
                     for field in fields:
-                        item[field]=previous.get(field)
+                        if field in previous: item[field]=previous[field]
+                        else: item.pop(field,None)
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
                 lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
