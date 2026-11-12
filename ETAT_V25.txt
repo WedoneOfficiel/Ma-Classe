@@ -67,8 +67,10 @@ CORRECTIF DE DURCISSEMENT APRÈS IMPORT — 12/11/2026
 
 ÉTAT DES VALIDATIONS DE CE CORRECTIF
 - Modification et test publiés sur main : oui.
-- Exécution du nouveau test et de la suite complète dans cette session : non réalisée.
-- Aucun résultat GitHub Actions n'était visible au contrôle effectué ; ne pas déclarer la suite verte.
+- GitHub Actions : succès sur le commit f379a8c (run 43305047329).
+- 31/31 tests JavaScript réussis ; 7/7 scripts Python exécutés avec succès.
+- node --check _all.js : réussi ; python -m py_compile server.py : réussi.
+- Le run comprend le nouveau test de non-divulgation des collections inconnues et des champs privés de settings.
 - Recette visuelle Firefox/macOS : non réalisée.
 - Version applicative conservée : V25.0.7 (correctif de sécurité incrémental, sans changement de numéro de version).
 
