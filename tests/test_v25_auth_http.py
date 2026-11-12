@@ -70,11 +70,15 @@ def run():
             'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'}],
             'lessons':[{'id':'l1','classId':'c1'},{'id':'l2','classId':'c2'}],
             'evaluations':[{'id':'e1','classId':'c1','grades':[{'studentId':'s1','value':15},{'studentId':'s2','value':2}]},{'id':'e2','classId':'c2','grades':[{'studentId':'s2','value':18}]}],
-            'attendance':[], 'bulletins':[], 'attachments':[], 'submissions':[], 'schedule':[], 'conversations':[], 'cloudItems':[], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test'}
+            'attendance':[], 'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','termId':'term1','published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b2','studentId':'s2','classId':'c2','termId':'term1','published':True,'publishedAt':'2026-11-01T10:00:00Z'}], 'attachments':[], 'submissions':[], 'schedule':[], 'conversations':[], 'cloudItems':[], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test','terms':[{'id':'term1','name':'Trimestre 1'}]}
         }
         # Conserver les comptes authentifiés pendant le test de cloisonnement.
         seeded['users']=[admin_record,teacher_record]
         (app/'data'/'maclasse.json').write_text(json.dumps(seeded))
+        status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
+        assert status==404
+        status,_,foreign_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'b2'},teacher)
+        assert status==403
         status,read_headers,raw=call(base,'/api/data',cookie=teacher)
         assert status==200
         view=json.loads(raw)
