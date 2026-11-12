@@ -622,7 +622,7 @@ def _student_visible_data(data,user):
     student_fields=('id','first','last','birth','sex','classId','group','email','phone')
     out['students']=[{k:v for k,v in student_record.items() if k in student_fields}]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
-    schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','recurrence','startDate','endDate','exceptions','overrides')
+    schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
     teacher_ids={str(x.get('teacherId')) for x in out['schedule'] if x.get('teacherId')}
     teacher_ids.update(str(x.get('teacherId')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and x.get('teacherId'))
