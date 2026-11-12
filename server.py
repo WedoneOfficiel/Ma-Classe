@@ -438,13 +438,22 @@ def _merge_teacher_data(current,incoming,user):
                     for field in fields:
                         item[field]=previous.get(field)
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
-            if key=='submissions' and item.get('lessonId') and str(item.get('lessonId')) not in lesson_ids: continue
+            if key=='submissions':
+                lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
+                if not lesson or str(lesson.get('classId') or '') not in allowed: continue
+                lesson_class=str(lesson.get('classId') or '')
+                student=next((st for st in current.get('students',[]) or [] if isinstance(st,dict) and str(st.get('id'))==str(item.get('studentId') or '')),None)
+                if item.get('studentId') and (not student or str(student.get('classId') or '')!=lesson_class): continue
+                if item.get('classId') and str(item.get('classId'))!=lesson_class: continue
+                item['classId']=lesson_class
             if key=='evaluations':
                 # Les notes doivent concerner des élèves de la classe exacte de l'évaluation,
                 # pas simplement d'une autre classe également attribuée au professeur.
                 evaluation_class=str(item.get('classId') or '')
                 item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids and any(isinstance(st,dict) and str(st.get('id'))==str(g.get('studentId')) and str(st.get('classId') or '')==evaluation_class for st in current.get('students',[]) or [])]
-            if key=='attendance': item['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '') in student_ids]
+            if key=='attendance':
+                attendance_class=str(item.get('classId') or '')
+                item['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '') in student_ids and any(isinstance(st,dict) and str(st.get('id'))==str(r.get('studentId')) and str(st.get('classId') or '')==attendance_class for st in current.get('students',[]) or [])]
             if key=='bulletins':
                 class_record=next((c for c in current.get('classes',[]) or [] if isinstance(c,dict) and str(c.get('id'))==str((previous or item).get('classId') or '')),None)
                 is_principal=bool(class_record and str(class_record.get('principalTeacherId') or '')==tid)
