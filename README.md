@@ -112,3 +112,12 @@ L'audit de la projection `/api/data` a révélé que le profil du professeur con
 - Test dédié ajouté dans `tests/test_v25_teacher_data_scope.py`.
 - Commits : `fbaf4ff` (serveur), `f6f994b` (test).
 - La validation GitHub Actions du nouveau commit doit être consultée avant de considérer le lot validé.
+
+
+## Correctif supplémentaire — révocation des sessions
+
+- L'audit a identifié qu'une session conservait son rôle et son identité pendant sa durée de vie, même après désactivation ou suppression du compte.
+- `Handler._session_user`" revalide désormais le compte dans la base à chaque requête authentifiée. Un compte supprimé, désactivé ou dont le rôle n'est plus autorisé perd immédiatement sa session ; les changements de rôle et d'identifiant professeur sont aussi reflétés dans la session.
+- Le test HTTP d'intégration vérifie désormais qu'après restauration d'une sauvegarde qui supprime les comptes, les cookies de session précédemment ouverts ne permettent plus d'accéder à l'API.
+- Le premier run CI du correctif serveur seul a échoué, car le test existant simulait des sessions sans comptes persistés. Le test a été corrigé pour conserver les comptes pendant la phase de test, puis vérifier leur révocation après restauration. Le run du commit de test est en cours au moment de cette mise à jour ; ne pas considérer ce lot comme validé avant son résultat.
+- Serveur : commit `ed26a79` ; test : commit `7638d4f`.
