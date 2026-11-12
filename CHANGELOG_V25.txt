@@ -124,3 +124,9 @@ Correctif de durcissement post-import — 12/11/2026
 - Test HTTP couvrant bulletin publié, brouillon non publié et classe hors périmètre.
 - Limite connue : contenu pédagogique chiffré et appréciations encore transmis par le navigateur ; validation serveur à poursuivre.
 - Commits : 508df20, 1a011c0. CI à confirmer.
+
+
+12/11/2026 — Contrôles Cloud et export PDF
+- Cloud : _cloud_path_allowed refuse désormais par défaut les chemins qui ne commencent pas par cloud/. Test de non-régression ajouté. Commits 5ff9364 et 4c92f9c ; CI run 43306325378 réussi.
+- PDF : l'export exige un bulletinId ; vérification serveur de l'existence, de la cohérence élève/classe et du périmètre du professeur. Identité et statut de publication repris de la base. Commits a661d36, 5713ba6, 59bb9cf ; CI run 43306723332 réussi.
+- Limite : moyennes, appréciations, statistiques et compétences du PDF restent fournies par le client ; génération intégrale serveur encore à réaliser.
