@@ -41,6 +41,11 @@ def run():
         assert call(base,'/api/data',cookie=admin)[0]==428
         assert call(base,'/api/auth/change-password','POST',{'currentPassword':'admin','newPassword':'court'},admin)[0]==400
         assert call(base,'/api/auth/change-password','POST',{'currentPassword':'admin','newPassword':'unMotDePasseAdminTresSolide!'},admin)[0]==200
+        status,other_headers,_=call(base,'/api/auth/login','POST',{'username':'admin','password':'unMotDePasseAdminTresSolide!'})
+        assert status==200
+        other_admin=other_headers.get('Set-Cookie').split(';')[0]
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'unMotDePasseAdminTresSolide!','newPassword':'unMotDePasseAdminEncorePlusFort!'},admin)[0]==200
+        assert call(base,'/api/data',cookie=other_admin)[0]==401
         assert call(base,'/api/data',cookie=admin)[0]==200
         assert call(base,'/api/cloud-delete','POST',{'path':'../outside'},admin)[0]==400
         uploads=app/'data'/'uploads'; outside=app/'outside-secret.txt'; outside.write_text('secret')
