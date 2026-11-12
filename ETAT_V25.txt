@@ -289,3 +289,10 @@ Audit messagerie/conversations — 12/11/2026
 - Conversations historiques : propriétaire, classe, participants, titre, date et messages préservés depuis la base. Seuls les états personnels du professeur (lecture/archivage/suppression/favori/classement) peuvent évoluer.
 - Messagerie V2 : `sharedWith` est maintenant soumis aux mêmes contrôles de destinataires que `to`, `cc` et `bcc`; pas de partage vers un élève hors des classes du professeur.
 - Tests ajoutés ; validation CI à vérifier sur les derniers commits.
+
+
+CIBLE DE DÉPLOIEMENT CORRIGÉE — 12/11/2026
+- La machine cible est un Mac Apple Silicon M5 sous macOS 27. Fedora n'est pas la cible d'installation.
+- Les lanceurs macOS vérifient arm64 natif, Python >= 3.10, installent les dépendances dans .venv et ouvrent Firefox si présent.
+- La syntaxe des lanceurs est vérifiée en CI ; l'installation réelle et le parcours Firefox doivent encore être effectués sur le Mac cible.
+- Ne pas présenter la V25 comme prête pour un réseau local ou un usage scolaire réel tant que les contrôles d'autorisation et la recette complète ne sont pas validés.
