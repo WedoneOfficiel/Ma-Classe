@@ -80,7 +80,7 @@ def run():
             'teachers':[{'id':'teacher-local','classIds':['c1']},{'id':'t2','classIds':['c2']}],
             'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
             'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'},{'id':'s3','classId':'c1','first':'Camille'}],
-            'lessons':[{'id':'l1','classId':'c1'},{'id':'l2','classId':'c2'}],
+            'lessons':[{'id':'l1','classId':'c1','homework':{'title':'Exercice','requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'title':'Devoir','requiresSubmission':True}}],
             'evaluations':[{'id':'e1','classId':'c1','published':True,'grades':[{'studentId':'s1','value':15},{'studentId':'s3','value':8}]},{'id':'e2','classId':'c2','published':True,'grades':[{'studentId':'s2','value':18}]},{'id':'e3','classId':'c1','published':False,'grades':[{'studentId':'s1','value':19}]}],
             'attendance':[{'id':'a1','classId':'c1','rows':[{'studentId':'s1','status':'present'},{'studentId':'s3','status':'absent'}]}], 'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b2','studentId':'s2','classId':'c2','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b3','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':False},{'id':'b4','studentId':'s3','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'}], 'attachments':[], 'submissions':[{'id':'sub1','studentId':'s1','lessonId':'l1','status':'submitted'},{'id':'sub3','studentId':'s3','lessonId':'l1','status':'submitted'}], 'schedule':[], 'conversations':[{'id':'private-mail','participantIds':['s3']}], 'cloudItems':[{'id':'private-cloud','ownerId':'s3'}], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test','terms':[{'id':'term1','name':'Trimestre 1'}]}
         }
@@ -135,7 +135,30 @@ def run():
         assert [x['id'] for x in student_view['submissions']]==['sub1']
         assert student_view['conversations']==[] and student_view['cloudItems']==[]
         assert all('passwordHash' not in u and 'password' not in u for u in student_view['users'])
-        assert call(base,'/api/save','POST',student_view,student_cookie,extra_headers={'If-Match':student_read_headers.get('X-MaClasse-Revision')})[0]==403
+        # L'élève peut déposer dans son dossier de rendu, mais pas dans celui d'un camarade.
+        upload_request=urllib.request.Request(base+'/api/upload',data=b'travail fictif',headers={'Cookie':student_cookie,'Origin':base,'X-Filename':'travail.txt','X-Upload-Folder':'submissions/s1'},method='POST')
+        with urllib.request.urlopen(upload_request,timeout=5) as response:
+            assert response.status==200
+            uploaded=json.loads(response.read())
+        student_view['students'][0]['first']='Usurpation'
+        student_view['submissions'].append({'id':'sub-s1','studentId':'s1','lessonId':'l1','status':'submitted','submittedAt':'2026-11-12T12:00:00Z','files':[uploaded],'correctionComment':'commentaire forgé','corrected':True})
+        status,student_save_headers,_=call(base,'/api/save','POST',student_view,student_cookie,extra_headers={'If-Match':student_read_headers.get('X-MaClasse-Revision')})
+        assert status==200
+        persisted_student=json.loads((app/'data'/'maclasse.json').read_text())
+        assert next(x for x in persisted_student['students'] if x['id']=='s1')['first']=='Alice'
+        saved_submission=next(x for x in persisted_student['submissions'] if x['id']=='sub-s1')
+        assert saved_submission['status']=='submitted' and saved_submission['studentId']=='s1'
+        assert 'correctionComment' not in saved_submission and not saved_submission.get('corrected')
+        assert call(base,'/data/uploads/'+uploaded['name'],cookie=student_cookie)[0]==200
+        (uploads/'submissions'/'s3').mkdir(parents=True,exist_ok=True)
+        (uploads/'submissions'/'s3'/'autre.txt').write_text('fichier privé')
+        assert call(base,'/data/uploads/submissions/s3/autre.txt',cookie=student_cookie)[0]==403
+        bad_upload=urllib.request.Request(base+'/api/upload',data=b'non',headers={'Cookie':student_cookie,'Origin':base,'X-Filename':'autre.txt','X-Upload-Folder':'submissions/s3'},method='POST')
+        try:
+            urllib.request.urlopen(bad_upload,timeout=5)
+            raise AssertionError('Un élève ne doit pas déposer dans le dossier d’un autre.')
+        except urllib.error.HTTPError as error:
+            assert error.code==403
         assert call(base,'/api/data',cookie=teacher)[0]==200
         # La restauration ZIP complète est réservée à la direction et remplace aussi les uploads.
         archive=io.BytesIO()
