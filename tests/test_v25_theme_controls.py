@@ -24,6 +24,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="light"]', html)
 
 
+    def test_system_dark_mode_has_complete_cross_platform_surface_rules(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="system"]{', html)
+        self.assertIn('color-scheme:dark;', html)
+        self.assertIn('html[data-mc-theme="system"] .mc-select-trigger', html)
+        self.assertIn('html[data-mc-theme="system"] .lessonModeBlue.active', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
