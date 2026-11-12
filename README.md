@@ -257,3 +257,11 @@ Un contrôle supplémentaire a été ajouté après revue du calcul serveur : le
 
 - Test de non-régression avec une fausse note et une fausse absence provenant d'une autre classe.
 - CI complète JS + Python réussie : [run #43310145774](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43310145774) et [run #43310140332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43310140332).
+
+
+## Protection des rattachements de classe à la sauvegarde
+
+L'audit des sauvegardes professeur a révélé un autre cas à verrouiller : un professeur intervenant dans plusieurs classes ne doit pas pouvoir déplacer un enregistrement existant d'une classe à une autre en modifiant son JSON avant sauvegarde. Le serveur détermine désormais le périmètre d'un enregistrement existant depuis sa version stockée et préserve ses liens de classe (ainsi que les liens élève/séance/période concernés) pour les élèves, cours, séances, présences, pièces jointes, évaluations, bulletins et travaux rendus.
+
+- Tests ajoutés contre le déplacement d'un élève, d'une séance, d'une feuille de présence et d'une pièce jointe entre deux classes toutes deux attribuées au professeur.
+- CI complète JS + Python réussie : [run #43310380105](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43310380105) et [run #43310387814](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43310387814).
