@@ -18,6 +18,10 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn("localStorage.setItem(MC_THEME_KEY,value)", js)
         self.assertIn("applyAppearanceTheme()", js)
 
+    def test_appearance_is_applied_before_async_server_boot(self):
+        js = (ROOT / "_all.js").read_text(encoding="utf-8")
+        self.assertIn("applyAppearanceTheme();load();", js)
+
     def test_theme_application_sets_document_theme_and_native_control_scheme(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
         self.assertIn("root.dataset.mcTheme=value", js)
