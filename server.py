@@ -235,7 +235,13 @@ def _teacher_visible_mailbox(mailbox, user, data):
         sender=(message.get('sender') or {}).get('key') if isinstance(message.get('sender'),dict) else ''
         recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
         if sender==me or me in recipients:
-            visible.append(message)
+            if sender==me:
+                visible.append(message)
+            else:
+                # Un destinataire ne doit jamais connaître les autres destinataires BCC.
+                safe_message=dict(message)
+                safe_message['bcc']=[]
+                visible.append(safe_message)
     states=mailbox.get('states') if isinstance(mailbox.get('states'),dict) else {}
     folders=mailbox.get('folders') if isinstance(mailbox.get('folders'),list) else []
     drafts=mailbox.get('drafts') if isinstance(mailbox.get('drafts'),list) else []
