@@ -33,6 +33,7 @@ def run():
             try: call(base,'/'); break
             except Exception: time.sleep(.1)
         assert call(base,'/api/data')[0]==401
+        assert call(base,'/api/auth/session',extra_headers={'Host':'attacker.invalid'})[0]==403
         assert call(base,'/api/upload','POST',{},send_origin=False)[0]==403
         assert call(base,'/api/auth/login','POST',{'username':'admin','password':'admin'},send_origin=False)[0]==403
         status,headers,body=call(base,'/api/auth/login','POST',{'username':'admin','password':'admin'})
