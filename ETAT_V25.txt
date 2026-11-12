@@ -300,3 +300,11 @@ CIBLE DE DÉPLOIEMENT CORRIGÉE — 12/11/2026
 
 NOTE DE CONTINUITÉ — 12/11/2026
 Les anciennes notes d'installation Fedora ci-dessus sont historiques et ne correspondent plus à la machine cible. Elles sont remplacées par la préparation Mac Apple Silicon M5 / macOS 27 décrite dans INSTALLATION_MAC_V25.txt.
+
+
+VALIDATION MACOS — 12/11/2026
+- Suite complète exécutée sur runner macos-latest : syntaxe des lanceurs, JavaScript, compilation Python, 7 scripts Python. Résultat : succès, run 43313321068.
+- Découverte et correction d'un écart de chemin sur macOS (/var -> /private/var) affectant les contrôles Cloud et les pièces jointes.
+- Test de non-régression ajouté pour la racine réelle du stockage uploads.
+- Les deux lanceurs .command ont le mode Git 100755.
+- À faire sur le matériel cible : installation et test interactif Firefox sur le Mac M5 sous macOS 27.
