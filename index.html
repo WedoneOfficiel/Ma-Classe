@@ -1735,6 +1735,25 @@ html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .bulletin{background
 html[data-mc-theme="dark"] .top{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--paper)!important;box-shadow:var(--shadow)!important}
 html[data-mc-theme="dark"] .modal,html[data-mc-theme="dark"] .searchResults{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 
+
+/* V25.3 — le mode sombre reprend les mêmes surfaces et effets que le mode clair */
+html[data-mc-theme="dark"] body:before,html[data-mc-theme="dark"] body:after,html[data-mc-theme="dark"] .main:before{background:none!important;content:none!important}
+html[data-mc-theme="dark"] .side{background:#202124!important;box-shadow:none!important}
+html[data-mc-theme="dark"] .top{background:var(--paper)!important;box-shadow:var(--shadow)!important;border-color:var(--line)!important}
+html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .stat,html[data-mc-theme="dark"] .profile360Card,html[data-mc-theme="dark"] .activityCard,html[data-mc-theme="dark"] .v12Workspace,html[data-mc-theme="dark"] .v14StudentHero{background:var(--paper)!important;box-shadow:var(--shadow)!important}
+html[data-mc-theme="dark"] .stat:after{display:none!important}
+html[data-mc-theme="dark"] .btn:not(.primary):not(.dark),html[data-mc-theme="dark"] .mcSelectTrigger{background:var(--mc-surface-soft)!important;box-shadow:none!important}
+html[data-mc-theme="dark"] .modal,html[data-mc-theme="dark"] .modalhead,html[data-mc-theme="dark"] .modalfoot,html[data-mc-theme="dark"] .mcSelectMenu,html[data-mc-theme="dark"] .v12CommandPanel,html[data-mc-theme="dark"] .v125NotifPanel,html[data-mc-theme="dark"] .v125SearchResults{background:var(--paper)!important;box-shadow:var(--shadow)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+@media(prefers-color-scheme:dark){
+ html[data-mc-theme="system"] body:before,html[data-mc-theme="system"] body:after,html[data-mc-theme="system"] .main:before{background:none!important;content:none!important}
+ html[data-mc-theme="system"] .side{background:#202124!important;box-shadow:none!important}
+ html[data-mc-theme="system"] .top{background:var(--paper)!important;box-shadow:var(--shadow)!important;border-color:var(--line)!important}
+ html[data-mc-theme="system"] .card,html[data-mc-theme="system"] .stat,html[data-mc-theme="system"] .profile360Card,html[data-mc-theme="system"] .activityCard,html[data-mc-theme="system"] .v12Workspace,html[data-mc-theme="system"] .v14StudentHero{background:var(--paper)!important;box-shadow:var(--shadow)!important}
+ html[data-mc-theme="system"] .stat:after{display:none!important}
+ html[data-mc-theme="system"] .btn:not(.primary):not(.dark),html[data-mc-theme="system"] .mcSelectTrigger{background:var(--mc-surface-soft)!important;box-shadow:none!important}
+ html[data-mc-theme="system"] .modal,html[data-mc-theme="system"] .modalhead,html[data-mc-theme="system"] .modalfoot,html[data-mc-theme="system"] .mcSelectMenu,html[data-mc-theme="system"] .v12CommandPanel,html[data-mc-theme="system"] .v125NotifPanel,html[data-mc-theme="system"] .v125SearchResults{background:var(--paper)!important;box-shadow:var(--shadow)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
+
 </style>
 
 
