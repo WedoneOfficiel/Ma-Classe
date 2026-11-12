@@ -18,6 +18,12 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn("localStorage.setItem(MC_THEME_KEY,value)", js)
         self.assertIn("applyAppearanceTheme()", js)
 
+    def test_appearance_bootstrap_runs_in_head_before_stylesheet(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertLess(html.index('id="mc-appearance-bootstrap"'), html.index('<style id="v218-ui">'))
+        self.assertIn("localStorage.getItem('maclasse_appearance_theme')", html)
+        self.assertIn("document.documentElement.dataset.mcTheme=v", html)
+
     def test_appearance_is_applied_before_async_server_boot(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
         self.assertIn("applyAppearanceTheme();load();", js)
