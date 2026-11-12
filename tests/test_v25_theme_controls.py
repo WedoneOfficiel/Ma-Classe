@@ -22,7 +22,9 @@ class ThemeControlsTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertLess(html.index('id="mc-appearance-bootstrap"'), html.index('<style id="v218-ui">'))
         self.assertIn("localStorage.getItem('maclasse_appearance_theme')", html)
-        self.assertIn("document.documentElement.dataset.mcTheme=v", html)
+        self.assertIn("r.dataset.mcThemePreference=v", html)
+        self.assertIn("r.dataset.mcTheme=v==='system'&&!dark?'light':v", html)
+        self.assertIn("m.addEventListener?.('change',apply)", html)
 
     def test_appearance_is_applied_before_async_server_boot(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
@@ -30,8 +32,10 @@ class ThemeControlsTests(unittest.TestCase):
 
     def test_theme_application_sets_document_theme_and_native_control_scheme(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
-        self.assertIn("root.dataset.mcTheme=value", js)
-        self.assertIn("root.style.colorScheme=value==='system'?'light dark':value", js)
+        self.assertIn("root.dataset.mcThemePreference=value", js)
+        self.assertIn("root.dataset.mcTheme=value==='system'&&!dark?'light':value", js)
+        self.assertIn("root.style.colorScheme=value==='system'?(dark?'dark':'light'):value", js)
+        self.assertIn("media.addEventListener?.('change',sync)", js)
 
     def test_explicit_theme_styles_exist(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
