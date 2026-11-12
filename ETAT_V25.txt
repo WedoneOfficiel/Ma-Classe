@@ -151,10 +151,27 @@ AUTORISATIONS BULLETINS — PROTECTION DU PROFESSEUR PRINCIPAL
 - Un bulletin déjà publié est conservé intégralement ; un professeur ne peut pas le modifier via /api/save.
 - Les appréciations par matière restent modifiables dans le périmètre classe ; le contrôle précis de l'affectation matière doit encore être audité.
 - Tests ajoutés : non-PP ne peut pas valider/publier/modifier overall ; bulletin publié immuable pour un professeur.
-- Commits : 2ee67c0 (serveur), 3705b90 (tests). CI à confirmer.
+- Commits : 2ee67c0 (serveur), 3705b90 (tests), 1b8514e (isolation des fixtures de test).
+- CI réussie : run 43307416629.
 
 
 VALIDATION DU CONTRÔLE PP — CI
 -----------------------------
 - Le premier test a révélé un défaut du test : la projection de données partageait les objets de la fixture, ce qui modifiait artificiellement la source avant la fusion. La fixture est maintenant copiée en profondeur pour simuler le transfert HTTP JSON.
 - CI complète réussie sur 1b8514e : run 43307416629.
+
+
+CORRECTIF MESSAGERIE — CONFIDENTIALITÉ CCI
+-------------------------------------------
+- Les destinataires d'un message ne reçoivent plus la liste des autres destinataires BCC/CCI ; l'expéditeur conserve la liste complète.
+- Test dédié validé par CI : run 43307062966.
+- Commits : 20dedb6 (serveur), 1db7f79 (test).
+
+RENFORCEMENT BULLETINS — IDENTITÉ ET SUPPRESSION
+------------------------------------------------
+- La fusion serveur conserve studentId/classId/termId d'un bulletin existant ; une sauvegarde professeur ne peut pas déplacer un bulletin vers un autre élève ou une autre classe.
+- Un bulletin publié reste dans la base même si le client l'omet de sa sauvegarde ; seule la direction peut le modifier/supprimer via une sauvegarde administrative.
+- Tests dédiés : identité non modifiable et suppression d'un bulletin publié refusée.
+- Commits : 955b904 (serveur), 575403d (tests).
+- CI réussie : run 43307614719.
+- Limite restante : contrôle serveur de l'affectation précise des matières enseignées.
