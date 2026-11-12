@@ -380,7 +380,7 @@ def _teacher_merge_mailbox(current, incoming, user, data):
         if ident in old_by_id: continue
         sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
         if sender.get('key')!=me or sender.get('role')!='teacher' or str(sender.get('id') or '')!=tid: continue
-        recipients=[x for field in ('to','cc','bcc') for x in (message.get(field) or []) if isinstance(x,str)]
+        recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
         valid=True
         for recipient in recipients:
             role,sep,recipient_id=recipient.partition(':')
