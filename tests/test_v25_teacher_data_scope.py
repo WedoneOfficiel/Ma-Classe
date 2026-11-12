@@ -75,13 +75,26 @@ class TeacherDataScopeTests(unittest.TestCase):
         view=copy.deepcopy(server._teacher_visible_data(data,self.user))
         view['bulletins'][0].update({'overall':'Avis falsifié','validated':True,'validatedAt':'2026-11-12','published':True,'publishedAt':'2026-11-12'})
         view['bulletins'][0]['subjectData']['Maths']['comment']='Appréciation modifiée'
+        view['bulletins'][0]['classId']='c2'
+        view['bulletins'][0]['studentId']='s2'
         merged=server._merge_teacher_data(data,view,self.user)
         saved=merged['bulletins'][0]
+        self.assertEqual(saved['classId'],'c1')
+        self.assertEqual(saved['studentId'],'s1')
         self.assertEqual(saved['overall'],'Avis du PP')
         self.assertFalse(saved['validated'])
         self.assertFalse(saved['published'])
         self.assertNotIn('publishedAt',saved)
         self.assertEqual(saved['subjectData']['Maths']['comment'],'Appréciation modifiée')
+
+    def test_non_principal_teacher_cannot_delete_published_bulletin(self):
+        data=copy.deepcopy(self.data)
+        original={'id':'b1','studentId':'s1','classId':'c1','termId':'t1','subjectData':{'Maths':{'comment':'Officiel'}},'overall':'Avis officiel','validated':True,'published':True,'publishedAt':'2026-11-12'}
+        data['bulletins']=[original]
+        view=server._teacher_visible_data(data,self.user)
+        view['bulletins']=[]
+        merged=server._merge_teacher_data(data,view,self.user)
+        self.assertEqual(merged['bulletins'],[original])
 
     def test_non_principal_teacher_cannot_edit_published_bulletin(self):
         data=copy.deepcopy(self.data)
