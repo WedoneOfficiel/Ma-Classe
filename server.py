@@ -553,13 +553,14 @@ def _merge_student_data(current,incoming,user):
     for entry in incoming_rows:
         ident=str(entry.get('id') or '')
         previous=old_own.get(ident)
-        if not ident or str(entry.get('studentId') or '')!=sid or str(entry.get('lessonId') or '') not in allowed_lessons:
+        lesson_id=str(previous.get('lessonId') if previous else entry.get('lessonId') or '')
+        if not ident or str(entry.get('studentId') or '')!=sid or lesson_id not in allowed_lessons:
             continue
         if previous and previous.get('status')!='draft':
             # Un rendu déjà envoyé est immuable côté élève ; le professeur seul le corrige.
             new_own[ident]=dict(previous)
             continue
-        lesson=next((x for x in current.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(entry.get('lessonId'))),None)
+        lesson=next((x for x in current.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('id'))==lesson_id),None)
         if not lesson or not isinstance(lesson.get('homework'),dict) or not lesson['homework'].get('requiresSubmission'):
             continue
         safe=dict(previous or {})
