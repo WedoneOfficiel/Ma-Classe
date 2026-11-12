@@ -244,3 +244,12 @@ Validation CI complémentaire — 12/11/2026
 - CI complète réussie sur macOS et Ubuntu : run 43313321068.
 - Lanceurs .command passés en mode exécutable 100755 pour le double-clic Finder.
 - Validation réelle sur Mac M5/macOS 27 et recette Firefox restent à effectuer.
+
+
+## 12/11/2026 — réseau privé expérimental et espace élève
+
+- Ajout du lanceur macOS `Lancer-MaClasse-Reseau.command` avec liaison IPv4 privée précise, opt-in explicite, contrôle Host et refus du démarrage tant que les mots de passe initiaux ne sont pas changés.
+- Ajout des comptes élèves individuels liés à une fiche élève, authentification serveur et changement obligatoire du mot de passe provisoire.
+- Ajout d'une projection serveur limitée à l'élève connecté et de contrôles pour les rendus personnels et leurs fichiers ; aucune modification des notes, de la fiche ou des corrections n'est acceptée depuis un compte élève.
+- Messagerie et Cloud élève restent désactivés en attendant un audit de permissions dédié.
+- Tests HTTP et unitaires ajoutés ; résultat CI en attente de confirmation.
