@@ -355,7 +355,8 @@ def _teacher_visible_data(data,user):
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
     out['teachers']=[x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tids]
-    out['users']=[x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
+    # Le professeur peut connaître son profil, jamais récupérer son empreinte d'authentification.
+    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
