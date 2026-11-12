@@ -138,3 +138,6 @@ Correctif de durcissement post-import — 12/11/2026
 - Tests de non-régression ajoutés pour les tentatives de falsification.
 - Limite restante : contrôle fin des matières réellement enseignées par le professeur.
 - Commits : 2ee67c0, 3705b90. CI à confirmer.
+
+
+Validation : test des autorisations PP corrigé pour isoler les données projetées de la fixture source ; CI complète réussie sur le commit 1b8514e (run 43307416629).
