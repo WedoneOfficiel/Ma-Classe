@@ -11,6 +11,32 @@ if [[ ! -x ".venv/bin/python" ]]; then
   read -r -p "Appuie sur Entrée pour fermer… " _ || true
   exit 1
 fi
+if [[ ! -f "data/maclasse.json" ]] || ! .venv/bin/python - <<'PY'
+import hashlib, json, sys
+from pathlib import Path
+try:
+    users=json.loads(Path("data/maclasse.json").read_text(encoding="utf-8")).get("users", [])
+except Exception:
+    sys.exit(1)
+def matches(password, stored):
+    if stored.startswith("pbkdf2_sha256$"):
+        try:
+            _, rounds, salt, digest=stored.split("$",3)
+            actual=hashlib.pbkdf2_hmac("sha256",password.encode(),bytes.fromhex(salt),int(rounds)).hex()
+            return actual==digest
+        except Exception:
+            return False
+    return stored==hashlib.sha256(password.encode()).hexdigest()
+for username, default in (("admin","admin"),("enseignant","enseignant")):
+    account=next((u for u in users if u.get("username")==username and u.get("active") is not False),None)
+    if not account or matches(default,str(account.get("passwordHash",""))):
+        sys.exit(1)
+PY
+then
+  echo "Sécurité : change d'abord les deux mots de passe initiaux depuis le lanceur local."
+  echo "Les identifiants admin/admin et enseignant/enseignant ne doivent jamais être utilisés sur le réseau."
+  exit 1
+fi
 if /usr/bin/curl --silent --fail "http://127.0.0.1:8765/api/auth/session" >/dev/null 2>&1; then
   echo "Un serveur MaClasse répond déjà sur ce Mac."
   echo "Arrête-le avec Ctrl+C avant de lancer le mode réseau."
