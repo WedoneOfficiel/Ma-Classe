@@ -790,7 +790,7 @@ function openMessage(id,classId){openTeacherConversationComposer();}
 
 
 function focusGlobalSearch(){const x=document.querySelector('.searchGlobal');if(x){x.focus();x.select?.();return true}return false}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLocalSelects();closeModal();closeCommand();closeGlobalSearch()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();focusGlobalSearch()}});load();
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLocalSelects();closeModal();closeCommand();closeGlobalSearch()}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();focusGlobalSearch()}});applyAppearanceTheme();load();
 initSidebar();
 
 
