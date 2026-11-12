@@ -29,7 +29,7 @@ jobs:
       - name: Vérifier la syntaxe JavaScript
         run: node --check _all.js
       - name: Vérifier les lanceurs macOS
-        run: bash -n Installer-MaClasse.command Lancer-MaClasse.command
+        run: bash -n Installer-MaClasse.command Lancer-MaClasse.command Lancer-MaClasse-Reseau.command
       - name: Exécuter tous les tests JavaScript
         shell: bash
         run: |
@@ -97,5 +97,7 @@ jobs:
         run: python tests/test_v25_mailbox_upload_scope.py
       - name: Python — test_v25_server.py
         run: python tests/test_v25_server.py
+      - name: Python — test_v25_network_bind.py
+        run: python tests/test_v25_network_bind.py
       - name: Python — test_v25_teacher_data_scope.py
         run: python tests/test_v25_teacher_data_scope.py
