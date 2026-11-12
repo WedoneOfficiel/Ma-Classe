@@ -77,6 +77,13 @@ class ThemeControlsTests(unittest.TestCase):
             self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
         self.assertIn('html[data-mc-theme="system"] .mailList', html)
 
+    def test_dark_theme_overlays_student_hero_and_mail_rows(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for selector in ('.v12CommandPanel', '.v125SearchResults', '.v14StudentHero',
+                         '.mailRow.active', '.mailMessageHead', '.mailQuoted'):
+            self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
+        self.assertIn('html[data-mc-theme="system"] .v14StudentHero', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
