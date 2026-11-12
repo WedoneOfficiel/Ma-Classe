@@ -30,6 +30,15 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(view['users'],[self.data['users'][0]])
         self.assertEqual(view['auditLog'],[])
 
+    def test_teacher_projection_never_exposes_password_material(self):
+        data=copy.deepcopy(self.data)
+        data['users'][0].update({'passwordHash':'pbkdf2_sha256$310000$salt$digest','password':'legacy-secret'})
+        view=server._teacher_visible_data(data,self.user)
+        self.assertEqual(len(view['users']),1)
+        self.assertEqual(view['users'][0]['id'],'u1')
+        self.assertNotIn('passwordHash',view['users'][0])
+        self.assertNotIn('password',view['users'][0])
+
     def test_teacher_save_merges_only_assigned_class(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['students'][0]['first']='Alicia'
