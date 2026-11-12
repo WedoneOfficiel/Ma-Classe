@@ -249,3 +249,11 @@ Un changement de mot de passe invalide maintenant toutes les autres sessions act
 
 - Test HTTP ajouté : deux sessions ouvertes pour le même compte, changement de mot de passe depuis l'une, ancienne session refusée (401), session courante conservée.
 - CI complète JS + Python réussie : [run #43309742779](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43309742779).
+
+
+## Bulletin PDF — cloisonnement des calculs par classe
+
+Un contrôle supplémentaire a été ajouté après revue du calcul serveur : les moyennes générales et les absences/retards du PDF sont maintenant calculés exclusivement à partir des évaluations et feuilles de présence de la classe du bulletin. Même une donnée historique mal rattachée (par exemple une note de l'élève insérée dans une évaluation d'une autre classe) ne peut plus contaminer le document.
+
+- Test de non-régression avec une fausse note et une fausse absence provenant d'une autre classe.
+- CI complète JS + Python réussie : [run #43310145774](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43310145774) et [run #43310140332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43310140332).
