@@ -100,3 +100,15 @@ CORRECTIF D'AUTHENTIFICATION — RÉVOCATION DES SESSIONS
 - Premier run CI après modification du serveur : échec attendu du test ancien qui supprimait les comptes pendant le scénario avant de terminer ses vérifications. Test adapté pour conserver les comptes durant les vérifications normales puis tester la révocation après restauration. Le run du commit de test 7638d4f est réussi (GitHub Actions #43306000415). Les trois runs des mises à jour documentaires sont également réussis.
 - Commits : ed26a79 (serveur), 7638d4f (test).
 - Version applicative inchangée : V25.0.7.
+
+
+POINT D'AUDIT À CORRIGER — AUTHENTICITÉ DES BULLETINS PDF
+-------------------------------------------------------
+- POST /api/bulletin-pdf génère le document à partir du JSON fourni par le navigateur.
+- Le client ne transmet pas d'identifiant de bulletin ; le serveur ne vérifie donc ni l'enregistrement source, ni l'appartenance à une classe, ni l'état réel de publication.
+- La mention « Bulletin publié officiellement » dépend actuellement des booléens/dates fournis par le client. Un client modifié peut donc faire produire un PDF qui affirme une publication non vérifiée.
+- Il ne s'agit pas d'une lecture de données serveur non autorisée : le contenu PDF vient du corps envoyé par le client. Le risque concerne l'intégrité et l'authenticité du document.
+- Correction prévue : ajouter bulletinId dans la requête, vérifier l'accès à la classe et l'état réel du bulletin, puis privilégier une génération depuis les données serveur. À défaut, ne jamais apposer la mention officielle sur la seule foi du client.
+- Statut : constat confirmé par lecture de server.py et de l'appel dans _all.js ; non corrigé à ce stade.
+
+CI des correctifs précédents : succès sur les commits serveur/test ; test de révocation des sessions validé par le run 43306000415.
