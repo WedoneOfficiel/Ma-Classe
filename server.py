@@ -1344,6 +1344,9 @@ class Handler(SimpleHTTPRequestHandler):
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
                     student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
                     if not student_record: return self._json({'error':'Élève introuvable.'},404)
+                    class_id=str(student_record.get('classId') or '')
+                    if not class_id or not any(isinstance(x,dict) and str(x.get('id'))==class_id for x in data.get('classes',[]) or []):
+                        return self._json({'error':'Attribue une classe à cet élève avant de créer son compte.'},400)
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username for x in data.get('users',[]) or []):
                         return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
                     if any(isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id for x in data.get('users',[]) or []):
