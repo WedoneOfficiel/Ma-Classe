@@ -1,0 +1,18 @@
+MaClasse V21.13 — finition approfondie de l'espace élève (résultats)
+
+Objectif : stabiliser durablement l'écran élève des résultats sans engager la refonte du module d'évaluation côté enseignant.
+
+Inclus :
+- Refonte visuelle des boutons de notes : titre/date hiérarchisés, résultat mis en valeur, flèche d'accès, survol et focus clavier visibles.
+- Relevé de résultats plus lisible : entête, sélecteur de période, moyenne générale, lignes par matière et ligne de moyenne générale.
+- Affichage mobile repensé : matières en blocs, évaluations en cartes pleine largeur, colonnes non écrasées.
+- Détail d'une évaluation mieux structuré : métadonnées, score et équivalent sur 20 mieux hiérarchisés.
+- Compétences présentées en cartes avec espacement, libellés longs mieux gérés et badges alignés.
+- Tableaux de critères plus respirants et défilement horizontal préservé sur petit écran.
+- Conservation des fonctions existantes : filtres de période, notes publiées uniquement, calculs, coefficients, détail des critères/compétences et commentaires.
+- Conservation de la notification élève à la publication officielle du bulletin introduite en V21.12.
+- Harmonisation générale de l'interface V21.12 conservée.
+
+Périmètre : écran de résultats côté élève uniquement pour la finition du module d'évaluation. La refonte complète du module côté enseignant reste hors périmètre.
+
+Vérifications réalisées : node --check sur _all.js ; py_compile sur server.py ; intégrité de l'archive ZIP. Pas de test navigateur réel effectué.

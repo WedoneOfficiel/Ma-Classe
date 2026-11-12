@@ -1,0 +1,24 @@
+MaClasse V21.19 — Professeur principal et consolidation UI
+
+Objectif
+- Finaliser le chantier Professeur principal sans reconstruire les écrans déjà aboutis.
+- Corriger la recherche globale et son raccourci clavier.
+- Consolider les contrôles UI dynamiques.
+
+Travail réalisé
+- Le tableau de bord Professeur principal a été renforcé : identité de la classe, KPI, accès rapides, groupes, points d’attention, activité récente et suivi synthétique des élèves.
+- Les actions du PP réutilisent les modules existants et le contexte de classe ; aucune nouvelle copie du modèle de données n’a été créée.
+- La Messagerie et les bulletins existants sont conservés comme références visuelles ; ils n’ont pas été reconstruits inutilement.
+- Cmd/Ctrl-K donne désormais le focus au champ de recherche globale visible dans la barre supérieure. La Command Palette reste un fallback si aucun champ de recherche n’existe.
+- Le panneau de résultats de la recherche globale est replacé dans un contexte de superposition maîtrisé : la barre supérieure n’utilise plus contain:paint, le panneau passe au-dessus du contenu normal mais reste sous les modales.
+- Le runtime des Select MaClasse observe les changements d’options d’un select déjà transformé et reconstruit son menu peint lorsque le contenu dynamique change.
+- Version visible passée à V21.19.
+- Test ajouté : tests/test_v219_pp_ui.js.
+
+Validation
+- node --check _all.js : OK
+- python3 -m py_compile server.py : OK
+- Suite JS existante : OK
+- test_v219_pp_ui.js : OK
+- test_v214_security.py : OK
+- La validation visuelle automatisée Chromium n’est pas considérée comme acquise dans cet environnement.

@@ -1,0 +1,56 @@
+ÉTAT DE CONSTRUCTION — MaClasse V25.0.7 (alpha sécurité)
+
+Base de travail indépendante issue de V24.2. La V24.2 d'origine n'est pas modifiée.
+
+Corrections fonctionnelles antérieures conservées :
+- Sérialisation des sauvegardes différées côté navigateur et verrouillage JSON côté serveur.
+- Sauvegardes ZIP complètes de maclasse.json et data/uploads.
+- Normalisation défensive des collections.
+- Moyennes par matière normalisées sur 20 et limitées aux évaluations publiées.
+- Filtrage des résultats, cours, devoirs et appels par publication/classe/groupe.
+- Correctifs Cloud d'interface et de cohérence des suppressions.
+
+Sécurité intégrée V25.0.1 à V25.0.7 :
+- Authentification serveur pour les comptes direction et professeur.
+- Sessions aléatoires côté serveur, cookie HttpOnly/SameSite=Strict, expiration glissante de 12 h.
+- API données, PDF, Cloud, téléversements et téléchargements protégés par session.
+- Changement obligatoire du mot de passe provisoire (12 caractères minimum).
+- Migration transparente des anciens SHA-256 vers PBKDF2-HMAC-SHA256 (sel aléatoire, 310 000 itérations).
+- Limitation des tentatives de connexion et contrôle Origin sur les requêtes mutantes.
+- Réinitialisation réservée à la direction ; liste des comptes protégée contre les sauvegardes professeur.
+- Contrôle canonique des chemins de fichiers ; traversées et liens symboliques sortants refusés.
+- Contrôles Cloud côté serveur par propriétaire, classe et partages (lecture/modification), y compris sur les opérations physiques et les métadonnées.
+- Les éléments Cloud ne peuvent pas être réattribués à un autre espace ou à un autre propriétaire par une sauvegarde professeur.
+- Accès élève désactivé en attendant les comptes individuels et les autorisations côté serveur.
+- API de données professeur limitée aux classes affectées ; sauvegardes fusionnées sans écraser les classes et comptes des autres utilisateurs.
+- Messagerie privée (mailboxV2) filtrée côté serveur par expéditeur/destinataire/participant ; brouillons et états isolés par compte ; messages existants immuables dans les sauvegardes professeur.
+- Pièces jointes non-Cloud accessibles uniquement si elles sont référencées dans les données visibles ou la messagerie autorisée ; suppression générique et dossiers de messagerie protégés.
+- Sauvegardes optimistes : empreinte de révision SHA-256 liée au chargement ; les écritures basées sur une version périmée sont refusées en HTTP 409 plutôt que d’écraser les changements d’un autre onglet ou poste.
+- Les sauvegardes sans révision sont refusées ; le client transmet la révision pour les sauvegardes et restaurations.
+- Notes, lignes d’appel et rendus contrôlés contre les références d’élèves/cours hors périmètre.
+
+Tests exécutés sur cette copie :
+- 31/31 tests JavaScript réussis.
+- 8 tests dédiés aux autorisations Cloud côté serveur réussis.
+- 6 tests dédiés à la messagerie privée et aux pièces jointes côté serveur réussis.
+- Scripts Python de régression, persistance et authentification HTTP réussis.
+- Test HTTP supplémentaire : deux clients chargés sur la même révision ; le premier enregistre, le second reçoit HTTP 409 et ne peut pas écraser le premier.
+- Test HTTP incluant migration PBKDF2, accès anonyme refusé, changement initial obligatoire, rôles, traversée de chemin et lien symbolique sortant.
+- Compilation Python et vérification syntaxique JavaScript réussies.
+
+BLOQUANTS AVANT ACCÈS AU RÉSEAU LOCAL :
+- TLS/HTTPS pour protéger les identifiants et cookies sur le réseau.
+- Vérifier et compléter le filtrage de chaque fonctionnalité métier et des documents selon les cas d’usage réels ; comptes élèves individuels toujours absents.
+- Comptes élèves individuels sécurisés et accès parent éventuel.
+- Transactions multi-collections plus fines et interface de résolution/récupération après conflit (la première protection anti-écrasement est maintenant en place).
+- Recette Firefox complète et test réel de restauration de sauvegarde.
+
+Le serveur écoute exclusivement sur 127.0.0.1. Ne pas définir MACLASSE_HOST=0.0.0.0 à ce stade. Ne pas exposer cette version au Wi-Fi/LAN.
+
+V25.0.7 — restauration ZIP complète
+- Une restauration complète de l'archive JSON + uploads est disponible via une API réservée à la direction.
+- La restauration crée d'abord une sauvegarde de l'état courant, valide le ZIP et le JSON, rejette les chemins dangereux et remplace la base et les fichiers téléversés.
+- L'interface propose l'import ZIP uniquement pour la direction ; l'import JSON reste distinct.
+- Tests HTTP de rôle et tests de restauration/fichiers/archives malveillantes réussis.
+
+Attention : cette étape améliore la capacité de restauration, mais ne constitue pas encore une recette de reprise après sinistre sur un poste séparé. Le serveur reste sur 127.0.0.1 tant que TLS et la recette complète des autorisations métier ne sont pas terminés.

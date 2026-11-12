@@ -1,0 +1,10 @@
+MaClasse V21.14 — sécurisation et robustesse
+
+- Serveur : suppression du CORS wildcard ; les requêtes web d'une autre origine sont refusées.
+- Serveur : accès statique limité à l'interface et aux fichiers du Cloud uploadés ; les fichiers internes du projet ne sont plus servis par HTTP.
+- Cloud : /api/cloud-delete refuse désormais '.', '..' et les chemins réduits au dossier racine uploads.
+- Sauvegardes : passage de 15 copies consommées à chaque enregistrement à une copie au plus toutes les 6 heures, conservée pendant 30 jours. La réinitialisation force toujours une copie préalable.
+- Bulletins : les matières contenant apostrophes ou guillemets ne sont plus injectées dans les onclick ; les onglets et champs de saisie passent par des data-* sûrs.
+- Version affichée : V21.14.
+
+Vérifications réalisées avant livraison : node --check, py_compile, tests serveur locaux sur copie de travail et test de génération du HTML des bulletins avec une matière contenant une apostrophe.

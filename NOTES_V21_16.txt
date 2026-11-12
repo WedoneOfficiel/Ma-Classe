@@ -1,0 +1,13 @@
+MaClasse V21.16 — Refonte Résultats élèves
+
+Correctif V21.16.1 — régression UI corrigée
+- Les boutons de détail des évaluations généraient un onclick HTML mal quoté.
+- Le changement de période utilisait le même motif et pouvait produire un handler JavaScript invalide.
+- Les deux handlers utilisent désormais des arguments JS protégés dans l'attribut HTML.
+- studentReportDetail reçoit maintenant directement evaluationId + studentId.
+- Test de régression ajouté.
+
+Moteur V21.16
+- buildStudentReport(db, studentId, termId, today) centralise le calcul.
+- Résultats élève et Accueil élève partagent le moteur.
+- Publication, période, coefficients, barèmes et décimales françaises sont couverts par les tests.

@@ -1,0 +1,7 @@
+MaClasse V21.15 — fiabilisation des tests, données et Cloud
+
+- Tests : les contrôles concernés ont été réalignés sur _all.js, qui est le point d’entrée JavaScript réel.
+- Données : ajout d’un parseur numérique central pour accepter les notes décimales françaises (ex. « 14,5 ») dans les calculs sans modifier la valeur enregistrée.
+- Cloud : après renommage d’un dossier, les serverName de tous ses descendants sont réécrits avec le nouveau préfixe physique ; les URL des fichiers descendants sont resynchronisées.
+- Aucun grand module n’est reconstruit dans V21.15 ; les reconstructions restent planifiées à partir de V21.16.
+- Version affichée : V21.15.

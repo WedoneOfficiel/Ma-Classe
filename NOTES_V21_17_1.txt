@@ -1,0 +1,23 @@
+MaClasse V21.17.1 — Finition du module Évaluations
+
+Objectif : terminer la refonte V21.17 sans créer une nouvelle V21.18 prématurément.
+
+- sélection des compétences repensée : référentiel filtré automatiquement par niveau scolaire et matière ;
+- prise en charge des anciennes compétences liées aux niveaux via settings.competencyLevels ;
+- sélection par cases à cocher, recherche, tout sélectionner / tout désélectionner ;
+- conservation des compétences déjà sélectionnées lors d'un changement de filtre dans une évaluation ;
+- grilles : création/modification avec niveau, matière, compétences et critères ;
+- réutilisation d'une grille filtrée selon le contexte de l'évaluation ;
+- les compétences sélectionnées restent propres à l'évaluation et ne modifient pas les modèles existants ;
+- compatibilité conservée avec les anciennes bibliothèques de compétences stockées sous forme de chaînes ;
+- interface de sélection conçue pour éviter les longues listes et la sélection Cmd/Ctrl obligatoire ;
+- ajout du test test_v2171_competency_picker.js.
+
+Vérifications :
+- 26/26 tests JavaScript OK ;
+- régression sécurité V21.14 OK ;
+- node --check _all.js OK ;
+- python3 -m py_compile server.py OK ;
+- aucune migration destructive des données.
+
+Non testé : validation visuelle complète dans Firefox/macOS.

@@ -1,0 +1,11 @@
+MaClasse V21.21 — UX & EDT 7 jours
+
+Objectif : optimiser les actions récurrentes et rendre l’emploi du temps hebdomadaire complet.
+
+- EDT semaine : 7 jours, lundi → dimanche, côté enseignant et élève.
+- Le formulaire de créneau propose les 7 jours.
+- Appel : les actions principales ouvrent directement le nouvel appel au lieu de faire passer par la page historique.
+- Nouvel appel : préselection automatique de la première classe ayant un cours aujourd’hui, et du cours lorsqu’un appel est lancé depuis une séance EDT.
+- Depuis une séance EDT, action directe « Faire l’appel ».
+- Connexion : premier choix professeur focalisable immédiatement au clavier.
+- Design MaClasse 27 conservé ; Messagerie et Bulletins non reconstruits.

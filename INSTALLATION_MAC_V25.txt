@@ -1,0 +1,26 @@
+MaClasse V25.0.7 — installation locale sur macOS
+
+Cette version de travail écoute exclusivement sur 127.0.0.1. Elle n'est PAS
+encore ouverte aux autres appareils du Wi-Fi. Ne change pas MACLASSE_HOST.
+
+1. Décompresser le ZIP dans un dossier accessible en écriture.
+2. Double-cliquer sur Installer-MaClasse.command.
+3. Double-cliquer sur Lancer-MaClasse.command.
+4. Ouvrir Firefox sur http://127.0.0.1:8765.
+
+Comptes provisoires au premier démarrage :
+- Direction : admin / admin
+- Professeur : enseignant / enseignant
+
+Au premier accès, MaClasse impose le remplacement du mot de passe par un
+mot de passe personnel d'au moins 12 caractères. Ne réutilise pas ces mots
+de passe provisoires ailleurs.
+
+L'accès professeur est limité aux classes affectées au profil. L'accès élève
+reste désactivé en attendant des comptes individuels et des filtres dédiés.
+Cette version reste une alpha locale : le cloisonnement métier complet, HTTPS
+et les tests Firefox restent à terminer avant toute ouverture sur le Wi-Fi.
+
+Données : data/maclasse.json ; fichiers : data/uploads/ ; sauvegardes :
+data/backups/. Conserve une copie du dossier complet avant toute migration.
+Pour arrêter le serveur, faire Ctrl+C dans sa fenêtre Terminal.

@@ -1,0 +1,225 @@
+MaClasse V24.1 — intégration d’ArIA Core 2.0
+================================================
+
+Cette archive conserve les fonctions de MaClasse V24.0 et ajoute ArIA Core 2.0 comme routeur d’intentions local. Le moteur conversationnel V24.0 reste séparé ; MaClasse garde la responsabilité de vérifier les données et d’exécuter les actions.
+
+INSTALLATION RAPIDE (Mac Apple Silicon)
+1. Décompressez l’archive dans un nouveau dossier, sans écraser V24.0.
+2. Ouvrez le Terminal dans ce dossier et exécutez :
+   chmod +x Lancer-MaClasse.command Arret-ArIA.command models/*.command
+   ./models/install_aria_core_2.command
+   ./Lancer-MaClasse.command
+3. Vérifiez le routeur dans le navigateur : http://127.0.0.1:8081/health
+4. Le modèle de base Qwen3.5-2B-MLX-4bit est téléchargé au premier routage. La première requête peut être lente.
+
+Le dossier data contient les données de cette archive (vide par défaut). Pour conserver les données de votre installation précédente, copiez uniquement vos données après avoir fermé MaClasse et créé une sauvegarde. Ne remplacez jamais une base existante sans sauvegarde.
+
+Arrêt : exécutez Arret-ArIA.command.
+Voir NOTES_V24_1.txt et models/aria-core-2.0-router/README.md pour les détails.
+
+================================================
+
+MaClasse V21.11 — PDF des bulletins et gestion de publication
+================================================
+
+MaClasse V21.08 — améliorations de la messagerie et des périodes de bulletins
+=======================================================
+
+CONCEPTION
+
+La messagerie a été reconstruite autour de messages individuels. L’interface est organisée en trois panneaux : dossiers, liste des messages, lecture. Le style reprend les variables visuelles de MaClasse.
+
+Schéma de données :
+
+  Utilisateur
+      │
+      ├── État de boîte par message : dossier / lu / favori
+      │
+  Message indépendant
+      ├── id, threadId, inReplyTo, forwardedFrom
+      ├── expéditeur, À, CC, CCI
+      ├── objet, contenu, date, pièces jointes
+      └── citation du message transféré (sans recopier les CCI)
+
+  Fil (vue calculée, pas un objet contenant tous les messages)
+      └── regroupe les messages partageant threadId
+
+Cycle de vie :
+- Nouveau message : crée un message indépendant, un état « Envoyés » pour l’auteur et un état « Réception » pour chaque destinataire.
+- Répondre : crée un nouvel échange indépendant contenant une copie du message d’origine et la réponse ; le message source reste intact et la copie retire les CCI. Le nouvel échange conserve une référence vers la source.
+- Répondre à tous : propose l’expéditeur et les destinataires À/CC du message ciblé ; les CCI ne sont jamais révélées ni reprises. Les destinataires sont filtrés selon les accès du compte.
+- Transférer : crée un nouvel échange, cite le contenu source et conserve les pièces jointes ; les CCI de la source ne sont pas copiées.
+- Lire, favori, archiver et supprimer : l’état est indépendant pour chaque utilisateur. Archiver/supprimer un message agit sur les messages visibles du fil pour cet utilisateur.
+- Recherche : limitée aux messages auxquels le compte courant a accès.
+
+ATTENTION — RÉINITIALISATION DE LA MESSAGERIE
+
+Comme demandé, il n’y a pas de migration de l’ancien modèle. Le stockage est recréé avec le schéma V2 à la première ouverture de la messagerie. À la première ouverture de la nouvelle messagerie, les anciennes conversations, messages et dossiers de messagerie sont supprimés des données actives ; les autres données MaClasse sont conservées. Faites une sauvegarde complète avant cette première ouverture si vous souhaitez pouvoir retrouver l’ancien état. Cette suppression est déclenchée à l’ouverture de la messagerie, pas à l’ouverture du tableau de bord.
+
+FONCTIONNALITÉS INCLUSES
+- Réception, non lus, envoyés, brouillons persistants, favoris, archives, corbeille et dossiers personnels.
+- Recherche, lecture par fil, réponse, réponse à tous et transfert.
+- Destinataires élève/enseignant, CC/CCI côté enseignant.
+- Pièces jointes à l’envoi, sauvegardées dans les brouillons et conservées lors des transferts.
+- Interface trois panneaux, navigation responsive et actions adaptées au compte.
+
+LIMITES CONNUES DE CETTE LIVRAISON
+- Les brouillons persistants et les dossiers personnalisés ne sont pas encore intégrés à ce nouveau modèle.
+- L’interface est une messagerie interne MaClasse, pas une connexion à Gmail/Outlook ou à des adresses externes.
+- Une recette visuelle manuelle complète dans Firefox/macOS reste à effectuer.
+
+INSTALLATION
+1. Fermez MaClasse.
+2. Faites une copie de sauvegarde du dossier de données et de l’ancienne version.
+3. Décompressez MaClasse_V21_03.zip dans un nouveau dossier.
+4. Lancez MaClasse comme d’habitude.
+5. Ouvrez la messagerie pour activer le nouveau modèle. Cette première ouverture efface l’ancienne messagerie des données actives, conformément à votre demande.
+
+--------------------------------------------------
+HISTORIQUE DES VERSIONS ANTÉRIEURES
+--------------------------------------------------
+
+MaClasse V20.8 — notes de version et utilisation
+
+Cette archive est une mise à jour de MaClasse V20.5. Décompressez-la dans un nouveau dossier et conservez votre dossier de données ainsi qu’une sauvegarde avant la mise à jour. Ne remplacez pas votre dossier de données par celui de l’archive.
+
+NOUVEAUTÉS V20.6
+- Évaluations : possibilité de garder les notes en brouillon ou de les publier, avec une date de publication facultative. Les élèves ne voient que les évaluations publiées dont la date de publication est atteinte.
+- Espace élève : les résultats publiés peuvent afficher la note, le commentaire, les critères de la grille et les niveaux de compétence. Une grille peut être consultée même lorsqu’il n’y a pas de note numérique, si des résultats de grille ont été renseignés.
+- Appels : accès à « Suivi des absences et retards » pour filtrer les événements et modifier la justification ou le motif sans rouvrir l’appel d’origine.
+- Centre d’activité : les onglets Tout, À faire, Nouveau et Information filtrent le contenu.
+- Historique : les notes de version sont regroupées dans AUDIT.txt ; ce fichier Lisez-moi unique remplace les fichiers Lisez-moi par version.
+
+FONCTIONNALITÉS CONSERVÉES DE V20.4
+- Grilles d’évaluation réutilisables, bibliothèque de compétences et niveaux de compétence par classe/niveau. Une même grille peut combiner compétences et critères chiffrés.
+- Cloud avec fil d’Ariane, vue icônes et vue liste compacte, sélection et actions contextuelles.
+- Barre latérale rétractable.
+- Gestion des cours de référence et apparence des créneaux dans l’emploi du temps. À la première ouverture, une migration ponctuelle harmonise couleur et motif des créneaux partageant classe, matière, professeur titulaire et sous-groupe ; les exceptions datées sont conservées. Faites une sauvegarde avant la mise à jour.
+
+INSTALLATION ET SAUVEGARDE
+1. Fermez MaClasse.
+2. Faites une copie de sauvegarde de vos données actuelles.
+3. Décompressez cette archive dans un nouveau dossier.
+4. Lancez l’application avec Lancer-MaClasse.command si macOS l’autorise, ou avec votre méthode de lancement habituelle.
+5. Vérifiez vos données avant de supprimer toute ancienne copie.
+
+LIMITES CONNUES
+- Le Cloud reste lié au serveur local configuré ; cette version n’ajoute pas de synchronisation Internet multi-appareils.
+- Les tests automatisés ne remplacent pas une recette manuelle complète sous Firefox/macOS.
+
+
+CORRECTIFS V20.6
+- Le planning EDT se rafraîchit après modification d’un cours, sans changer de module.
+- Depuis Appels, le bouton « Suivi des absences et retards » ouvre un écran dédié avec filtres par classe, élève, statut et période.
+- L’éditeur de grilles présente les critères dans des cartes/tableaux intégrés à l’interface. Chaque critère possède un maximum de points et peut recevoir des niveaux décrits ; les critères sont réutilisables et les grilles existantes modifiables.
+- Les élèves voient, après publication seulement, les critères, les descriptions du niveau obtenu, les compétences et les commentaires disponibles.
+
+
+MaClasse V20.7 — barèmes et interface des évaluations
+- Sans grille, le barème proposé est 20/20. Avec une grille, le total des critères est proposé automatiquement ; le professeur peut le modifier.
+- Les notes sont conservées sur leur barème réel et les moyennes sont calculées sur 20. Les anciennes évaluations sans barème enregistré restent sur 20.
+- L’espace élève présente les résultats publiés avec le détail des critères, les niveaux de compétences et les commentaires disponibles.
+- La barre latérale a un bouton de repli stylé dans ses deux états ; repliée, elle affiche les icônes centrées et masque la déconnexion.
+
+
+NOUVEAUTÉS V20.8
+- Barre latérale enseignant : le bouton « Ouvrir l’espace élève » est retiré. « Se déconnecter » reste visible dans les deux états du menu.
+- Résultats élèves : présentation détaillée des évaluations publiées avec note brute, équivalent sur 20, critères, compétences et appréciation lorsqu’ils existent.
+- Les brouillons et publications futures restent invisibles dans l’espace élève.
+
+MaClasse V20.9 — relevé de notes inspiré des ENT scolaires
+- L’espace élève « Mes résultats » est organisé en relevé de notes par trimestre/semestre configuré dans les paramètres.
+- Tableau regroupé par matière, notes cliquables, moyenne par matière et moyenne générale de la période.
+- Les notes gardent leur barème d’origine ; un barème différent de 20 est visible et les coefficients différents de 1 sont précisés.
+- Au clic sur une note, une fenêtre présente le résultat, l’équivalent sur 20, l’appréciation, le détail des critères et les niveaux des compétences disponibles.
+- Seules les évaluations publiées et dont la date de publication est atteinte sont affichées. Les moyennes sont pondérées par coefficient et normalisées sur 20.
+- Barre latérale : règle CSS renforcée pour conserver le bouton « Se déconnecter » visible en menu ouvert et replié.
+- Contrôles : syntaxe JavaScript et suite de tests automatisés ; aucune recette visuelle manuelle dans Firefox/macOS.
+
+MaClasse V20.10 — rendus et évaluation
+- La confirmation d’envoi du travail est intégrée à MaClasse et liste les fichiers avant l’envoi définitif.
+- Dans une séance, « Évaluer le rendu (grille et note) » signifie que le fichier remis lui-même sera évalué. Le type « Évaluation » peut, lui, désigner une évaluation prévue pour une séance ultérieure.
+- Quand le rendu est évalué, la note est reliée au travail remis. L’élève retrouve le fichier depuis le détail de sa note ; le professeur le retrouve depuis la saisie des notes et la correction du rendu.
+- Un dépôt non évalué reste un suivi de remise de fichier et ne crée pas de note automatiquement.
+- Le bouton « Se déconnecter » utilise des couleurs adaptées au thème clair/sombre.
+- Avant installation, sauvegardez vos données et décompressez dans un nouveau dossier. Le test visuel complet sous Firefox/macOS reste à effectuer.
+
+
+V21.04 — REFONTE DE LA MESSAGERIE
+- Interface réorganisée en navigation, liste des messages et panneau de lecture.
+- Navigation par dossiers avec recherche et accès direct à la rédaction.
+- Présentation plus lisible des expéditeurs, objets, aperçus, dates et favoris.
+- Mise en page responsive pour écrans étroits.
+- Les réponses créent un nouvel échange contenant une copie référencée du message d’origine et la réponse ; l’original n’est pas modifié.
+- Les autres données de MaClasse sont conservées ; l’ancien stockage de messagerie est volontairement réinitialisé.
+
+
+VERSION 21.04 — RECONSTRUCTION FONCTIONNELLE
+- Les réponses créent un nouvel échange avec copie référencée du message source et réponse indépendante.
+- Les brouillons sont enregistrés automatiquement, restent éditables et conservent leurs pièces jointes.
+- Dossiers personnalisés, déplacement, restauration depuis la corbeille et suppression masquée uniquement pour le compte courant.
+- La lecture du contenu est échappée comme du texte ; les pièces jointes n’ouvrent un lien que si l’URL est relative ou HTTP(S).
+- La recherche et les actions vérifient la visibilité du message pour le compte actif.
+- La recette visuelle complète dans Firefox/macOS n’a pas été réalisée ; le navigateur de test a bloqué l’ouverture de la page. Le rendu a été contrôlé par test de génération HTML, pas par capture visuelle.
+
+VERSION 21.06 — CORRECTIFS ET FINITIONS DE MESSAGERIE (03/10/2026)
+- Corrige l’erreur « filteredConversations is not defined » en raccordant les widgets historiques de l’espace élève au nouveau modèle de messagerie.
+- Les raccourcis « Derniers mails » et « Centre d’activité » ouvrent désormais le message dans la nouvelle boîte.
+- La rédaction réutilise la barre d’édition riche de MaClasse (gras, italique, souligné, listes, taille, couleurs, surlignage et liens) ; le contenu formaté est conservé dans les brouillons et les messages.
+- Le contenu HTML des messages est filtré avant affichage pour retirer les éléments et attributs non autorisés.
+- Les pièces jointes reprennent les icônes du Cloud et proposent un aperçu pour les images, PDF, fichiers texte/CSV/Markdown, audio et vidéo lorsque le navigateur sait les afficher ; les autres types restent téléchargeables ou ouvrables.
+- Tests automatisés de régression et vérifications de syntaxe exécutés. Aucun test visuel complet dans Firefox/macOS n’est revendiqué.
+
+
+MAJ V21.08 — RETOURS UTILISATEUR
+
+- Miniatures d’images contraintes dans leur cadre avec object-fit: contain, notamment pour les images verticales.
+- Messages d’un fil affichés du plus récent au plus ancien dans le panneau de lecture ; l’ordre interne utilisé pour les opérations de fil reste inchangé.
+- Sélection multiple des messages, actions groupées d’archivage, déplacement, mise à la corbeille et suppression définitive depuis la corbeille.
+- Suppression individuelle et groupée des brouillons.
+- Périodes de bulletin configurables séparément pour les trimestres et les semestres. Chaque classe utilise son mode de période ; la création du bulletin adapte la liste des périodes et des élèves à la classe choisie. Les anciennes périodes restent recherchables pour ouvrir les bulletins existants.
+
+À vérifier dans l’application : les parcours d’action groupée sur plusieurs comptes et les bulletins d’une classe configurée en semestres. Une sauvegarde des données est recommandée avant mise à jour.
+
+
+V21.09 — Bulletins
+------------------
+- Refonte de l’écran Bulletins : suivi collectif, saisie par matière, validation et publication officielle.
+- Saisie groupée des appréciations : tous les élèves d’une classe sur un même écran, avec enregistrement à la modification.
+- Périodes sélectionnées selon la configuration trimestrielle ou semestrielle de la classe.
+- Les moyennes et notes sont lues depuis les évaluations existantes ; aucune note manquante n’est convertie en zéro.
+- Affichage des moyennes par matière, moyenne générale, moyenne de classe, absences et retards.
+- Le professeur principal valide les bulletins complets ; la publication de classe est refusée si un bulletin n’est pas validé.
+- Les bulletins publiés sont verrouillés à l’édition et portent une date de publication.
+- Les professeurs ne peuvent modifier que les matières qui leur sont attribuées dans l’emploi du temps, lorsque cette attribution est renseignée.
+- Les autres modules et les données existantes sont conservés ; aucune migration destructive n’est exécutée.
+
+Contrôles V21.09 réellement exécutés
+-----------------------------------
+- node --check sur _all.js : réussi.
+- node --check sur le JavaScript intégré à index.html : réussi.
+- Tous les tests JavaScript présents dans tests/*.js : réussis.
+- Test dédié V21.09 du module Bulletins : réussi.
+- python -m py_compile sur server.py : réussi.
+- Une recette visuelle interactive dans Firefox/macOS et un test avec des comptes réels restent à effectuer.
+
+
+V21.10 — Correctifs Bulletins : marges d’impression A4 harmonisées, accès en lecture seule aux bulletins publiés depuis la vie scolaire et les résultats, notification de publication dans le centre d’activité. Les statistiques collectives affichent la moyenne de classe, le minimum et le maximum par matière et pour la moyenne générale.
+
+
+V21.11 — PDF natif généré par le serveur (pas une page HTML à imprimer), statistiques de moyenne/minimum/maximum par matière et pour la moyenne générale dans le PDF, correction des dates de publication au format ISO, et action de dépublication réservée au professeur principal / administrateur. La dépublication retire le bulletin de l’espace élève et des notifications.
+
+V21.22 : Liquid UI + EDT 7 jours ajusté pour tenir sur les écrans courants.
+
+
+V24.2 — ÉDITION SANS IA
+Cette édition ne comprend plus ArIA, ses modèles, son routeur ou ses services.
+Le lancement de MaClasse ne télécharge et ne démarre aucun moteur IA.
+
+Important — anciens moteurs IA :
+Les modèles et adaptateurs fournis dans les anciennes versions ne sont plus inclus.
+Les versions précédentes pouvaient télécharger des modèles dans le cache personnel
+de macOS (en dehors du dossier MaClasse). Le présent paquet ne supprime pas ces
+caches personnels automatiquement, afin de ne pas effacer d'autres modèles ou
+données d'autres applications. Le lanceur V24.2 arrête uniquement les anciens
+processus ArIA MaClasse dont il retrouve les fichiers PID connus.

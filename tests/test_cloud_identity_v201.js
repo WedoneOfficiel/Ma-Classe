@@ -1,0 +1,16 @@
+const fs = require('fs');
+const vm = require('vm');
+const path = require('path');
+const assert = require('assert');
+const source = fs.readFileSync(process.argv[2] || path.join(__dirname, '..', '_all.js'), 'utf8');
+const start = source.indexOf('function cloudContext(');
+const end = source.indexOf('function cloudGrantMatches(', start);
+assert(start >= 0 && end > start, 'cloudContext function found');
+const ctx = { window: {cloudSpace:'personal'}, currentTeacherProfile:()=>({id:'teacher-2'}), student:()=>null };
+vm.createContext(ctx);
+vm.runInContext(source.slice(start,end),ctx);
+assert.strictEqual(ctx.cloudContext('teacher','').ownerId,'teacher-2');
+assert.strictEqual(ctx.cloudContext('student','student-1').ownerId,'student-1');
+ctx.window.cloudSpace='class';ctx.window.cloudClass='class-1';
+assert.strictEqual(ctx.cloudContext('teacher','').classId,'class-1');
+console.log('OK — espace personnel Cloud lié au compte enseignant actif et contexte classe conservé.');

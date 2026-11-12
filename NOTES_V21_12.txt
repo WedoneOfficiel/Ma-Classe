@@ -1,0 +1,11 @@
+MaClasse V21.12 — notifications de bulletins et harmonisation de l’interface
+
+Inclus :
+- Notification côté élève quand un bulletin est officiellement publié.
+- Notification dans le Centre d’activité et sur l’accueil élève, avec badge non lu et accès direct au PDF.
+- Marquage comme lu conservé dans les données locales ; une nouvelle publication (nouvel horodatage) crée une nouvelle notification.
+- La republication sans dépublication préalable ne réinitialise pas artificiellement la date de publication.
+- Harmonisation visuelle transversale : espacement, arrondis, états de focus clavier, champs, tableaux, cartes et affichage mobile.
+- Aucune refonte du module Évaluations dans cette version.
+
+Vérifications réalisées : syntaxe JavaScript (node --check), compilation Python (py_compile), intégrité de l’archive ZIP. Pas de test navigateur automatisé effectué.

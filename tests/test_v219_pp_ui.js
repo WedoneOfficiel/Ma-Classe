@@ -1,0 +1,12 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.join(__dirname,'..'), html=fs.readFileSync(path.join(root,'index.html'),'utf8'), js=fs.readFileSync(path.join(root,'_all.js'),'utf8');
+assert(html.includes('MaClasse V21.22'),'visible version is V21.22');
+assert(html.includes('ppDashboardHero')&&html.includes('ppKpis')&&html.includes('ppQuickGrid'),'PP design system present');
+assert(js.includes('function ppDashboard(){'),'PP dashboard present');
+assert(js.includes('function focusGlobalSearch(){'),'global search focus helper present');
+assert(js.includes("if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();focusGlobalSearch()}"),'Cmd/Ctrl-K focuses global search');
+assert(!js.includes("e.preventDefault();openCommand()}});load();"),'Cmd/Ctrl-K no longer directly opens command palette');
+assert(html.includes('.top{contain:none!important;overflow:visible!important}'),'topbar has a controlled stacking context');
+assert(html.includes('.searchResults{position:absolute;max-height:min(62vh,520px);overflow:auto}'),'global search results are above page content');
+assert(html.includes('MutationObserver(()=>{rebuildSelectMenu(wrap)})'),'dynamic selects refresh their painted options');
+console.log('OK — V21.19 PP dashboard, global search layering/Cmd-K and dynamic Select consolidation.');

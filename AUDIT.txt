@@ -1,0 +1,510 @@
+AUDIT FONCTIONNEL — MaClasse V21.09
+==================================
+
+Bulletins
+---------
+- Nouveau parcours collectif et saisie par matière sur une seule page.
+- Fiche individuelle avec moyennes, appréciations, assiduité et aperçu imprimable.
+- Validation par le professeur principal, puis publication officielle de la classe.
+- Consultation famille : les bulletins sont marqués publiés seulement après validation officielle.
+- Les notes/moyennes proviennent des évaluations existantes ; les notes manquantes restent non notées.
+- Périodes résolues à partir du mode de période de la classe.
+- Les brouillons restent éditables ; les bulletins publiés sont verrouillés dans cet écran.
+- Les droits de modification d’une appréciation s’appuient sur l’attribution professeur/matière de l’emploi du temps lorsqu’elle existe.
+
+Contrôles réellement exécutés
+-----------------------------
+- node --check sur _all.js : réussi.
+- node --check sur le JavaScript intégré à index.html : réussi.
+- Tous les tests tests/*.js : réussis.
+- Test dédié test_v2109_bulletins.js : réussi.
+- python -m py_compile sur server.py : réussi.
+
+Limites de recette
+------------------
+- Pas de test visuel navigateur automatisé dans cette livraison.
+- Les droits doivent être vérifiés avec les comptes enseignants réels de l’établissement.
+- L’aperçu PDF utilise le flux d’impression du navigateur ; la génération et la mise en page doivent être vérifiées sur le poste de l’utilisateur.
+
+
+AUDIT FONCTIONNEL — MaClasse V21.01
+==================================
+
+Messagerie
+----------
+- Réponse : vérification automatisée de la création d’un nouvel échange comprenant une copie du message source et la réponse ; le fil source reste inchangé.
+- Confidentialité : la copie du message source retire les destinataires CCI ; un transfert n’emporte pas la liste des CCI d’origine.
+- Rangement : champs archivedBy, deletedBy, starredBy et folderByUser sont propres à l’utilisateur et initialisés sans migration destructive.
+- Lecture : les compteurs et le marquage lu utilisent des règles de destinataires plus strictes, avec traitement particulier des messages historiques de classe sans destinataires explicites.
+- Réponse à un message : chaque message reçu propose une action de réponse ciblée sur son identifiant.
+- Transfert : création d’un nouvel échange et conservation d’une référence vers le message source.
+
+Correctifs V21.01
+-------------
+- Correction de la référence à la variable inexistante s dans la boîte enseignant.
+- Favoris scindés correctement entre les profils enseignant et élève.
+- Recherche : focus et position du curseur restaurés après rafraîchissement des résultats.
+- Test de non-régression dédié dans tests/test_v2111_mail_ui.js.
+
+Contrôles réellement exécutés
+-----------------------------
+- node --check sur _all.js : réussi.
+- node --check sur le JavaScript intégré à index.html : réussi.
+- Tous les tests présents dans tests/*.js, dont test_v211_messaging.js : réussis.
+- La recette visuelle complète dans Firefox/macOS n’a pas été réalisée.
+
+Limites connues
+---------------
+- Les brouillons ne sont pas persistés après fermeture du formulaire.
+- La messagerie est interne à MaClasse et ne se connecte pas à un service e-mail externe.
+- Le test de migration sur une copie réelle des données de production reste à effectuer avant déploiement.
+
+
+
+
+AUDIT FONCTIONNEL — MaClasse V19.7
+==================================
+
+Objet
+----
+Première passe de stabilisation de la branche V19.x, basée sur V19.6.
+Ce document distingue les contrôles techniques réellement exécutés des parcours
+métier qui restent à vérifier. Il ne certifie pas que tous les modules sont
+entièrement opérationnels.
+
+Contrôles et corrections inclus dans V19.7
+-----------------------------------------
+- La réinitialisation des données crée maintenant une copie de sécurité dans
+'data/backups/' avant l'effacement. Si la copie échoue, l'effacement est annulé.
+- L'API refuse les données enregistrées lorsque la racine JSON n'est pas un objet.
+- Le contrôle de cohérence détecte davantage de références manquantes : classes,
+  créneaux d'emploi du temps, élèves évalués, appels, rendus, comptes liés et
+  dossiers documentaires parents.
+- Le contrôle reste non destructif : il signale les anomalies, mais ne les
+  corrige pas automatiquement.
+- Les fichiers JavaScript intégrés et séparés restent synchronisés.
+
+État de la revue statique par module
+-----------------------------------
+- Navigation et espaces : revue statique effectuée ; la navigation V19.5 est
+  conservée. Le parcours complet doit encore être rejoué dans Firefox.
+- Comptes et rôles : revue partielle ; les permissions doivent être testées avec
+  plusieurs comptes réels et les accès croisés doivent faire l'objet d'une recette.
+- Élèves et classes : fonctions présentes dans le code ; création, modification,
+  archivage/suppression et réaffectation restent à tester de bout en bout.
+- Emploi du temps : fonctions présentes ; récurrences, exceptions, déplacements
+  et cohérence avec les séances/appels restent à tester.
+- Séances et devoirs : fonctions présentes ; création, échéances, fichiers,
+  rendus et corrections restent à tester en parcours complet.
+- Évaluations et bulletins : fonctions présentes ; calculs, coefficients, périodes,
+  notes manquantes et transfert vers les bulletins restent à vérifier sur des jeux
+  de données de test.
+- Appels : fonctions présentes ; création, correction, doublons et statistiques
+  restent à tester sur plusieurs dates et modes d'appel.
+- Messagerie : fonctions présentes ; les identifiants historiques 'teacher-local'
+  sont encore utilisés à plusieurs endroits. Le cloisonnement entre plusieurs
+  comptes enseignants doit être audité avant de considérer ce module comme validé.
+- Documents et fichiers : fonctions présentes ; droits d'accès, partage, déplacement,
+  suppression et cohérence entre métadonnées et fichiers physiques restent à tester.
+- Sauvegarde/restauration : garde-fous renforcés ; restauration testée par revue
+  statique, mais le parcours complet doit encore être testé dans l'interface.
+- Paramètres et journal : fonctions présentes ; export du journal et cohérence des
+  événements restent à vérifier dans les parcours métier.
+
+Tests réellement exécutés pour cette livraison
+----------------------------------------------
+- node --check sur _all.js : réussi.
+- python -m py_compile sur server.py : réussi.
+- Égalité exacte du JavaScript intégré à index.html et de _all.js : réussie.
+- Test HTTP isolé : lecture des données réussie.
+- Test HTTP isolé : rejet d'une racine JSON de type liste : réussi (HTTP 400).
+- Test HTTP isolé : réinitialisation avec copie de sécurité restaurable : réussi.
+- Intégrité de l'archive ZIP : réussie.
+
+Non vérifié
+-----------
+- Exécution réelle dans Firefox sur macOS.
+- Recette complète de chaque module avec des scénarios utilisateur.
+- Import/export et migration sur la copie réelle des données de l'utilisateur.
+
+Prochaine étape recommandée — V19.8
+----------------------------------
+1. Auditer et corriger le cloisonnement des comptes et de la messagerie.
+2. Rejouer les parcours élèves/classes, emploi du temps, séances/devoirs,
+   évaluations/bulletins et appels avec un jeu de données fictif.
+3. Tester les fichiers et droits d'accès, puis la sauvegarde/restauration.
+4. Corriger les régressions observées et documenter chaque test réussi.
+
+AUDIT FONCTIONNEL — MaClasse V19.8
+==================================
+
+Périmètre
+---------
+V19.8 poursuit la stabilisation de la branche V19.x à partir de V19.7.
+Cette livraison traite un défaut identifié dans la messagerie : plusieurs opérations
+utilisaient en dur l'identifiant historique « teacher-local », y compris lorsque
+un autre compte enseignant était connecté.
+
+Corrections incluses
+--------------------
+- Résolution de l'identifiant enseignant actif depuis authUser.teacherId.
+- Création d'une conversation enseignant avec le bon identifiant d'expéditeur et
+  le bon propriétaire de conversation.
+- Routage d'un nouveau mail envoyé par un élève vers l'identifiant de l'enseignant
+  effectivement sélectionné dans le formulaire.
+- Filtrage de la boîte de réception et gestion des dossiers selon l'identité active.
+- Compteurs de messages non lus limités aux conversations auxquelles le compte
+  enseignant a accès.
+- Marquage comme lu limité aux messages adressés au compte courant, ainsi qu'aux
+  réponses d'élèves dans les conversations dont ce compte est responsable.
+- Affichage des messages envoyés qui compare l'expéditeur à l'identité active.
+- Conservation de la compatibilité historique avec « teacher-local ».
+
+Tests exécutés
+--------------
+- node --check _all.js : réussi.
+- python -m py_compile server.py : réussi.
+- Script tests/test_messaging_identity.js : réussi. Il vérifie l'identité active,
+  le routage élève→enseignant, la visibilité séparée entre deux comptes, le compteur
+  de non-lus et le marquage de lecture ciblé.
+- Synchronisation exacte du JavaScript intégré dans index.html avec _all.js : réussie.
+- Test HTTP isolé : GET / et GET /api/data : réussis.
+- Intégrité de l'archive ZIP : réussie.
+
+État des autres modules
+----------------------
+- Navigation : corrections antérieures conservées ; test complet Firefox à faire.
+- Comptes/rôles : correction ciblée de la messagerie ; les droits de chaque module
+  nécessitent toujours une recette complète avec plusieurs comptes.
+- Élèves/classes, emploi du temps, séances/devoirs, évaluations/bulletins et appels :
+  présents dans le code, mais parcours métier de bout en bout non certifiés.
+- Documents/fichiers : droits, partage et cohérence physique à tester.
+- Sauvegarde/restauration : garde-fous V19.6/V19.7 conservés ; recette complète
+  dans l'interface avec copie des données à effectuer.
+
+Non vérifié
+-----------
+- Exécution réelle dans Firefox sur macOS.
+- Recette complète de tous les modules et des scénarios de plusieurs utilisateurs.
+- Migration et restauration sur la copie réelle des données de l'utilisateur.
+
+Prochaine étape proposée — V19.9
+--------------------------------
+1. Continuer la recette multi-comptes et des permissions.
+2. Tester les parcours classes/élèves, emploi du temps, séances/devoirs, évaluations,
+   bulletins et appels avec un jeu de données fictif.
+3. Tester les opérations de fichiers et une restauration complète.
+4. Corriger uniquement les défauts reproductibles, puis refaire les tests de régression.
+
+AUDIT FONCTIONNEL — MaClasse V19.9
+==================================
+
+Périmètre
+---------
+V19.9 poursuit la stabilisation depuis V19.8. La correction porte sur la cohérence
+entre le nom/niveau d’une classe et les groupes enregistrés sur les fiches élèves.
+
+Défaut corrigé
+--------------
+Les groupes d’une classe à double niveau sont construits à partir du nom de classe
+(par exemple « CM1-CM2/CM1 »). Lors du renommage, les groupes générés changeaient,
+mais les affectations des élèves pouvaient conserver les anciens libellés. Cela
+créait des références de groupe orphelines dans les fiches élèves et les choix de
+connexion élève.
+
+Corrections incluses
+--------------------
+- Renommage des affectations d’élèves quand une classe à double niveau est renommée.
+- Conservation de l’affectation si le niveau existe toujours dans la classe modifiée.
+- Suppression de l’affectation de groupe si le niveau correspondant a été retiré.
+- Nettoyage des anciens groupes générés si la classe redevient une classe simple.
+- Pour les classes à groupes manuels, conservation des groupes encore valides et
+  retrait des affectations qui pointent vers un groupe supprimé.
+- Les élèves appartenant à une autre classe ne sont pas modifiés.
+- Corrections V19.8 de messagerie multi-comptes conservées.
+
+Tests exécutés
+--------------
+- node --check _all.js : réussi.
+- python -m py_compile server.py : réussi.
+- tests/test_class_group_migration.js : réussi (renommage, niveau supprimé,
+  conversion en classe simple, groupes manuels et isolation d’une autre classe).
+- tests/test_messaging_identity.js : réussi.
+- Synchronisation exacte du JavaScript intégré à index.html avec _all.js : réussi.
+- Test HTTP isolé du serveur : réussi sur une copie temporaire (GET /, GET /api/data,
+  POST /api/save et rejet d’une racine JSON non objet).
+- Intégrité ZIP : réussi.
+
+État de la recette globale
+--------------------------
+- Classes/groupes : correction ciblée automatisée ; interface Firefox à tester.
+- Comptes/rôles/messagerie : tests ciblés de régression ; droits de tous les modules
+  pas encore certifiés.
+- Élèves, emploi du temps, séances/devoirs, évaluations/bulletins et appels : présents
+  dans le code, mais parcours métier de bout en bout encore à tester.
+- Documents/fichiers : droits, partage et cohérence des fichiers à tester.
+- Sauvegarde/restauration : garde-fous antérieurs conservés ; recette complète dans
+  l’interface sur une copie des données à effectuer.
+
+Non vérifié
+-----------
+- Exécution réelle dans Firefox sur macOS.
+- Recette complète de tous les modules et des scénarios multi-utilisateurs.
+- Migration et restauration sur la copie réelle des données de l’utilisateur.
+
+Étape suivante proposée — V20.0.0 après recette
+----------------------------------------------
+Avant de lancer la version majeure, compléter les scénarios de bout en bout avec des
+jeux de données fictifs, vérifier les droits par rôle, et tester les opérations de
+fichiers et la restauration. Ne déclarer une fonction terminée qu’après validation.
+
+AUDIT MaClasse V20.0.0
+
+Changements
+- Tableau de bord enrichi : quatre raccourcis et récapitulatif des créneaux du jour.
+- Évaluations : compétences facultatives, niveaux individuels par élève, stockage distinct des notes et commentaires.
+- Normalisation compatible avec les évaluations anciennes ; pas de migration destructive prévue.
+- index.html synchronisé avec _all.js.
+
+Vérifications exécutées
+- node --check _all.js : réussi.
+- node --check du JavaScript intégré à index.html : réussi.
+- tests/test_messaging_identity.js : réussi.
+- tests/test_class_group_migration.js : réussi.
+- tests/test_competencies_v20.js : réussi.
+
+Limites
+- Tests unitaires ciblés, pas une recette complète de tous les modules.
+- Pas de validation réelle dans Firefox sur macOS pendant cette livraison.
+- Les impressions, exports de bulletins et affichage des compétences dans les bulletins ne sont pas modifiés par cette version.
+
+AUDIT MaClasse V20.1
+
+Changements couverts
+- Grilles d'évaluation réutilisables enregistrées dans evaluationTemplates.
+- Bibliothèque de compétences normalisée sans suppression des anciennes évaluations.
+- Application d'un modèle aux champs matière/titre/compétences d'une évaluation.
+- Synthèse des niveaux par classe et matière.
+- Cloud : filtres de types, indicateurs d'espace, import de dossier avec conservation des sous-dossiers lorsque webkitRelativePath est disponible.
+- Script principal index.html synchronisé avec _all.js.
+
+Tests automatisés
+- test_messaging_identity.js
+- test_class_group_migration.js
+- test_competencies_v20.js
+- test_evaluation_grids_v201.js
+- test_cloud_filters_v201.js
+- test_cloud_identity_v201.js
+
+Limites
+- Tests de fonctions et contrôles syntaxiques ne remplacent pas une recette manuelle complète dans Firefox sur macOS.
+- Import de dossier dépend de la prise en charge par le navigateur de l'attribut webkitdirectory et de webkitRelativePath.
+- Le Cloud reste un stockage servi par le serveur local de MaClasse. Pas de synchronisation distante multi-appareils, de service hébergé ni de connexion à un fournisseur tiers ajoutés dans cette version.
+- Les tailles affichées reposent sur les métadonnées des fichiers connus de MaClasse ; ce n'est pas une mesure du disque entier.
+
+AUDIT TECHNIQUE — MaClasse V20.2
+
+Base : V20.1. Aucun remplacement volontaire du dossier data/ ni des données de l’utilisateur.
+
+ÉVOLUTIONS CONTRÔLÉES
+- Visibilité des actions Grilles & compétences et Bilan compétences dans la version active du module Évaluations.
+- Synthèse de compétences filtrée par période et ajoutée à la feuille imprimable du bulletin.
+- Centre de notifications : messages, rendus, notes à saisir et partages directs Cloud au compte courant.
+- Cloud : vue en cartes, icônes SVG de dossiers, miniatures images/vidéos si disponibles, sélection multiple, déplacement/suppression groupés, menu contextuel, tri par taille.
+- Fichier partagé directement : affichage dans la racine « Partagés avec moi » si son dossier parent n’est pas accessible.
+- EDT : professeur habituel associé au cours, gestion groupée de l’intitulé/couleur/professeur, exceptions ponctuelles de remplacement, horaire, salle et annulation.
+- index.html embarque le même script que _all.js.
+
+VALIDATIONS EXÉCUTÉES
+- node --check _all.js : OK.
+- python -m py_compile server.py : OK.
+- Tests automatisés : migration classe/groupes, filtres Cloud, identité Cloud, niveaux de compétences, grilles réutilisables, identité messagerie et test V20.2 : OK.
+- Test ciblé V20.2 : cours distingués par professeur habituel ; bilan filtré par période ; fichier partagé directement listé sans dossier parent partagé.
+- Intégrité de l’archive ZIP : vérifiée avant livraison.
+- Test HTTP local (page, lecture/sauvegarde API et opération Cloud) : vérifié dans un serveur temporaire.
+
+LIMITES / NON TESTÉ
+- Pas de recette manuelle complète sur Firefox/macOS dans cette session.
+- Les aperçus vidéo dépendent du navigateur et du codec.
+- Pas de synchronisation Cloud Internet multi-appareils ajoutée.
+
+AUDIT TECHNIQUE — MaClasse V20.3
+
+Base : archive V20.2 vérifiée. Modifications incrémentales dans _all.js et synchronisation du script embarqué dans index.html. Pas de suppression du dossier data/ ni de migration destructive volontaire.
+
+CHANGEMENTS
+- Niveaux de compétence harmonisés : Insuffisant, Fragile, Bien, Très bien ; styles de couleur associés.
+- Modèles de grilles : critères avec barème en points, distincts des compétences ; les critères sont enregistrés dans le modèle, transférés à l’évaluation, affichés par élève et totalisés. Les critères sont facultatifs.
+- Navigation : Notifications retiré des groupes principaux et route legacy redirigée vers Centre d’activité. Les notifications de partage/messages/actions sont réunies au fil d’activité.
+- Sidebar : nav flex avec overflow-y auto et hauteur contrainte à la fenêtre.
+- Cloud : cartes carrées, miniatures bornées dans le conteneur, styles de badges de type fichier étendus.
+- EDT : identité de cours basée sur classe, matière/intitulé, professeur habituel et sous-groupe ; remplacement séparé dans les overrides.
+
+VALIDATIONS
+- node --check _all.js : OK.
+- python -m py_compile server.py : OK.
+- Tests JS existants : 7/7 OK (migration classe/groupes, filtres Cloud, identité Cloud, compétences, grilles, identité messagerie, fonctions V20.2).
+- Test ciblé supplémentaire : barème critère, total maximal et total obtenu par élève : OK.
+- Archive ZIP : contrôle d’intégrité effectué avant livraison.
+
+LIMITES
+- Pas de test manuel complet sous Firefox/macOS.
+- Pas de synchronisation Internet multi-appareils ajoutée.
+
+AUDIT TECHNIQUE — MaClasse V20.4
+
+Base : MaClasse_V20_3.zip, extraite et vérifiée avant modification.
+
+CHANGEMENTS
+- Routes legacy today/notifications redirigées vers activity ; entrée « Aujourd’hui » supprimée du menu principal. « Voir la journée » fait défiler vers la section Aujourd’hui du Centre d’activité.
+- Bibliothèque de compétences séparée de la création des grilles ; association facultative de plusieurs niveaux par compétence ; grille unique combinant compétences et critères notés.
+- Carnet de notes : repères colorés des compétences et total des points des critères visibles sous la note quand les données existent.
+- CSS de réduction réelle de la barre latérale, avec maintien du scroll vertical.
+- Cloud : fil d’Ariane dans la zone principale, suppression du dropzone autonome, vue liste compacte, grille d’icônes plus compacte et actions contextuelles. Les cartes ne sont pas re-rendues au clic simple afin de préserver le double-clic d’ouverture.
+- EDT : apparence gérée au niveau du cours. Édition d’un créneau sans champs couleur/motif préserve les valeurs existantes. Les valeurs de motif utilisent les enums existants « none », « hatch », « cross ».
+- Gestion des cours regroupe les créneaux par classe, intitulé, titulaire et sous-groupe sans supprimer les séances.
+
+VALIDATIONS
+- node --check sur le script embarqué : OK.
+- Tests JS : 8/8 OK après synchronisation de _all.js avec le script embarqué.
+- Test V20.4 de cohérence des modules et de l’interface : OK.
+- Intégrité ZIP : à exécuter lors de la construction finale.
+
+LIMITES
+- Pas de test manuel complet sous Firefox/macOS.
+- Pas de synchronisation Internet multi-appareils ajoutée.
+
+
+AUDIT TECHNIQUE — MaClasse V20.5
+
+- Ajout du statut brouillon/publiée et d’une date de publication facultative pour les évaluations.
+- Les résultats publiés côté élève incluent la note, le commentaire, les critères notés et les niveaux de compétence ; les brouillons et publications futures restent cachés.
+- Ajout d’un écran de suivi des absences et retards avec filtres de classe et d’état, justification et motif/commentaire modifiables sans rouvrir l’appel d’origine.
+- Les onglets du Centre d’activité affichent maintenant la catégorie sélectionnée au lieu de réafficher toutes les actions.
+- Migration EDT ponctuelle et idempotente : les créneaux partageant classe, matière, professeur titulaire et sous-groupe récupèrent une apparence commune (couleur/motif majoritaires) ; exceptions datées préservées.
+- Consolidation des fichiers de notes de version en un seul AUDIT.txt et un seul LISEZ-MOI.txt.
+
+VALIDATIONS V20.5
+- Vérifications de syntaxe JavaScript et tests automatisés exécutés après assemblage.
+- Recette manuelle complète sous Firefox/macOS non réalisée dans cette session.
+
+
+AUDIT TECHNIQUE — MaClasse V20.6
+
+- EDT : après modification des informations d’un cours de référence, le planning sous-jacent est rerendu avant de rouvrir la fenêtre de gestion ; il s’actualise donc sans changer de module.
+- Appels : ajout d’un accès visible au suivi des absences et retards depuis le module Appels. Le suivi permet de filtrer par classe, élève, statut et période, puis de modifier justification et commentaire. Les retards traités sortent de la liste « À traiter ».
+- Grilles : remplacement de la saisie des critères au format texte par un éditeur en tableau, avec points maximum, descriptions de niveaux facultatives, ajout de critères réutilisables et modification des grilles existantes.
+- Espace élève : les évaluations publiées affichent les résultats des critères, leurs descriptions de niveau lorsqu’elles existent, les compétences et le commentaire. Les brouillons et publications futures restent masqués.
+- Documentation : historique V20.6 ajouté à cet audit unique ; pas de nouveau fichier d’audit ou de Lisez-moi par version.
+
+VALIDATIONS V20.6
+- Syntaxe JavaScript : OK.
+- Tests automatisés existants : 9/9 OK.
+- Recette manuelle complète sous Firefox/macOS : non réalisée.
+
+
+AUDIT TECHNIQUE — MaClasse V20.7
+
+CHANGEMENTS
+- Barème d’évaluation configurable : 20 par défaut sans grille, total des critères proposé à l’application d’une grille, modification libre par le professeur. La note brute est conservée avec son dénominateur.
+- Moyennes et statistiques normalisées sur 20 ; saisie des notes bornée par le barème de l’évaluation. Les évaluations historiques sans barème explicite conservent le comportement sur 20.
+- Carnet de notes enseignant adapté au barème propre à chaque évaluation.
+- Résultats élèves présentés sous forme de cartes colorées, avec note brute et équivalent sur 20, grille détaillée, progression visuelle par critère, niveaux de compétence et commentaire lorsqu’il existe.
+- Bouton de repli de la barre latérale stylé dans les deux états ; menu replié centré sur les icônes, infobulles conservées, déconnexion masquée dans le menu replié (elle reste disponible dans le menu ouvert).
+- CSS d’évaluation renforcé avec couleurs lisibles, focus visibles et repères distincts pour les niveaux de maîtrise.
+- Historique consolidé dans ce fichier unique.
+
+VALIDATIONS V20.7
+- Syntaxe du JavaScript embarqué et de _all.js : OK.
+- Suite de tests automatisés : 10/10 OK après assemblage.
+- Recette manuelle complète sous Firefox/macOS : non réalisée.
+
+
+AUDIT TECHNIQUE — MaClasse V20.8
+
+CHANGEMENTS
+- Barre latérale : suppression du bouton « Ouvrir l’espace élève » de l’espace enseignant. Le bouton « Se déconnecter » reste visible dans le menu ouvert et replié ; en mode replié, l’icône ↪ reste centrée et accessible avec une infobulle. Le clic ne déclenche plus l’ouverture de la palette de commandes.
+- Résultats élèves : conservation de la présentation en cartes avec note sur son barème, équivalent sur 20, critères, descriptions, compétences et commentaire. L’organisation reprend les repères documentés d’École Directe (notes, moyennes, évaluations, compétences et appréciations), sans copier son interface.
+- Sécurité d’affichage : les brouillons et évaluations dont la date de publication est future restent masqués côté élève.
+
+VALIDATIONS V20.8
+- Vérifications automatisées et syntaxe exécutées après assemblage ; recette visuelle manuelle Firefox/macOS non réalisée.
+
+AUDIT TECHNIQUE — MaClasse V20.9
+
+CHANGEMENTS
+- Remplacement de la liste de cartes de résultats par un relevé tabulaire par période, regroupé par matière.
+- Sélecteur de période basé sur les périodes configurées dans les paramètres (trimestre ou semestre).
+- Chaque matière présente les évaluations cliquables et sa moyenne pondérée normalisée sur 20 ; la moyenne générale de la période est également affichée.
+- Une note conserve son barème d’origine dans le relevé ; le barème est explicité lorsqu’il est différent de 20 et les coefficients différents de 1 sont affichés.
+- La fenêtre de détail présente critères, points, descriptifs de niveaux, compétences, appréciation et conversion sur 20.
+- Les résultats non publiés et les publications futures restent masqués.
+- Renforcement CSS ciblé sur le bouton de déconnexion en état ouvert et replié.
+
+VALIDATIONS V20.9
+- Syntaxe du JavaScript embarqué : OK.
+- Syntaxe de _all.js : OK.
+- Tests automatisés hérités et test V20.9 : résultats consignés lors de la génération de l’archive.
+- Recette visuelle Firefox/macOS : non réalisée.
+
+AUDIT TECHNIQUE — MaClasse V20.10
+
+CHANGEMENTS
+- Rendus élèves : remplacement de la confirmation native JavaScript par une fenêtre intégrée à MaClasse, avec le titre du travail, l’échéance et la liste des fichiers avant envoi.
+- Prévention des doubles envois : contrôle de l’existence d’un rendu déjà envoyé et vérification de l’état au moment de la confirmation.
+- Distinction explicite entre « Évaluation » (travail de préparation/évaluation prévue à une prochaine séance) et « Évaluer le rendu (grille et note) » (le fichier remis lui-même est noté).
+- Les rendus évalués sont reliés à l’évaluation et à la note de l’élève. Depuis le détail de la note, l’élève peut consulter le fichier rendu ; depuis la saisie des notes et la correction du rendu, le professeur peut ouvrir l’historique du fichier remis.
+- Les rendus non évalués restent consultables dans le suivi sans création automatique d’une note.
+- Bouton de déconnexion : couleurs et contraste adaptés aux variables du thème, en barre latérale ouverte et repliée.
+
+VALIDATIONS V20.10
+- Syntaxe JavaScript embarquée : OK.
+- Syntaxe de _all.js : OK.
+- Tests automatisés hérités : OK.
+- Test V20.10 : confirmation locale, distinction des cas, accès à l’historique et contraste CSS vérifiés.
+- Recette visuelle manuelle dans Firefox/macOS : non réalisée.
+
+
+LIVRAISON V21.04 — REFONTE DE LA MESSAGERIE
+- Présentation repensée en trois zones : navigation/dossiers, liste, lecture.
+- Navigation et recherche intégrées, favoris par compte, dossiers personnels conservés.
+- La refonte réutilise les contrôles d’accès et la persistance existants pour éviter une migration risquée des données.
+- Recette visuelle réelle navigateur non effectuée dans cet environnement.
+
+
+LIVRAISON V21.04 — RECONSTRUCTION DU MODULE DE MESSAGERIE
+- Nouveau modèle autonome : messages individuels, références de fil, références de réponse et de transfert.
+- État de boîte par utilisateur et par message : dossier, lu/non lu, favori.
+- Nouvelle interface en trois panneaux : dossiers, liste, lecture.
+- Répondre et répondre à tous créent un message distinct ; le fil est une vue calculée à partir de threadId.
+- Transfert dans un nouveau fil, sans divulguer les destinataires CCI de la source.
+- Pièces jointes via le service local d’upload existant.
+- La première ouverture de la messagerie réinitialise l’ancien stockage de messagerie sans migration ; les autres données MaClasse restent conservées.
+- Tests dédiés au modèle ajoutés. Les tests automatisés existants, les tests du modèle et les vérifications de syntaxe passent.
+- Limite connue : la recette visuelle manuelle dans Firefox/macOS reste à faire ; le navigateur de test a bloqué l’ouverture de la page dans cet environnement.
+
+
+AUDIT DE LIVRAISON — V21.04
+===========================
+
+- Le module actif est installé par `installMailV2104`; les anciennes vues ne sont plus les vues rendues pour `messages` et `studentMessages`.
+- Le schéma `db.mailboxV2` passe en version 2 et initialise un stockage de messagerie neuf sans migration des conversations historiques.
+- Les messages sont indépendants ; les fils sont des regroupements calculés par `threadId`.
+- Les réponses créent un nouvel échange comprenant une copie du message source sans CCI et la réponse, avec référence `inReplyTo`/`copiedFrom`.
+- Dossiers et lecture sont stockés par utilisateur et par message.
+- Brouillons persistants avec pièces jointes ; dossiers personnels ; archive, corbeille, restauration et suppression masquée par compte.
+- Sécurité de présentation : corps de message échappé avant rendu ; visibilité contrôlée avant lecture/réponse/transfert ; CCI non exposées aux destinataires.
+- Tests automatisés exécutés à la livraison : voir les sorties de recette et le dossier `tests`.
+
+
+CORRECTIF V21.05 (03/10/2026)
+- Corrige le crash « messages is not defined » : le routeur appelle explicitement window.messages et window.studentMessages, définis par le nouveau module.
+- Le test de rendu de la boîte enseignant utilise le point d’entrée public du module.
+- Le test d’interface vérifie les nouveaux points d’entrée globaux.
+- Validation : syntaxe JavaScript et suite de tests automatisés.
+
+CORRECTIF V21.06 — 03/10/2026
+- Compatibilité : les widgets historiques de l’espace élève appellent désormais les adaptateurs du nouveau modèle de boîte mail au lieu de dépendre de l’ancien tableau de conversations.
+- Rédaction : l’éditeur riche commun à MaClasse est réutilisé. Le HTML est conservé pour brouillons/envois et assaini avant affichage ; les scripts, attributs d’événements et balises non permises ne sont pas conservés.
+- Pièces jointes : réutilisation de cloudFileVisual pour les icônes et prévisualisation locale dans une modale des formats que le navigateur peut afficher.
+- Validation : tests automatisés, test de régression V21.06 et syntaxe JavaScript. Pas de recette visuelle réelle Firefox/macOS.

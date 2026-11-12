@@ -1,0 +1,46 @@
+MaClasse V21.17 — Refonte du module Évaluations
+
+Cette version introduit un moteur métier centralisé pour les évaluations, séparé du rendu de l’interface.
+
+Moteur :
+- evaluationModelMaxScore / coefficient / publication / période
+- evaluationModelStudentReport
+- evaluationModelClassStats
+- saisie centralisée des notes, critères et compétences
+- normalisation des notes décimales françaises
+- barèmes réels ramenés sur 20 pour les calculs comparables
+
+Interface :
+- tableau Évaluations reconstruit autour du moteur V21.17
+- création / modification d’une évaluation
+- saisie des notes, critères, compétences et observations
+- statistiques de classe cohérentes avec les règles de publication
+
+Compatibilité :
+- aucune migration destructive
+- données d’évaluations existantes conservées
+- grilles et compétences existantes conservées
+
+Tests :
+- test_v217_evaluation_model.js
+- tous les tests JavaScript existants
+- régression sécurité V21.14
+- node --check _all.js
+- py_compile server.py
+
+V21.17 n’inclut pas encore la refonte du module Professeur principal, du Cloud ou des fondations V22.
+
+V21.17 deep UX — refonte ergonomique
+
+La V21.17 approfondit la reconstruction du module Évaluations :
+- parcours création → configuration → saisie simplifié ;
+- évaluation simple sans grille obligatoire ;
+- bibliothèque de grilles présentée comme option réutilisable ;
+- tableau de saisie large avec élèves en colonne fixe ;
+- saisie des notes en texte avec virgule décimale ;
+- navigation clavier Entrée / ↑ / ↓ / Tab ;
+- sauvegarde immédiate conservée ;
+- configuration modifiable sans quitter la saisie ;
+- compatibilité avec les critères, compétences et observations existants.
+
+Cette version conserve les données existantes et n’effectue aucune migration destructive.

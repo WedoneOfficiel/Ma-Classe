@@ -1,0 +1,11 @@
+const fs=require('fs'),assert=require('assert');
+const root=__dirname+'/..';
+const html=fs.readFileSync(root+'/index.html','utf8');
+assert(html.includes('MaClasse V21.22'),'visible version is V21.22');
+assert(html.includes('V21.22 — MaClasse 27'),'MaClasse 27 design marker missing');
+assert(html.includes('.scheduleDays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0;width:100%}'),'EDT must fit seven fluid columns');
+assert(html.includes('--mc-liquid:'),'liquid material tokens missing');
+assert(html.includes('backdrop-filter:blur(30px) saturate(180%)'),'liquid sidebar material missing');
+assert(html.includes('.card::before,.bulletin::before'),'liquid highlight missing');
+assert(html.includes('scheduleGrid .hours{width:44px;min-width:44px}'),'EDT hour rail should stay compact');
+console.log('OK — V21.22 Liquid UI and 7-day EDT fit.');

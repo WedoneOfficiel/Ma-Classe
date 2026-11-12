@@ -1,0 +1,16 @@
+MaClasse V21.20 — MaClasse 27 Design System
+
+Objectif : unifier l’époque visuelle de l’application autour d’un langage contemporain inspiré des interfaces Apple récentes sans transformer MaClasse en copie de macOS.
+
+- primitives communes harmonisées : navigation, cartes, boutons, champs, onglets, tableaux, modales, badges ;
+- surfaces neutres et hiérarchisées ;
+- suppression visuelle des gradients historiques sur les surfaces communes ;
+- sidebar modernisée sans toucher à l’identité fonctionnelle ;
+- recherche globale placée dans un vrai contexte de premier plan ;
+- Cmd/Ctrl-K focalise la recherche globale ;
+- Messagerie et Bulletins conservés comme designs spécialisés déjà aboutis ;
+- états focus/disabled et réduction des animations ajoutés ;
+- responsive renforcé ;
+- aucune modification du modèle de données.
+
+La validation visuelle navigateur complète reste à faire dans un environnement Chromium fonctionnel.

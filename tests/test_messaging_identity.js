@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
+const src=fs.readFileSync(path.join(__dirname,'..','_all.js'),'utf8'),start=src.lastIndexOf('/* V21.04 — messagerie reconstruite');
+assert(start>=0,'module actif présent');
+const ctx={db:{mailboxV2:null,conversations:[],messages:[],mailFolders:[],students:[{id:'s1',first:'Élève',last:'Un',classId:'c1'},{id:'s2',first:'Élève',last:'Deux',classId:'c2'}],teachers:[{id:'t1',first:'Prof',last:'Un',classIds:['c1']},{id:'t2',first:'Prof',last:'Deux',classIds:['c2']}]},window:{},document:{createElement:()=>({}),head:{appendChild(){}}},esc:x=>String(x??''),activeStudent:()=> 's1',currentTeacherId:()=> 't1',student:id=>ctx.db.students.find(x=>x.id===id),teacherUser:id=>ctx.db.teachers.find(x=>x.id===(id||'t1'))||ctx.db.teachers[0],teacherName:t=>`${t.first} ${t.last}`,accessibleTeachersForStudent:sid=>ctx.db.teachers.filter(t=>t.classIds.includes(ctx.db.students.find(s=>s.id===sid)?.classId)),teacherCanReachStudent:(tid,sid)=>ctx.db.teachers.find(t=>t.id===tid)?.classIds.includes(ctx.db.students.find(s=>s.id===sid)?.classId),cls:()=>({name:'Classe'}),uid:(()=>{let n=0;return()=>`id${++n}`})(),save(){},toast(){},render(){},closeModal(){},openModal(){},shell:()=>'',notificationFeed:()=>[],page:'messages',authUser:{role:'teacher',teacherId:'t1'},messages(){},studentMessages(){},go(){},studentHome(){return ''},upload:async()=>({}),console};
+vm.createContext(ctx);vm.runInContext("'use strict'; function messages(){}; function studentMessages(){};\n"+src.slice(start),ctx);
+const m=ctx.window.mailV2Model;
+const msg=m.sendOne({role:'teacher',to:['student:s1'],subject:'Pour Camille',body:'Privé'});
+assert.equal(m.allVisible('student','s1').length,1,'le destinataire peut lire le message');
+assert.equal(m.allVisible('student','s2').length,0,'un autre élève ne voit pas le message');
+assert.equal(m.allVisible('teacher','').length,1,'l’expéditeur retrouve son message envoyé');
+assert.equal(m.user('student','s1'),'student:s1');assert.equal(m.user('teacher',''),'teacher:t1');
+assert.deepEqual(ctx.window.mailV2104Recent('teacher').map(x=>x.id),[],'un message envoyé n’apparaît pas dans les derniers messages reçus');
+console.log('OK — V21.04 : identité de boîte isolée par compte, visibilité par destinataire et exclusion des messages envoyés des derniers reçus.');

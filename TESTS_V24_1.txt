@@ -1,0 +1,11 @@
+Recette locale effectuée dans l’environnement de construction
+=============================================================
+OK : compilation Python de server.py, router_server.py et test_v241_router_integration.py.
+OK : tests/test_v240_aria_core.py — homework upsert, update de séance, suppressions, conflits et dates.
+OK : tests/test_v241_router_integration.py — contrat de réponse routeur, rejet des extensions invalides, fallback hors ligne.
+Tests JavaScript : 30 réussis, 2 échecs historiques.
+Échecs historiques :
+- test_v204_coherence.js attend une ancienne structure de navigation antérieure à V24.
+- test_v221_local_ai.js attend un comportement de modèle local antérieur à V24.
+Ces deux échecs sont cohérents avec les limites documentées dans NOTES_V24_0.txt.
+Non vérifié dans cet environnement : chargement MLX réel, car MLX nécessite un Mac Apple Silicon et le modèle de base doit être téléchargé au premier lancement.

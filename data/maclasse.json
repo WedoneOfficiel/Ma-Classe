@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "id": "u-admin",
+      "role": "admin",
+      "username": "admin",
+      "passwordHash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+      "name": "Direction",
+      "active": true
+    },
+    {
+      "id": "u-teacher-local",
+      "role": "teacher",
+      "username": "enseignant",
+      "passwordHash": "a608f391bff586bf0cd3fad5f7a2496d0b48c919db3c0c61b955206e3e97ed41",
+      "teacherId": "teacher-local",
+      "name": "Enseignant",
+      "active": true
+    }
+  ]
+}

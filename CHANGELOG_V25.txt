@@ -1,0 +1,85 @@
+MaClasse V25.0 — première base de correction
+
+- Création d'une copie de travail indépendante de V24.2.
+- Version serveur alignée sur V25.0.0.
+- Sérialisation des sauvegardes navigateur pour éviter les requêtes concurrentes.
+- Verrouillage des écritures JSON côté serveur et fichiers temporaires uniques.
+- Sauvegardes ZIP complètes incluant maclasse.json et data/uploads, en plus des JSON historiques.
+- Normalisation défensive des collections schedule, bulletins, attachments, etc.
+- Moyennes par matière calculées sur 20 via le moteur d'évaluation et limitées aux notes publiées.
+- Résultats élèves filtrés par publication, classe et groupe.
+- Accès aux cours et devoirs de sous-groupe filtré strictement.
+- Appels par cours filtrés selon le groupe du créneau.
+- Correction du test de mode d'appel course/hour.
+- cloudCanWrite dédoublonnée et restreinte à la propriété/aux partages explicites côté interface ; contrôle serveur encore à implémenter.
+
+Sécurité : le serveur reste lié à 127.0.0.1. L'API historique n'a pas encore
+d'authentification serveur complète. Ne pas exposer la V25 au LAN ou à Internet
+avant la livraison du lot Sécurité.
+
+
+V25.0.1 — premier lot Sécurité serveur
+- Authentification professeur/direction vérifiée par le serveur Python.
+- Sessions serveur aléatoires en mémoire, cookie HttpOnly et SameSite=Strict (expiration 12 h).
+- API de données, PDF, Cloud et fichiers protégées par une session authentifiée.
+- Comptes initiaux créés côté serveur ; changement obligatoire du mot de passe provisoire (12 caractères minimum).
+- Limitation des tentatives de connexion (10 essais / 5 min / IP).
+- Réinitialisation réservée à la direction ; les professeurs ne peuvent pas modifier la liste des comptes.
+- Contrôle d'origine des requêtes mutantes, en-têtes de sécurité et limites de taille des requêtes/fichiers.
+- Accès élève temporairement désactivé : les comptes élèves individuels et le filtrage des données côté serveur restent à développer.
+- Écoute toujours limitée à 127.0.0.1 ; LAN non activé tant que TLS, hachage de mots de passe renforcé et autorisations par classe/rôle ne sont pas finalisés.
+
+
+V25.0.2 — renforcement des identifiants et du stockage Cloud
+- Migration transparente des mots de passe SHA-256 historiques vers PBKDF2-HMAC-SHA256 avec sel aléatoire de 16 octets et 310 000 itérations lors de la première connexion.
+- Les nouveaux mots de passe sont désormais enregistrés directement avec PBKDF2 salé.
+- Vérification du mot de passe actuel compatible avec les comptes historiques et migrés.
+- Résolution canonique des chemins d’uploads ; rejet des traversées de répertoires et des liens symboliques qui sortent du stockage.
+- Contrôles HTTP ajoutés pour les chemins malveillants et les liens symboliques.
+
+
+V25.0.3 — autorisations Cloud côté serveur
+- Contrôle serveur de l'accès aux espaces personnels : un professeur ne peut accéder qu'à son propre espace, sauf partage explicite.
+- Contrôle des espaces classe/groupe selon les classes affectées au profil professeur.
+- Application des droits de partage lecture/modification, y compris sur les dossiers parents.
+- Vérification des opérations Cloud de création, téléversement, renommage, déplacement, copie et suppression.
+- Les suppressions/renommages physiques exigent désormais un élément Cloud connu dans les métadonnées ; impossible de viser directement une racine de stockage.
+- Les sauvegardes professeur ne peuvent plus forger un propriétaire, déplacer un élément dans l'espace d'un autre compte ou modifier les droits d'un fichier partagé sans en être propriétaire.
+- Ajout de tests unitaires sur l'isolation personnelle, les classes, les partages lecture/édition et les tentatives de falsification.
+
+
+V25.0.4 — cloisonnement des données scolaires par professeur
+- L'API /api/data renvoie désormais une projection limitée aux classes affectées au professeur connecté.
+- Les élèves, cours, évaluations, appels, bulletins, pièces jointes et rendus hors périmètre ne sont plus transmis à cette session.
+- Les notes et lignes d'appel imbriquées sont filtrées individuellement par élève autorisé.
+- La sauvegarde professeur fusionne uniquement les collections et enregistrements de son périmètre ; les classes, comptes, profils des collègues, matières, paramètres globaux et journaux de direction sont conservés côté serveur.
+- Les suppressions dans la projection ne suppriment plus les données des autres classes.
+- Les créations avec une classe non attribuée et les références à des élèves/cours hors périmètre sont ignorées ou refusées.
+- Ajout de tests de projection, fusion sans écrasement et injection de références inter-classes.
+
+
+V25.0.5 — Cloisonnement messagerie et pièces jointes
+- Projection serveur de mailboxV2 : un professeur ne reçoit que les messages où il est expéditeur, destinataire ou participant explicitement partagé.
+- Brouillons, dossiers et états de lecture/favoris limités à la boîte du professeur connecté.
+- Fusion des sauvegardes messagerie : messages envoyés immuables, ajout réservé à l'identité connectée, destinataires élèves limités aux classes affectées et conservation des données des collègues.
+- Téléchargement des pièces jointes non-Cloud conditionné à leur référence dans les données visibles ou dans la messagerie autorisée.
+- Suppression générique limitée aux fichiers référencés et autorisés ; les suppressions Cloud restent sur leur API dédiée.
+- Téléversement dans les dossiers de messagerie d'un autre professeur refusé ; accès en écriture à la racine Cloud contrôlé selon le propriétaire.
+
+
+V25.0.7 — Protection contre les sauvegardes concurrentes
+- Chaque lecture de /api/data renvoie une empreinte SHA-256 de la version exacte de la base.
+- Chaque sauvegarde /api/save doit fournir cette version via If-Match.
+- Une sauvegarde issue d'une version dépassée est refusée avec HTTP 409 (REVISION_CONFLICT), sans écraser les données plus récentes.
+- Une sauvegarde sans jeton de version est refusée avec HTTP 428.
+- Le client conserve la révision reçue et la transmet lors des sauvegardes ordinaires et des restaurations.
+- En cas de conflit, le message indique de recharger les données avant de continuer.
+- La révision est calculée sous verrou, à la lecture comme après écriture, pour éviter une incohérence entre le contenu et son jeton.
+
+V25.0.7 — restauration complète et contrôlée des sauvegardes
+- Ajout d'une API de restauration ZIP complète, réservée au compte direction.
+- Restauration coordonnée de data/maclasse.json et de data/uploads, avec sauvegarde préalable de l'état courant.
+- Extraction dans un répertoire temporaire, validation du JSON et remplacement contrôlé des fichiers.
+- Rejet des archives ZIP invalides, chemins absolus/relatifs dangereux, entrées dupliquées, liens symboliques, fichiers chiffrés, archives trop volumineuses ou taux de compression anormaux.
+- Interface de restauration ZIP visible uniquement à la direction ; l'import JSON existant reste disponible.
+- Tests HTTP : restauration refusée au professeur, acceptée à la direction, restauration des fichiers jointe et rejet d'archive malveillante.

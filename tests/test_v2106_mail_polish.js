@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert'),path=require('path');
+const src=fs.readFileSync(path.join(__dirname,'..','_all.js'),'utf8');
+assert(src.includes('window.filteredConversations=function'), 'compatibilité des widgets élèves avec le nouveau modèle mail');
+assert(src.includes('window.lastConversationMessage=function'), 'aperçu des messages récents compatible');
+assert(src.includes("richToolbar('v2104BodyEditor')"), 'réutilisation de la barre d’édition riche MaClasse');
+assert(src.includes('contenteditable="true" role="textbox" aria-multiline="true"'), 'zone de rédaction riche accessible');
+assert(src.includes('window.mailV2104SyncBody=function'), 'synchronisation du contenu riche avec le brouillon et l’envoi');
+assert(src.includes('function mailSafeHtml(value)'), 'rendu HTML nettoyé du contenu des messages');
+assert(src.includes('cloudFileVisual({type:\'file\''), 'icônes de pièces jointes réutilisant les visuels du Cloud');
+assert(src.includes('window.mailV2104PreviewAttachment=function'), 'prévisualisation des pièces jointes prises en charge');
+assert(src.includes("type==='application/pdf'||ext==='pdf'"), 'aperçu PDF');
+assert(src.includes("type.startsWith('image/')"), 'aperçu image');
+console.log('OK — V21.06 : erreur filteredConversations corrigée, éditeur riche réutilisé, icônes Cloud et aperçus de pièces jointes.');

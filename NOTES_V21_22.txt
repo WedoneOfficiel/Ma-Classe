@@ -1,0 +1,8 @@
+MaClasse V21.22 — Liquid UI + EDT fit
+
+- EDT semaine : 7 jours en grille fluide sans largeur minimale sur desktop.
+- Rail horaire compact et densité adaptée aux écrans courants.
+- Sur très petites largeurs, défilement horizontal conservé pour préserver la lisibilité.
+- MaClasse 27 renforcé : surfaces liquides, blur, highlights, transparence et profondeur sur navigation, topbar, cartes, contrôles, recherche et modales.
+- Messagerie et Bulletins conservés comme identités spécialisées.
+- Dark mode harmonisé avec le matériau liquide.

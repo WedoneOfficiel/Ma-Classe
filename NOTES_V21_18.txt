@@ -1,0 +1,8 @@
+MaClasse V21.18 — Passe UI/UX globale
+
+- Standardisation globale des contrôles visibles : sélecteurs MaClasse, champs, zones de texte, boutons et états de focus.
+- Les valeurs des <select> natifs restent dans le DOM pour préserver FormData et les handlers existants ; leur rendu est remplacé par le composant MaClasse.
+- Remplacement de la confirmation native du dépôt définitif d’un travail par une modale MaClasse.
+- Suppression visuelle des spinners natifs des champs numériques.
+- Base CSS UI centralisée : focus clavier, états hover/disabled, file inputs, responsive.
+- Passe destinée à être poursuivie écran par écran pour corriger les incohérences CSS restantes sans changer les données métier.

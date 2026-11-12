@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert');
+const root=__dirname+'/..';
+const html=fs.readFileSync(root+'/index.html','utf8');
+const js=fs.readFileSync(root+'/_all.js','utf8');
+assert(html.includes('MaClasse V21.22 — MaClasse 27 Liquid UI'),'visible version is V21.22');
+assert(html.includes('V21.22 — MaClasse 27 Design System'),'design system marker missing');
+assert(html.includes('--mc-surface'),'MaClasse 27 surface tokens missing');
+assert(html.includes('background:rgba(246,246,248,.68)'),'modern neutral sidebar missing');
+assert(html.includes('.top{contain:none!important;overflow:visible!important}'),'search stacking fix missing');
+assert(html.includes('.searchResults{position:absolute;max-height:min(62vh,520px);overflow:auto}'),'search results layering/scroll guard missing');
+assert(js.includes("if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();focusGlobalSearch()}"),'Cmd/Ctrl-K must focus global search');
+assert(!js.includes("if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!focusGlobalSearch())openCommand()"),'old Cmd-K command palette fallback remains');
+console.log('OK — V21.22 MaClasse 27 Liquid design system and global search behaviour.');

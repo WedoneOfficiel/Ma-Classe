@@ -1,0 +1,8 @@
+MaClasse V21.11.3 — correctifs ciblés
+
+- Déclare activeConversationId pour éviter l’erreur de référence au clic dans la navigation enseignant.
+- Espace Cloud : vignettes adaptatives, noms de fichiers visibles en mode Icônes, icône de dossier adaptée aux couleurs du thème plutôt qu’un SVG codé en dur.
+- Espace élève : n’affiche que les bulletins officiellement publiés. Les bulletins publiés sont accessibles dans Mes résultats et Vie scolaire.
+- Bulletin : choix entre prévisualiser le PDF dans l’application et télécharger le PDF.
+
+Le message « No Listener: tabs:outgoing.message.ready » provient généralement d’une extension du navigateur et n’est pas la cause de l’erreur JavaScript activeConversationId.

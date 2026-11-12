@@ -1,0 +1,14 @@
+const fs=require('fs'),assert=require('assert');
+const html=fs.readFileSync('index.html','utf8');
+const js=fs.readFileSync('_all.js','utf8');
+assert(html.includes('id="v218-ui"'),'V21.18 UI foundation missing');
+assert(html.includes('id="v218-ui-runtime"'),'V21.18 UI runtime missing');
+assert(html.includes('mc-select-trigger'),'custom select trigger missing');
+assert(html.includes('mc-autocomplete'),'custom autocomplete missing');
+assert(js.includes('mcConfirm('),'native confirmation replacement missing');
+assert(js.includes('mcPrompt('),'native prompt replacement missing');
+assert(!/\bconfirm\s*\(/.test(js),'native confirm remains');
+assert(!/\bprompt\s*\(/.test(js),'native prompt remains');
+assert(html.includes('input[type="checkbox"]:checked::after'),'custom checkbox styling missing');
+assert(html.includes('input[type="number"]::-webkit-inner-spin-button'),'number spinner reset missing');
+console.log('OK — V21.18 UI foundation: controls custom, autocomplete custom, native confirm/prompt removed, focus/checkbox/number states covered.');

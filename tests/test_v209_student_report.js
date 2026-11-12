@@ -1,0 +1,11 @@
+const fs=require('fs'),assert=require('assert'),path=require('path');
+const js=fs.readFileSync(path.join(__dirname,'..','_all.js'),'utf8'),html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+for(const x of ['buildStudentReport','studentReportItem','studentReportAverage','studentReportDetail','setStudentResultsTerm','studentReportFormatAverage'])assert(js.includes(x),x);
+assert.strictEqual((js.match(/function studentResults\(/g)||[]).length,1,'Student Results doit avoir un seul renderer');
+assert.strictEqual(js.includes('function v209PeriodEvaluations'),false,'ancien moteur V209 encore présent');
+assert.strictEqual(js.includes('function v209Average'),false,'ancien calcul V209 encore présent');
+assert.strictEqual(js.includes('window.v209StudentTermId'),false,'ancien état global V209 encore présent');
+assert.match(js,/buildStudentReport\(db,s\.id,'',today\)/);
+assert.match(js,/studentReportFormatAverage\(report\.overall\)/);
+assert.match(html,/MaClasse V21\.21/);
+console.log('OK — Student Results V21.17 reconstruit sur un moteur unique, sans ancien état V209.');
