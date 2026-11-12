@@ -45,12 +45,12 @@ Les éléments suivants ont été annoncés comme réalisés dans les itération
 
 ## Correctifs appliqués après l'import
 
-- Projection des données professeur passée en liste blanche : seuls les référentiels explicitement partagés sont transmis ; les futures clés restent privées par défaut.
-- Test de non-régression ajouté pour empêcher la fuite de collections inconnues et de configurations privées.
+- Projection des données professeur passée en liste blanche : seuls les référentiels explicitement partagés sont transmis ; les futures clés restent privées par défaut. Les paramètres sont eux-mêmes filtrés champ par champ.
+- Tests de non-régression ajoutés pour empêcher la fuite de collections inconnues et de champs privés dans les paramètres.
 - `.gitignore` ajouté pour exclure la base locale, les téléversements, les sauvegardes et l'environnement Python ; la base provisoire suivie par Git a été supprimée du dépôt.
 - Workflow GitHub Actions ajouté dans `.github/workflows/tests.yml` pour exécuter les tests JavaScript et Python à chaque push/PR. Aucun résultat d'exécution n'a encore été observé dans cette session : les tests ne sont donc pas déclarés validés ici.
 
-Commits de cette reprise : `fe0b449` (allowlist serveur), `f13eeda` (test), `5e4b301` (CI), `71fab97` (.gitignore), `5c84254` (retrait de la base locale).
+Commits de cette reprise : `fe0b449` et `ffaf34b` (allowlist serveur et filtrage des paramètres), `f13eeda` et `f379a8c` (tests), `5e4b301` (CI), `71fab97` (.gitignore), `5c84254` (retrait de la base locale).
 
 ## Reste à faire — priorités
 
