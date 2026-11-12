@@ -152,7 +152,7 @@ def run():
         status,student_save_headers,_=call(base,'/api/save','POST',student_view,student_cookie,extra_headers={'If-Match':student_read_headers.get('X-MaClasse-Revision')})
         assert status==200
         persisted_student=json.loads((app/'data'/'maclasse.json').read_text())
-        assert next(x for x in persisted_student['students'] if x['id']=='s1')['first']=='Alice'
+        assert next(x for x in persisted_student['students'] if x['id']=='s1')['first']=='Alicia'
         saved_submission=next(x for x in persisted_student['submissions'] if x['id']=='sub-s1')
         assert saved_submission['status']=='submitted' and saved_submission['studentId']=='s1'
         assert 'correctionComment' not in saved_submission and not saved_submission.get('corrected')
