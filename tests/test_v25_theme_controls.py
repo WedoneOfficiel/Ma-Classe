@@ -18,6 +18,11 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn("localStorage.setItem(MC_THEME_KEY,value)", js)
         self.assertIn("applyAppearanceTheme()", js)
 
+    def test_theme_application_sets_document_theme_and_native_control_scheme(self):
+        js = (ROOT / "_all.js").read_text(encoding="utf-8")
+        self.assertIn("root.dataset.mcTheme=value", js)
+        self.assertIn("root.style.colorScheme=value==='system'?'light dark':value", js)
+
     def test_explicit_theme_styles_exist(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"]', html)
