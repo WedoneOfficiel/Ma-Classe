@@ -72,8 +72,8 @@ def run():
             'evaluations':[{'id':'e1','classId':'c1','grades':[{'studentId':'s1','value':15},{'studentId':'s2','value':2}]},{'id':'e2','classId':'c2','grades':[{'studentId':'s2','value':18}]}],
             'attendance':[], 'bulletins':[], 'attachments':[], 'submissions':[], 'schedule':[], 'conversations':[], 'cloudItems':[], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test'}
         }
-        # Réutiliser le compte déjà migré dans le fichier après authentification.
-        seeded['users']=[]
+        # Conserver les comptes authentifiés pendant le test de cloisonnement.
+        seeded['users']=[admin_record,teacher_record]
         (app/'data'/'maclasse.json').write_text(json.dumps(seeded))
         status,read_headers,raw=call(base,'/api/data',cookie=teacher)
         assert status==200
@@ -112,7 +112,10 @@ def run():
         restored=json.loads((app/'data'/'maclasse.json').read_text())
         assert restored['classes'][0]['id']=='restored'
         assert (app/'data'/'uploads'/'restored.txt').read_text()=='fichier restauré'
-        print('OK — authentification HTTP, projection professeur, conflits, rôles et restauration ZIP admin.')
+        # Une restauration qui supprime les comptes doit révoquer les sessions déjà ouvertes.
+        assert call(base,'/api/data',cookie=teacher)[0]==401
+        assert call(base,'/api/data',cookie=admin)[0]==401
+        print('OK — authentification HTTP, révocation des sessions, projection professeur, conflits, rôles et restauration ZIP admin.')
     finally:
         process.terminate(); process.wait(timeout=5); shutil.rmtree(temp,ignore_errors=True)
 
