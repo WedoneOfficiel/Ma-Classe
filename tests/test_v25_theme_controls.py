@@ -123,6 +123,11 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="system"] button:focus-visible', html)
         self.assertIn('@media(prefers-reduced-motion:reduce)', html)
 
+    def test_reduced_transparency_keeps_toast_text_contrast(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('@media(prefers-reduced-transparency:reduce)', html)
+        self.assertIn('.toast{background:#242426!important;color:#fff!important', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
