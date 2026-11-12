@@ -30,6 +30,13 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(view['users'],[self.data['users'][0]])
         self.assertEqual(view['auditLog'],[])
 
+    def test_server_refuses_non_loopback_bind_addresses(self):
+        for host in ('0.0.0.0','192.168.1.20','::'):
+            with self.assertRaises(ValueError):
+                server._assert_loopback_host(host)
+        for host in ('127.0.0.1','localhost','::1'):
+            server._assert_loopback_host(host)
+
     def test_teacher_projection_never_exposes_password_material(self):
         data=copy.deepcopy(self.data)
         data['users'][0].update({'passwordHash':'pbkdf2_sha256$310000$salt$digest','password':'legacy-secret'})
