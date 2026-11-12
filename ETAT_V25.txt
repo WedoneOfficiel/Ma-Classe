@@ -199,3 +199,12 @@ PRÉSENCES ET TRAVAUX RENDUS — CONTRÔLES INTERCLASSE
 - Pour évaluations, présences et travaux rendus, le contrôle de périmètre d'un enregistrement existant se base sur sa classe déjà stockée, pas sur une classe falsifiée dans la requête.
 - Tests ajoutés contre l'injection d'élèves interclasse.
 - Suite complète JS + Python réussie sur 3fe990d : run 43308354602.
+
+
+FICHIERS TÉLÉVERSÉS — CSP ET PROTECTION XSS
+------------------------------------------
+- Les réponses /data/uploads/ incluent désormais une CSP dédiée : sandbox, default-src 'none', images locales/data et styles inline autorisés.
+- Un document HTML importé ne peut donc pas exécuter de script dans l'origine de l'application.
+- Test HTTP de non-régression sur un fichier HTML téléversé.
+- Les travaux rendus existants conservent leur élève et leur séance d'origine ; les réassociations falsifiées sont rejetées.
+- CI complète JS + Python réussie sur 91db610 : run 43308611502.
