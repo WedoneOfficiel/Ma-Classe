@@ -111,6 +111,12 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('--mc-focus-ring:0 0 0 3px rgba(10,132,255,.24)', html)
         self.assertIn('--mc-shadow:0 1px 2px rgba(0,0,0,.24)', html)
 
+    def test_dark_theme_focus_visibility_and_reduced_motion_accessibility(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] button:focus-visible', html)
+        self.assertIn('html[data-mc-theme="system"] button:focus-visible', html)
+        self.assertIn('@media(prefers-reduced-motion:reduce)', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
