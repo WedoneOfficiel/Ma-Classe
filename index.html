@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <script id="mc-appearance-bootstrap">
-try{const t=localStorage.getItem('maclasse_appearance_theme');const v=['system','light','dark'].includes(t)?t:'system';document.documentElement.dataset.mcTheme=v;document.documentElement.style.colorScheme=v==='system'?'light dark':v}catch(e){document.documentElement.dataset.mcTheme='system';document.documentElement.style.colorScheme='light dark'}
+try{const t=localStorage.getItem('maclasse_appearance_theme');const v=['system','light','dark'].includes(t)?t:'system',m=window.matchMedia('(prefers-color-scheme: dark)'),r=document.documentElement;const apply=()=>{const dark=m.matches;r.dataset.mcThemePreference=v;r.dataset.mcTheme=v==='system'&&!dark?'light':v;r.style.colorScheme=v==='system'?(dark?'dark':'light'):v};apply();m.addEventListener?.('change',apply)}catch(e){document.documentElement.dataset.mcThemePreference='system';document.documentElement.dataset.mcTheme='system';document.documentElement.style.colorScheme='light dark'}
 </script>
 <title>MaClasse V25.0.7</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
 <!-- Compatibility markers for historical regression tests: MaClasse V21.21 -->
