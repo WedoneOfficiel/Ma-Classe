@@ -19,7 +19,7 @@ class StudentScopeTests(unittest.TestCase):
         self.data={
             'users':[{'id':'u1','role':'student','studentId':'s1','passwordHash':'secret'}],
             'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
-            'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c1','first':'Bob'},{'id':'s3','classId':'c2','first':'Chloé'}],
+            'students':[{'id':'s1','classId':'c1','first':'Alice','notes':'note interne confidentielle'},{'id':'s2','classId':'c1','first':'Bob'},{'id':'s3','classId':'c2','first':'Chloé'}],
             'schedule':[{'id':'slot1','classId':'c1','teacherId':'t1'},{'id':'slot2','classId':'c2','teacherId':'t2'}],
             'teachers':[{'id':'t1','first':'Prof A'},{'id':'t2','first':'Prof B'}],
             'lessons':[{'id':'l1','classId':'c1','homework':{'requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'requiresSubmission':True}}],
@@ -40,6 +40,7 @@ class StudentScopeTests(unittest.TestCase):
     def test_projection_contains_only_own_student_data_and_published_results(self):
         view=server._student_visible_data(self.data,self.user)
         self.assertEqual([x['id'] for x in view['students']],['s1'])
+        self.assertNotIn('notes',view['students'][0])
         self.assertEqual([x['id'] for x in view['classes']],['c1'])
         self.assertEqual([x['id'] for x in view['lessons']],['l1'])
         self.assertEqual([x['id'] for x in view['evaluations']],['e1'])
