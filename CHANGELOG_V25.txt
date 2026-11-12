@@ -102,3 +102,10 @@ Correctif de durcissement post-import — 12/11/2026
 - Correction : GET /api/data ne renvoie plus passwordHash ni password dans le profil du professeur connecté.
 - Test de non-régression ajouté pour les deux champs.
 - Commits : fbaf4ff, f6f994b.
+
+
+12/11/2026 — Sécurité des sessions
+- Les sessions authentifiées sont maintenant rapprochées du compte actif en base à chaque requête.
+- La suppression/désactivation d'un compte ou le retrait de son rôle autorisé révoque immédiatement sa session au lieu d'attendre 12 heures.
+- Ajout d'un test HTTP vérifiant la révocation des sessions après restauration d'une base sans comptes.
+- Commits : ed26a79, 7638d4f. Résultat CI à confirmer.
