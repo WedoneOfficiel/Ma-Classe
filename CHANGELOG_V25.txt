@@ -186,3 +186,8 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - Test de non-régression contre les valeurs falsifiées côté client.
 - CI complète réussie sur e1af32a (run 43309419995).
 - Numéro applicatif inchangé : V25.0.7.
+
+
+12/11/2026 — Révocation des sessions après changement de mot de passe
+- Invalidation des autres sessions du compte après rotation du mot de passe ; conservation de la session qui a effectué l'opération.
+- Test HTTP multi-session ; CI complète réussie sur 3001ed2 (run 43309742779).
