@@ -275,3 +275,11 @@ DÉMARRAGE — BLOCAGE DES ADRESSES RÉSEAU
 - Le serveur refuse maintenant de démarrer si MACLASSE_HOST n'est pas 127.0.0.1, localhost ou ::1.
 - La tentative de bind sur 0.0.0.0, une IP LAN ou :: se termine par une erreur de sécurité (code de sortie 2), au lieu de lancer une écoute réseau avec un simple avertissement.
 - Test dédié ajouté ; CI en cours de validation sur commits 75207b5 et f1fa7d0.
+
+
+VALIDATION CI — INSTALLATION FEDORA ET DÉMARRAGE LOCAL
+-----------------------------------------------------
+- Syntaxe bash des scripts Fedora contrôlée dans le workflow.
+- Tests complets JavaScript + Python réussis après le verrouillage localhost : run 43310801471 (commit f1fa7d0).
+- Workflow complet incluant les scripts Fedora réussi : run 43310869800 (commit ebb910a).
+- Documentation complète validée : run 43310879305 (commit 8ccbba9).
