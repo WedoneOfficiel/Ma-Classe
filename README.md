@@ -215,3 +215,10 @@ Les contrôles serveur des évaluations, présences et travaux rendus ont été 
 - Si un travail rendu existant est modifié avec un élève ou une séance incohérents, l'enregistrement précédent valide est conservé.
 
 Tests de non-régression ajoutés pour l'injection d'élève dans une présence et dans un travail rendu. Suite complète JavaScript + Python réussie sur `3fe990d` : [GitHub Actions #43308354602](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308354602).
+
+
+## Protection active des fichiers téléversés
+
+Les fichiers servis depuis `/data/uploads/` reçoivent maintenant une politique CSP dédiée avec `sandbox` et `default-src 'none'`. Cela empêche un fichier HTML importé ou téléversé d'exécuter du JavaScript actif dans l'origine de MaClasse. Le test HTTP téléverse/sert un fichier HTML contenant un script et vérifie les en-têtes de protection.
+
+Le contrôle des travaux rendus a également été renforcé : un rendu existant conserve son élève et sa séance d'origine, empêchant une requête falsifiée de le réassocier à un autre élève ou une autre classe. Suite complète JS + Python réussie sur `91db610` : [GitHub Actions #43308611502](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308611502).
