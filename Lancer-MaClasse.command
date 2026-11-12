@@ -23,14 +23,50 @@ if ! .venv/bin/python -c "import reportlab" >/dev/null 2>&1; then
   exit 1
 fi
 
+if /usr/bin/curl --silent --fail "$URL/api/auth/session" >/dev/null 2>&1; then
+  echo "Un service répond déjà sur le port 8765."
+  echo "Vérifie qu'il s'agit bien de MaClasse avant de continuer."
+  open -a "Firefox" "$URL" >/dev/null 2>&1 || open "$URL" >/dev/null 2>&1 || true
+  read -r -p "Appuie sur Entrée pour fermer cette fenêtre… " _ || true
+  exit 0
+fi
+
 echo "MaClasse V25.0.7 démarre sur ce Mac."
 echo "Adresse locale : $URL"
 echo "Le serveur n'est pas accessible depuis le Wi-Fi ou Internet."
 echo "Laisse cette fenêtre ouverte. Pour arrêter MaClasse : Ctrl+C."
 echo
 
+.venv/bin/python server.py &
+SERVER_PID=$!
+
+cleanup() {
+  kill "$SERVER_PID" >/dev/null 2>&1 || true
+  wait "$SERVER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+READY=0
+for _ in {1..20}; do
+  if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+    wait "$SERVER_PID" || true
+    echo "Le serveur n'a pas pu démarrer. Vérifie que le port 8765 est libre."
+    exit 1
+  fi
+  if /usr/bin/curl --silent --fail "$URL/api/auth/session" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 0.5
+done
+
+if [[ "$READY" -ne 1 ]]; then
+  echo "Le serveur n'a pas répondu après 10 secondes."
+  exit 1
+fi
+
 if ! open -a "Firefox" "$URL" >/dev/null 2>&1; then
   open "$URL" >/dev/null 2>&1 || true
 fi
 
-exec .venv/bin/python server.py
+wait "$SERVER_PID"
