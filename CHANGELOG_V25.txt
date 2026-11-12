@@ -83,3 +83,12 @@ V25.0.7 — restauration complète et contrôlée des sauvegardes
 - Rejet des archives ZIP invalides, chemins absolus/relatifs dangereux, entrées dupliquées, liens symboliques, fichiers chiffrés, archives trop volumineuses ou taux de compression anormaux.
 - Interface de restauration ZIP visible uniquement à la direction ; l'import JSON existant reste disponible.
 - Tests HTTP : restauration refusée au professeur, acceptée à la direction, restauration des fichiers jointe et rejet d'archive malveillante.
+
+
+Correctif de durcissement post-import — 12/11/2026
+- Projection des données professeur convertie en liste blanche des référentiels partagés ; toute nouvelle clé top-level reste privée par défaut.
+- Ajout d'un test de régression contre la fuite de collections inconnues/configurations privées.
+- Ajout d'un workflow GitHub Actions pour les suites JavaScript et Python ; exécution encore à confirmer.
+- Exclusion de la base locale, des uploads, des sauvegardes et de l'environnement Python via .gitignore.
+- Retrait de data/maclasse.json du suivi Git public ; le serveur la recrée au premier démarrage.
+- Aucun test de cette livraison n'est déclaré exécuté dans la session.
