@@ -202,6 +202,13 @@ def _teacher_class_ids(data,user):
     return {str(x) for x in (teacher or {}).get('classIds',[]) or []}
 
 
+def _teacher_subject_keys(data,user):
+    tid=str(user.get('teacherId') or '')
+    teacher=next((t for t in data.get('teachers',[]) or [] if isinstance(t,dict) and str(t.get('id'))==tid),None)
+    subjects=(teacher or {}).get('subjects',[]) or []
+    return {str(x).strip().casefold() for x in subjects if str(x).strip()}
+
+
 # Isolation des données scolaires : une session professeur ne reçoit et ne remplace
 # que les enregistrements des classes qui lui sont affectées.
 def _teacher_record_class_id(record, data, collection=''):
@@ -444,13 +451,27 @@ def _merge_teacher_data(current,incoming,user):
                 if previous and previous.get('published') is True:
                     # Le bulletin publié est déjà conservé dans result, même si le client le supprime.
                     continue
-                elif not is_principal:
-                    # Les enseignants de matière peuvent compléter leurs appréciations,
-                    # mais seul le PP peut valider, publier ou modifier l'appréciation générale.
-                    for field in ('validated','validatedAt','published','publishedAt','overall','overallUpdatedAt'):
-                        if previous and field in previous: item[field]=previous[field]
-                        elif field in ('validated','published'): item[field]=False
-                        else: item.pop(field,None)
+                else:
+                    # Les appréciations de matière sont limitées aux matières affectées au professeur.
+                    allowed_subjects=_teacher_subject_keys(current,user)
+                    old_subject_data=previous.get('subjectData',{}) if previous and isinstance(previous.get('subjectData'),dict) else {}
+                    new_subject_data=item.get('subjectData',{}) if isinstance(item.get('subjectData'),dict) else {}
+                    filtered_subject_data={}
+                    for subject,value in new_subject_data.items():
+                        if str(subject).strip().casefold() in allowed_subjects:
+                            filtered_subject_data[subject]=value
+                        elif subject in old_subject_data:
+                            filtered_subject_data[subject]=old_subject_data[subject]
+                    for subject,value in old_subject_data.items():
+                        if str(subject).strip().casefold() not in allowed_subjects:
+                            filtered_subject_data.setdefault(subject,value)
+                    item['subjectData']=filtered_subject_data
+                    if not is_principal:
+                        # Seul le PP peut valider, publier ou modifier l'appréciation générale.
+                        for field in ('validated','validatedAt','published','publishedAt','overall','overallUpdatedAt'):
+                            if previous and field in previous: item[field]=previous[field]
+                            elif field in ('validated','published'): item[field]=False
+                            else: item.pop(field,None)
             safe_new.append(item)
         result.extend(safe_new)
         merged[key]=result
