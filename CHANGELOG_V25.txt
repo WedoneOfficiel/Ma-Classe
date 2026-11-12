@@ -209,3 +209,9 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - Ajout d'un installateur, d'un lanceur et d'un guide Fedora dédiés.
 - Ajout du contrôle de syntaxe des deux scripts à la CI.
 - L'installation et les performances sur le PC physique restent à vérifier.
+
+
+12/11/2026 — Blocage du bind réseau prématuré
+- Le serveur refuse désormais tout démarrage sur une adresse non-loopback ; l'ancienne configuration se contentait d'afficher un avertissement et démarrait malgré tout.
+- Test de régression sur 0.0.0.0, IP LAN, :: et les trois adresses loopback autorisées.
+- CI en cours de validation sur 75207b5 et f1fa7d0.
