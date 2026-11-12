@@ -7,10 +7,10 @@ ROOT = Path(__file__).resolve().parents[1]
 class ThemeControlsTests(unittest.TestCase):
     def test_three_theme_choices_are_available(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
-        self.assertIn('value="system"', js)
-        self.assertIn('value="light"', js)
-        self.assertIn('value="dark"', js)
-        self.assertIn('id="appearanceTheme"', js)
+        self.assertIn("setAppearanceTheme('system')", js)
+        self.assertIn("setAppearanceTheme('light')", js)
+        self.assertIn("setAppearanceTheme('dark')", js)
+        self.assertIn('class="themeChoices"', js)
 
     def test_theme_preference_is_applied_and_persisted_locally(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
