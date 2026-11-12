@@ -1,0 +1,38 @@
+"""Regression checks for the V25.2 layout polish."""
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+HTML = (ROOT / "index.html").read_text(encoding="utf-8")
+JS = (ROOT / "_all.js").read_text(encoding="utf-8")
+
+
+class LayoutPolishTests(unittest.TestCase):
+    def test_home_focus_card_keeps_blue_gradient(self):
+        self.assertIn(".focusCard{", HTML)
+        self.assertIn("background-image:linear-gradient(128deg,#075db8", HTML)
+        self.assertIn(".focusCard .metric b{color:#fff!important}", HTML)
+
+    def test_settings_cards_have_intentional_placement(self):
+        self.assertIn(".settingsGrid>.settingsCard:nth-child(1){grid-column:1;grid-row:1}", HTML)
+        self.assertIn(".settingsGrid>.settingsCard:nth-child(2){grid-column:2;grid-row:1 / span 2}", HTML)
+        self.assertIn(".settingsGrid>.settingsCard:nth-child(3){grid-column:1;grid-row:2}", HTML)
+
+    def test_activity_and_bulletin_metrics_have_spacing_hooks(self):
+        self.assertIn("activityMainGrid", JS)
+        self.assertIn("bulletinMetrics", JS)
+        self.assertIn(".activityMainGrid{margin-top:18px;gap:18px", HTML)
+        self.assertIn(".bulletinMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px", HTML)
+
+    def test_schedule_uses_available_width(self):
+        self.assertIn(".scheduleGrid{width:100%;min-width:0;grid-template-columns:64px minmax(0,1fr)", HTML)
+        self.assertIn(".scheduleDays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));width:100%;min-width:0}", HTML)
+
+    def test_module_headers_share_one_hierarchy(self):
+        self.assertIn(".pageContext>.eyebrow{color:var(--mc-blue,var(--blue))!important", HTML)
+        self.assertIn(".pageTitleRow{display:flex;flex-direction:column", HTML)
+        self.assertIn(".pageTitleRow h1{font-size:22px!important", HTML)
+
+
+if __name__ == "__main__":
+    unittest.main()
