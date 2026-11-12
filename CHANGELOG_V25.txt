@@ -252,4 +252,4 @@ Validation CI complémentaire — 12/11/2026
 - Ajout des comptes élèves individuels liés à une fiche élève, authentification serveur et changement obligatoire du mot de passe provisoire.
 - Ajout d'une projection serveur limitée à l'élève connecté et de contrôles pour les rendus personnels et leurs fichiers ; aucune modification des notes, de la fiche ou des corrections n'est acceptée depuis un compte élève.
 - Messagerie et Cloud élève restent désactivés en attendant un audit de permissions dédié.
-- Tests HTTP et unitaires ajoutés ; résultat CI en attente de confirmation.
+- Tests HTTP et unitaires ajoutés ; CI Ubuntu + macOS Apple Silicon réussie (run #43318282845).
