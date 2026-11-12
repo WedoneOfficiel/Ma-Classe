@@ -1541,6 +1541,25 @@ html[data-mc-theme="dark"]{
  --ui-control-selected:rgba(10,132,255,.22)
 }
 
+
+/* V25.1 — accessibilité clavier et respect des préférences de mouvement */
+html[data-mc-theme="dark"] button:focus-visible,html[data-mc-theme="dark"] a:focus-visible,
+html[data-mc-theme="dark"] input:focus-visible,html[data-mc-theme="dark"] select:focus-visible,
+html[data-mc-theme="dark"] textarea:focus-visible,[data-mc-theme="dark"] [tabindex]:focus-visible{
+ outline:2px solid #69b1ff!important;outline-offset:3px!important;box-shadow:0 0 0 2px rgba(10,132,255,.16)
+}
+@media(prefers-color-scheme:dark){
+ html[data-mc-theme="system"] button:focus-visible,html[data-mc-theme="system"] a:focus-visible,
+ html[data-mc-theme="system"] input:focus-visible,html[data-mc-theme="system"] select:focus-visible,
+ html[data-mc-theme="system"] textarea:focus-visible,html[data-mc-theme="system"] [tabindex]:focus-visible{
+  outline:2px solid #69b1ff!important;outline-offset:3px!important;box-shadow:0 0 0 2px rgba(10,132,255,.16)
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ html:focus-within{scroll-behavior:auto!important}
+ *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
 </style>
 
 
