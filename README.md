@@ -204,3 +204,14 @@ La fusion des sauvegardes professeur protège désormais aussi l'identité de cl
 
 
 Validation du contrôle des évaluations : le premier scénario de test remplaçait toute la liste de notes et ne conservait donc pas la note légitime de l'élève de la classe initiale. Le scénario a été corrigé pour conserver cette note tout en ajoutant une note interclasse falsifiée. Le code filtre correctement l'injection ; la suite complète est verte sur `6075e94` : [GitHub Actions #43308092780](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308092780).
+
+
+### Renforcement supplémentaire — présence et travaux rendus
+
+Les contrôles serveur des évaluations, présences et travaux rendus ont été resserrés :
+- Les lignes de présence ne peuvent référencer que des élèves de la classe exacte de la feuille.
+- Un travail rendu doit être lié à une séance existante dans une classe attribuée au professeur, et l'élève doit appartenir à cette même classe.
+- Pour les évaluations, présences et travaux rendus existants, le périmètre est déterminé à partir de l'enregistrement déjà stocké, afin qu'une modification falsifiée de classe ne fasse pas sortir l'élément du contrôle de sécurité.
+- Si un travail rendu existant est modifié avec un élève ou une séance incohérents, l'enregistrement précédent valide est conservé.
+
+Tests de non-régression ajoutés pour l'injection d'élève dans une présence et dans un travail rendu. Suite complète JavaScript + Python réussie sur `3fe990d` : [GitHub Actions #43308354602](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308354602).
