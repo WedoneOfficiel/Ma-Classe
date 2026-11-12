@@ -154,3 +154,6 @@ Validation : test des autorisations PP corrigé pour isoler les données projet�
 - Filtrage des notes sur les élèves de la classe exacte de l'évaluation.
 - Tests contre le déplacement interclasse et l'injection de notes d'élèves d'une autre classe.
 - Commits : d4fe63f, 077d30f. CI à confirmer ; permissions par matière non modélisées.
+
+
+Validation CI des droits d'évaluation : scénario de test ajusté pour distinguer la note légitime de l'injection interclasse ; suite complète réussie sur 6075e94 (run 43308092780).
