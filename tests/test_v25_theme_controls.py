@@ -170,8 +170,8 @@ class ThemeControlsTests(unittest.TestCase):
     def test_all_css_custom_properties_used_by_the_interface_are_defined(self):
         import re
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        referenced = set(re.findall(r'var\\(\\s*(--[\\w-]+)', html))
-        declared = set(re.findall(r'(--[\\w-]+)\\s*:', html))
+        referenced = set(re.findall(r'var\(\s*(--[\w-]+)', html))
+        declared = set(re.findall(r'(--[\w-]+)\s*:', html))
         self.assertEqual(referenced - declared, set())
 
     def test_theme_layer_covers_reported_and_interactive_components(self):
