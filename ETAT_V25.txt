@@ -184,3 +184,9 @@ RENFORCEMENT BULLETINS — IDENTITÉ ET SUPPRESSION
 - Tests ajoutés pour le déplacement d'une évaluation et l'injection d'une note d'un élève d'une autre classe.
 - Commits : d4fe63f (serveur), 077d30f (tests). CI à confirmer.
 - Le schéma ne fournit pas actuellement de lien professeur/matière suffisamment explicite ; les permissions restent à ce stade basées sur les classes attribuées.
+
+
+VALIDATION CI — ÉVALUATIONS
+--------------------------
+- Le premier test de déplacement d'évaluation remplaçait à tort toutes les notes, y compris la note légitime. Le test a été corrigé pour conserver la note d'origine et ajouter une injection d'élève d'une autre classe.
+- Suite complète JavaScript + Python réussie sur 6075e94 : run 43308092780.
