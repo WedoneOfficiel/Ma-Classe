@@ -178,3 +178,11 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - Projection : notes et présences limitées aux élèves de la classe exacte ; bulletins, pièces jointes et rendus masqués si les liens élève/classe/séance sont incohérents. Commits 67451c8 et f9fc214.
 - Sauvegarde : identité élève/séance/classe d'un rendu existant préservée côté serveur. Commit 91db610 ; CI run 43308611502 réussi.
 - Limite : les matières sont affectées globalement au professeur, pas encore par classe.
+
+ 
+12/11/2026 — Export PDF des bulletins fiabilisé
+- Recalcul intégral côté serveur du contenu métier du PDF ; les valeurs de moyennes/statistiques/compétences/présences fournies par le navigateur ne sont plus utilisées.
+- Contrôles d'identité, de classe, de validation/publication et de périmètre professeur conservés avant génération.
+- Test de non-régression contre les valeurs falsifiées côté client.
+- CI complète réussie sur e1af32a (run 43309419995).
+- Numéro applicatif inchangé : V25.0.7.
