@@ -121,8 +121,7 @@ def run():
         assert status==200 and json.loads(created_account)['user']['mustChangePassword']
         created_record=json.loads((app/'data'/'maclasse.json').read_text())
         student_record=next(u for u in created_record['users'] if u.get('role')=='student')
-        assert student_record['passwordHash'].startswith('pbkdf2_sha256$')
-        status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
+        assert student_record['passwordHash'].startswith('pbkdf2_sha256,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
         assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']
         student_cookie=student_headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/data',cookie=student_cookie)[0]==428
@@ -191,12 +190,11 @@ def run():
 if __name__=='__main__': run()
 )
         assert call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice2','password':'eleveTestTresFort!'},admin)[0]==409
-        # Compte élève individuel : authentification, changement initial et projection strictement personnelle.
         status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
         assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']
         student_cookie=student_headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/data',cookie=student_cookie)[0]==428
-        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'eleve-test','newPassword':'unMotDePasseEleveTresSolide!'},student_cookie)[0]==200
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'eleveTestTresFort!','newPassword':'unMotDePasseEleveTresSolide!'},student_cookie)[0]==200
         status,student_read_headers,student_raw=call(base,'/api/data',cookie=student_cookie)
         assert status==200
         student_view=json.loads(student_raw)
