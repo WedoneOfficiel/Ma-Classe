@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat
+import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -195,6 +195,94 @@ def _load_database():
         return data if isinstance(data,dict) else {}
     except Exception:
         return {}
+
+
+def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_record, today=None):
+    """Build the printable bulletin from canonical server-side records only."""
+    today=today or datetime.date.today().isoformat()
+    class_id=str(bulletin.get('classId') or '')
+    student_id=str(bulletin.get('studentId') or '')
+    term=term_record if isinstance(term_record,dict) else None
+    def in_term(e, allow_missing_date=False):
+        date=str(e.get('date') or '')
+        if not term: return True
+        if not date and allow_missing_date: return True
+        if not date: return False
+        return (not term.get('start') or date>=str(term.get('start'))) and (not term.get('end') or date<=str(term.get('end')))
+    def grade_on20(e, grade):
+        if not isinstance(grade,dict) or grade.get('value') in ('',None): return None
+        try: raw=float(str(grade.get('value')).strip().replace(',','.'))
+        except (TypeError,ValueError): return None
+        try: maximum=float(e.get('maxScore') or 20)
+        except (TypeError,ValueError): maximum=20
+        if maximum<=0: maximum=20
+        if raw<0 or raw>maximum: return None
+        return raw/maximum*20
+    def coefficient(e):
+        try: value=float(e.get('coefficient') or 1)
+        except (TypeError,ValueError): value=1
+        return value if value>0 else 1
+    def average(items,sid):
+        weighted=weight=0.0
+        for e in items:
+            grade=next((g for g in e.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId'))==str(sid)),None)
+            value=grade_on20(e,grade)
+            if value is None: continue
+            factor=coefficient(e); weighted+=value*factor; weight+=factor
+        return weighted/weight if weight else '—'
+    evaluations=[e for e in database.get('evaluations',[]) or [] if isinstance(e,dict)]
+    students=[s for s in database.get('students',[]) or [] if isinstance(s,dict) and str(s.get('classId') or '')==class_id]
+    subjects=sorted({str(e.get('subject')).strip() for e in evaluations if str(e.get('classId') or '')==class_id and str(e.get('subject') or '').strip()} | {str(x.get('subject')).strip() for x in database.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and str(x.get('subject') or '').strip()},key=lambda x:x.casefold())
+    def subject_average(sid,subject):
+        st=next((x for x in students if str(x.get('id'))==str(sid)),{})
+        eligible=[]
+        for e in evaluations:
+            if str(e.get('classId') or '')!=class_id or str(e.get('subject') or '')!=subject: continue
+            if e.get('published') is False or (str(e.get('publishAt') or '') and str(e.get('publishAt'))>today): continue
+            if e.get('group') and str(e.get('group'))!=str(st.get('group') or ''): continue
+            if not in_term(e): continue
+            eligible.append(e)
+        return average(eligible,sid)
+    def stats(values):
+        nums=[]
+        for value in values:
+            try:
+                number=float(value)
+                if math.isfinite(number): nums.append(number)
+            except (TypeError,ValueError): pass
+        return {'avg':sum(nums)/len(nums) if nums else '—','min':min(nums) if nums else '—','max':max(nums) if nums else '—'}
+    rows=[]
+    subject_data=bulletin.get('subjectData',{}) if isinstance(bulletin.get('subjectData'),dict) else {}
+    for subject in subjects:
+        record=subject_data.get(subject,{})
+        rows.append({'subject':subject,'studentAverage':subject_average(student_id,subject),'classStats':stats([subject_average(st.get('id'),subject) for st in students]),'comment':record.get('comment','') if isinstance(record,dict) else ''})
+    overall_evaluations=[e for e in evaluations if in_term(e)]
+    overall_average=average(overall_evaluations,student_id)
+    overall_stats=stats([average(overall_evaluations,st.get('id')) for st in students])
+    competency_names=set(); competency_ratings={}
+    for e in evaluations:
+        if str(e.get('classId') or '')!=class_id or not in_term(e,allow_missing_date=True): continue
+        for name in e.get('competencies',[]) or []:
+            if not isinstance(name,str) or not name: continue
+            competency_names.add(name)
+            for grade in e.get('grades',[]) or []:
+                if not isinstance(grade,dict) or str(grade.get('studentId'))!=student_id: continue
+                try: level=float((grade.get('competencyRatings') or {}).get(name))
+                except (TypeError,ValueError): continue
+                if 1<=level<=4: competency_ratings.setdefault(name,[]).append((str(e.get('date') or ''),level))
+    labels={1:'Insuffisant',2:'Fragile',3:'Bien',4:'Très bien'}
+    competencies=[{'name':name,'level':labels.get(sorted(competency_ratings.get(name,[]),key=lambda x:x[0],reverse=True)[0][1],'—') if competency_ratings.get(name) else '—'} for name in sorted(competency_names,key=lambda x:x.casefold())]
+    absences=late=0
+    for sheet in database.get('attendance',[]) or []:
+        if not isinstance(sheet,dict): continue
+        date=str(sheet.get('date') or '')
+        if term and ((term.get('start') and date<str(term.get('start'))) or (term.get('end') and date>str(term.get('end')))): continue
+        for row in sheet.get('rows',[]) or []:
+            if not isinstance(row,dict) or str(row.get('studentId'))!=student_id: continue
+            if row.get('status')=='absent': absences+=1
+            elif row.get('status')=='retard': late+=1
+    return {'student':{'name':' '.join(str(student_record.get(k) or '').strip() for k in ('first','last')).strip()},'className':str(class_record.get('name') or '—'),'termName':str((term or {}).get('name') or 'Période'),'published':bulletin.get('published') is True,'publishedAt':str(bulletin.get('publishedAt') or ''),'overall':str(bulletin.get('overall') or ''),'average':overall_average,'overallStats':overall_stats,'rows':rows,'competencies':competencies,'absences':absences,'late':late}
+
 
 def _teacher_class_ids(data,user):
     tid=str(user.get('teacherId') or '')
@@ -1030,13 +1118,9 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'error':'Ce bulletin ne relève pas de vos classes.'},403)
                 term_id=str(bulletin.get('termId') or '')
                 term_record=next((x for x in (database.get('settings',{}).get('terms',[]) if isinstance(database.get('settings'),dict) else []) or [] if isinstance(x,dict) and str(x.get('id'))==term_id),None)
-                # L'identité et le statut de publication proviennent de la base,
-                # jamais des valeurs libres envoyées par le navigateur.
-                payload['student']={'name':' '.join(str(student_record.get(k) or '').strip() for k in ('first','last')).strip()}
-                payload['className']=str(class_record.get('name') or '—')
-                payload['termName']=str((term_record or {}).get('name') or 'Période')
-                payload['published']=bool(bulletin.get('published'))
-                payload['publishedAt']=str(bulletin.get('publishedAt') or '')
+                # Tout le contenu métier du PDF est recalculé depuis la base serveur.
+                # Le navigateur ne fournit que l'identifiant du bulletin.
+                payload=_bulletin_pdf_data(database,bulletin,student_record,class_record,term_record)
                 from io import BytesIO
                 from datetime import datetime
                 from reportlab.lib import colors
