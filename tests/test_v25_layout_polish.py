@@ -9,8 +9,7 @@ JS = (ROOT / "_all.js").read_text(encoding="utf-8")
 
 class LayoutPolishTests(unittest.TestCase):
     def test_home_focus_card_keeps_blue_gradient(self):
-        self.assertIn(".focusCard{", HTML)
-        self.assertIn("background-image:linear-gradient(128deg,#075db8", HTML)
+        self.assertIn(".focusCard{background:linear-gradient(135deg,#102a43,#1b4777)", HTML)
         self.assertIn(".focusCard .metric b{color:#fff!important}", HTML)
 
     def test_settings_cards_have_intentional_placement(self):
