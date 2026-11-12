@@ -325,4 +325,4 @@ Pour un test avec un second ordinateur connecté à la même box privée, lance 
 - Les pièces jointes ne sont accessibles que si elles sont référencées dans les données visibles de l'élève.
 - La messagerie élève et le Cloud élève restent volontairement masqués/non activés tant que les autorisations spécifiques ne sont pas auditées.
 - Tests ajoutés : intégration HTTP de connexion et de cloisonnement, envoi de rendu, accès aux fichiers et tests unitaires de projection/fusion.
-- Statut CI de ce lot : à vérifier après le déclenchement GitHub Actions ; aucun résultat vert n'est revendiqué ici.
+- Validation CI du lot : réussite Ubuntu + macOS Apple Silicon, run GitHub Actions #43318282845.
