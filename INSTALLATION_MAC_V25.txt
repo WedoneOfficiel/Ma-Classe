@@ -1,26 +1,43 @@
-MaClasse V25.0.7 — installation locale sur macOS
+MaClasse V25.0.7 — installation native sur Mac Apple Silicon
 
-Cette version de travail écoute exclusivement sur 127.0.0.1. Elle n'est PAS
-encore ouverte aux autres appareils du Wi-Fi. Ne change pas MACLASSE_HOST.
+CIBLE
+- Mac avec puce Apple Silicon (M1/M2/M3/M4/M5), dont macOS 27.
+- Terminal et Python doivent fonctionner nativement en arm64, sans Rosetta.
+- Firefox est ouvert automatiquement s'il est installé ; sinon le navigateur par défaut est utilisé.
 
-1. Décompresser le ZIP dans un dossier accessible en écriture.
-2. Double-cliquer sur Installer-MaClasse.command.
-3. Double-cliquer sur Lancer-MaClasse.command.
-4. Ouvrir Firefox sur http://127.0.0.1:8765.
+PRÉREQUIS
+- Python 3.10 minimum ; Python 3.12 est recommandé.
+- Connexion Internet pendant l'installation des dépendances Python.
+- Dossier MaClasse situé dans un emplacement où ton compte macOS peut écrire.
 
-Comptes provisoires au premier démarrage :
+INSTALLATION
+1. Télécharge l'archive ZIP du dépôt MaClasse et décompresse-la dans le dossier choisi.
+2. Ouvre le dossier décompressé.
+3. Double-clique sur Installer-MaClasse.command.
+4. Si macOS bloque le premier lancement, fais clic droit > Ouvrir et confirme. Ne contourne pas Gatekeeper pour un fichier dont tu ne connais pas la provenance.
+5. À la fin, double-clique sur Lancer-MaClasse.command.
+6. Firefox s'ouvre sur http://127.0.0.1:8765 si Firefox est installé.
+
+UTILISATION
+- Laisse la fenêtre Terminal du serveur ouverte pendant l'utilisation.
+- Pour arrêter proprement le serveur, reviens dans cette fenêtre et fais Ctrl+C.
+- Pour relancer MaClasse, double-clique à nouveau sur Lancer-MaClasse.command.
+- Données : data/maclasse.json ; pièces jointes : data/uploads/ ; sauvegardes : data/backups/.
+
+PREMIÈRE CONNEXION
 - Direction : admin / admin
 - Professeur : enseignant / enseignant
+Le mot de passe provisoire doit être remplacé au premier accès par un mot de passe personnel d'au moins 12 caractères. Ne réutilise pas ces identifiants ailleurs.
 
-Au premier accès, MaClasse impose le remplacement du mot de passe par un
-mot de passe personnel d'au moins 12 caractères. Ne réutilise pas ces mots
-de passe provisoires ailleurs.
+SÉCURITÉ ET LIMITES ACTUELLES
+- Le serveur est strictement limité à 127.0.0.1 : MaClasse fonctionne sur ce Mac uniquement.
+- Ne change pas MACLASSE_HOST, ne configure pas de redirection de ports et ne cherche pas à rendre le serveur accessible depuis le Wi-Fi.
+- Les comptes élèves individuels ne sont pas activés.
+- Cette édition reste une version de validation locale. Les autorisations métier complètes, les essais Firefox de bout en bout, les essais de restauration et le déploiement HTTPS/LAN doivent encore être validés avant un usage multi-appareils avec de vraies données scolaires.
 
-L'accès professeur est limité aux classes affectées au profil. L'accès élève
-reste désactivé en attendant des comptes individuels et des filtres dédiés.
-Cette version reste une alpha locale : le cloisonnement métier complet, HTTPS
-et les tests Firefox restent à terminer avant toute ouverture sur le Wi-Fi.
-
-Données : data/maclasse.json ; fichiers : data/uploads/ ; sauvegardes :
-data/backups/. Conserve une copie du dossier complet avant toute migration.
-Pour arrêter le serveur, faire Ctrl+C dans sa fenêtre Terminal.
+SAUVEGARDE AVANT MISE À JOUR
+1. Arrête le serveur avec Ctrl+C.
+2. Copie le dossier data/ complet vers un emplacement sûr et protégé.
+3. Mets à jour le code sans remplacer ton dossier data/.
+4. Redémarre et vérifie les données avant de reprendre le travail.
+Ne partage jamais le dossier data/ : il peut contenir des informations personnelles et scolaires.
