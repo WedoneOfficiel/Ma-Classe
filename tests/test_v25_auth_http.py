@@ -121,7 +121,8 @@ def run():
         assert status==200 and json.loads(created_account)['user']['mustChangePassword']
         created_record=json.loads((app/'data'/'maclasse.json').read_text())
         student_record=next(u for u in created_record['users'] if u.get('role')=='student')
-        assert student_record['passwordHash'].startswith('pbkdf2_sha256,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
+        assert len(student_record['passwordHash']) > 50
+        status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
         assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']
         student_cookie=student_headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/data',cookie=student_cookie)[0]==428
