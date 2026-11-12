@@ -56,6 +56,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] input[type="radio"]:checked', html)
         self.assertIn('html[data-mc-theme="dark"] .v205Level.lv1', html)
 
+    def test_dark_theme_custom_select_and_navigation_states(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] .mcSelectMenu', html)
+        self.assertIn('html[data-mc-theme="dark"] .mcSelectOption.selected', html)
+        self.assertIn('html[data-mc-theme="dark"] .btn.dark', html)
+        self.assertIn('html[data-mc-theme="system"] .mcSelectMenu', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
