@@ -114,7 +114,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         user={'id':'u1','role':'teacher','teacherId':'t1'}
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['evaluations'][0]['classId']='c2'
-        view['evaluations'][0]['grades']=[{'studentId':'s2','value':20}]
+        view['evaluations'][0]['grades'].append({'studentId':'s2','value':20})
         merged=server._merge_teacher_data(data,view,user)
         saved=merged['evaluations'][0]
         self.assertEqual(saved['classId'],'c1')
