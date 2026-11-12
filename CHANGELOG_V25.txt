@@ -221,3 +221,10 @@ Validation CI complémentaire — 12/11/2026
 - Verrouillage localhost : tests complets réussis, run 43310801471 (f1fa7d0).
 - Scripts Fedora + suites JavaScript/Python : run 43310869800 (ebb910a) réussi.
 - Documentation : run 43310879305 (8ccbba9) réussi.
+
+
+## 12/11/2026 — Cloisonnement conversations et messagerie
+- Conversations historiques verrouillées contre le changement de propriétaire, classe, participants et contenu par un enseignant.
+- Préservation des seuls états personnels de conversation.
+- Validation des destinataires `sharedWith` dans la messagerie V2, avec contrôle du périmètre des élèves.
+- Tests de régression ajoutés ; CI en cours au moment de cette entrée.
