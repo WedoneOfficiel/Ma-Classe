@@ -251,3 +251,11 @@ BULLETIN PDF — CONTRÔLE DE PÉRIMÈTRE RENFORCÉ
 - Absences et retards comptabilisés uniquement depuis les feuilles de présence de cette même classe.
 - Test avec données interclasses mal rattachées : note et absence étrangères ignorées.
 - CI complète JS + Python réussie : runs 43310140332 et 43310145774.
+
+
+SAUVEGARDE PROFESSEUR — IMMUTABILITÉ DES RATTACHEMENTS
+-----------------------------------------------------
+- Le périmètre d'un enregistrement existant est déterminé à partir de sa version déjà stockée, pas des liens fournis par le navigateur.
+- Les liens de classe sont préservés pour élèves, emploi du temps, séances et présences ; les liens classe/élève/séance sont préservés pour les pièces jointes ; les protections précédentes restent actives pour évaluations, bulletins et rendus.
+- Tests interclasses avec un professeur affecté aux deux classes.
+- CI complète JS + Python réussie : runs 43310380105 et 43310387814.
