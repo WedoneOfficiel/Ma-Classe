@@ -63,6 +63,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] .btn.dark', html)
         self.assertIn('html[data-mc-theme="system"] .mcSelectMenu', html)
 
+    def test_dark_theme_calendar_attendance_and_messaging_states(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for selector in ('.statusBtn.on.present', '.eventEdit', '.dayBtn .count',
+                         '.v15Bubble', '.v15Thread.active'):
+            self.assertIn('html[data-mc-theme="dark"] ' + selector, html)
+        self.assertIn('html[data-mc-theme="system"] .v15Bubble', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
