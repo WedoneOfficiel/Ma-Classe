@@ -54,3 +54,22 @@ V25.0.7 — restauration ZIP complète
 - Tests HTTP de rôle et tests de restauration/fichiers/archives malveillantes réussis.
 
 Attention : cette étape améliore la capacité de restauration, mais ne constitue pas encore une recette de reprise après sinistre sur un poste séparé. Le serveur reste sur 127.0.0.1 tant que TLS et la recette complète des autorisations métier ne sont pas terminés.
+
+
+CORRECTIF DE DURCISSEMENT APRÈS IMPORT — 12/11/2026
+---------------------------------------------------
+- La projection serveur des données professeur utilise désormais une liste blanche de référentiels explicitement partagés : settings, subjects, competencyLibrary, evaluationTemplates, evaluationCriteriaLibrary et métadonnées de schéma.
+- Les nouvelles clés de premier niveau sont privées par défaut et ne sont pas transmises aux comptes professeur.
+- Test de non-régression ajouté dans tests/test_v25_teacher_data_scope.py pour vérifier l'absence de fuite de collections inconnues et de configuration privée.
+- Ajout de .gitignore pour data/maclasse.json, data/uploads/, data/backups/, .venv/ et les fichiers Python temporaires.
+- Le fichier data/maclasse.json suivi par Git (qui ne contenait que les deux comptes provisoires) a été retiré du dépôt public. server.py recrée la base si elle est absente, puis initialise les comptes provisoires.
+- Workflow .github/workflows/tests.yml ajouté pour lancer les tests JavaScript et Python sur push et pull request.
+
+ÉTAT DES VALIDATIONS DE CE CORRECTIF
+- Modification et test publiés sur main : oui.
+- Exécution du nouveau test et de la suite complète dans cette session : non réalisée.
+- Aucun résultat GitHub Actions n'était visible au contrôle effectué ; ne pas déclarer la suite verte.
+- Recette visuelle Firefox/macOS : non réalisée.
+- Version applicative conservée : V25.0.7 (correctif de sécurité incrémental, sans changement de numéro de version).
+
+Commits : fe0b449 (serveur), f13eeda (test), 5e4b301 (workflow), 71fab97 (.gitignore), 5c84254 (retrait de la base locale).
