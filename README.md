@@ -301,3 +301,8 @@ Le serveur refusait déjà les chemins d'accès non autorisés, mais son ancienn
 - Validation macOS + Ubuntu réussie : [run #43313321068](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43313321068).
 - Les deux fichiers .command sont enregistrés avec le bit exécutable Git (mode 100755), indispensable au double-clic dans Finder.
 - Ce résultat ne remplace pas un essai sur le Mac M5 exact ni une recette Firefox manuelle.
+
+
+### Essai sur un réseau privé (expérimental)
+
+Pour un test avec un second ordinateur connecté à la même box privée, lance `Lancer-MaClasse-Reseau.command` sur le Mac serveur. Le script affiche l'adresse à saisir sur l'autre PC. Le serveur se lie à l'adresse IPv4 privée du Mac, jamais à toutes les interfaces. Ce mode utilise HTTP non chiffré : données fictives uniquement, box isolée, aucun accès depuis le réseau de l'établissement et aucune redirection de port. Le lanceur habituel reste local.
