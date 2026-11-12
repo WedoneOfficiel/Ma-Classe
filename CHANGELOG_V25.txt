@@ -141,3 +141,9 @@ Correctif de durcissement post-import — 12/11/2026
 
 
 Validation : test des autorisations PP corrigé pour isoler les données projetées de la fixture source ; CI complète réussie sur le commit 1b8514e (run 43307416629).
+
+
+12/11/2026 — Confidentialité CCI et intégrité des bulletins
+- Messagerie : les destinataires ne voient plus les autres adresses BCC/CCI ; l'expéditeur conserve la liste complète. Commits 20dedb6 et 1db7f79 ; CI run 43307062966 réussi.
+- Bulletins : l'identité d'un bulletin existant (élève, classe, période) est préservée lors d'une sauvegarde professeur ; un bulletin publié ne peut pas être retiré de la collection ni modifié par un professeur. Commits 955b904 et 575403d ; CI run 43307614719 réussi.
+- Contrôle serveur de l'affectation matière du professeur : reste à auditer.
