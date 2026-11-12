@@ -556,6 +556,8 @@ def _merge_student_data(current,incoming,user):
         lesson_id=str(previous.get('lessonId') if previous else entry.get('lessonId') or '')
         if not ident or str(entry.get('studentId') or '')!=sid or lesson_id not in allowed_lessons:
             continue
+        if not previous and any(str(x.get('lessonId') or '')==lesson_id for x in old_own.values()):
+            continue
         if previous and previous.get('status')!='draft':
             # Un rendu déjà envoyé est immuable côté élève ; le professeur seul le corrige.
             new_own[ident]=dict(previous)
@@ -1308,6 +1310,36 @@ class Handler(SimpleHTTPRequestHandler):
         allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin','teacher')
         user=self._require_auth(roles=allowed_roles)
         if not user: return
+        if path=='/api/admin/student-account':
+            if user.get('role')!='admin': return self._json({'error':'La création des comptes élèves est réservée à la direction.'},403)
+            try: obj=json.loads(body.decode('utf-8'))
+            except Exception: return self._json({'error':'Requête invalide.'},400)
+            student_id=str(obj.get('studentId') or '').strip()
+            username=str(obj.get('username') or '').strip().lower()
+            password=str(obj.get('password') or '')
+            if not re.fullmatch(r'[a-z0-9._-]{3,40}',username):
+                return self._json({'error':'Identifiant invalide : 3 à 40 caractères, lettres minuscules, chiffres, point, tiret ou underscore.'},400)
+            if len(password)<12 or len(password)>1024:
+                return self._json({'error':'Le mot de passe provisoire doit contenir entre 12 et 1024 caractères.'},400)
+            with DATA_LOCK:
+                try:
+                    with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
+                    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
+                    if not student_record: return self._json({'error':'Élève introuvable.'},404)
+                    if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username for x in data.get('users',[]) or []):
+                        return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
+                    if any(isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id for x in data.get('users',[]) or []):
+                        return self._json({'error':'Cet élève possède déjà un compte. Réactive ou réinitialise son compte existant.'},409)
+                    account={'id':secrets.token_urlsafe(18),'role':'student','studentId':student_id,'username':username,'name':str(student_record.get('first') or '')+' '+str(student_record.get('last') or ''),'active':True,'mustChangePassword':True,'passwordHash':_password_hash(password)}
+                    data.setdefault('users',[]).append(account)
+                    tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
+                    with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+                    os.replace(tmp,DATA_FILE)
+                    revision=_database_revision()
+                    public={k:account[k] for k in ('id','role','studentId','username','name','active','mustChangePassword')}
+                    return self._json({'ok':True,'user':public},headers={'X-MaClasse-Revision':revision})
+                except Exception as exc:
+                    return self._json({'error':'Création du compte impossible : '+str(exc)},500)
         if path=='/api/backup/restore':
             if user.get('role')!='admin': return self._json({'error':'La restauration complète est réservée à la direction.'},403)
             if length>100*1024*1024: return self._json({'error':'Archive trop volumineuse (100 Mo maximum).'},413)
