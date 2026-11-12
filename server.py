@@ -357,6 +357,24 @@ def _teacher_visible_data(data,user):
     class_ids=_teacher_class_ids(data,user)
     student_ids={str(x.get('id')) for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids}
     lesson_ids={str(x.get('id')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids}
+    student_class_by_id={str(x.get('id')):str(x.get('classId') or '') for x in data.get('students',[]) or [] if isinstance(x,dict) and x.get('id')}
+    lesson_class_by_id={str(x.get('id')):str(x.get('classId') or '') for x in data.get('lessons',[]) or [] if isinstance(x,dict) and x.get('id')}
+    def related_record_visible(record):
+        if not isinstance(record,dict): return False
+        related=[]
+        cid=str(record.get('classId') or '')
+        sid=str(record.get('studentId') or '')
+        lid=str(record.get('lessonId') or '')
+        if cid: related.append(cid)
+        if sid:
+            student_class=student_class_by_id.get(sid)
+            if not student_class: return False
+            related.append(student_class)
+        if lid:
+            lesson_class=lesson_class_by_id.get(lid)
+            if not lesson_class: return False
+            related.append(lesson_class)
+        return bool(related) and len(set(related))==1 and related[0] in class_ids
     # Seuls les référentiels explicitement partagés sont transmis aux professeurs.
     # Une nouvelle clé ajoutée à la base reste privée par défaut jusqu'à validation.
     shared_keys=('subjects','competencyLibrary','evaluationTemplates','evaluationCriteriaLibrary','schemaVersion','schemaMigratedAt')
@@ -375,16 +393,18 @@ def _teacher_visible_data(data,user):
     evaluations=[]
     for item in data.get('evaluations',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '') not in class_ids: continue
-        copy=dict(item); copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids]; evaluations.append(copy)
+        evaluation_class=str(item.get('classId') or '')
+        copy=dict(item); copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and student_class_by_id.get(str(g.get('studentId') or ''))==evaluation_class]; evaluations.append(copy)
     out['evaluations']=evaluations
     attendance=[]
     for item in data.get('attendance',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '') not in class_ids: continue
-        copy=dict(item); copy['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '') in student_ids]; attendance.append(copy)
+        attendance_class=str(item.get('classId') or '')
+        copy=dict(item); copy['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and student_class_by_id.get(str(r.get('studentId') or ''))==attendance_class]; attendance.append(copy)
     out['attendance']=attendance
-    out['bulletins']=[x for x in data.get('bulletins',[]) or [] if isinstance(x,dict) and (str(x.get('studentId') or '') in student_ids or str(x.get('classId') or '') in class_ids)]
-    out['attachments']=[x for x in data.get('attachments',[]) or [] if isinstance(x,dict) and (str(x.get('studentId') or '') in student_ids or str(x.get('classId') or '') in class_ids)]
-    out['submissions']=[x for x in data.get('submissions',[]) or [] if isinstance(x,dict) and (str(x.get('studentId') or '') in student_ids or str(x.get('lessonId') or '') in lesson_ids)]
+    out['bulletins']=[x for x in data.get('bulletins',[]) or [] if related_record_visible(x)]
+    out['attachments']=[x for x in data.get('attachments',[]) or [] if related_record_visible(x)]
+    out['submissions']=[x for x in data.get('submissions',[]) or [] if related_record_visible(x)]
     out['conversations']=[x for x in data.get('conversations',[]) or [] if isinstance(x,dict) and (str(x.get('teacherId') or '')==tids or str(x.get('classId') or '') in class_ids or tids in {str(v) for v in x.get('participantIds',[]) or []})]
     out['cloudItems']=[x for x in data.get('cloudItems',[]) or [] if isinstance(x,dict) and _cloud_path_allowed(user,x.get('serverName',''),write=False)]
     out['notifications']=[x for x in data.get('notifications',[]) or [] if isinstance(x,dict) and (str(x.get('studentId') or '') in student_ids or str(x.get('teacherId') or '')==tids)]
