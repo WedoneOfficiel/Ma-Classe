@@ -408,27 +408,37 @@ def _merge_teacher_data(current,incoming,user):
                 sid=str(x.get('studentId') or '')
                 return sid in {str(z.get('id')) for z in current.get('students',[]) or [] if isinstance(z,dict) and str(z.get('classId') or '') in allowed} or str(x.get('teacherId') or '')==tid
             if key=='mailFolders': return str(x.get('teacherId') or '')==tid or str(x.get('ownerId') or '')==tid
+            if key=='bulletins':
+                ident=str(x.get('id') or '')
+                previous=next((z for z in current.get('bulletins',[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==ident),None)
+                return _teacher_record_class_id(previous or x,current,key) in allowed
             return _teacher_record_class_id(x,current,key) in allowed
         old_scope={str(x.get('id')):x for x in old if x.get('id') and in_scope(x)}
         new_scope={str(x.get('id')):x for x in new if x.get('id') and in_scope(x)}
         # Une entrée soumise avec un ID existant hors périmètre ne peut jamais la modifier.
-        result=[x for x in old if not (x.get('id') and str(x.get('id')) in old_scope)]
+        result=[x for x in old if not (x.get('id') and str(x.get('id')) in old_scope and not (key=='bulletins' and x.get('published') is True))]
         student_ids={str(z.get('id')) for z in current.get('students',[]) or [] if isinstance(z,dict) and str(z.get('classId') or '') in allowed}
         lesson_ids={str(z.get('id')) for z in current.get('lessons',[]) or [] if isinstance(z,dict) and str(z.get('classId') or '') in allowed}
         safe_new=[]
         for entry in new_scope.values():
             item=dict(entry)
+            previous=None
+            if key=='bulletins':
+                previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
+                if previous:
+                    # L'identité d'un bulletin existant ne peut pas être déplacée par une sauvegarde professeur.
+                    for field in ('studentId','classId','termId'):
+                        item[field]=previous.get(field)
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions' and item.get('lessonId') and str(item.get('lessonId')) not in lesson_ids: continue
             if key=='evaluations': item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids]
             if key=='attendance': item['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '') in student_ids]
             if key=='bulletins':
-                previous=old_scope.get(str(item.get('id') or ''))
-                class_record=next((c for c in current.get('classes',[]) or [] if isinstance(c,dict) and str(c.get('id'))==str(item.get('classId') or '')),None)
+                class_record=next((c for c in current.get('classes',[]) or [] if isinstance(c,dict) and str(c.get('id'))==str((previous or item).get('classId') or '')),None)
                 is_principal=bool(class_record and str(class_record.get('principalTeacherId') or '')==tid)
                 if previous and previous.get('published') is True:
-                    # Un bulletin publié est immuable pour un professeur ; seule la direction peut le corriger.
-                    item=dict(previous)
+                    # Le bulletin publié est déjà conservé dans result, même si le client le supprime.
+                    continue
                 elif not is_principal:
                     # Les enseignants de matière peuvent compléter leurs appréciations,
                     # mais seul le PP peut valider, publier ou modifier l'appréciation générale.
