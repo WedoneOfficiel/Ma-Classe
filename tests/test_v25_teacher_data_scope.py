@@ -177,6 +177,27 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertNotIn('cross-b',[x['id'] for x in view['bulletins']])
         self.assertNotIn('cross-a',[x['id'] for x in view['attachments']])
 
+    def test_bulletin_pdf_data_is_rebuilt_from_server_records(self):
+        database={'students':[{'id':'s1','classId':'c1','first':'Alice','last':'Martin'},{'id':'s2','classId':'c1','first':'Bob','last':'Durand'}],'classes':[{'id':'c1','name':'6A'}],
+            'evaluations':[{'id':'e1','classId':'c1','subject':'Maths','date':'2026-10-10','published':True,'maxScore':20,'coefficient':2,'competencies':['Calculer'],'grades':[{'studentId':'s1','value':16,'competencyRatings':{'Calculer':4}},{'studentId':'s2','value':10}]},{'id':'e2','classId':'c1','subject':'Français','date':'2026-10-11','published':False,'grades':[{'studentId':'s1','value':20}]}],
+            'schedule':[{'classId':'c1','subject':'Histoire'}],'attendance':[{'classId':'c1','date':'2026-10-12','rows':[{'studentId':'s1','status':'absent'},{'studentId':'s1','status':'retard'}]}],
+            'settings':{'terms':[{'id':'t1','name':'Trimestre 1','start':'2026-09-01','end':'2026-12-31'}]}}
+        bulletin={'id':'b1','studentId':'s1','classId':'c1','termId':'t1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z','overall':'Travail sérieux.','subjectData':{'Maths':{'comment':'Très bon travail.'}}}
+        result=server._bulletin_pdf_data(database,bulletin,database['students'][0],database['classes'][0],database['settings']['terms'][0],today='2026-11-12')
+        self.assertEqual(result['student']['name'],'Alice Martin')
+        self.assertEqual(result['className'],'6A')
+        self.assertEqual(result['overall'],'Travail sérieux.')
+        self.assertAlmostEqual(result['average'],16.0)
+        self.assertEqual([x['subject'] for x in result['rows']],['Français','Histoire','Maths'])
+        self.assertEqual(result['rows'][0]['studentAverage'],'—')
+        self.assertAlmostEqual(result['rows'][2]['studentAverage'],16.0)
+        self.assertEqual(result['rows'][2]['comment'],'Très bon travail.')
+        self.assertEqual(result['competencies'],[{'name':'Calculer','level':'Très bien'}])
+        self.assertEqual((result['absences'],result['late']),(1,1))
+        forged={'average':20,'rows':[{'subject':'Faux','studentAverage':20}],'overall':'Faux','absences':0}
+        self.assertNotIn('Faux',str(result))
+        self.assertNotEqual(result['average'],forged['average'])
+
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
