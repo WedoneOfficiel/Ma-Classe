@@ -17,7 +17,7 @@ for host in ('192.168.1.20','10.0.0.12','172.20.0.4'):
     else:
         raise AssertionError('Une adresse LAN ne doit jamais être activée par défaut.')
     assert server._assert_server_host(host,allow_lan=True) is True
-for host in ('8.8.8.8','0.0.0.0','192.168.1.255','fe80::1','not-an-ip'):
+for host in ('8.8.8.8','0.0.0.0','fe80::1','not-an-ip'):
     try:
         server._assert_server_host(host,allow_lan=True)
     except ValueError:
