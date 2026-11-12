@@ -510,6 +510,54 @@ def _teacher_visible_data(data,user):
     return out
 
 
+def _student_visible_data(data,user):
+    """Projection strictement limitée à l'élève authentifié ; aucune donnée de camarade."""
+    sid=str(user.get('studentId') or '')
+    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
+    if not student_record:
+        return {}
+    class_id=str(student_record.get('classId') or '')
+    out={}
+    shared=('subjects','competencyLibrary','evaluationTemplates','evaluationCriteriaLibrary','schemaVersion','schemaMigratedAt')
+    for key in shared:
+        if key in data: out[key]=data[key]
+    settings=data.get('settings')
+    if isinstance(settings,dict):
+        out['settings']={k:settings[k] for k in ('rooms','termMode','terms','competencyLevels') if k in settings}
+    out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id]
+    out['students']=[dict(student_record)]
+    out['teachers']=[]
+    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
+    out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
+    out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
+    out['evaluations']=[]
+    for item in data.get('evaluations',[]) or []:
+        if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
+        if item.get('group') and str(item.get('group'))!=str(student_record.get('group') or ''): continue
+        copy=dict(item)
+        copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '')==sid]
+        out['evaluations'].append(copy)
+    out['attendance']=[]
+    for item in data.get('attendance',[]) or []:
+        if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id: continue
+        copy=dict(item)
+        copy['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '')==sid]
+        out['attendance'].append(copy)
+    out['bulletins']=[x for x in data.get('bulletins',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid and x.get('published') is True and x.get('validated') is True]
+    lesson_ids={str(x.get('id')) for x in out['lessons'] if x.get('id')}
+    out['attachments']=[x for x in data.get('attachments',[]) or [] if isinstance(x,dict) and ((str(x.get('studentId') or '')==sid) or (str(x.get('classId') or '')==class_id and (not x.get('lessonId') or str(x.get('lessonId')) in lesson_ids)))]
+    out['submissions']=[x for x in data.get('submissions',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid and str(x.get('lessonId') or '') in lesson_ids]
+    # Les conversations ne sont pas encore exposées aux comptes élèves : le modèle
+    # historique ne permet pas de prouver proprement les droits message par message.
+    out['conversations']=[]
+    out['cloudItems']=[]
+    out['notifications']=[x for x in data.get('notifications',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid]
+    out['mailFolders']=[]
+    out['mailboxV2']={}
+    out['auditLog']=[]
+    return out
+
+
 def _merge_teacher_data(current,incoming,user):
     """Fusionne le périmètre professeur sans remplacer les données hors périmètre."""
     if user.get('role')=='admin': return incoming
@@ -961,10 +1009,15 @@ class Handler(SimpleHTTPRequestHandler):
         session_user=entry.get('user') if isinstance(entry.get('user'),dict) else {}
         user_id=str(session_user.get('id') or '')
         data=_load_database()
-        current=next((u for u in data.get('users',[]) or [] if isinstance(u,dict) and str(u.get('id'))==user_id and u.get('active') is not False and u.get('role') in ('admin','teacher')),None)
+        current=next((u for u in data.get('users',[]) or [] if isinstance(u,dict) and str(u.get('id'))==user_id and u.get('active') is not False and u.get('role') in ('admin','teacher','student')),None)
         if not current:
             SESSIONS.pop(token,None); return None
-        safe_user={k:current.get(k,'') for k in ('id','role','teacherId','name')}
+        if current.get('role')=='student':
+            student_id=str(current.get('studentId') or '')
+            linked=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
+            if not linked:
+                SESSIONS.pop(token,None); return None
+        safe_user={k:current.get(k,'') for k in ('id','role','teacherId','studentId','name')}
         entry['user']=safe_user
         entry['expires']=time.time()+SESSION_TTL
         return safe_user
@@ -1078,7 +1131,9 @@ class Handler(SimpleHTTPRequestHandler):
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
                     revision=_database_revision()
             except Exception: data={}; revision=_database_revision()
-            return self._json(_teacher_visible_data(data,self._session_user() or {}) if (self._session_user() or {}).get('role')=='teacher' else data,headers={'X-MaClasse-Revision':revision})
+            session_user=self._session_user() or {}
+            visible=_teacher_visible_data(data,session_user) if session_user.get('role')=='teacher' else (_student_visible_data(data,session_user) if session_user.get('role')=='student' else data)
+            return self._json(visible,headers={'X-MaClasse-Revision':revision})
         if not self._safe_static_path(path):
             return self.send_error(404)
         return super().do_GET()
@@ -1100,7 +1155,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 with DATA_LOCK:
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
-                    user=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('username','')).lower()==username and u.get('active') is not False and u.get('role') in ('admin','teacher')),None)
+                    user=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('username','')).lower()==username and u.get('active') is not False and u.get('role') in ('admin','teacher','student') and (u.get('role')!='student' or any(isinstance(st,dict) and str(st.get('id'))==str(u.get('studentId') or '') for st in data.get('students',[]) or []))),None)
                     valid,legacy=_password_verify(password,user.get('passwordHash','') if user else '')
                     if not user or not valid:
                         user=None
@@ -1116,7 +1171,7 @@ class Handler(SimpleHTTPRequestHandler):
                 attempts.append(now); LOGIN_ATTEMPTS[ip]=attempts
                 return self._json({'error':'Identifiant ou mot de passe incorrect.'},401)
             LOGIN_ATTEMPTS.pop(ip,None)
-            token=secrets.token_urlsafe(32); safe_user={k:user.get(k,'') for k in ('id','role','teacherId','name')}
+            token=secrets.token_urlsafe(32); safe_user={k:user.get(k,'') for k in ('id','role','teacherId','studentId','name')}
             SESSIONS[token]={'user':safe_user,'expires':now+SESSION_TTL,'must_change':must_change}
             public_user={**safe_user,'mustChangePassword':must_change}
             self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Cache-Control','no-store'); self._set_session_cookie(token); self.end_headers(); self.wfile.write(json.dumps({'ok':True,'user':public_user},ensure_ascii=False).encode('utf-8')); return
