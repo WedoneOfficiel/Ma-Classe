@@ -96,3 +96,9 @@ Correctif de durcissement post-import — 12/11/2026
 - Complément sécurité : filtrage champ par champ de settings dans la projection professeur ; seuls les champs fonctionnels connus sont transmis. Test dédié contre la fuite d'un champ privé ajouté à settings.
 
 - Validation CI : succès sur le commit f379a8c (run 43305047329) ; 31 tests JavaScript, 7 scripts Python, contrôle syntaxique JS et compilation Python réussis.
+
+
+12/11/2026 — Confidentialité des comptes professeurs
+- Correction : GET /api/data ne renvoie plus passwordHash ni password dans le profil du professeur connecté.
+- Test de non-régression ajouté pour les deux champs.
+- Commits : fbaf4ff, f6f994b.
