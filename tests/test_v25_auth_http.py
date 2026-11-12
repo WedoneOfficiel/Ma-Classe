@@ -49,6 +49,12 @@ def run():
             assert call(base,'/data/uploads/escape-link',cookie=admin)[0]==404
         finally:
             (uploads/'escape-link').unlink(missing_ok=True)
+        (uploads/'general').mkdir(parents=True,exist_ok=True)
+        (uploads/'general'/'untrusted.html').write_text('<script>document.body.textContent="xss"</script>')
+        status,upload_headers,_=call(base,'/data/uploads/general/untrusted.html',cookie=admin)
+        assert status==200
+        assert 'sandbox' in upload_headers.get('Content-Security-Policy','').lower()
+        assert "default-src 'none'" in upload_headers.get('Content-Security-Policy','')
         saved=json.loads((app/'data'/'maclasse.json').read_text())
         admin_record=next(u for u in saved['users'] if u['username']=='admin')
         assert admin_record['passwordHash'].startswith('pbkdf2_sha256$')
