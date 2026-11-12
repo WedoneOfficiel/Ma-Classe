@@ -143,3 +143,12 @@ CORRECTIF EXPORT PDF — CONTRÔLE DU BULLETIN SOURCE
 - Commits : a661d36, 5713ba6, 59bb9cf.
 - CI réussie : run 43306723332.
 - Version inchangée : V25.0.7.
+
+
+AUTORISATIONS BULLETINS — PROTECTION DU PROFESSEUR PRINCIPAL
+----------------------------------------------------------
+- La fusion serveur des sauvegardes professeur préserve désormais validated/validatedAt/published/publishedAt et overall si le professeur n'est pas PP de la classe.
+- Un bulletin déjà publié est conservé intégralement ; un professeur ne peut pas le modifier via /api/save.
+- Les appréciations par matière restent modifiables dans le périmètre classe ; le contrôle précis de l'affectation matière doit encore être audité.
+- Tests ajoutés : non-PP ne peut pas valider/publier/modifier overall ; bulletin publié immuable pour un professeur.
+- Commits : 2ee67c0 (serveur), 3705b90 (tests). CI à confirmer.
