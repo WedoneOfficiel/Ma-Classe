@@ -18,7 +18,7 @@ class MailboxAndUploadScopeTests(unittest.TestCase):
                 'schemaVersion':2,'resetPending':False,
                 'messages':[
                     {'id':'m1','sender':{'key':'teacher:t1'},'to':['teacher:t2'],'body':'private to t1'},
-                    {'id':'m2','sender':{'key':'teacher:t2'},'to':['teacher:t1'],'body':'to t1'},
+                    {'id':'m2','sender':{'key':'teacher:t2'},'to':['teacher:t1'],'bcc':['teacher:t3'],'body':'to t1'},
                     {'id':'m3','sender':{'key':'teacher:t2'},'to':['teacher:t2'],'body':'private to t2'},
                 ],
                 'states':{'teacher:t1':{'m1':{'read':True}},'teacher:t2':{'m3':{'read':False}}},
@@ -37,6 +37,11 @@ class MailboxAndUploadScopeTests(unittest.TestCase):
     def test_mailbox_projection_only_includes_participant_messages_and_own_private_state(self):
         view=server._teacher_visible_data(self.data,self.t1)['mailboxV2']
         self.assertEqual({m['id'] for m in view['messages']},{'m1','m2'})
+        received=next(m for m in view['messages'] if m['id']=='m2')
+        self.assertEqual(received['bcc'],[])
+        sender_view=server._teacher_visible_data(self.data,{'id':'u2','role':'teacher','teacherId':'t2'})['mailboxV2']
+        sent=next(m for m in sender_view['messages'] if m['id']=='m2')
+        self.assertEqual(sent['bcc'],['teacher:t3'])
         self.assertEqual(set(view['states']),{'teacher:t1'})
         self.assertEqual([d['id'] for d in view['drafts']],['d1'])
         self.assertEqual([f['id'] for f in view['folders']],['f1'])
