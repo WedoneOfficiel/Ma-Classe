@@ -1075,7 +1075,14 @@ class Handler(SimpleHTTPRequestHandler):
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE)
-                SESSIONS[token]['must_change']=False
+                # Un changement de mot de passe invalide toutes les autres sessions
+                # du compte ; seule la session ayant effectué l'opération reste ouverte.
+                for other_token,session in list(SESSIONS.items()):
+                    other_user=session.get('user') if isinstance(session,dict) else {}
+                    if other_token!=token and str((other_user or {}).get('id') or '')==str(user.get('id') or ''):
+                        SESSIONS.pop(other_token,None)
+                if token in SESSIONS:
+                    SESSIONS[token]['must_change']=False
                 return self._json({'ok':True})
             except Exception as e: return self._json({'error':'Modification impossible : '+str(e)},500)
         if path=='/api/auth/logout':
