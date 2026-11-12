@@ -291,3 +291,13 @@ Le serveur refusait déjà les chemins d'accès non autorisés, mais son ancienn
 - Le lanceur exige l'environnement installé, ouvre Firefox si disponible (sinon le navigateur par défaut) et démarre le serveur sur 127.0.0.1:8765.
 - Le workflow vérifie la syntaxe des deux lanceurs macOS. Une CI verte ne remplace pas l'essai réel sur le Mac M5/macOS 27.
 - La V25 reste une édition locale de validation, pas une version autorisée pour un usage scolaire réel en réseau : les comptes élèves, l'audit complet des autorisations et les tests fonctionnels restent des conditions de livraison.
+
+
+## Validation macOS et correction des chemins physiques — 12/11/2026
+
+- La suite complète s'exécute désormais aussi sur un runner macOS : syntaxe des lanceurs, JavaScript, compilation Python et tous les tests Python.
+- Le premier passage macOS a mis au jour le traitement de /var et /private/var : les chemins canoniques d'uploads sont maintenant calculés relativement à la racine réelle, et la création de dossiers Cloud vérifie cette même racine réelle.
+- Test de régression ajouté pour les chemins résolus via realpath.
+- Validation macOS + Ubuntu réussie : [run #43313321068](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43313321068).
+- Les deux fichiers .command sont enregistrés avec le bit exécutable Git (mode 100755), indispensable au double-clic dans Finder.
+- Ce résultat ne remplace pas un essai sur le Mac M5 exact ni une recette Firefox manuelle.
