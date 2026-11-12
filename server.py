@@ -422,6 +422,20 @@ def _merge_teacher_data(current,incoming,user):
             if key=='submissions' and item.get('lessonId') and str(item.get('lessonId')) not in lesson_ids: continue
             if key=='evaluations': item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids]
             if key=='attendance': item['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '') in student_ids]
+            if key=='bulletins':
+                previous=old_scope.get(str(item.get('id') or ''))
+                class_record=next((c for c in current.get('classes',[]) or [] if isinstance(c,dict) and str(c.get('id'))==str(item.get('classId') or '')),None)
+                is_principal=bool(class_record and str(class_record.get('principalTeacherId') or '')==tid)
+                if previous and previous.get('published') is True:
+                    # Un bulletin publié est immuable pour un professeur ; seule la direction peut le corriger.
+                    item=dict(previous)
+                elif not is_principal:
+                    # Les enseignants de matière peuvent compléter leurs appréciations,
+                    # mais seul le PP peut valider, publier ou modifier l'appréciation générale.
+                    for field in ('validated','validatedAt','published','publishedAt','overall','overallUpdatedAt'):
+                        if previous and field in previous: item[field]=previous[field]
+                        elif field in ('validated','published'): item[field]=False
+                        else: item.pop(field,None)
             safe_new.append(item)
         result.extend(safe_new)
         merged[key]=result
