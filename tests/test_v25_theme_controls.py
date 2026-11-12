@@ -213,5 +213,10 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] .lessonModeGreen.active', html)
         self.assertIn('--mc-card-padding', html)
 
+    def test_timetable_today_and_month_navigation_keep_the_selected_period(self):
+        js = (ROOT / "_all.js").read_text(encoding="utf-8")
+        self.assertIn("selectedWeek=scheduleView==='week'?startWeek(new Date()):new Date()", js)
+        self.assertIn("function changeMonth(n){selectedWeek=new Date(selectedWeek.getFullYear(),selectedWeek.getMonth()+n,1);render()}", js)
+
 if __name__ == "__main__":
     unittest.main()
