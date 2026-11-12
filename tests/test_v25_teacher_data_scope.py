@@ -205,6 +205,32 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertNotIn('Faux',str(result))
         self.assertNotEqual(result['average'],forged['average'])
 
+    def test_teacher_cannot_reassign_or_rewrite_existing_conversation(self):
+        data=copy.deepcopy(self.data)
+        data['conversations']=[{
+            'id':'conv1','teacherId':'t1','classId':'c1','participantIds':['s1'],
+            'type':'class','title':'Équipe 6A','createdAt':'2026-09-01',
+            'messages':[{'id':'m1','senderId':'s1','senderRole':'student','body':'Message original','readBy':[]}]
+        }]
+        view=copy.deepcopy(server._teacher_visible_data(data,self.user))
+        view['conversations'][0].update({
+            'teacherId':'t2','classId':'c2','participantIds':['s2'],
+            'title':'Conversation détournée','createdAt':'2020-01-01'
+        })
+        view['conversations'][0]['messages'][0].update({
+            'senderId':'t1','senderRole':'teacher','body':'Message falsifié','readBy':['t1']
+        })
+        view['conversations'][0]['messages'].append({
+            'id':'forged','senderId':'t1','senderRole':'teacher','body':'Message injecté'
+        })
+        merged=server._merge_teacher_data(data,view,self.user)
+        saved=merged['conversations'][0]
+        self.assertEqual((saved['teacherId'],saved['classId'],saved['participantIds'],saved['title']),
+                         ('t1','c1',['s1'],'Équipe 6A'))
+        self.assertEqual(saved['messages'],[{
+            'id':'m1','senderId':'s1','senderRole':'student','body':'Message original','readBy':['t1']
+        }])
+
     def test_teacher_cannot_move_existing_student_or_lesson_between_assigned_classes(self):
         data=copy.deepcopy(self.data)
         data['teachers'][0]['classIds']=['c1','c2']
