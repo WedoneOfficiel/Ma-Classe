@@ -191,3 +191,13 @@ Le premier test de non-régression a échoué à cause d'un défaut dans le test
 - Tests ajoutés pour le déplacement d'identité et la suppression d'un bulletin publié.
 - Commits : `955b904` (serveur), `575403d` (tests). CI réussie : [run #43307614719](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43307614719).
 - Le contrôle fin des matières réellement enseignées par le professeur reste à auditer.
+
+
+## Évaluations — rattachement strict à la classe
+
+La fusion des sauvegardes professeur protège désormais aussi l'identité de classe d'une évaluation existante : une évaluation ne peut pas être déplacée vers une autre classe, même si le professeur est affecté aux deux. Les notes imbriquées sont filtrées sur les élèves de la classe exacte de l'évaluation, et non simplement sur l'ensemble des élèves des classes du professeur.
+
+- Tests ajoutés : déplacement d'une évaluation entre deux classes attribuées et injection d'un élève d'une autre classe dans les notes.
+- Commits : `d4fe63f` (serveur), `077d30f` (tests).
+- CI à confirmer.
+- Limite : le modèle actuel ne contient pas d'affectation professeur/matière exploitable de façon fiable ; les droits restent donc au niveau de la classe. Ne pas prétendre qu'une restriction par discipline est en place.
