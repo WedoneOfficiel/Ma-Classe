@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat
+import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -1420,15 +1420,31 @@ class Handler(SimpleHTTPRequestHandler):
 
 def _assert_loopback_host(host):
     if str(host or '').strip().lower() not in ('127.0.0.1','localhost','::1'):
-        raise ValueError('MaClasse V25 est strictement locale : MACLASSE_HOST doit rester sur 127.0.0.1, localhost ou ::1.')
+        raise ValueError('MaClasse V25 reste locale par défaut : utilise le mode réseau privé explicitement documenté pour un test LAN.')
+
+
+def _assert_server_host(host, allow_lan=False):
+    value=str(host or '').strip().lower()
+    if value in ('127.0.0.1','localhost','::1'):
+        return True
+    if not allow_lan:
+        raise ValueError('Accès réseau désactivé. Active explicitement MACLASSE_LAN_MODE=1 pour un test privé.')
+    try:
+        address=ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise ValueError('En mode réseau, MACLASSE_HOST doit être une adresse IPv4 privée précise.') from exc
+    if not isinstance(address,ipaddress.IPv4Address) or not address.is_private or address.is_loopback or address.is_link_local or address.is_multicast or address.is_unspecified:
+        raise ValueError('Adresse refusée : utilise uniquement une adresse IPv4 privée du réseau local.')
+    return True
 
 
 if __name__=='__main__':
     os.chdir(ROOT)
     try:
-        _assert_loopback_host(HOST)
+        _assert_server_host(HOST,allow_lan=os.environ.get('MACLASSE_LAN_MODE')=='1')
     except ValueError as error:
         print(f'ERREUR DE SÉCURITÉ : {error}')
         raise SystemExit(2)
-    print(f'MaClasse V{APP_VERSION} — http://{HOST}:{PORT}')
+    mode='réseau privé — HTTP non chiffré, données fictives uniquement' if HOST not in ('127.0.0.1','localhost','::1') else 'local'
+    print(f'MaClasse V{APP_VERSION} — {mode} — http://{HOST}:{PORT}')
     ThreadingHTTPServer((HOST,PORT),Handler).serve_forever()
