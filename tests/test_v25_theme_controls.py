@@ -50,6 +50,12 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] .input:focus', html)
         self.assertIn('html[data-mc-theme="system"] .searchResult:hover', html)
 
+    def test_dark_theme_native_checkboxes_and_assessment_levels(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] input[type="checkbox"]', html)
+        self.assertIn('html[data-mc-theme="dark"] input[type="radio"]:checked', html)
+        self.assertIn('html[data-mc-theme="dark"] .v205Level.lv1', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
