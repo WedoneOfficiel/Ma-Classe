@@ -1694,6 +1694,47 @@ html[data-mc-theme="dark"] .v12Notify .badge{background:#c62828!important;color:
  .pageSub{max-width:100%}
 }
 
+
+/* V25.3 — corrections ciblées après retour Fedora */
+.focusCard{background:linear-gradient(135deg,#102a43,#1b4777)!important;color:#fff!important;border:0!important}
+.focusCard .muted{color:#c8d7e8!important}
+.focusCard .metric{background:#ffffff12!important;border-color:#ffffff22!important}
+.focusCard .metric b{color:#fff!important}
+.settingsGrid{grid-template-columns:minmax(220px,.85fr) minmax(300px,1.25fr) minmax(250px,1fr)!important;grid-auto-flow:row;align-items:start;gap:16px!important}
+.settingsGrid>.settingsCard:nth-child(n){grid-column:auto!important;grid-row:auto!important}
+.settingsGrid>.settingsDataCard{grid-column:1 / -1!important}
+.settingsGrid>.settingsCard{height:fit-content;align-self:start}
+@media(max-width:1050px){.settingsGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:760px){.settingsGrid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.settingsGrid>.settingsDataCard{grid-column:1!important}}
+.themeChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:8px}
+.themeChoice{display:flex;flex-direction:column;align-items:stretch;gap:5px;min-width:0;padding:9px;border:1px solid var(--line);border-radius:12px;background:var(--mc-surface,var(--paper));color:var(--ink);text-align:left;cursor:pointer}
+.themeChoice.active{border:2px solid var(--blue);padding:8px;box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 13%,transparent)}
+.themeChoice b{font-size:12px}.themeChoice small{font-size:10px;color:var(--muted)}
+.themePreview{height:48px;display:grid;grid-template-columns:12px 1fr;grid-template-rows:repeat(2,1fr);gap:4px;padding:5px;border-radius:7px;border:1px solid var(--line);overflow:hidden}
+.themePreview i{display:block;border-radius:3px;background:#8aafe0}
+.themePreview i:first-child{grid-row:1 / span 2;background:#557ca9}
+.themePreview i:nth-child(2){background:#8cadd2}.themePreview i:nth-child(3){background:#c4d4e7}
+.themePreviewLight{background:#f5f7fa}.themePreviewDark{background:#202124;border-color:#41434a}.themePreviewDark i:nth-child(2){background:#6d8db8}.themePreviewDark i:nth-child(3){background:#454b55}
+.themePreviewSystem{background:linear-gradient(90deg,#f5f7fa 0 50%,#202124 50%)}.themePreviewSystem i:nth-child(2){background:linear-gradient(90deg,#8cadd2 0 50%,#6d8db8 50%)}.themePreviewSystem i:nth-child(3){background:linear-gradient(90deg,#c4d4e7 0 50%,#454b55 50%)}
+.bulletinMetrics{margin-top:16px!important;gap:14px!important}
+.bulletinMetrics>.card.stat{margin:0!important;min-width:0}
+.bulletinFilters{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin:12px 0 15px}
+.bulletinTabs{margin-top:14px!important;padding-top:3px}
+.bulletinPreparation{padding:18px!important}
+.bulletinPreparation>.sectionhead{margin-bottom:12px}
+.schedulePage{display:block;width:100%;max-width:none;min-width:0}
+.schedulePage>.toolbar{width:100%;max-width:none;flex-wrap:wrap;gap:9px}
+.schedulePage>.card{width:100%;max-width:none;min-width:0;box-sizing:border-box}
+.schedulePage .scheduleGrid{display:grid;width:100%;max-width:none;min-width:0;grid-template-columns:64px minmax(0,1fr);overflow-x:auto}
+.schedulePage .scheduleDays{display:grid;width:100%;min-width:0;grid-template-columns:repeat(7,minmax(0,1fr))}
+.schedulePage .scheduleDays>.daycol{min-width:0;width:100%}
+.schedulePage .daycolHeader{padding:8px 4px;text-align:center;white-space:normal}
+.schedulePage .event{left:3px;right:3px;padding:5px;overflow-wrap:anywhere}
+html[data-mc-theme="dark"] body{background:var(--bg)!important}
+html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .bulletin{background:var(--paper)!important;box-shadow:var(--shadow)!important}
+html[data-mc-theme="dark"] .top{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--paper)!important;box-shadow:var(--shadow)!important}
+html[data-mc-theme="dark"] .modal,html[data-mc-theme="dark"] .searchResults{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
 </style>
 
 
