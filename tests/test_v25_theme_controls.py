@@ -139,6 +139,11 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] input[type="time"]', html)
         self.assertIn('html[data-mc-theme="system"] input[type="date"]', html)
 
+    def test_dark_theme_overrides_glass_borders_and_focus_tokens(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('--mc-glass-border:rgba(255,255,255,.12)', html)
+        self.assertIn('--ui-focus:0 0 0 3px rgba(10,132,255,.24)', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
