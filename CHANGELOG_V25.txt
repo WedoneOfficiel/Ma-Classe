@@ -147,3 +147,10 @@ Validation : test des autorisations PP corrigé pour isoler les données projet�
 - Messagerie : les destinataires ne voient plus les autres adresses BCC/CCI ; l'expéditeur conserve la liste complète. Commits 20dedb6 et 1db7f79 ; CI run 43307062966 réussi.
 - Bulletins : l'identité d'un bulletin existant (élève, classe, période) est préservée lors d'une sauvegarde professeur ; un bulletin publié ne peut pas être retiré de la collection ni modifié par un professeur. Commits 955b904 et 575403d ; CI run 43307614719 réussi.
 - Contrôle serveur de l'affectation matière du professeur : reste à auditer.
+
+
+12/11/2026 — Évaluations : rattachement strict à la classe
+- Protection de l'identité de classe des évaluations existantes.
+- Filtrage des notes sur les élèves de la classe exacte de l'évaluation.
+- Tests contre le déplacement interclasse et l'injection de notes d'élèves d'une autre classe.
+- Commits : d4fe63f, 077d30f. CI à confirmer ; permissions par matière non modélisées.
