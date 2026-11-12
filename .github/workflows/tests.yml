@@ -28,6 +28,8 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Vérifier la syntaxe JavaScript
         run: node --check _all.js
+      - name: Vérifier les scripts Fedora
+        run: bash -n Installer-MaClasse-Fedora.sh Lancer-MaClasse-Fedora.sh
       - name: Exécuter tous les tests JavaScript
         shell: bash
         run: |
