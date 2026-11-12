@@ -236,3 +236,11 @@ Validation CI complémentaire — 12/11/2026
 - Lanceur macOS simplifié : vérification des dépendances, ouverture de Firefox si présent, serveur local sur 127.0.0.1 et arrêt par Ctrl+C.
 - Documentation de sauvegarde avant mise à jour et rappel des limites de sécurité locales.
 - La CI vérifie la syntaxe des lanceurs macOS ; aucun test réel sur le Mac M5/macOS 27 n'est revendiqué.
+
+
+12/11/2026 — Compatibilité macOS et validation croisée
+- Correction des chemins uploads/Cloud pour utiliser systématiquement la racine réelle du stockage, notamment sur macOS où /var peut pointer vers /private/var.
+- Test de non-régression dédié.
+- CI complète réussie sur macOS et Ubuntu : run 43313321068.
+- Lanceurs .command passés en mode exécutable 100755 pour le double-clic Finder.
+- Validation réelle sur Mac M5/macOS 27 et recette Firefox restent à effectuer.
