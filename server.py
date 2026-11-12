@@ -984,10 +984,17 @@ class Handler(SimpleHTTPRequestHandler):
     def _set_session_cookie(self, token):
         self.send_header('Set-Cookie',f'mc_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_TTL}')
     def _origin_allowed(self):
+        host=self.headers.get('Host','').strip().lower()
+        expected=f'{HOST}:{PORT}'.lower()
+        allowed={expected}
+        if HOST in ('127.0.0.1','localhost','::1'):
+            allowed.update({f'127.0.0.1:{PORT}',f'localhost:{PORT}',f'[::1]:{PORT}'})
+        # Refuser les Host arbitraires (notamment les tentatives de DNS rebinding).
+        if host not in allowed:
+            return False
         origin=self.headers.get('Origin')
         if not origin:
             return self.command in ('GET','HEAD','OPTIONS')
-        host=self.headers.get('Host','127.0.0.1:8765')
         return origin in (f'http://{host}', f'https://{host}')
     def _require_local_origin(self):
         if self._origin_allowed():
