@@ -201,3 +201,6 @@ La fusion des sauvegardes professeur protège désormais aussi l'identité de cl
 - Commits : `d4fe63f` (serveur), `077d30f` (tests).
 - CI à confirmer.
 - Limite : le modèle actuel ne contient pas d'affectation professeur/matière exploitable de façon fiable ; les droits restent donc au niveau de la classe. Ne pas prétendre qu'une restriction par discipline est en place.
+
+
+Validation du contrôle des évaluations : le premier scénario de test remplaçait toute la liste de notes et ne conservait donc pas la note légitime de l'élève de la classe initiale. Le scénario a été corrigé pour conserver cette note tout en ajoutant une note interclasse falsifiée. Le code filtre correctement l'injection ; la suite complète est verte sur `6075e94` : [GitHub Actions #43308092780](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308092780).
