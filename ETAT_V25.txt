@@ -236,3 +236,10 @@ BULLETINS PDF — SOURCE DE VÉRITÉ SERVEUR
 - Tests couvrant les données canoniques et une tentative de falsification des valeurs côté client.
 - CI complète JS + Python réussie : run 43309419995, commit e1af32a.
 - Version conservée : V25.0.7 (correctif incrémental).
+
+
+SESSIONS — RÉVOCATION APRÈS CHANGEMENT DE MOT DE PASSE
+-----------------------------------------------------
+- Après modification du mot de passe, toutes les autres sessions du même compte sont supprimées ; la session courante reste valide.
+- Test HTTP de non-régression : session secondaire refusée (401) après rotation, session courante toujours autorisée.
+- CI complète JS + Python réussie : run 43309742779, commits serveur 96c4c5c et test 3001ed2.
