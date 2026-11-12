@@ -514,6 +514,9 @@ def _student_can_access_upload(user,relative,write=False):
     try:
         sid=str(user.get('studentId') or '')
         rel=str(relative or '').replace(chr(92),'/').lstrip('/')
+        lexical=os.path.join(UPLOADS,*rel.split('/'))
+        if os.path.islink(lexical):
+            return False
         target=_safe_upload_path(rel)
         rel=_uploads_relative(target)
         if not sid or rel.startswith('cloud/'):
@@ -576,8 +579,10 @@ def _merge_student_data(current,incoming,user):
             name=str(item.get('name') or '').replace(chr(92),'/').lstrip('/')
             if not name.startswith(f'submissions/{sid}/'): continue
             try:
+                lexical=os.path.join(UPLOADS,*name.split('/'))
+                if os.path.islink(lexical): continue
                 file_path=_safe_upload_path(name)
-                if not os.path.isfile(file_path) or os.path.islink(file_path): continue
+                if not os.path.isfile(file_path): continue
             except (ValueError,OSError): continue
             safe_files.append({'name':name,'url':'/data/uploads/'+name,'size':os.path.getsize(file_path)})
         safe['files']=safe_files
