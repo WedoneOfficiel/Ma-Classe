@@ -72,7 +72,7 @@ class TeacherDataScopeTests(unittest.TestCase):
     def test_non_principal_teacher_cannot_validate_publish_or_change_overall(self):
         data=copy.deepcopy(self.data)
         data['bulletins']=[{'id':'b1','studentId':'s1','classId':'c1','termId':'t1','subjectData':{'Maths':{'comment':'Ancienne appréciation'}},'overall':'Avis du PP','validated':False,'published':False}]
-        view=server._teacher_visible_data(data,self.user)
+        view=copy.deepcopy(server._teacher_visible_data(data,self.user))
         view['bulletins'][0].update({'overall':'Avis falsifié','validated':True,'validatedAt':'2026-11-12','published':True,'publishedAt':'2026-11-12'})
         view['bulletins'][0]['subjectData']['Maths']['comment']='Appréciation modifiée'
         merged=server._merge_teacher_data(data,view,self.user)
@@ -87,7 +87,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         data=copy.deepcopy(self.data)
         original={'id':'b1','studentId':'s1','classId':'c1','termId':'t1','subjectData':{'Maths':{'comment':'Officiel'}},'overall':'Avis officiel','validated':True,'published':True,'publishedAt':'2026-11-12'}
         data['bulletins']=[original]
-        view=server._teacher_visible_data(data,self.user)
+        view=copy.deepcopy(server._teacher_visible_data(data,self.user))
         view['bulletins'][0]['overall']='Falsifié'
         view['bulletins'][0]['subjectData']['Maths']['comment']='Falsifié'
         merged=server._merge_teacher_data(data,view,self.user)
