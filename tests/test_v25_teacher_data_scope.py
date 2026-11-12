@@ -144,6 +144,24 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(saved['Français']['comment'],'Ancien Français')
         self.assertNotIn('Histoire',saved)
 
+    def test_teacher_cannot_add_other_assigned_class_student_to_attendance(self):
+        data=copy.deepcopy(self.data)
+        data['teachers'][0]['classIds']=['c1','c2']
+        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        view=copy.deepcopy(server._teacher_visible_data(data,user))
+        view['attendance'][0]['rows'].append({'studentId':'s2','status':'absent'})
+        merged=server._merge_teacher_data(data,view,user)
+        self.assertEqual([r['studentId'] for r in merged['attendance'][0]['rows']],['s1'])
+
+    def test_teacher_cannot_link_submission_to_student_from_another_assigned_class(self):
+        data=copy.deepcopy(self.data)
+        data['teachers'][0]['classIds']=['c1','c2']
+        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        view=copy.deepcopy(server._teacher_visible_data(data,user))
+        view['submissions'][0]['studentId']='s2'
+        merged=server._merge_teacher_data(data,view,user)
+        self.assertFalse(any(x.get('id')=='sub1' and x.get('studentId')=='s2' for x in merged['submissions']))
+
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
