@@ -160,6 +160,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="system"] .activityIcon', html)
         self.assertIn(':root{--soft:rgba(118,118,128,.10)}', html)
 
+    def test_legacy_component_tokens_resolve_to_shared_design_tokens(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for alias in ('--text:var(--ui-text)', '--accent:var(--ui-blue)',
+                      '--ui-blue2:var(--ui-blue-soft)', '--card:var(--ui-surface)',
+                      '--border:var(--ui-line)', '--page-bg:var(--ui-bg)'):
+            self.assertIn(alias, html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
