@@ -241,3 +241,11 @@ Le point d'intégrité de l'export PDF est maintenant corrigé de bout en bout. 
 - Test unitaire ajouté avec des valeurs falsifiées côté client ; le constructeur n'utilise que les enregistrements canoniques.
 - CI complète réussie sur `e1af32a` : [GitHub Actions #43309419995](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43309419995).
 - La version applicative reste V25.0.7 : correctif incrémental de sécurité, sans changement du numéro de version.
+
+
+## Sessions — révocation après changement de mot de passe
+
+Un changement de mot de passe invalide maintenant toutes les autres sessions actives du même compte ; seule la session ayant effectué le changement reste ouverte. Cela évite qu'un ancien navigateur ou appareil conserve son accès avec une session déjà authentifiée après une rotation du mot de passe.
+
+- Test HTTP ajouté : deux sessions ouvertes pour le même compte, changement de mot de passe depuis l'une, ancienne session refusée (401), session courante conservée.
+- CI complète JS + Python réussie : [run #43309742779](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43309742779).
