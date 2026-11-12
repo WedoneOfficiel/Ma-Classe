@@ -106,6 +106,31 @@ class TeacherDataScopeTests(unittest.TestCase):
         merged=server._merge_teacher_data(data,view,self.user)
         self.assertEqual(merged['bulletins'][0],original)
 
+    def test_teacher_cannot_move_existing_evaluation_to_another_assigned_class(self):
+        data=copy.deepcopy(self.data)
+        data['classes'][1]['teacherIds']=['t1']
+        data['teachers'][0]['classIds']=['c1','c2']
+        data['evaluations']=[{'id':'e1','classId':'c1','subject':'Maths','grades':[{'studentId':'s1','value':15}]}]
+        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        view=copy.deepcopy(server._teacher_visible_data(data,user))
+        view['evaluations'][0]['classId']='c2'
+        view['evaluations'][0]['grades']=[{'studentId':'s2','value':20}]
+        merged=server._merge_teacher_data(data,view,user)
+        saved=merged['evaluations'][0]
+        self.assertEqual(saved['classId'],'c1')
+        self.assertEqual(saved['grades'],[{'studentId':'s1','value':15}])
+
+    def test_teacher_cannot_add_other_assigned_class_student_to_evaluation(self):
+        data=copy.deepcopy(self.data)
+        data['classes'][1]['teacherIds']=['t1']
+        data['teachers'][0]['classIds']=['c1','c2']
+        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        data['evaluations']=[{'id':'e1','classId':'c1','grades':[{'studentId':'s1','value':15}]}]
+        view=copy.deepcopy(server._teacher_visible_data(data,user))
+        view['evaluations'][0]['grades'].append({'studentId':'s2','value':20})
+        merged=server._merge_teacher_data(data,view,user)
+        self.assertEqual([g['studentId'] for g in merged['evaluations'][0]['grades']],['s1'])
+
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
