@@ -132,6 +132,13 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('@media(prefers-reduced-transparency:reduce)', html)
         self.assertIn('.toast{background:#242426!important;color:#fff!important', html)
 
+    def test_explicit_and_automatic_dark_share_one_effective_dark_stylesheet(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn('@media(prefers-color-scheme:dark){html[data-mc-theme="system"]', html)
+        self.assertIn('html[data-mc-theme="dark"] .mcSelectTrigger', html)
+        self.assertIn('html[data-mc-theme="dark"] .v12Workspace', html)
+        self.assertIn('html[data-mc-theme="dark"] .schedulePage', html)
+
     def test_automatic_light_inherits_the_explicit_light_appearance(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .side', html)
