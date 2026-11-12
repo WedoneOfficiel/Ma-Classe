@@ -308,3 +308,13 @@ VALIDATION MACOS — 12/11/2026
 - Test de non-régression ajouté pour la racine réelle du stockage uploads.
 - Les deux lanceurs .command ont le mode Git 100755.
 - À faire sur le matériel cible : installation et test interactif Firefox sur le Mac M5 sous macOS 27.
+
+
+MISE À JOUR — RÉSEAU PRIVÉ EXPÉRIMENTAL ET ESPACE ÉLÈVE — 12/11/2026
+- Le lancement local habituel reste sur 127.0.0.1. Un lanceur séparé Lancer-MaClasse-Reseau.command permet un essai sur une IPv4 privée précise, après changement des mots de passe initiaux direction et enseignant.
+- Le mode LAN utilise HTTP non chiffré : réseau privé isolé et données fictives uniquement. Pas de réseau de l'établissement, pas de redirection de ports, pas d'usage scolaire réel. HTTPS et audit complet du déploiement restent à faire.
+- Première tranche de comptes élèves : création par la direction, mot de passe PBKDF2 côté serveur et changement obligatoire à la première connexion.
+- Le portail élève donne accès à sa fiche limitée, sa classe, son emploi du temps en lecture seule, ses séances/devoirs, ses résultats publiés, ses absences et ses bulletins publiés/validés. Les rendus peuvent être téléversés uniquement dans le dossier propre à l'élève ; le serveur protège notes, fiche, autres élèves et corrections.
+- Messagerie élève et Cloud élève restent désactivés jusqu'à audit dédié. Les comptes élèves sont encore une première tranche, pas une version complète.
+- CI Ubuntu + macOS Apple Silicon réussie : run 43318282845. Les scripts .command sont en mode Git 100755.
+- Restent à faire : test physique sur le Mac M5/macOS 27, test réel du second PC sur la box privée, test Firefox complet, audit RBAC global, messagerie/Cloud élève, HTTPS et validation avant données réelles.
