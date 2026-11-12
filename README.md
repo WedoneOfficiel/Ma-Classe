@@ -160,3 +160,13 @@ Le serveur refuse maintenant l'export PDF officiel si le bulletin enregistré n'
 - Test HTTP ajouté : bulletin inexistant refusé (404), bulletin d'une autre classe refusé au professeur (403).
 - Commits : `a661d36` (serveur), `5713ba6` (client), `59bb9cf` (tests). CI réussie : [run #43306723332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43306723332).
 - Limite : les données chiffrées et appréciations du PDF sont encore transmises par le client ; une génération complète depuis la base reste nécessaire avant de qualifier le PDF de preuve officielle.
+
+
+## Autorisations des bulletins — rôle du professeur principal
+
+L'audit de la fusion des sauvegardes a montré que les restrictions de validation et de publication des bulletins étaient auparavant essentiellement contrôlées dans l'interface. La fusion serveur protège maintenant ces champs : un professeur qui n'est pas professeur principal de la classe ne peut pas modifier l'appréciation générale, valider ou publier le bulletin. Un bulletin déjà publié est conservé intégralement lors d'une sauvegarde professeur ; seule la direction peut le corriger par une sauvegarde administrative.
+
+- Les professeurs non principaux peuvent toujours mettre à jour les appréciations de matière dans leur périmètre de classe ; l'affectation précise par matière reste à auditer.
+- Tests ajoutés pour la falsification du statut de publication et la modification d'un bulletin déjà publié.
+- Commits : `2ee67c0` (serveur), `3705b90` (tests).
+- CI à vérifier.
