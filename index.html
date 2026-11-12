@@ -1199,6 +1199,113 @@ html[data-mc-theme="light"] .notice{background:#eaf3ff!important;color:#1558a0!i
 html[data-mc-theme="light"] .notice.warn{background:#fff7df!important;color:#855000!important}
 html[data-mc-theme="light"] input[type="date"],html[data-mc-theme="light"] input[type="time"]{color-scheme:light}
 
+
+/* V25.1 — normalisation transversale des surfaces et des états */
+:root{
+ --mc-card-radius:14px;
+ --mc-card-padding:clamp(13px,1.15vw,17px);
+ --mc-card-gap:12px;
+ --mc-control-radius:9px;
+ --mc-focus-ring:0 0 0 3px rgba(0,122,255,.20);
+}
+.card,.bulletin,.profile360Card,.activityCard{
+ border-radius:var(--mc-card-radius);
+}
+.card{padding:var(--mc-card-padding)}
+.grid{gap:var(--mc-card-gap)}
+.btn,.tab,.lessonMode,.cloudTab,.dayBtn,.statusBtn{
+ transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+ outline:2px solid var(--blue);outline-offset:2px;
+}
+.statMini,.metric,.chip,.file,.submissionFile,.lessonEntry,.activityCard,.profile360Card{
+ color:var(--ink);
+}
+.statMini{background:var(--mc-surface, var(--paper));border-color:var(--line)}
+.statMini small{color:var(--muted)}
+.statMini b{color:var(--ink)}
+.lessonMode{background:var(--content-bg,var(--paper));color:var(--ink);border-color:var(--line)}
+.lessonModeGreen.active{background:var(--green2);color:var(--green);border-color:var(--green)}
+.lessonModeBlue.active{background:var(--blue2);color:var(--blue);border-color:var(--blue)}
+.lessonModeNeutral.active{background:var(--mc-surface-soft,var(--bg));color:var(--ink);border-color:var(--line)}
+.activityAction,.quickAction{color:var(--ink)}
+.activityAction:hover,.quickAction:hover{background:var(--mc-surface-soft,var(--bg))}
+@media(prefers-color-scheme:dark){
+ html[data-mc-theme="system"]{
+  --mc-surface:#2c2c2e;--mc-surface-soft:#38383b;
+ }
+ html[data-mc-theme="system"] .statMini{background:#2c2c2e!important;color:#f5f5f7}
+ html[data-mc-theme="system"] .statMini small{color:#b5b5bc}
+ html[data-mc-theme="system"] .statMini b{color:#f5f5f7}
+ html[data-mc-theme="system"] .lessonMode{background:#2c2c2e;color:#f5f5f7;border-color:rgba(255,255,255,.14)}
+ html[data-mc-theme="system"] .lessonMode.active{color:#fff}
+}
+html[data-mc-theme="dark"]{
+ --mc-surface:#2c2c2e;--mc-surface-soft:#38383b;
+}
+html[data-mc-theme="dark"] .statMini,
+html[data-mc-theme="dark"] .metric,
+html[data-mc-theme="dark"] .chip,
+html[data-mc-theme="dark"] .file,
+html[data-mc-theme="dark"] .submissionFile,
+html[data-mc-theme="dark"] .activityCard,
+html[data-mc-theme="dark"] .profile360Card{
+ background:#2c2c2e!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.14)!important;
+}
+html[data-mc-theme="dark"] .statMini small,
+html[data-mc-theme="dark"] .metric small,
+html[data-mc-theme="dark"] .activityAction small{color:#b5b5bc!important}
+html[data-mc-theme="dark"] .statMini b,
+html[data-mc-theme="dark"] .metric b,
+html[data-mc-theme="dark"] .activityAction,
+html[data-mc-theme="dark"] .quickAction{color:#f5f5f7!important}
+html[data-mc-theme="dark"] .lessonMode,
+html[data-mc-theme="dark"] .lessonModeNeutral{
+ background:#38383b!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.16)!important;
+}
+html[data-mc-theme="dark"] .lessonModeGreen{background:rgba(48,209,88,.10)!important;color:#8de5a6!important;border-color:rgba(48,209,88,.28)!important}
+html[data-mc-theme="dark"] .lessonModeBlue{background:rgba(10,132,255,.12)!important;color:#a9d2ff!important;border-color:rgba(10,132,255,.30)!important}
+html[data-mc-theme="dark"] .lessonModeGreen.active{background:rgba(48,209,88,.24)!important;color:#b5f2c4!important;border-color:#55c477!important}
+html[data-mc-theme="dark"] .lessonModeBlue.active{background:rgba(10,132,255,.26)!important;color:#fff!important;border-color:#4da3ff!important}
+html[data-mc-theme="dark"] .lessonModeNeutral.active{background:#0a84ff!important;color:#fff!important;border-color:#0a84ff!important}
+html[data-mc-theme="dark"] .activityAction:hover,
+html[data-mc-theme="dark"] .quickAction:hover{background:rgba(255,255,255,.07)!important}
+html[data-mc-theme="dark"] .table .gradebookMatrix td:first-child,
+html[data-mc-theme="dark"] .evaltable td:first-child{background:#2c2c2e!important}
+html[data-mc-theme="light"]{
+ --mc-surface:#fff;--mc-surface-soft:#f5f5f7;
+}
+html[data-mc-theme="light"] .statMini,
+html[data-mc-theme="light"] .metric,
+html[data-mc-theme="light"] .chip,
+html[data-mc-theme="light"] .file,
+html[data-mc-theme="light"] .submissionFile,
+html[data-mc-theme="light"] .activityCard,
+html[data-mc-theme="light"] .profile360Card{
+ background:#fff!important;color:#1d1d1f!important;border-color:rgba(60,60,67,.14)!important;
+}
+html[data-mc-theme="light"] .statMini small,
+html[data-mc-theme="light"] .metric small{color:#626269!important}
+html[data-mc-theme="light"] .statMini b,
+html[data-mc-theme="light"] .metric b,
+html[data-mc-theme="light"] .activityAction,
+html[data-mc-theme="light"] .quickAction{color:#1d1d1f!important}
+html[data-mc-theme="light"] .lessonMode{background:#fff!important;color:#1d1d1f!important;border-color:rgba(60,60,67,.16)!important}
+html[data-mc-theme="light"] .lessonModeGreen.active{background:#eaf7ed!important;color:#248a3d!important;border-color:#9ed4b8!important}
+html[data-mc-theme="light"] .lessonModeBlue.active{background:#eaf3ff!important;color:#1752b5!important;border-color:#9dbcf0!important}
+html[data-mc-theme="light"] .lessonModeNeutral.active{background:#eef2f6!important;color:#1d1d1f!important;border-color:#d5dde6!important}
+html[data-mc-theme="light"] .activityAction:hover,
+html[data-mc-theme="light"] .quickAction:hover{background:#f5f5f7!important}
+@media(max-width:900px){
+ .attendanceStats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .attendanceStats{grid-template-columns:1fr 1fr}
+ .statMini{padding:9px}
+ .statMini b{font-size:18px}
+}
+
 </style>
 
 
