@@ -259,3 +259,12 @@ SAUVEGARDE PROFESSEUR — IMMUTABILITÉ DES RATTACHEMENTS
 - Les liens de classe sont préservés pour élèves, emploi du temps, séances et présences ; les liens classe/élève/séance sont préservés pour les pièces jointes ; les protections précédentes restent actives pour évaluations, bulletins et rendus.
 - Tests interclasses avec un professeur affecté aux deux classes.
 - CI complète JS + Python réussie : runs 43310380105 et 43310387814.
+
+
+INSTALLATION FEDORA — PREMIÈRE PRÉPARATION
+-----------------------------------------
+- Ajout d'un installateur Fedora créant un environnement Python isolé et installant requirements.txt.
+- Ajout d'un lanceur Fedora dédié, conservant l'écoute localhost-only.
+- Guide INSTALLATION_FEDORA_V25.txt ajouté.
+- Syntaxe bash -n intégrée à la CI.
+- Limite : installation réelle et mesure des performances sur le PC Fedora (4 Go RAM) pas encore exécutées.
