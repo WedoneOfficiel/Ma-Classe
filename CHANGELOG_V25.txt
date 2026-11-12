@@ -116,3 +116,11 @@ Correctif de durcissement post-import — 12/11/2026
 - Risque : production d'un PDF présentant un contenu client comme officiellement publié. Ce point concerne l'authenticité du document, pas une fuite de données serveur.
 - Correction à réaliser : lier l'export à un bulletin identifié et vérifier côté serveur son accès et son état de publication.
 - Statut : ouvert, non corrigé.
+
+
+12/11/2026 — Export PDF : vérification du statut du bulletin
+- Refus des exports officiels si le bulletin n'est pas validé et publié dans la base.
+- L'identité, la classe, la période et la date officielle sont désormais issues de la base serveur.
+- Test HTTP couvrant bulletin publié, brouillon non publié et classe hors périmètre.
+- Limite connue : contenu pédagogique chiffré et appréciations encore transmis par le navigateur ; validation serveur à poursuivre.
+- Commits : 508df20, 1a011c0. CI à confirmer.
