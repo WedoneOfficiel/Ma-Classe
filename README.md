@@ -133,3 +133,12 @@ La route `POST /api/bulletin-pdf` reçoit le contenu du bulletin depuis le navig
 - Statut : **constat confirmé, non corrigé**. Ne pas considérer l'export PDF comme document officiel garanti avant ce correctif.
 
 Les correctifs de confidentialité des empreintes et de révocation des sessions sont documentés plus haut. CI réussie sur les commits serveur/test concernés ; le run de révocation après adaptation du test est [#43306000415](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43306000415).
+
+
+### Suite du correctif PDF — contrôle du statut officiel
+
+Le serveur refuse maintenant l'export PDF officiel si le bulletin enregistré n'est pas à la fois validé et publié, ou si sa date de publication manque. Le test HTTP couvre le refus d'un brouillon non publié et l'acceptation d'un bulletin publié dans une classe attribuée au professeur. L'identité de l'élève, la classe, la période et la date officielle sont reprises depuis la base, et non depuis le navigateur.
+
+- Commits : `508df20` (contrôle serveur), `1a011c0` (test).
+- La génération utilise encore les moyennes, appréciations, statistiques et compétences transmis par le navigateur. Ces valeurs doivent faire l'objet d'une prochaine étape de recalcul/validation côté serveur avant de considérer le PDF comme une preuve intégrale de l'exactitude des résultats.
+- CI du nouveau lot : à vérifier.
