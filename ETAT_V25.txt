@@ -90,3 +90,13 @@ CORRECTIF DE CONFIDENTIALITÉ DES COMPTES PROFESSEURS — 12/11/2026
 - Test de non-régression ajouté : test_teacher_projection_never_exposes_password_material.
 - Commits : fbaf4ff (serveur), f6f994b (test).
 - GitHub Actions du lot : à vérifier après exécution ; aucune recette Firefox n'est revendiquée.
+
+
+CORRECTIF D'AUTHENTIFICATION — RÉVOCATION DES SESSIONS
+-----------------------------------------------------
+- Constat : une session conservait son rôle et son identité en mémoire jusqu'à 12 h, même si le compte était supprimé ou désactivé dans la base.
+- Correction dans Handler._session_user : relecture du compte courant à chaque requête authentifiée ; suppression de la session si le compte n'existe plus, est désactivé ou possède un rôle non autorisé ; actualisation des attributs de session depuis le compte courant.
+- Test HTTP ajouté : après restauration d'une archive qui retire les comptes, les sessions admin/professeur préexistantes doivent recevoir HTTP 401.
+- Premier run CI après modification du serveur : échec attendu du test ancien qui supprimait les comptes pendant le scénario avant de terminer ses vérifications. Test adapté pour conserver les comptes durant les vérifications normales puis tester la révocation après restauration. Le run suivant est à confirmer.
+- Commits : ed26a79 (serveur), 7638d4f (test).
+- Version applicative inchangée : V25.0.7.
