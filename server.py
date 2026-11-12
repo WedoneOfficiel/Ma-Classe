@@ -616,14 +616,27 @@ def _student_visible_data(data,user):
     settings=data.get('settings')
     if isinstance(settings,dict):
         out['settings']={k:settings[k] for k in ('rooms','termMode','terms','competencyLevels') if k in settings}
-    out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id]
-    out['students']=[dict(student_record)]
+    class_record=next((x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),None)
+    class_fields=('id','name','level','group','groups','room','attendanceMode','periodMode')
+    out['classes']=[{k:v for k,v in class_record.items() if k in class_fields}] if class_record else []
+    student_fields=('id','first','last','birth','sex','classId','group','email','phone')
+    out['students']=[{k:v for k,v in student_record.items() if k in student_fields}]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
-    out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
+    schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','recurrence','startDate','endDate','exceptions','overrides')
+    out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
     teacher_ids={str(x.get('teacherId')) for x in out['schedule'] if x.get('teacherId')}
     teacher_ids.update(str(x.get('teacherId')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and x.get('teacherId'))
-    out['teachers']=[x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id')) in teacher_ids]
-    out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
+    out['teachers']=[{k:v for k,v in x.items() if k in ('id','first','last')} for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id')) in teacher_ids]
+    out['lessons']=[]
+    for item in data.get('lessons',[]) or []:
+        if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or (item.get('group') and str(item.get('group'))!=str(student_record.get('group') or '')): continue
+        lesson_fields=('id','scheduleId','date','classId','group','subject','content','files','homework')
+        lesson={k:item[k] for k in lesson_fields if k in item}
+        homework=item.get('homework')
+        if isinstance(homework,dict):
+            homework_fields=('title','type','due','dueTime','instructions','files','requiresSubmission')
+            lesson['homework']={k:v for k,v in homework.items() if k in homework_fields}
+        out['lessons'].append(lesson)
     out['evaluations']=[]
     for item in data.get('evaluations',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
@@ -634,8 +647,8 @@ def _student_visible_data(data,user):
     out['attendance']=[]
     for item in data.get('attendance',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id: continue
-        copy=dict(item)
-        copy['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '')==sid]
+        copy={k:item[k] for k in ('id','classId','date','period','session','type') if k in item}
+        copy['rows']=[{k:r[k] for k in ('studentId','status','justified','reason') if k in r} for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '')==sid]
         out['attendance'].append(copy)
     out['bulletins']=[x for x in data.get('bulletins',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid and x.get('published') is True and x.get('validated') is True]
     lesson_ids={str(x.get('id')) for x in out['lessons'] if x.get('id')}
