@@ -1,0 +1,50 @@
+name: MaClasse — tests automatisés
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installer les dépendances Python
+        run: python -m pip install -r requirements.txt
+      - name: Vérifier la syntaxe JavaScript
+        run: node --check _all.js
+      - name: Exécuter tous les tests JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in tests/*.js; do
+            echo "::group::$test"
+            node "$test"
+            echo "::endgroup::"
+          done
+      - name: Compiler le serveur Python
+        run: python -m py_compile server.py
+      - name: Exécuter tous les tests Python
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in tests/*.py; do
+            echo "::group::$test"
+            python "$test"
+            echo "::endgroup::"
+          done
