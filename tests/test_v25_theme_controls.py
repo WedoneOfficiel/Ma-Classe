@@ -102,6 +102,11 @@ class ThemeControlsTests(unittest.TestCase):
                       '--ui-text-3:#98989f'):
             self.assertIn(token, html[html.index('variables de thème explicites'):])
 
+    def test_explicit_dark_theme_uses_dark_focus_and_shadow_tokens(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('--mc-focus-ring:0 0 0 3px rgba(10,132,255,.24)', html)
+        self.assertIn('--mc-shadow:0 1px 2px rgba(0,0,0,.24)', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
