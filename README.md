@@ -48,7 +48,7 @@ Les éléments suivants ont été annoncés comme réalisés dans les itération
 - Projection des données professeur passée en liste blanche : seuls les référentiels explicitement partagés sont transmis ; les futures clés restent privées par défaut. Les paramètres sont eux-mêmes filtrés champ par champ.
 - Tests de non-régression ajoutés pour empêcher la fuite de collections inconnues et de champs privés dans les paramètres.
 - `.gitignore` ajouté pour exclure la base locale, les téléversements, les sauvegardes et l'environnement Python ; la base provisoire suivie par Git a été supprimée du dépôt.
-- Workflow GitHub Actions ajouté dans `.github/workflows/tests.yml` pour exécuter les tests JavaScript et Python à chaque push/PR. Aucun résultat d'exécution n'a encore été observé dans cette session : les tests ne sont donc pas déclarés validés ici.
+- Workflow GitHub Actions ajouté dans `.github/workflows/tests.yml`. Exécution réussie sur le commit de code/test `f379a8c` : 31 tests JavaScript, les 7 scripts de test Python, `node --check _all.js` et `python -m py_compile server.py`. [Voir le run GitHub Actions](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43305047329).
 
 Commits de cette reprise : `fe0b449` et `ffaf34b` (allowlist serveur et filtrage des paramètres), `f13eeda` et `f379a8c` (tests), `5e4b301` (CI), `71fab97` (.gitignore), `5c84254` (retrait de la base locale).
 
