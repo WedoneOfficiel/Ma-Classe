@@ -205,6 +205,21 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertNotIn('Faux',str(result))
         self.assertNotEqual(result['average'],forged['average'])
 
+    def test_teacher_cannot_share_mail_with_student_outside_assigned_classes(self):
+        data=copy.deepcopy(self.data)
+        data['mailboxV2']={
+            'schemaVersion':2,'messages':[],'states':{},'folders':[],'drafts':[],
+            'resetPending':False
+        }
+        incoming=copy.deepcopy(data)
+        incoming['mailboxV2']['messages']=[{
+            'id':'mail-forged','sender':{'key':'teacher:t1','role':'teacher','id':'t1','name':'Teacher'},
+            'to':[],'cc':[],'bcc':[],'sharedWith':['student:s2'],
+            'subject':'Private data','body':'Should not be delivered','attachments':[]
+        }]
+        merged=server._merge_teacher_data(data,incoming,self.user)
+        self.assertEqual(merged['mailboxV2']['messages'],[])
+
     def test_teacher_cannot_reassign_or_rewrite_existing_conversation(self):
         data=copy.deepcopy(self.data)
         data['conversations']=[{
