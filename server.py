@@ -346,8 +346,12 @@ def _teacher_visible_data(data,user):
     lesson_ids={str(x.get('id')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids}
     # Seuls les référentiels explicitement partagés sont transmis aux professeurs.
     # Une nouvelle clé ajoutée à la base reste privée par défaut jusqu'à validation.
-    shared_keys=('settings','subjects','competencyLibrary','evaluationTemplates','evaluationCriteriaLibrary','schemaVersion','schemaMigratedAt')
+    shared_keys=('subjects','competencyLibrary','evaluationTemplates','evaluationCriteriaLibrary','schemaVersion','schemaMigratedAt')
     out={key:data[key] for key in shared_keys if key in data}
+    settings=data.get('settings')
+    if isinstance(settings,dict):
+        shared_settings=('rooms','termMode','terms','competencyLevels','courseAppearanceMigrationV205')
+        out['settings']={key:settings[key] for key in shared_settings if key in settings}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
     out['teachers']=[x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tids]
