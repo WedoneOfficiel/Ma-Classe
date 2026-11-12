@@ -79,13 +79,13 @@ def run():
             'users':[],
             'teachers':[{'id':'teacher-local','classIds':['c1']},{'id':'t2','classIds':['c2']}],
             'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
-            'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'}],
+            'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'},{'id':'s3','classId':'c1','first':'Camille'}],
             'lessons':[{'id':'l1','classId':'c1'},{'id':'l2','classId':'c2'}],
-            'evaluations':[{'id':'e1','classId':'c1','grades':[{'studentId':'s1','value':15},{'studentId':'s2','value':2}]},{'id':'e2','classId':'c2','grades':[{'studentId':'s2','value':18}]}],
-            'attendance':[], 'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b2','studentId':'s2','classId':'c2','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b3','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':False}], 'attachments':[], 'submissions':[], 'schedule':[], 'conversations':[], 'cloudItems':[], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test','terms':[{'id':'term1','name':'Trimestre 1'}]}
+            'evaluations':[{'id':'e1','classId':'c1','published':True,'grades':[{'studentId':'s1','value':15},{'studentId':'s3','value':8}]},{'id':'e2','classId':'c2','published':True,'grades':[{'studentId':'s2','value':18}]},{'id':'e3','classId':'c1','published':False,'grades':[{'studentId':'s1','value':19}]}],
+            'attendance':[{'id':'a1','classId':'c1','rows':[{'studentId':'s1','status':'present'},{'studentId':'s3','status':'absent'}]}], 'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b2','studentId':'s2','classId':'c2','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'},{'id':'b3','studentId':'s1','classId':'c1','termId':'term1','validated':True,'published':False},{'id':'b4','studentId':'s3','classId':'c1','termId':'term1','validated':True,'published':True,'publishedAt':'2026-11-01T10:00:00Z'}], 'attachments':[], 'submissions':[{'id':'sub1','studentId':'s1','lessonId':'l1','status':'submitted'},{'id':'sub3','studentId':'s3','lessonId':'l1','status':'submitted'}], 'schedule':[], 'conversations':[{'id':'private-mail','participantIds':['s3']}], 'cloudItems':[{'id':'private-cloud','ownerId':'s3'}], 'notifications':[], 'mailFolders':[], 'settings':{'schoolName':'Test','terms':[{'id':'term1','name':'Trimestre 1'}]}
         }
         # Conserver les comptes authentifiés pendant le test de cloisonnement.
-        seeded['users']=[admin_record,teacher_record]
+        seeded['users']=[admin_record,teacher_record,{'id':'u-student-s1','role':'student','studentId':'s1','username':'alice','name':'Alice','active':True,'mustChangePassword':True,'passwordHash':sha('eleve-test')}]
         (app/'data'/'maclasse.json').write_text(json.dumps(seeded))
         status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
         assert status==404
@@ -116,6 +116,27 @@ def run():
         assert next(x for x in persisted['students'] if x['id']=='s1')['first']=='Alicia'
         assert next(x for x in persisted['students'] if x['id']=='s2')['first']=='Bob'
         assert next(x for x in persisted['classes'] if x['id']=='c2')['name']=='6B'
+        # Compte élève individuel : authentification, changement initial et projection strictement personnelle.
+        status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleve-test'})
+        assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']
+        student_cookie=student_headers.get('Set-Cookie').split(';')[0]
+        assert call(base,'/api/data',cookie=student_cookie)[0]==428
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'eleve-test','newPassword':'unMotDePasseEleveTresSolide!'},student_cookie)[0]==200
+        status,student_read_headers,student_raw=call(base,'/api/data',cookie=student_cookie)
+        assert status==200
+        student_view=json.loads(student_raw)
+        assert [x['id'] for x in student_view['students']]==['s1']
+        assert [x['id'] for x in student_view['classes']]==['c1']
+        assert [x['id'] for x in student_view['lessons']]==['l1']
+        assert [x['id'] for x in student_view['evaluations']]==['e1']
+        assert [g['studentId'] for g in student_view['evaluations'][0]['grades']]==['s1']
+        assert [r['studentId'] for r in student_view['attendance'][0]['rows']]==['s1']
+        assert [x['id'] for x in student_view['bulletins']]==['b1']
+        assert [x['id'] for x in student_view['submissions']]==['sub1']
+        assert student_view['conversations']==[] and student_view['cloudItems']==[]
+        assert all('passwordHash' not in u and 'password' not in u for u in student_view['users'])
+        assert call(base,'/api/save','POST',student_view,student_cookie,extra_headers={'If-Match':student_read_headers.get('X-MaClasse-Revision')})[0]==403
+        assert call(base,'/api/data',cookie=teacher)[0]==200
         # La restauration ZIP complète est réservée à la direction et remplace aussi les uploads.
         archive=io.BytesIO()
         with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
@@ -135,7 +156,7 @@ def run():
         # Une restauration qui supprime les comptes doit révoquer les sessions déjà ouvertes.
         assert call(base,'/api/data',cookie=teacher)[0]==401
         assert call(base,'/api/data',cookie=admin)[0]==401
-        print('OK — authentification HTTP, révocation des sessions, projection professeur, conflits, rôles et restauration ZIP admin.')
+        print('OK — authentification HTTP, révocation des sessions, projections professeur/élève, cloisonnement des données, conflits, rôles et restauration ZIP admin.')
     finally:
         process.terminate(); process.wait(timeout=5); shutil.rmtree(temp,ignore_errors=True)
 
