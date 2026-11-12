@@ -157,3 +157,10 @@ Validation : test des autorisations PP corrigé pour isoler les données projet�
 
 
 Validation CI des droits d'évaluation : scénario de test ajusté pour distinguer la note légitime de l'injection interclasse ; suite complète réussie sur 6075e94 (run 43308092780).
+
+
+12/11/2026 — Contrôles interclasse des présences et travaux rendus
+- Présences limitées aux élèves de la classe exacte.
+- Travaux rendus liés à une séance existante et à un élève de la même classe.
+- Protection du périmètre des enregistrements existants contre les changements de classe falsifiés.
+- Tests de non-régression ; CI complète réussie sur 3fe990d (run 43308354602).
