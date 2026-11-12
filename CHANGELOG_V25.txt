@@ -171,3 +171,10 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - Test HTTP sur un fichier HTML contenant un script.
 - Protection de l'identité élève/séance des travaux rendus existants.
 - CI complète réussie sur 91db610 (run 43308611502).
+
+
+12/11/2026 — Permissions matière et cohérence des données imbriquées
+- Bulletins : appréciations de matière limitées aux matières de la fiche professeur ; fonction de contrôle UI restaurée ; vérification serveur ajoutée. Commits 8437b3a, 6db9412, be30a63 ; CI run 43308130018 réussi.
+- Projection : notes et présences limitées aux élèves de la classe exacte ; bulletins, pièces jointes et rendus masqués si les liens élève/classe/séance sont incohérents. Commits 67451c8 et f9fc214.
+- Sauvegarde : identité élève/séance/classe d'un rendu existant préservée côté serveur. Commit 91db610 ; CI run 43308611502 réussi.
+- Limite : les matières sont affectées globalement au professeur, pas encore par classe.
