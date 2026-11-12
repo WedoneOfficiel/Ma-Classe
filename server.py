@@ -510,6 +510,83 @@ def _teacher_visible_data(data,user):
     return out
 
 
+def _student_can_access_upload(user,relative,write=False):
+    try:
+        sid=str(user.get('studentId') or '')
+        rel=str(relative or '').replace('\\\\','/').lstrip('/')
+        target=_safe_upload_path(rel)
+        rel=_uploads_relative(target)
+        if not sid or rel.startswith('cloud/'):
+            return False
+        data=_load_database()
+        student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
+        if not student_record: return False
+        if write:
+            prefix=f'submissions/{sid}/'
+            if not rel.startswith(prefix): return False
+            return any(isinstance(sub,dict) and str(sub.get('studentId') or '')==sid and sub.get('status')=='draft' and any(isinstance(f,dict) and (str(f.get('name') or '')==rel or str(f.get('url') or '')=='/data/uploads/'+rel) for f in (sub.get('files') or [])) for sub in data.get('submissions',[]) or [])
+        visible=_student_visible_data(data,user)
+        needle='/data/uploads/'+rel
+        def contains(value):
+            if isinstance(value,dict): return any(contains(v) for v in value.values())
+            if isinstance(value,list): return any(contains(v) for v in value)
+            if isinstance(value,str): return value==rel or needle in value or value.endswith('/'+rel)
+            return False
+        return contains(visible)
+    except (ValueError,OSError):
+        return False
+
+
+def _merge_student_data(current,incoming,user):
+    """N'accepte que les brouillons/rendus de l'élève authentifié."""
+    if user.get('role')!='student': raise PermissionError('Rôle non autorisé')
+    sid=str(user.get('studentId') or '')
+    student_record=next((x for x in current.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
+    if not student_record: raise PermissionError('Profil élève introuvable')
+    class_id=str(student_record.get('classId') or '')
+    allowed_lessons={str(x.get('id')) for x in current.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))}
+    merged=dict(current)
+    old=[x for x in current.get('submissions',[]) or [] if isinstance(x,dict)]
+    incoming_rows=[x for x in incoming.get('submissions',[]) or [] if isinstance(x,dict)]
+    old_own={str(x.get('id')):x for x in old if str(x.get('studentId') or '')==sid}
+    new_own={}
+    for entry in incoming_rows:
+        ident=str(entry.get('id') or '')
+        previous=old_own.get(ident)
+        if not ident or str(entry.get('studentId') or '')!=sid or str(entry.get('lessonId') or '') not in allowed_lessons:
+            continue
+        if previous and previous.get('status')!='draft':
+            # Un rendu déjà envoyé est immuable côté élève ; le professeur seul le corrige.
+            new_own[ident]=dict(previous)
+            continue
+        lesson=next((x for x in current.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(entry.get('lessonId'))),None)
+        if not lesson or not isinstance(lesson.get('homework'),dict) or not lesson['homework'].get('requiresSubmission'):
+            continue
+        safe=dict(previous or {})
+        safe.update({'id':ident,'studentId':sid,'lessonId':str(lesson.get('id')),'classId':class_id})
+        if not previous:
+            safe['createdAt']=str(entry.get('createdAt') or datetime.datetime.now(datetime.timezone.utc).isoformat())
+        files=entry.get('files') if isinstance(entry.get('files'),list) else []
+        safe_files=[]
+        for item in files:
+            if not isinstance(item,dict): continue
+            name=str(item.get('name') or '').replace('\\\\','/').lstrip('/')
+            if not name.startswith(f'submissions/{sid}/'): continue
+            try: _safe_upload_path(name)
+            except ValueError: continue
+            safe_files.append({k:item[k] for k in ('name','url','size') if k in item})
+        safe['files']=safe_files
+        safe['file']=safe_files[0] if safe_files else None
+        safe['status']='submitted' if entry.get('status')=='submitted' and safe_files else 'draft'
+        if safe['status']=='submitted':
+            safe['submittedAt']=str(entry.get('submittedAt') or datetime.datetime.now(datetime.timezone.utc).isoformat())
+        else:
+            safe.pop('submittedAt',None)
+        new_own[ident]=safe
+    merged['submissions']=[x for x in old if str(x.get('studentId') or '')!=sid]+list(new_own.values())
+    return merged
+
+
 def _student_visible_data(data,user):
     """Projection strictement limitée à l'élève authentifié ; aucune donnée de camarade."""
     sid=str(user.get('studentId') or '')
@@ -1119,13 +1196,15 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            allowed_roles=('admin','teacher','student') if path=='/api/data' else ('admin','teacher')
+            allowed_roles=('admin','teacher','student') if path=='/api/data' or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
         if path.startswith('/data/uploads/'):
             rel=path[len('/data/uploads/'):]
             try: _safe_upload_path(rel)
             except ValueError: return self.send_error(404)
-            if not _teacher_can_access_upload(self._session_user() or {},rel,write=False): return self.send_error(403)
+            current_user=self._session_user() or {}
+            allowed=_student_can_access_upload(current_user,rel,write=False) if current_user.get('role')=='student' else _teacher_can_access_upload(current_user,rel,write=False)
+            if not allowed: return self.send_error(403)
         if path=='/api/data':
             try:
                 with DATA_LOCK:
@@ -1216,7 +1295,8 @@ class Handler(SimpleHTTPRequestHandler):
                 if k=='mc_session': token=v
             SESSIONS.pop(token,None)
             self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Set-Cookie','mc_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'); self.end_headers(); self.wfile.write(b'{"ok":true}'); return
-        user=self._require_auth()
+        allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin','teacher')
+        user=self._require_auth(roles=allowed_roles)
         if not user: return
         if path=='/api/backup/restore':
             if user.get('role')!='admin': return self._json({'error':'La restauration complète est réservée à la direction.'},403)
@@ -1328,7 +1408,10 @@ class Handler(SimpleHTTPRequestHandler):
                     if not hmac.compare_digest(supplied_revision,current_revision):
                         return self._json({'error':'Les données ont été modifiées depuis votre dernier chargement. Recharge MaClasse avant de réessayer.','code':'REVISION_CONFLICT'},409,headers={'X-MaClasse-Revision':current_revision})
                     if current is not None and current != data:
-                        if user.get('role')!='admin':
+                        if user.get('role')=='student':
+                            try: data=_merge_student_data(current,data,user)
+                            except PermissionError: return self._json({'error':'Périmètre élève non autorisé.'},403)
+                        elif user.get('role')!='admin':
                             if not _validate_cloud_item_changes(current,data,user):
                                 return self._json({'error':'Modification Cloud non autorisée.'},403)
                             try: data=_merge_teacher_data(current,data,user)
@@ -1439,7 +1522,9 @@ class Handler(SimpleHTTPRequestHandler):
                 parts=[x for x in name.split('/') if x not in ('','.','..')]
                 target=_safe_upload_path(name) if parts else ''
                 if not parts: return self._json({'error':'Chemin invalide.'},400)
-                if name.startswith('cloud/') or not _teacher_can_access_upload(user,name,write=True) or not _teacher_can_access_upload(user,name,write=False):
+                can_write=_student_can_access_upload(user,name,write=True) if user.get('role')=='student' else _teacher_can_access_upload(user,name,write=True)
+                can_read=_student_can_access_upload(user,name,write=False) if user.get('role')=='student' else _teacher_can_access_upload(user,name,write=False)
+                if name.startswith('cloud/') or not can_write or not can_read:
                     return self._json({'error':'Suppression de ce fichier non autorisée. Utilisez la commande Cloud dédiée pour les éléments Cloud.'},403)
                 if os.path.exists(target): shutil.rmtree(target) if os.path.isdir(target) else os.remove(target)
                 return self._json({'ok':True})
@@ -1470,7 +1555,11 @@ class Handler(SimpleHTTPRequestHandler):
             name=os.path.basename(raw_name).strip() or 'fichier'
             raw_folder=self.headers.get('X-Upload-Folder','general') or 'general'
             folder='/'.join(x for x in re.split(r'[/\\]+',raw_folder) if x not in ('','.','..'))
-            if not _teacher_can_access_upload(user,folder,write=True): return self._json({'error':'Téléversement dans ce dossier non autorisé.'},403)
+            if user.get('role')=='student':
+                sid=str(user.get('studentId') or '')
+                if folder!=f'submissions/{sid}': return self._json({'error':'Les élèves peuvent uniquement déposer des fichiers dans leur propre espace de rendu.'},403)
+            elif not _teacher_can_access_upload(user,folder,write=True):
+                return self._json({'error':'Téléversement dans ce dossier non autorisé.'},403)
             target_dir=_safe_upload_path(folder) if folder else os.path.realpath(UPLOADS)
             os.makedirs(target_dir,exist_ok=True)
             base,ext=os.path.splitext(name); candidate=name; n=1
