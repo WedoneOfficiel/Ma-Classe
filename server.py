@@ -81,6 +81,14 @@ def _safe_upload_path(relative):
         raise ValueError('Chemin invalide')
     return target
 
+def _uploads_relative(path):
+    """Chemin relatif canonique, y compris si macOS résout /var vers /private/var."""
+    root=os.path.realpath(UPLOADS)
+    target=os.path.realpath(path)
+    if os.path.commonpath([target,root])!=root:
+        raise ValueError('Chemin hors du stockage des téléversements')
+    return os.path.relpath(target,root).replace(os.sep,'/')
+
 def _restore_backup_archive(raw_bytes):
     """Restore an authenticated full ZIP snapshot without trusting its paths."""
     if not isinstance(raw_bytes, (bytes, bytearray)) or not raw_bytes:
@@ -414,7 +422,7 @@ def _teacher_can_access_upload(user, relative, write=False):
     try:
         rel=str(relative or '').replace('\\','/').lstrip('/')
         target=_safe_upload_path(rel)
-        rel=os.path.relpath(target,UPLOADS).replace(os.sep,'/')
+        rel=_uploads_relative(target)
         if rel.startswith('cloud/'):
             return _cloud_path_allowed(user,rel,write=write)
         if user.get('role')=='admin': return True
@@ -697,7 +705,7 @@ def _cloud_path_allowed(user,relative,write=False):
     try:
         rel=str(relative or '').replace('\\','/')
         target=_safe_upload_path(rel)
-        rel=os.path.relpath(target,UPLOADS).replace(os.sep,'/')
+        rel=_uploads_relative(target)
         parts=rel.split('/')
         # Cette fonction ne valide que des chemins Cloud : tout autre espace
         # doit être refusé par défaut, jamais considéré comme autorisé.
@@ -1298,7 +1306,7 @@ class Handler(SimpleHTTPRequestHandler):
                     target_dir=os.path.abspath(target_dir)
                     if os.path.commonpath([target_dir,os.path.abspath(UPLOADS)])!=os.path.abspath(UPLOADS): return self._json({'error':'Chemin invalide'},400)
                     os.makedirs(target_dir,exist_ok=False)
-                    return self._json({'ok':True,'path':os.path.relpath(target_dir,UPLOADS).replace(os.sep,'/')})
+                    return self._json({'ok':True,'path':_uploads_relative(target_dir)})
                 parts += ['folders',safe(obj.get('id','folder'))]
                 target_dir=_safe_upload_path('/'.join(parts)); os.makedirs(target_dir,exist_ok=False)
                 return self._json({'ok':True,'path':'/'.join(parts)})
@@ -1310,11 +1318,11 @@ class Handler(SimpleHTTPRequestHandler):
                 if not _cloud_path_allowed(user,rel,write=True) or not _cloud_known_item_path(rel): return self._json({'error':'Modification de ce fichier refusée.'},403)
                 if not rel or not new or new in ('.','..') or '/' in new or '\\' in new: return self._json({'error':'Nom invalide'},400)
                 parts=[x for x in rel.split('/') if x not in ('','.','..')]
-                target=_safe_upload_path(rel); base=os.path.dirname(target); dest=_safe_upload_path(os.path.relpath(base,UPLOADS).replace(os.sep,'/')+'/'+new)
+                target=_safe_upload_path(rel); base=os.path.dirname(target); dest=_safe_upload_path(_uploads_relative(base)+'/'+new)
                 if not os.path.exists(target): return self._json({'error':'Le fichier physique est introuvable.'},404)
                 if os.path.exists(dest): return self._json({'error':'Un fichier portant ce nom existe déjà.'},409)
                 os.rename(target,dest)
-                newrel=os.path.relpath(dest,UPLOADS).replace(os.sep,'/')
+                newrel=_uploads_relative(dest)
                 return self._json({'ok':True,'path':newrel})
             except Exception as e: return self._json({'error':str(e)},400)
 
@@ -1328,7 +1336,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not os.path.exists(sp): return self._json({'error':'Source physique introuvable.'},404)
                 if os.path.exists(dp): return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
                 os.makedirs(os.path.dirname(dp),exist_ok=True); os.rename(sp,dp)
-                return self._json({'ok':True,'path':os.path.relpath(dp,UPLOADS).replace(os.sep,'/')})
+                return self._json({'ok':True,'path':_uploads_relative(dp)})
             except Exception as e: return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-copy':
@@ -1343,7 +1351,7 @@ class Handler(SimpleHTTPRequestHandler):
                 os.makedirs(os.path.dirname(dpath),exist_ok=True)
                 if os.path.isdir(spath):shutil.copytree(spath,dpath)
                 else:shutil.copy2(spath,dpath)
-                return self._json({'ok':True,'path':os.path.relpath(dpath,UPLOADS).replace(os.sep,'/')})
+                return self._json({'ok':True,'path':_uploads_relative(dpath)})
             except Exception as e:return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-delete':
