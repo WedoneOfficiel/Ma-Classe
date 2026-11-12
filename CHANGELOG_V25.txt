@@ -164,3 +164,10 @@ Validation CI des droits d'évaluation : scénario de test ajusté pour distingu
 - Travaux rendus liés à une séance existante et à un élève de la même classe.
 - Protection du périmètre des enregistrements existants contre les changements de classe falsifiés.
 - Tests de non-régression ; CI complète réussie sur 3fe990d (run 43308354602).
+
+
+12/11/2026 — CSP des fichiers téléversés et intégrité des travaux rendus
+- Ajout d'une CSP sandbox sur les fichiers servis depuis /data/uploads/ afin de bloquer l'exécution de scripts HTML importés.
+- Test HTTP sur un fichier HTML contenant un script.
+- Protection de l'identité élève/séance des travaux rendus existants.
+- CI complète réussie sur 91db610 (run 43308611502).
