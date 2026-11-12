@@ -153,6 +153,13 @@ class ThemeControlsTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .close', html)
 
+    def test_dark_theme_avatar_and_activity_icon_contrast(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] .avatar', html)
+        self.assertIn('html[data-mc-theme="dark"] .profile360Avatar', html)
+        self.assertIn('html[data-mc-theme="system"] .activityIcon', html)
+        self.assertIn(':root{--soft:rgba(118,118,128,.10)}', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
