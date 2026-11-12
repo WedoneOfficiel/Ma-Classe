@@ -546,6 +546,43 @@ def _merge_teacher_data(current,incoming,user):
         for entry in new_scope.values():
             item=dict(entry)
             previous=None
+            if key=='conversations':
+                previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
+                if previous:
+                    # Une conversation existante ne peut pas être réaffectée ni voir
+                    # ses participants/messages réécrits par un enseignant.
+                    for field in ('teacherId','classId','participantIds','type','title','createdAt'):
+                        if field in previous: item[field]=previous[field]
+                        else: item.pop(field,None)
+                    # Dans l'ancien modèle, seul l'état de lecture personnel est modifiable.
+                    incoming_messages=item.get('messages') if isinstance(item.get('messages'),list) else []
+                    incoming_by_id={str(m.get('id')):m for m in incoming_messages if isinstance(m,dict) and m.get('id')}
+                    safe_messages=[]
+                    for original_message in previous.get('messages',[]) or []:
+                        if not isinstance(original_message,dict): continue
+                        message=dict(original_message)
+                        update=incoming_by_id.get(str(message.get('id') or ''))
+                        if update is not None:
+                            read_by=list(message.get('readBy') or [])
+                            updated_read=list(update.get('readBy') or [])
+                            if tid in updated_read and tid not in read_by: read_by.append(tid)
+                            if tid not in updated_read: read_by=[x for x in read_by if str(x)!=tid]
+                            message['readBy']=read_by
+                        safe_messages.append(message)
+                    item['messages']=safe_messages
+                    # Les états d'archivage/classement restent strictement personnels.
+                    for field in ('archivedBy','deletedBy','starredBy'):
+                        before=list(previous.get(field) or [])
+                        after=list(item.get(field) or [])
+                        if tid in after and tid not in before: before.append(tid)
+                        if tid not in after: before=[x for x in before if str(x)!=tid]
+                        item[field]=before
+                    old_folders=previous.get('folderByUser') if isinstance(previous.get('folderByUser'),dict) else {}
+                    new_folders=item.get('folderByUser') if isinstance(item.get('folderByUser'),dict) else {}
+                    folders=dict(old_folders)
+                    if tid in new_folders: folders[tid]=new_folders[tid]
+                    else: folders.pop(tid,None)
+                    item['folderByUser']=folders
             if key in ('students','schedule','lessons','attendance','attachments','bulletins','evaluations','submissions'):
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
