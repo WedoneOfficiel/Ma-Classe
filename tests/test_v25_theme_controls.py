@@ -174,6 +174,16 @@ class ThemeControlsTests(unittest.TestCase):
         declared = set(re.findall(r'(--[\w-]+)\s*:', html))
         self.assertEqual(referenced - declared, set())
 
+    def test_dynamic_modules_have_complete_theme_token_aliases(self):
+        import re
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        js = (ROOT / "_all.js").read_text(encoding="utf-8")
+        declared = set(re.findall(r'(--[\\w-]+)\\s*:', html))
+        referenced = set(re.findall(r'var\\(\\s*(--[\\w-]+)', js))
+        self.assertEqual(referenced - declared, set())
+        self.assertIn('--surface:var(--ui-surface-solid)', html)
+        self.assertIn('--primary:var(--ui-blue)', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
