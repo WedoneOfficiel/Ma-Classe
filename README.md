@@ -306,3 +306,23 @@ Le serveur refusait déjà les chemins d'accès non autorisés, mais son ancienn
 ### Essai sur un réseau privé (expérimental)
 
 Pour un test avec un second ordinateur connecté à la même box privée, lance `Lancer-MaClasse-Reseau.command` sur le Mac serveur. Le script affiche l'adresse à saisir sur l'autre PC. Le serveur se lie à l'adresse IPv4 privée du Mac, jamais à toutes les interfaces. Ce mode utilise HTTP non chiffré : données fictives uniquement, box isolée, aucun accès depuis le réseau de l'établissement et aucune redirection de port. Le lanceur habituel reste local.
+
+
+## Essai LAN privé et première tranche de l'espace élève — 12/11/2026
+
+### Réseau privé expérimental
+
+- `Lancer-MaClasse-Reseau.command` lie le serveur à l'adresse IPv4 privée précise détectée sur le Mac ; le lanceur local reste lié à loopback.
+- Le mode LAN exige que les mots de passe provisoires direction et enseignant aient été changés. Il n'écoute pas sur `0.0.0.0` et refuse les adresses publiques.
+- Le contrôle Host est lié à l'adresse configurée pour limiter le DNS rebinding.
+- **HTTP LAN n'est pas chiffré** : box privée isolée et données fictives uniquement. Aucun usage sur le réseau de l'établissement, aucune redirection de port. HTTPS et validation réseau complète restent à faire.
+
+### Comptes élèves individuels — première tranche
+
+- La direction peut créer un compte élève lié à une fiche existante, avec identifiant et mot de passe provisoire d'au moins 12 caractères ; le changement est imposé à la première connexion.
+- La connexion élève est maintenant authentifiée côté serveur. La projection `/api/data` ne transmet que sa fiche, sa classe, ses cours, ses évaluations publiées avec ses propres notes, ses lignes d'assiduité, ses bulletins publiés et validés et ses propres rendus.
+- Les élèves peuvent téléverser et envoyer des travaux uniquement dans leur dossier personnel `submissions/<studentId>/`. Le serveur conserve les corrections et les champs canoniques ; un élève ne peut pas modifier sa fiche, les notes, les données d'un camarade ou une correction.
+- Les pièces jointes ne sont accessibles que si elles sont référencées dans les données visibles de l'élève.
+- La messagerie élève et le Cloud élève restent volontairement masqués/non activés tant que les autorisations spécifiques ne sont pas auditées.
+- Tests ajoutés : intégration HTTP de connexion et de cloisonnement, envoi de rendu, accès aux fichiers et tests unitaires de projection/fusion.
+- Statut CI de ce lot : à vérifier après le déclenchement GitHub Actions ; aucun résultat vert n'est revendiqué ici.
