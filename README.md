@@ -166,10 +166,10 @@ Le serveur refuse maintenant l'export PDF officiel si le bulletin enregistré n'
 
 L'audit de la fusion des sauvegardes a montré que les restrictions de validation et de publication des bulletins étaient auparavant essentiellement contrôlées dans l'interface. La fusion serveur protège maintenant ces champs : un professeur qui n'est pas professeur principal de la classe ne peut pas modifier l'appréciation générale, valider ou publier le bulletin. Un bulletin déjà publié est conservé intégralement lors d'une sauvegarde professeur ; seule la direction peut le corriger par une sauvegarde administrative.
 
-- Les professeurs non principaux peuvent toujours mettre à jour les appréciations de matière dans leur périmètre de classe ; l'affectation précise par matière reste à auditer.
+- Les professeurs peuvent modifier uniquement les appréciations dont la matière figure dans leur fiche professeur (`teachers[].subjects`) ; ce contrôle est maintenant appliqué côté interface et côté serveur. Il s'agit d'une liste de matières par professeur, pas encore d'une affectation matière/classe.
 - Tests ajoutés pour la falsification du statut de publication et la modification d'un bulletin déjà publié.
-- Commits : `2ee67c0` (serveur), `3705b90` (tests), puis `1b8514e` (isolation des fixtures de test).
-- CI réussie : [run #43307416629](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43307416629).
+- Commits : `2ee67c0` (droits PP), `3705b90` (tests), `1b8514e` (fixtures), `8437b3a` (droits matière), `6db9412` (contrôle UI), `be30a63` (tests).
+- CI réussie pour le lot matière : [run #43308130018](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308130018).
 
 
 ### Validation des droits de bulletin — résultat CI
@@ -222,3 +222,12 @@ Tests de non-régression ajoutés pour l'injection d'élève dans une présence 
 Les fichiers servis depuis `/data/uploads/` reçoivent maintenant une politique CSP dédiée avec `sandbox` et `default-src 'none'`. Cela empêche un fichier HTML importé ou téléversé d'exécuter du JavaScript actif dans l'origine de MaClasse. Le test HTTP téléverse/sert un fichier HTML contenant un script et vérifie les en-têtes de protection.
 
 Le contrôle des travaux rendus a également été renforcé : un rendu existant conserve son élève et sa séance d'origine, empêchant une requête falsifiée de le réassocier à un autre élève ou une autre classe. Suite complète JS + Python réussie sur `91db610` : [GitHub Actions #43308611502](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308611502).
+
+
+## Cloisonnement exact des données imbriquées
+
+- La projection professeur filtre maintenant les notes et présences selon la classe exacte de l'évaluation ou de la feuille, même si le professeur intervient dans plusieurs classes.
+- Bulletins, pièces jointes et travaux rendus ne sont transmis que lorsque les identifiants de classe, d'élève et de séance présents dans l'enregistrement concordent. Un rendu associant un élève d'une classe à une séance d'une autre classe est masqué.
+- À la sauvegarde, les associations élève/séance/classe d'un rendu existant sont conservées depuis l'enregistrement serveur ; le client ne peut pas déplacer le rendu vers un autre élève ou une autre séance.
+- Commits : `67451c8` (projection), `f9fc214` (tests), `91db610` (préservation de l'identité du rendu).
+- CI réussie : [run #43308611502](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43308611502).
