@@ -423,15 +423,20 @@ def _merge_teacher_data(current,incoming,user):
         for entry in new_scope.values():
             item=dict(entry)
             previous=None
-            if key=='bulletins':
+            if key in ('bulletins','evaluations'):
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
-                    # L'identité d'un bulletin existant ne peut pas être déplacée par une sauvegarde professeur.
-                    for field in ('studentId','classId','termId'):
+                    # L'identité d'un bulletin ou d'une évaluation existante est immuable côté professeur.
+                    fields=('studentId','classId','termId') if key=='bulletins' else ('classId',)
+                    for field in fields:
                         item[field]=previous.get(field)
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions' and item.get('lessonId') and str(item.get('lessonId')) not in lesson_ids: continue
-            if key=='evaluations': item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids]
+            if key=='evaluations':
+                # Les notes doivent concerner des élèves de la classe exacte de l'évaluation,
+                # pas simplement d'une autre classe également attribuée au professeur.
+                evaluation_class=str(item.get('classId') or '')
+                item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids and any(isinstance(st,dict) and str(st.get('id'))==str(g.get('studentId')) and str(st.get('classId') or '')==evaluation_class for st in current.get('students',[]) or [])]
             if key=='attendance': item['rows']=[r for r in item.get('rows',[]) or [] if isinstance(r,dict) and str(r.get('studentId') or '') in student_ids]
             if key=='bulletins':
                 class_record=next((c for c in current.get('classes',[]) or [] if isinstance(c,dict) and str(c.get('id'))==str((previous or item).get('classId') or '')),None)
