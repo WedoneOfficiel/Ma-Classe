@@ -296,3 +296,7 @@ CIBLE DE DÉPLOIEMENT CORRIGÉE — 12/11/2026
 - Les lanceurs macOS vérifient arm64 natif, Python >= 3.10, installent les dépendances dans .venv et ouvrent Firefox si présent.
 - La syntaxe des lanceurs est vérifiée en CI ; l'installation réelle et le parcours Firefox doivent encore être effectués sur le Mac cible.
 - Ne pas présenter la V25 comme prête pour un réseau local ou un usage scolaire réel tant que les contrôles d'autorisation et la recette complète ne sont pas validés.
+
+
+NOTE DE CONTINUITÉ — 12/11/2026
+Les anciennes notes d'installation Fedora ci-dessus sont historiques et ne correspondent plus à la machine cible. Elles sont remplacées par la préparation Mac Apple Silicon M5 / macOS 27 décrite dans INSTALLATION_MAC_V25.txt.
