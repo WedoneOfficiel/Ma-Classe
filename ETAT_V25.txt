@@ -112,3 +112,13 @@ POINT D'AUDIT À CORRIGER — AUTHENTICITÉ DES BULLETINS PDF
 - Statut : constat confirmé par lecture de server.py et de l'appel dans _all.js ; non corrigé à ce stade.
 
 CI des correctifs précédents : succès sur les commits serveur/test ; test de révocation des sessions validé par le run 43306000415.
+
+
+COMPLÉMENT — CONTRÔLE DU STATUT POUR L'EXPORT PDF
+------------------------------------------------
+- L'API refuse désormais un bulletin non validé, non publié ou sans date de publication enregistrée.
+- L'identité de l'élève, la classe, la période et la date de publication sont lues depuis la base serveur ; le professeur doit être affecté à la classe.
+- Test HTTP : refus d'un bulletin non publié, refus d'un bulletin hors périmètre et génération acceptée pour un bulletin validé/publié dans le périmètre.
+- Commits : 508df20 (serveur), 1a011c0 (test).
+- Limite restante : moyennes, statistiques, appréciations et compétences PDF restent encore fournies par le client. Il faut les recalculer ou les vérifier côté serveur avant de certifier l'intégrité complète du document.
+- CI à confirmer.
