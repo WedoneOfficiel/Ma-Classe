@@ -1306,6 +1306,23 @@ html[data-mc-theme="light"] .quickAction:hover{background:#f5f5f7!important}
  .statMini b{font-size:18px}
 }
 
+
+/* V25.1 — densité et hiérarchie des paramètres */
+.settingsGrid{align-items:start;gap:14px}
+.settingsCard{min-width:0;padding:clamp(14px,1.25vw,19px)}
+.settingsCard>.sectionhead{margin-bottom:12px}
+.settingsCard .section{margin-top:13px}
+.settingsCard .notice{margin:8px 0 12px}
+.settingsTerm{padding:11px 12px;margin:0 0 9px;border:1px solid var(--line);border-radius:11px;background:var(--mc-surface-soft,var(--bg))}
+.settingsTerm .form{gap:9px}
+.settingsTerm .field label{font-size:11px}
+.settingsTerm .input{min-width:0}
+.settingsDataCard .section{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.settingsDataCard .section .btn{margin:0!important}
+.settingsCard .metric{padding:10px 12px;border-radius:10px}
+@media(min-width:1100px){.settingsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.settingsDataCard{grid-column:1/-1}}
+@media(max-width:760px){.settingsGrid{grid-template-columns:minmax(0,1fr)}.settingsDataCard{grid-column:auto}.settingsTerm .form{grid-template-columns:1fr 1fr}.settingsTerm .field:first-child{grid-column:1/-1}}
+
 </style>
 
 
