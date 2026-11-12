@@ -14,9 +14,9 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 
 ### Point de synchronisation GitHub
 
-Lors de la vérification du dépôt le 12 novembre 2026, la branche `main` ne contenait que ce README (aucun code applicatif ni fichier de version n'était visible dans le dépôt). Les versions V25.0.1 à V25.0.7 ont été travaillées dans les échanges précédents et annoncées sous forme d'archives, mais leur présence dans ce dépôt n'est donc **pas confirmée**.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version source est confirmée par `VERSION.txt` et `server.py` : **V25.0.7**. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
-Avant de poursuivre les modifications du code, synchroniser ici les vrais fichiers de la dernière version V25. Ne pas considérer ce README comme la preuve que ces changements sont déjà intégrés au dépôt.
+Le fichier local `data/maclasse.json` ne contenait que les deux comptes provisoires. Il a été retiré du suivi Git et ajouté au `.gitignore`, afin que les futures données réelles d'élèves et d'établissement ne soient pas publiées. Le serveur recrée ce fichier au démarrage s'il est absent.
 
 ---
 
@@ -43,11 +43,20 @@ Les éléments suivants ont été annoncés comme réalisés dans les itération
 - Détection des sauvegardes concurrentes par contrôle de version, avec refus des écritures obsolètes plutôt qu'écrasement silencieux.
 - Sauvegardes ZIP incluant la base et les téléversements ; restauration avec validation de l'archive et sauvegarde préalable.
 
+## Correctifs appliqués après l'import
+
+- Projection des données professeur passée en liste blanche : seuls les référentiels explicitement partagés sont transmis ; les futures clés restent privées par défaut.
+- Test de non-régression ajouté pour empêcher la fuite de collections inconnues et de configurations privées.
+- `.gitignore` ajouté pour exclure la base locale, les téléversements, les sauvegardes et l'environnement Python ; la base provisoire suivie par Git a été supprimée du dépôt.
+- Workflow GitHub Actions ajouté dans `.github/workflows/tests.yml` pour exécuter les tests JavaScript et Python à chaque push/PR. Aucun résultat d'exécution n'a encore été observé dans cette session : les tests ne sont donc pas déclarés validés ici.
+
+Commits de cette reprise : `fe0b449` (allowlist serveur), `f13eeda` (test), `5e4b301` (CI), `71fab97` (.gitignore), `5c84254` (retrait de la base locale).
+
 ## Reste à faire — priorités
 
 ### Bloquants avant le réseau local multi-postes
 
-- [ ] Synchroniser le code V25 réel dans ce dépôt et confirmer la version exacte.
+- [x] Synchroniser le code V25 réel dans ce dépôt et confirmer la version exacte.
 - [ ] Auditer les permissions de **toutes** les API et fonctionnalités métier : classes, élèves, notes, absences, bulletins, documents, messagerie et Cloud.
 - [ ] Vérifier que les enseignants ne reçoivent que les données qui leur sont nécessaires.
 - [ ] Finaliser les comptes élèves individuels et leur filtrage strict ; ne pas activer leur connexion avant cela.
@@ -91,4 +100,4 @@ Après chaque lot de changements :
 | V25.0.6 | Détection des sauvegardes obsolètes et conflits d'écriture |
 | V25.0.7 | Restauration d'archives ZIP et validation des archives |
 
-*Cet historique reflète les travaux rapportés avant la synchronisation du dépôt ; il devra être confirmé à partir des commits et des fichiers sources.*
+*Historique vérifié à partir des fichiers sources et du commit d'import ; les limites de recette restent celles indiquées plus haut.*
