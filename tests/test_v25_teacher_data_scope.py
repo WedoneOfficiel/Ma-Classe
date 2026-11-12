@@ -162,6 +162,21 @@ class TeacherDataScopeTests(unittest.TestCase):
         merged=server._merge_teacher_data(data,view,user)
         self.assertTrue(any(x.get('id')=='sub1' and x.get('studentId')=='s1' for x in merged['submissions']))
 
+    def test_nested_records_must_match_the_exact_class(self):
+        data=copy.deepcopy(self.data)
+        data['teachers'][0]['classIds']=['c1','c2']
+        data['evaluations'][0]['grades'].append({'studentId':'s2','value':2})
+        data['attendance'][0]['rows'].append({'studentId':'s2','status':'absent'})
+        data['submissions'].append({'id':'cross','lessonId':'l1','studentId':'s2'})
+        data['bulletins']=[{'id':'cross-b','classId':'c1','studentId':'s2','termId':'t1'}]
+        data['attachments']=[{'id':'cross-a','classId':'c1','studentId':'s2'}]
+        view=server._teacher_visible_data(data,self.user)
+        self.assertEqual([g['studentId'] for g in view['evaluations'][0]['grades']],['s1'])
+        self.assertEqual([r['studentId'] for r in view['attendance'][0]['rows']],['s1'])
+        self.assertNotIn('cross',[x['id'] for x in view['submissions']])
+        self.assertNotIn('cross-b',[x['id'] for x in view['bulletins']])
+        self.assertNotIn('cross-a',[x['id'] for x in view['attachments']])
+
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
