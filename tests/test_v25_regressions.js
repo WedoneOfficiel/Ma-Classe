@@ -8,7 +8,11 @@ assert(src.includes('REVISION_CONFLICT'),'client must explain stale-save conflic
 assert(src.includes('function cloudSearchInput(input)'), 'Cloud search must preserve focus after rendering');
 assert(src.includes('function openInitialPasswordModal()'), 'temporary account passwords must be changed before use');
 assert(src.includes("/api/auth/login"), 'login must be verified by the server');
-assert(src.includes('Accès individuel sécurisé · bientôt disponible'), 'student login remains disabled until server-side student permissions exist');
+assert(src.includes('function openAuthStudent()'), 'students must have an individual username/password login');
+assert(src.includes('function saveStudentAccount(e)'), 'direction must be able to create individual student accounts');
+assert(src.includes("/api/admin/student-account"), 'student credentials must be created and hashed server-side');
+assert(src.includes("upload(file,'submissions/'+sid)"), 'student homework uploads must use the student-specific submission folder');
+assert(src.includes('La messagerie élève arrive dans une prochaine étape'), 'unreviewed student messaging must remain unavailable');
 assert(src.includes("for(const k of ['schedule','bulletins','attachments','conversations','teachers','subjects','cloudItems','mailFolders','users','notifications','auditLog','messages'])"),'all collections normalized defensively');
 assert(src.includes("cls(defaultClass)?.attendanceMode==='hour'"),'attendance mode must use the stored hour value');
 const singleDeleteStart=src.indexOf('function cloudDelete(){'),singleDeleteEnd=src.indexOf('function ',singleDeleteStart+10);
