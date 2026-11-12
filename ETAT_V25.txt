@@ -268,3 +268,10 @@ INSTALLATION FEDORA — PREMIÈRE PRÉPARATION
 - Guide INSTALLATION_FEDORA_V25.txt ajouté.
 - Syntaxe bash -n intégrée à la CI.
 - Limite : installation réelle et mesure des performances sur le PC Fedora (4 Go RAM) pas encore exécutées.
+
+
+DÉMARRAGE — BLOCAGE DES ADRESSES RÉSEAU
+--------------------------------------
+- Le serveur refuse maintenant de démarrer si MACLASSE_HOST n'est pas 127.0.0.1, localhost ou ::1.
+- La tentative de bind sur 0.0.0.0, une IP LAN ou :: se termine par une erreur de sécurité (code de sortie 2), au lieu de lancer une écoute réseau avec un simple avertissement.
+- Test dédié ajouté ; CI en cours de validation sur commits 75207b5 et f1fa7d0.
