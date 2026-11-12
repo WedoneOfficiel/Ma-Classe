@@ -133,6 +133,12 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('@media(prefers-color-scheme:light){html[data-mc-theme="system"] .side', html)
         self.assertNotIn('@media(prefers-color-scheme:light){ .side', html)
 
+    def test_date_and_time_controls_follow_selected_color_scheme(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('html[data-mc-theme="dark"] input[type="date"]', html)
+        self.assertIn('html[data-mc-theme="dark"] input[type="time"]', html)
+        self.assertIn('html[data-mc-theme="system"] input[type="date"]', html)
+
     def test_theme_layer_covers_reported_and_interactive_components(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('html[data-mc-theme="dark"] .statMini', html)
