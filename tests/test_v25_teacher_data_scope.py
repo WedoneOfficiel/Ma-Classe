@@ -7,7 +7,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.data={
             'settings':{'schoolName':'École test'},
             'classes':[{'id':'c1','name':'6A','principalTeacherId':'t2'},{'id':'c2','name':'6B','principalTeacherId':'t2'}],
-            'teachers':[{'id':'t1','classIds':['c1']},{'id':'t2','classIds':['c2']}],
+            'teachers':[{'id':'t1','classIds':['c1'],'subjects':['Maths']},{'id':'t2','classIds':['c2'],'subjects':['Français']}],
             'users':[{'id':'u1','role':'teacher','teacherId':'t1'},{'id':'u2','role':'teacher','teacherId':'t2'}],
             'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'}],
             'lessons':[{'id':'l1','classId':'c1'},{'id':'l2','classId':'c2'}],
@@ -130,6 +130,19 @@ class TeacherDataScopeTests(unittest.TestCase):
         view['evaluations'][0]['grades'].append({'studentId':'s2','value':20})
         merged=server._merge_teacher_data(data,view,user)
         self.assertEqual([g['studentId'] for g in merged['evaluations'][0]['grades']],['s1'])
+
+    def test_teacher_can_only_edit_assigned_bulletin_subjects(self):
+        data=copy.deepcopy(self.data)
+        data['bulletins']=[{'id':'b1','studentId':'s1','classId':'c1','termId':'t1','subjectData':{'Maths':{'comment':'Ancien Maths'},'Français':{'comment':'Ancien Français'}},'overall':'Avis PP','validated':False,'published':False}]
+        view=copy.deepcopy(server._teacher_visible_data(data,self.user))
+        view['bulletins'][0]['subjectData']['Maths']['comment']='Nouveau Maths'
+        view['bulletins'][0]['subjectData']['Français']['comment']='Falsification Français'
+        view['bulletins'][0]['subjectData']['Histoire']={'comment':'Matière non affectée'}
+        merged=server._merge_teacher_data(data,view,self.user)
+        saved=merged['bulletins'][0]['subjectData']
+        self.assertEqual(saved['Maths']['comment'],'Nouveau Maths')
+        self.assertEqual(saved['Français']['comment'],'Ancien Français')
+        self.assertNotIn('Histoire',saved)
 
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
