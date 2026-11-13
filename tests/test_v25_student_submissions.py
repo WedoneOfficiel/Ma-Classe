@@ -21,12 +21,14 @@ class QuietHandler(server.Handler):
 class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
+        self.old_cwd = os.getcwd()
         self.old = {key: getattr(server, key) for key in ("ROOT", "DATA_DIR", "DATA_FILE", "UPLOADS", "HOST", "PORT")}
         server.ROOT = self.temp.name
         server.DATA_DIR = os.path.join(self.temp.name, "data")
         server.DATA_FILE = os.path.join(server.DATA_DIR, "maclasse.json")
         server.UPLOADS = os.path.join(server.DATA_DIR, "uploads")
         os.makedirs(server.UPLOADS, exist_ok=True)
+        os.chdir(self.temp.name)
         server.HOST = "127.0.0.1"
         server.SESSIONS.clear()
         server.LOGIN_ATTEMPTS.clear()
@@ -67,6 +69,7 @@ class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
         server.LOGIN_ATTEMPTS.clear()
         for key, value in self.old.items():
             setattr(server, key, value)
+        os.chdir(self.old_cwd)
         self.temp.cleanup()
 
     def request(self, path, method="GET", payload=None, raw=None, extra_headers=None):
