@@ -117,11 +117,11 @@ const dayRendererStart = source.indexOf('function scheduleDay(', weekRendererSta
 const monthRendererStart = source.indexOf('function scheduleMonth(', dayRendererStart);
 const timeHelpersStart = source.indexOf('function mins(', monthRendererStart);
 assert(weekRendererStart >= 0 && dayRendererStart > weekRendererStart && monthRendererStart > dayRendererStart && timeHelpersStart > monthRendererStart, 'Les trois rendus de calendrier doivent être présents.');
-const eventHelpersStart = source.indexOf('function mins(', monthRendererStart);
-const eventHelpersEnd = source.indexOf('function miniCalendar(', eventHelpersStart);
-assert(eventHelpersStart >= 0 && eventHelpersEnd > eventHelpersStart, 'Les helpers de positionnement des créneaux doivent être présents.');
-vm.runInContext(source.slice(eventHelpersStart, eventHelpersEnd), context);
-vm.runInContext(source.slice(weekRendererStart, timeHelpersStart), context);
+const subjectColorsStart = source.indexOf('const SUBJECT_COLORS', dayRendererStart);
+assert(subjectColorsStart > dayRendererStart, 'Le rendu jour doit être isolé des helpers de cartes.');
+vm.runInContext(source.slice(weekRendererStart, dayRendererStart), context);
+vm.runInContext(source.slice(dayRendererStart, subjectColorsStart), context);
+vm.runInContext(source.slice(monthRendererStart, timeHelpersStart), context);
 vm.runInContext("scheduleView='week';selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
 assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit apparaître le vendredi de la semaine initiale.');
 vm.runInContext('changeWeek(7)', context);
