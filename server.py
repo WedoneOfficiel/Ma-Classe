@@ -1268,7 +1268,7 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception: return self._json({'error':'Requête invalide.'},400)
             username=str(obj.get('username') or '').strip().lower(); legacy_name=str(obj.get('name') or '').strip(); first=str(obj.get('first') or '').strip() or legacy_name; last=str(obj.get('last') or '').strip(); name=(first+' '+last).strip(); password=str(obj.get('password') or '')
             if not re.fullmatch(r'[a-z0-9._-]{3,40}',username): return self._json({'error':'Identifiant invalide : 3 à 40 caractères.'},400)
-            if not first or not last or len(first)>80 or len(last)>80: return self._json({'error':'Indique le prénom et le nom de la personne responsable.'},400)
+            if not first or len(first)>80 or len(last)>80 or (not last and not legacy_name): return self._json({'error':'Indique le prénom et le nom de la personne responsable.'},400)
             if len(password)<12 or len(password)>1024: return self._json({'error':'Le mot de passe doit contenir entre 12 et 1024 caractères.'},400)
             with DATA_LOCK:
                 try:
