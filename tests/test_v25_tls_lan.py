@@ -4,7 +4,7 @@ from pathlib import Path
 
 SOURCE=Path(__file__).resolve().parents[1]
 
-def request(url, method='GET', payload=None, origin=None, context=None):
+def request(url, method='GET', payload=None, origin=None, context=None, cookie=None):
     headers={}
     body=None
     if payload is not None:
@@ -12,6 +12,8 @@ def request(url, method='GET', payload=None, origin=None, context=None):
         body=json.dumps(payload).encode()
     if origin is not None:
         headers['Origin']=origin
+    if cookie is not None:
+        headers['Cookie']=cookie
     req=urllib.request.Request(url,data=body,headers=headers,method=method)
     opener=urllib.request.build_opener(urllib.request.HTTPSHandler(context=context)) if context else urllib.request.build_opener()
     try:
@@ -53,8 +55,11 @@ def run():
         assert status==201
         cookie=headers.get('Set-Cookie','')
         assert 'HttpOnly' in cookie and 'SameSite=Strict' in cookie and 'Secure' in cookie
+        assert headers.get('Strict-Transport-Security')=='max-age=31536000'
         status,_,_=request(base+'/api/auth/login','POST',{'username':'direction','password':password},origin=f'http://{host}',context=context)
         assert status==403, 'An HTTP Origin must not be accepted on the HTTPS listener'
+        status,logout_headers,_=request(base+'/api/auth/logout','POST',{},origin=base,context=context,cookie=cookie.split(';')[0])
+        assert status==200 and 'Secure' in logout_headers.get('Set-Cookie','')
     finally:
         process.terminate()
         process.wait(timeout=5)
