@@ -253,3 +253,15 @@ Validation CI complémentaire — 12/11/2026
 - Ajout d'une projection serveur limitée à l'élève connecté et de contrôles pour les rendus personnels et leurs fichiers ; aucune modification des notes, de la fiche ou des corrections n'est acceptée depuis un compte élève.
 - Messagerie et Cloud élève restent désactivés en attendant un audit de permissions dédié.
 - Tests HTTP et unitaires ajoutés ; CI Ubuntu + macOS Apple Silicon réussie (run #43318282845).
+
+
+
+13/11/2026 — V25.0.15 : comptes élèves canoniques et matières enseignants
+- La fiche élève devient l'unique enregistrement de son compte : les identifiants de connexion, l'empreinte PBKDF2, l'état du compte et le changement obligatoire du mot de passe provisoire sont intégrés à la fiche.
+- Suppression du doublon de compte élève dans users[] ; l'API ne fournit qu'une projection publique expurgée des secrets pour les écrans de gestion.
+- Connexion, validation de session, changement de mot de passe, réinitialisation et activation/désactivation alignés sur l'identifiant canonique de la fiche.
+- Création d'élèves depuis l'espace professeur dans une classe attribuée, puis création de leur accès provisoire.
+- Sauvegarde des fiches élèves confirmée côté serveur avant affichage du succès ; restauration de l'état local en cas d'échec.
+- Les enseignants peuvent de nouveau gérer librement leurs matières depuis leur profil, comme auparavant.
+- Les anciennes sauvegardes V25 avec fiches et comptes élèves séparés ne sont pas migrées : la recette V25.0.15 se fait sur une base neuve.
+- CI Ubuntu et macOS Apple Silicon : tests JavaScript, tests Python et intégration HTTP.
