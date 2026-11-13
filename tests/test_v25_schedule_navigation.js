@@ -121,11 +121,11 @@ assert(subjectColorsStart > dayRendererStart, 'Le rendu jour doit être isolé d
 vm.runInContext(source.slice(weekRendererStart, dayRendererStart), context);
 vm.runInContext(source.slice(dayRendererStart, subjectColorsStart), context);
 vm.runInContext(source.slice(monthRendererStart, timeHelpersStart), context);
-const colorHelpersStart = source.indexOf('const SUBJECT_COLORS', monthRendererStart);
+const colorHelpersStart = source.indexOf('const SUBJECT_COLORS', dayRendererStart);
 const dragHelpersStart = source.indexOf('function startScheduleDrag(', colorHelpersStart);
 const minuteHelpersStart = source.indexOf('function mins(', timeHelpersStart);
 const miniCalendarStart = source.indexOf('function miniCalendar(', minuteHelpersStart);
-assert(colorHelpersStart > monthRendererStart && dragHelpersStart > colorHelpersStart && minuteHelpersStart > timeHelpersStart && miniCalendarStart > minuteHelpersStart, 'Les fonctions réelles des cartes de cours doivent être présentes.');
+assert(colorHelpersStart > dayRendererStart && dragHelpersStart > colorHelpersStart && minuteHelpersStart > timeHelpersStart && miniCalendarStart > minuteHelpersStart, 'Les fonctions réelles des cartes de cours doivent être présentes.');
 vm.runInContext(source.slice(colorHelpersStart, dragHelpersStart), context);
 vm.runInContext(source.slice(minuteHelpersStart, miniCalendarStart), context);
 vm.runInContext("scheduleView='week';selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
