@@ -60,7 +60,7 @@ for (const testCase of recurrenceCases) {
   const candidate = { id:'recurrence-'+testCase.recurrence, ...testCase };
   for (const date of ['2026-11-09','2026-11-13','2026-11-18','2026-11-20','2026-11-27','2026-12-04','2026-12-11']) {
     const expected = testCase.dates.includes(date);
-    const actual = vm.runInContext('recurring('+JSON.stringify(candidate)+', new Date('+JSON.stringify(date)+'T12:00:00))', context);
+    const actual = vm.runInContext('recurring('+JSON.stringify(candidate)+', new Date('+JSON.stringify(date+'T12:00:00')+'))', context);
     assert.strictEqual(actual, expected, testCase.recurrence+' / '+testCase.day+' / '+date);
   }
 }
