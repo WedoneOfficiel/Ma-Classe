@@ -181,7 +181,7 @@ context.scheduleView='month';context.render();
 assert(context.main.innerHTML.includes('1 cours'),'Le routeur doit afficher le calendrier mensuel avec son cours.');
 context.page='studentSchedule';
 context.scheduleView='week';context.render();
-assert(context.main.innerHTML.includes('data-schedule-id="class-wide"')||context.main.innerHTML.includes('data-schedule-id="class-a"'),'Le routeur doit afficher les cours autorisés dans l’espace élève.');
+assert(context.main.innerHTML.includes('data-schedule-id="slot-1"'),'Le routeur doit afficher les cours autorisés dans l’espace élève.');
 
 
 const overlapStart = source.indexOf('function scheduleOverlap(');
