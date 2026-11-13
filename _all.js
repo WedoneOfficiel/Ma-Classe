@@ -1,5 +1,5 @@
 'use strict';
-const MC_VERSION='V25.0.18';
+const MC_VERSION='V25.0.19';
 const CLASS_LEVELS=['TPS','PS','MS','GS','CP','CE1','CE2','CM1','CM2','6e','5e','4e','3e','Seconde','Première','Terminale'];
 // MaClasse V25.0 — refonte fiabilité, sécurité et hébergement local.
 const NAV=[['dashboard','⌂','Tableau de bord'],['activity','◉','Centre d’activité'],['schedule','▦','Emploi du temps'],['lessons','▤','Séances & leçons'],['students','♙','Élèves'],['evaluations','✓','Évaluations'],['attendance','☑','Appels'],['bulletins','▥','Bulletins'],['messages','✉','Messagerie'],['documents','☁','Cloud'],['teachers','♙','Professeurs'],['classes','□','Classes'],['settings','⚙','Paramètres']];
