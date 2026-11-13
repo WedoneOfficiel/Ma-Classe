@@ -109,6 +109,8 @@ context.shell = () => '';
 context.esc = value => String(value ?? '');
 context.subjectColor = () => ['#fff','#ddd','#000'];
 context.eventCard = (item, date) => item.id+'@'+context.iso(date);
+context.time = value => String(value||'').slice(0,5);
+context.cls = id => context.db.classes.find(x => x.id === id);
 vm.runInContext(source.slice(scheduleStart, scheduleEnd), context);
 const weekRendererStart = source.indexOf('function scheduleWeek(');
 const dayRendererStart = source.indexOf('function scheduleDay(', weekRendererStart);
