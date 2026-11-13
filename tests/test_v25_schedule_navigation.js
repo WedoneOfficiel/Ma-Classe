@@ -188,7 +188,11 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.persistedSchedule=JSON.parse(JSON.stringify(context.db));
   vm.runInContext(source.slice(saveStart,saveEnd),context);
   const form={values:{day:'4',classIds:['class-1'],teacherId:'',time:'09:00',endTime:'10:00',subject:'Français',group:'',room:'',recurrence:'weekly',intervalWeeks:'1',startDate:'2026-11-09',endDate:'',exceptions:''}};
-  await vm.runInContext("saveSchedule({preventDefault(){},target:form},'')",vm.createContext({...context,form}));
+  context.form=form;
+  await vm.runInContext("saveSchedule({preventDefault(){},target:form},'')",context);
+  assert.strictEqual(context.db.schedule.length,1,'Un nouveau créneau doit rester présent après la sauvegarde et le rechargement serveur.');
+  assert.strictEqual(context.db.schedule[0].subject,'Français');
+  assert.strictEqual(context.lastToast,'Emploi du temps enregistré.');
 })().catch(error=>{console.error(error);process.exitCode=1});
 
 console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales, occurrences récurrentes et rendu du planning.');
