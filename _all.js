@@ -244,7 +244,7 @@ function schedule(){
     <div class="scheduleDateControls">
      <div class="scheduleDateNav">
       <button class="btn scheduleIconBtn" aria-label="Période précédente" title="Période précédente" onclick="${scheduleView==='month'?'changeMonth(-1)':'changeWeek(-'+(scheduleView==='day'?1:7)+')'}">‹</button>
-      <button class="btn scheduleToday" onclick="selectedWeek=startWeek(new Date());render()">Aujourd’hui</button>
+      <button class="btn scheduleToday" onclick="selectedWeek=scheduleView==='week'?startWeek(new Date()):new Date();render()">Aujourd’hui</button>
       <button class="btn scheduleIconBtn" aria-label="Période suivante" title="Période suivante" onclick="${scheduleView==='month'?'changeMonth(1)':'changeWeek('+(scheduleView==='day'?1:7)+')'}">›</button>
      </div>
      <div class="scheduleCurrentRange"><strong>${esc(rangeLabel)}</strong><span>Emploi du temps · ${db.schedule.length} créneau(x) récurrent(s)</span></div>
