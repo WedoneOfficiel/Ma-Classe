@@ -1153,7 +1153,7 @@ class Handler(SimpleHTTPRequestHandler):
         origin=self.headers.get('Origin')
         if not origin:
             return self.command in ('GET','HEAD','OPTIONS')
-        scheme='https' if isinstance(self.connection,ssl.SSLSocket) else 'http'
+        scheme='https' if isinstance(getattr(self,'connection',None),ssl.SSLSocket) else 'http'
         return origin==f'{scheme}://{host}'
     def _require_local_origin(self):
         if self._origin_allowed():
@@ -1165,6 +1165,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','same-origin')
         self.send_header('X-Frame-Options','DENY')
+        if isinstance(getattr(self,'connection',None),ssl.SSLSocket): self.send_header('Strict-Transport-Security','max-age=31536000')
         # Les fichiers importés/téléversés ne doivent jamais pouvoir exécuter
         # du HTML/JavaScript actif sur l'origine de l'application.
         if urlparse(getattr(self,'path','')).path.startswith('/data/uploads/'):
@@ -1362,7 +1363,8 @@ class Handler(SimpleHTTPRequestHandler):
                 k,_,v=part.strip().partition('=')
                 if k=='mc_session': token=v
             SESSIONS.pop(token,None)
-            self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Set-Cookie','mc_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'); self.end_headers(); self.wfile.write(b'{"ok":true}'); return
+            self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); secure='; Secure' if isinstance(getattr(self,'connection',None),ssl.SSLSocket) else ''
+            self.send_header('Set-Cookie',f'mc_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0{secure}'); self.end_headers(); self.wfile.write(b'{"ok":true}'); return
         allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin','teacher')
         user=self._require_auth(roles=allowed_roles)
         if not user: return
