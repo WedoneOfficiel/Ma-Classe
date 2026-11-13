@@ -6,6 +6,8 @@ assert(!source.includes('$'+'{pat}'), 'Aucune interpolation de motif non défini
 assert(source.includes('function studentScheduleWeek(ds,occ){return scheduleWeek(ds,occ,true)}'));
 assert(source.includes('function studentScheduleDay(d,occ){return scheduleDay(d,occ,true)}'));
 assert(source.includes('window.setInterval(refreshLiveScheduleData,5000)'));
+assert(source.includes('Le serveur n’a pas confirmé l’enregistrement'));
+assert(source.includes('Le serveur n’a pas confirmé l’envoi du travail'));
 const context = {
   activeStudent: () => 'student-1',
   student: id => ({id, first:'Alice', classId:'class-1'}),
