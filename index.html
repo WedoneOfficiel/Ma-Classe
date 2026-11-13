@@ -1837,6 +1837,42 @@ html[data-mc-theme="dark"] .modal,html[data-mc-theme="dark"] .modalhead,html[dat
  .settingsGrid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
  .settingsGrid>.settingsDataCard{grid-column:1!important}
 }
+
+
+/* V25.6 — thème clair : reprise fidèle des finitions de l'ancien automatique clair.
+   Le sélecteur effectif "light" couvre maintenant Clair ET Automatique en système clair. */
+html[data-mc-theme="light"] .side{
+ box-shadow:10px 0 40px rgba(10,40,80,.08)!important
+}
+html[data-mc-theme="light"] .top{
+ background:rgba(255,255,255,.52)!important
+}
+html[data-mc-theme="light"] .card,
+html[data-mc-theme="light"] .profile360Card,
+html[data-mc-theme="light"] .bulletin,
+html[data-mc-theme="light"] .activityCard{
+ box-shadow:0 10px 30px rgba(18,43,70,.055),inset 0 1px rgba(255,255,255,.72)!important
+}
+html[data-mc-theme="light"] .btn.primary,
+html[data-mc-theme="light"] .tab.active,
+html[data-mc-theme="light"] .profileTab.active,
+html[data-mc-theme="light"] .profile360Tab.active{
+ box-shadow:0 5px 16px rgba(10,132,255,.24),inset 0 1px rgba(255,255,255,.34)!important
+}
+html[data-mc-theme="light"] .stat:after{
+ background:radial-gradient(circle,rgba(10,132,255,.18),rgba(10,132,255,.045) 65%,transparent 72%)!important;
+ filter:blur(2px)
+}
+/* Le dégradé bleu de la carte Aujourd'hui faisait partie du rendu clair historique. */
+html[data-mc-theme="light"] .focusCard{
+ background:linear-gradient(135deg,#0a5ecb,#0a84ff 58%,#4aa3ff)!important;
+ color:#fff!important;
+ box-shadow:0 14px 38px rgba(10,80,150,.16)!important
+}
+html[data-mc-theme="light"] .focusCard .muted{
+ color:#d8e7f7!important
+}
+
 </style>
 
 
