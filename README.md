@@ -9,12 +9,12 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail annoncée :** V25.0.7 (alpha)  
+**Version de travail :** V25.0.9 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
-Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version source est confirmée par `VERSION.txt` et `server.py` : **V25.0.7**. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative affichée dans les paramètres est **V25.0.9** ; `VERSION.txt` sert de repère de version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
 Le fichier local `data/maclasse.json` ne contenait que les deux comptes provisoires. Il a été retiré du suivi Git et ajouté au `.gitignore`, afin que les futures données réelles d'élèves et d'établissement ne soient pas publiées. Le serveur recrée ce fichier au démarrage s'il est absent.
 
@@ -337,3 +337,16 @@ Pour un test avec un second ordinateur connecté à la même box privée, lance 
 - Test de non-régression ajouté pour la présence des trois choix, la persistance locale et les feuilles de style explicites.
 - Commits : `299e560` (préférences), `1e36676` (styles), `596e95d` (tests).
 - Limite : cette première passe doit encore être vérifiée visuellement dans Firefox sur les pages et composants réels. La CI automatise la présence des règles et les tests existants, mais ne remplace pas une recette visuelle exhaustive.
+
+
+## Interface et organisation — V25.0.9 · 13/11/2026
+
+- Le Cloud suit désormais une structure de page constante : bandeau général du module, navigation entre les espaces, en-tête de l'espace sélectionné, indicateurs et zone de contenu. L'espace Documents reprend la même architecture.
+- Les niveaux de classe sont présentés dans une grille élargie pour éviter le débordement des libellés « Première » et « Terminale ».
+- Les cases à cocher utilisent un seul dessin de coche CSS, sans glyphes concurrents susceptibles de produire une seconde marque.
+- Le répertoire des élèves sépare visuellement la recherche et les filtres du tableau.
+- Les paramètres sont organisés en trois colonnes : Apparence et Salles à gauche, Périodes scolaires au centre, Version et Données à droite (adaptation en deux colonnes puis une colonne sur les écrans plus étroits).
+- Les notes techniques de migration de version restent dans ce README et ne sont plus affichées dans la page Professeurs.
+- Les onglets de préparation des bulletins restent alignés à gauche et sont centrés verticalement dans leur barre.
+
+La version affichée dans Paramètres doit être incrémentée à chaque mise à jour de l'application. Toute modification de version doit être reportée dans `_all.js`, `index.html`, `VERSION.txt` et ce README.
