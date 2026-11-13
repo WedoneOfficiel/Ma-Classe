@@ -498,3 +498,13 @@ Guide opératoire : [docs/RESEAU_HTTPS.md](docs/RESEAU_HTTPS.md) — installatio
 - Tests automatisés couvrant les comptes élèves (création, périmètre, réinitialisation, suspension, réactivation), la génération de l'autorité/certificat TLS, les cookies Secure, HSTS et le refus du LAN HTTP.
 
 **Limite de livraison :** la CI et les tests d'intégration automatisés ne remplacent pas encore la recette sur le PC Fedora cible et les postes clients réels. Tant que la confiance CA sur les navigateurs, le pare-feu, la stabilité IP, les sauvegardes/restaurations et les tests multi-utilisateurs n'ont pas été vérifiés physiquement, MaClasse reste en alpha et ne doit pas contenir de données scolaires réelles.
+
+
+### Correctif d'autorisation — matières enseignées
+
+L'audit des profils a révélé qu'un professeur pouvait modifier lui-même la liste de ses matières via `/api/teacher/profile`. Cette liste sert aussi à limiter les appréciations de matière dans les bulletins : le professeur pouvait donc s'attribuer une matière supplémentaire et élargir ses droits.
+
+- Le champ « matières enseignées » est désormais en lecture seule dans le profil professeur.
+- Seule la direction peut attribuer ou retirer les matières via la gestion des comptes enseignants.
+- Le serveur ignore désormais toute liste `subjects` envoyée par le professeur à son endpoint de profil et conserve les matières administrées.
+- Test HTTP de non-régression : une tentative d'ajout de matière par le professeur ne modifie pas la liste enregistrée.
