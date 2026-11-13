@@ -34,7 +34,7 @@ class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
             "users": [],
             "classes": [{"id": "class-1", "name": "6A", "teacherIds": []}],
             "students": [{"id": "student-1", "first": "Alice", "last": "Test", "classId": "class-1",
-                          "username": "student", "active": True,
+                          "username": "student", "role": "student", "active": True, "mustChangePassword": False,
                           "passwordHash": server._password_hash("StudentPass123!") }],
             "schedule": [],
             "lessons": [{
