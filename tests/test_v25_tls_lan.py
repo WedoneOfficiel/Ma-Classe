@@ -29,7 +29,7 @@ def run():
     app=temp/'app'
     shutil.copytree(SOURCE,app)
     setup_env=os.environ.copy(); setup_env['PYTHON']=sys.executable
-    subprocess.run(['bash',str(app/'Configurer-MaClasse-Reseau.sh'),'127.0.0.1'],cwd=app,env=setup_env,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    subprocess.run(['bash',str(app/'Configurer-MaClasse-Reseau.sh'),'192.168.1.20'],cwd=app,env=setup_env,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     cert=app/'data'/'tls'/'server.crt'; key=app/'data'/'tls'/'server.key'
     ca=app/'data'/'tls'/'ca.crt'
     subprocess.run(['openssl','verify','-CAfile',str(ca),str(cert)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
