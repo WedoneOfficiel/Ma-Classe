@@ -86,6 +86,23 @@ def run():
         assert status==200 and json.loads(body)['user']['mustChangePassword']
         teacher=headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/auth/change-password','POST',{'currentPassword':teacher_password,'newPassword':'unMotDePasseProfEncorePlusFort!'},teacher)[0]==200
+        status,_,profile_body=call(base,'/api/teacher/profile','POST',{'first':'Alicia','last':'Martin','username':'alicia.martin','email':'alicia@example.test','phone':'0102030405','subjects':['Mathématiques','Physique'],'profileNotes':'Profil mis à jour'},teacher)
+        assert status==200 and json.loads(profile_body)['user']['first']=='Alicia'
+        saved=json.loads((app/'data'/'maclasse.json').read_text())
+        teacher_record=next(u for u in saved['users'] if u['id']==teacher_id)
+        assert teacher_record['first']=='Alicia' and teacher_record['username']=='alicia.martin' and 'teacherId' not in teacher_record
+        assert call(base,'/api/auth/login','POST',{'username':'alice.martin','password':'unMotDePasseProfEncorePlusFort!'})[0]==401
+        status,new_login_headers,new_login_body=call(base,'/api/auth/login','POST',{'username':'alicia.martin','password':'unMotDePasseProfEncorePlusFort!'})
+        assert status==200 and not json.loads(new_login_body)['user'].get('mustChangePassword')
+        second_teacher=new_login_headers.get('Set-Cookie').split(';')[0]
+        status,_,_=call(base,'/api/admin/user-status','POST',{'id':teacher_id,'active':False},admin)
+        assert status==200
+        assert call(base,'/api/data',cookie=teacher)[0]==401 and call(base,'/api/data',cookie=second_teacher)[0]==401
+        status,_,_=call(base,'/api/admin/user-status','POST',{'id':teacher_id,'active':True},admin)
+        assert status==200
+        status,new_login_headers,_=call(base,'/api/auth/login','POST',{'username':'alicia.martin','password':'unMotDePasseProfEncorePlusFort!'})
+        assert status==200
+        teacher=new_login_headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/reset','POST',{},teacher)[0]==403
         assert call(base,'/api/reset','POST',{},admin)[0]==200
         # Vérification HTTP de la projection professeur et de la fusion sans écrasement.
