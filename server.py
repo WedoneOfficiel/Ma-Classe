@@ -287,7 +287,9 @@ def _teacher_class_ids(data,user):
 
 
 def _teacher_subject_keys(data,user):
-    subjects=user.get('subjects') if isinstance(user.get('subjects'),list) else []
+    ident=str(user.get('id') or user.get('teacherId') or '')
+    account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),{})
+    subjects=account.get('subjects') if isinstance(account.get('subjects'),list) else []
     return {str(x).strip().casefold() for x in subjects if str(x).strip()}
 
 
