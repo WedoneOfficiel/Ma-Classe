@@ -93,7 +93,7 @@ class CloudPermissionTests(unittest.TestCase):
         allowed = {'cloudItems': [{'id': 'new', 'space': 'class', 'ownerId': 't1', 'classId': 'c1', 'serverName': 'cloud/class/classes/c1/new.pdf'}]}
         denied = {'cloudItems': [{'id': 'new', 'space': 'class', 'ownerId': 't1', 'classId': 'c2', 'serverName': 'cloud/class/classes/c2/new.pdf'}]}
         self.assertTrue(server._validate_cloud_item_changes({'users': self.data['users'], 'classes': self.data['classes'], 'cloudItems': []}, allowed, self.t1))
-        self.assertFalse(server._validate_cloud_item_changes({'teachers': self.data['teachers'], 'cloudItems': []}, denied, self.t1))
+        self.assertFalse(server._validate_cloud_item_changes({'users': self.data['users'], 'classes': self.data['classes'], 'cloudItems': []}, denied, self.t1))
 
 
 if __name__ == '__main__':
