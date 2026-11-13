@@ -174,7 +174,7 @@ vm.runInContext(source.slice(renderStart,shellStart),context);
 context.page='schedule';
 context.scheduleView='week';
 context.render();
-assert(context.main.innerHTML.includes('schedulePage')&&context.main.innerHTML.includes('data-schedule-id="slot-1"'),'Le routeur doit afficher le véritable EDT enseignant et ses créneaux.');
+assert(context.main.innerHTML.includes('schedulePage')&&context.main.innerHTML.includes('data-schedule-id="slot-1"'),'Le routeur doit afficher le véritable EDT enseignant et ses créneaux : '+context.main.innerHTML.slice(0,900));
 context.scheduleView='day';context.render();
 assert(context.main.innerHTML.includes('data-schedule-id="slot-1"'),'Le routeur doit afficher le créneau en vue jour.');
 context.scheduleView='month';context.render();
