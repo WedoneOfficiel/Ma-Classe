@@ -413,7 +413,7 @@ def _teacher_can_access_upload(user, relative, write=False):
             return _cloud_path_allowed(user,rel,write=write)
         if user.get('role')=='admin': return True
         if user.get('role')!='teacher': return False
-        tid=str(user.get('teacherId') or '')
+        tid=str(user.get('id') or user.get('teacherId') or '')
         own_mail=(f'mail-v2/teacher:{tid}',f'mail-v2-drafts/teacher:{tid}')
         if rel in own_mail or any(rel.startswith(prefix+'/') for prefix in own_mail):
             return True
@@ -662,7 +662,7 @@ def _merge_teacher_data(current,incoming,user):
     if user.get('role')=='admin': return incoming
     if user.get('role')!='teacher': raise PermissionError('Rôle non autorisé')
     allowed=_teacher_class_ids(current,user)
-    tid=str(user.get('teacherId') or '')
+    tid=str(user.get('id') or user.get('teacherId') or '')
     merged=dict(current)
     # Seules ces collections sont modifiables par un professeur.
     scoped=('students','schedule','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','mailFolders')
@@ -822,7 +822,7 @@ def _merge_teacher_data(current,incoming,user):
 
 def _cloud_grant(item,user,data,write=False):
     role=str(user.get('role') or '')
-    tid=str(user.get('teacherId') or '')
+    tid=str(user.get('id') or user.get('teacherId') or '')
     by_id={str(x.get('id')):x for x in (data.get('cloudItems') or []) if isinstance(x,dict) and x.get('id')}
     current=item; seen=set()
     while isinstance(current,dict) and str(current.get('id')) not in seen:
@@ -842,7 +842,7 @@ def _cloud_scope_allowed(user,space,owner_id='',class_id='',group='',data=None,w
     if user.get('role')=='admin': return True
     if user.get('role')!='teacher': return False
     data=data if isinstance(data,dict) else _load_database()
-    tid=str(user.get('teacherId') or '')
+    tid=str(user.get('id') or user.get('teacherId') or '')
     if space=='personal': return str(owner_id)==tid
     if space in ('class','group'):
         return bool(class_id) and str(class_id) in _teacher_class_ids(data,user) and (not write or str(owner_id)==tid)
@@ -864,7 +864,7 @@ def _cloud_path_allowed(user,relative,write=False):
         if len(parts)>=4 and parts[1]=='personal' and parts[2]=='users':
             root_access=_cloud_scope_allowed(user,'personal',owner_id=parts[3],data=data,write=write)
         elif len(parts)>=4 and parts[1] in ('class','group') and parts[2]=='classes':
-            root_access=_cloud_scope_allowed(user,parts[1],owner_id=user.get('id') or user.get('teacherId',''),class_id=parts[3],data=data,write=write)
+            root_access=_cloud_scope_allowed(user,parts[1],owner_id=user.get('id') or user.get('id') or user.get('teacherId',''),class_id=parts[3],data=data,write=write)
         else: return False
         # Appliquer ensuite les partages de l'élément/dossier le plus proche.
         candidates=[]
@@ -874,7 +874,7 @@ def _cloud_path_allowed(user,relative,write=False):
             if ip and (rel==ip or rel.startswith(ip+'/')): candidates.append((len(ip),item))
         if candidates:
             item=max(candidates,key=lambda z:z[0])[1]
-            owner=str(item.get('ownerId') or '')==str(user.get('teacherId') or '')
+            owner=str(item.get('ownerId') or '')==str(user.get('id') or user.get('teacherId') or '')
             if owner: return True
             if not write and item.get('space') in ('class','group') and str(item.get('classId') or '') in _teacher_class_ids(data,user): return True
             return _cloud_grant(item,user,data,write=write)
@@ -914,7 +914,7 @@ def _validate_cloud_item_changes(current,updated,user):
         if after is not None and not _cloud_item_path_matches_scope(after): return False
         if before:
             path=str(before.get('serverName') or '')
-            owner=str(before.get('ownerId') or '')==str(user.get('teacherId') or '')
+            owner=str(before.get('ownerId') or '')==str(user.get('id') or user.get('teacherId') or '')
             can_write=owner or _cloud_grant(before,user,current,write=True)
             # Les éléments hors périmètre ou partagés en lecture seule sont absents
             # de la projection : leur absence ne constitue pas une suppression.
@@ -1313,7 +1313,7 @@ class Handler(SimpleHTTPRequestHandler):
                 attempts.append(now); LOGIN_ATTEMPTS[ip]=attempts
                 return self._json({'error':'Identifiant ou mot de passe incorrect.'},401)
             LOGIN_ATTEMPTS.pop(ip,None)
-            token=secrets.token_urlsafe(32); safe_user={k:user.get(k,'') for k in ('id','role','studentId','name','first','last','email')}; safe_user['teacherId']=str(user.get('id') or '') if user.get('role')=='teacher' else str(user.get('teacherId') or '')
+            token=secrets.token_urlsafe(32); safe_user={k:user.get(k,'') for k in ('id','role','studentId','name','first','last','email')}; safe_user['teacherId']=str(user.get('id') or '') if user.get('role')=='teacher' else str(user.get('id') or user.get('teacherId') or '')
             SESSIONS[token]={'user':safe_user,'expires':now+SESSION_TTL,'must_change':must_change}
             public_user={**safe_user,'mustChangePassword':must_change}
             self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Cache-Control','no-store'); self._set_session_cookie(token); self.end_headers(); self.wfile.write(json.dumps({'ok':True,'user':public_user},ensure_ascii=False).encode('utf-8')); return
