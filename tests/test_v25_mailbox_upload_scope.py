@@ -39,7 +39,7 @@ class MailboxAndUploadScopeTests(unittest.TestCase):
         self.assertEqual({m['id'] for m in view['messages']},{'m1','m2'})
         received=next(m for m in view['messages'] if m['id']=='m2')
         self.assertEqual(received['bcc'],[])
-        sender_view=server._teacher_visible_data(self.data,{'id':'u2','role':'teacher','teacherId':'t2'})['mailboxV2']
+        sender_view=server._teacher_visible_data(self.data,{'id':'t2','role':'teacher'})['mailboxV2']
         sent=next(m for m in sender_view['messages'] if m['id']=='m2')
         self.assertEqual(sent['bcc'],['teacher:t3'])
         self.assertEqual(set(view['states']),{'teacher:t1'})
