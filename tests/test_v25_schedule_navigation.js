@@ -161,4 +161,34 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'2026-
 assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'2026-11-09',recurrence:'biweekly',exceptions:['2026-11-13']},{day:4,startDate:'2026-11-09',recurrence:'biweekly'})", context), true, 'Une exception ponctuelle ne doit pas masquer le chevauchement des occurrences suivantes.');
 assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-01-01',recurrence:'biweekly'},{day:4,startDate:'1900-01-08',recurrence:'biweekly',endDate:'2999-12-31'})", context), false, 'Une longue période sans intersection doit être résolue par cycle, pas jour après jour.');
 
+
+(async()=>{
+  const saveStart=source.indexOf('async function saveSchedule(e,id)');
+  const saveEnd=source.indexOf('async function deleteSchedule(',saveStart);
+  assert(saveStart>=0&&saveEnd>saveStart,'La sauvegarde du créneau doit être présente.');
+  class FakeFormData{
+    constructor(form){this.values=form.values}
+    getAll(key){const v=this.values[key];return Array.isArray(v)?v:(v===undefined?[]:[v])}
+    *[Symbol.iterator](){for(const [key,value] of Object.entries(this.values)){if(Array.isArray(value)){for(const item of value)yield [key,item]}else yield [key,value]}}
+  }
+  context.FormData=FakeFormData;
+  context.uid=()=> 'created-slot';
+  context.subjectColor=()=>['#fff','#ddd','#000'];
+  context.time=value=>String(value||'').slice(0,5);
+  context.addHour=value=>'10:00';
+  context.save=()=>{};
+  context.persistedSchedule=null;
+  context.flushPendingSave=async()=>{context.persistedSchedule=JSON.parse(JSON.stringify(context.db))};
+  context.api=async()=>JSON.parse(JSON.stringify(context.persistedSchedule));
+  context.normalize=()=>{};
+  context.closeModal=()=>{};
+  context.toast=message=>{context.lastToast=message};
+  context.render=()=>{context.renderCount++};
+  context.db={schedule:[],classes:[{id:'class-1',name:'Classe 1'}],teachers:[],settings:{rooms:[]}};
+  context.persistedSchedule=JSON.parse(JSON.stringify(context.db));
+  vm.runInContext(source.slice(saveStart,saveEnd),context);
+  const form={values:{day:'4',classIds:['class-1'],teacherId:'',time:'09:00',endTime:'10:00',subject:'Français',group:'',room:'',recurrence:'weekly',intervalWeeks:'1',startDate:'2026-11-09',endDate:'',exceptions:''}};
+  await vm.runInContext("saveSchedule({preventDefault(){},target:form},'')",vm.createContext({...context,form}));
+})().catch(error=>{console.error(error);process.exitCode=1});
+
 console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales, occurrences récurrentes et rendu du planning.');
