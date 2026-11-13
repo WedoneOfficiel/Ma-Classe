@@ -1559,7 +1559,7 @@ class Handler(SimpleHTTPRequestHandler):
                     class_id=str(student_record.get('classId') or '')
                     if user.get('role')=='teacher' and class_id not in _teacher_class_ids(data,user):
                         return self._json({'error':'Tu ne peux gérer que les accès des élèves de tes classes.'},403)
-                    account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id),None)
+                    account=student_record if student_record.get('passwordHash') else None
                     if not account: return self._json({'error':"Cet élève n'a pas encore de compte."},404)
                     account['active']=active; account['role']='student'
                     if not active:
