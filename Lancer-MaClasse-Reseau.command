@@ -27,14 +27,13 @@ def matches(password, stored):
         except Exception:
             return False
     return stored==hashlib.sha256(password.encode()).hexdigest()
-for username, default in (("admin","admin"),("enseignant","enseignant")):
-    account=next((u for u in users if u.get("username")==username and u.get("active") is not False),None)
-    if not account or matches(default,str(account.get("passwordHash",""))):
-        sys.exit(1)
+admin=next((u for u in users if u.get("role")=="admin" and u.get("active") is not False),None)
+if not admin or not str(admin.get("passwordHash","")).startswith("pbkdf2_sha256$") or admin.get("mustChangePassword"):
+    sys.exit(1)
 PY
 then
-  echo "Sécurité : change d'abord les deux mots de passe initiaux depuis le lanceur local."
-  echo "Les identifiants admin/admin et enseignant/enseignant ne doivent jamais être utilisés sur le réseau."
+  echo "Sécurité : initialise d'abord MaClasse en local et crée un compte direction sécurisé."
+  echo "Aucun compte enseignant n'est nécessaire pour ouvrir le réseau privé."
   exit 1
 fi
 if /usr/bin/curl --silent --fail "http://127.0.0.1:8765/api/auth/session" >/dev/null 2>&1; then
