@@ -48,6 +48,31 @@ assert.strictEqual(asISO(), '2026-11-13', 'Une date ISO doit être interprétée
 vm.runInContext("scheduleView='week';setScheduleDate('2026-11-13')", context);
 assert.strictEqual(asISO(), '2026-11-09');
 
+const recurrenceCases = [
+  { recurrence:'once', day:4, startDate:'2026-11-09', dates:['2026-11-13'] },
+  { recurrence:'weekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-11-20','2026-11-27'] },
+  { recurrence:'biweekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-11-27'] },
+  { recurrence:'triweekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-12-04'] },
+  { recurrence:'custom', intervalWeeks:4, day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-12-11'] },
+  { recurrence:'once', day:2, startDate:'2026-11-13', dates:['2026-11-18'] },
+];
+for (const testCase of recurrenceCases) {
+  const candidate = { id:'recurrence-'+testCase.recurrence, ...testCase };
+  for (const date of ['2026-11-09','2026-11-13','2026-11-18','2026-11-20','2026-11-27','2026-12-04','2026-12-11']) {
+    const expected = testCase.dates.includes(date);
+    const actual = vm.runInContext('recurring('+JSON.stringify(candidate)+', new Date('+JSON.stringify(date)+'T12:00:00))', context);
+    assert.strictEqual(actual, expected, testCase.recurrence+' / '+testCase.day+' / '+date);
+  }
+}
+const groupSlots = [
+  {id:'class-a',classId:'class-1',group:'A',day:4,startDate:'2026-11-09',recurrence:'biweekly'},
+  {id:'class-b',classId:'class-1',group:'B',day:4,startDate:'2026-11-09',recurrence:'biweekly'}
+];
+context.db.schedule = groupSlots;
+assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-13T12:00:00')).length", context), 2, 'Les groupes A et B doivent garder leur occurrence du premier vendredi.');
+assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-20T12:00:00')).length", context), 0, 'Les cours bimensuels ne doivent pas apparaître la semaine intermédiaire.');
+assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-27T12:00:00')).length", context), 2, 'Les cours bimensuels doivent réapparaître après deux semaines.');
+
 const slot = { id:'slot-1', day:4, startDate:'2026-11-09', recurrence:'weekly', time:'09:00', endTime:'10:00' };
 context.db.schedule = [slot];
 assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", context), 1);
