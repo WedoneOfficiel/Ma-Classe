@@ -5,7 +5,7 @@
 <script id="mc-appearance-bootstrap">
 try{const t=localStorage.getItem('maclasse_appearance_theme');const v=['system','light','dark'].includes(t)?t:'system',dark=window.matchMedia('(prefers-color-scheme: dark)').matches,r=document.documentElement;r.dataset.mcThemePreference=v;r.dataset.mcTheme=v==='system'&&!dark?'light':v;r.style.colorScheme=v==='system'?(dark?'dark':'light'):v}catch(e){document.documentElement.dataset.mcThemePreference='system';document.documentElement.dataset.mcTheme='light';document.documentElement.style.colorScheme='light'}
 </script>
-<title>MaClasse V25.0.9</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
+<title>MaClasse V25.0.10</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
 <!-- Compatibility markers for historical regression tests: MaClasse V21.21 -->
 
 
@@ -1981,6 +1981,28 @@ input[type="checkbox"]:checked::after{content:""!important;display:block!importa
 .cloudDocumentList{margin:0!important}
 .cloudTopActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 @media(max-width:760px){.cloudWorkspaceHeader{align-items:flex-start;flex-direction:column}.cloudWorkspaceNav{padding:8px}.cloudWorkspaceNav .cloudTabs{overflow-x:auto;flex-wrap:nowrap}.cloudWorkspaceNav .cloudTab{white-space:nowrap}}
+
+/* V25.0.10 — corrections vérifiées sur les sélecteurs réellement utilisés */
+/* Les anciennes règles de placement explicite (dont Données en pleine largeur)
+   doivent être neutralisées avant d'appliquer les zones nommées. */
+.settingsGrid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-areas:"appearance periods version" "rooms periods data"!important;align-items:start!important;gap:18px!important}
+.settingsGrid>.settingsCard{grid-column:auto!important;grid-row:auto!important;min-width:0!important;margin:0!important}
+.settingsGrid>.settingsCard:nth-child(1){grid-area:appearance!important}
+.settingsGrid>.settingsCard:nth-child(2){grid-area:periods!important}
+.settingsGrid>.settingsCard:nth-child(3){grid-area:rooms!important}
+.settingsGrid>.settingsCard:nth-child(4){grid-area:version!important}
+.settingsGrid>.settingsCard:nth-child(5){grid-area:data!important}
+@media(max-width:900px){.settingsGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version data"!important}}
+@media(max-width:650px){.settingsGrid{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "data"!important;gap:12px!important}}
+/* Recherche et filtre de classe : vraie séparation horizontale, sans écraser les champs. */
+.studentDirectory>.searchRow{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(210px,250px)!important;column-gap:16px!important;row-gap:10px!important;align-items:center!important;margin-bottom:22px!important;padding-bottom:2px}
+.studentDirectory>.searchRow #studentSearch,.studentDirectory>.searchRow #studentClass{min-width:0;width:100%;max-width:none!important}
+@media(max-width:650px){.studentDirectory>.searchRow{grid-template-columns:minmax(0,1fr)!important;gap:10px!important}}
+/* Onglets des bulletins : centrage horizontal dans le panneau, avec un léger
+   décalage optique à droite et vers le haut pour équilibrer les marges grises. */
+.bulletinPreparation>.bulletinTabs{display:flex!important;justify-content:center!important;align-items:center!important;width:calc(100% - 12px)!important;margin:12px auto 12px!important;padding:2px 14px 8px!important;position:relative;left:4px;top:-2px;box-sizing:border-box;min-height:44px;text-align:center!important}
+.bulletinPreparation>.bulletinTabs .tab{align-self:center;white-space:nowrap}
+@media(max-width:760px){.bulletinPreparation>.bulletinTabs{width:100%!important;left:0;top:0;justify-content:flex-start!important;padding:2px 4px 8px!important}}
 </style>
 
 

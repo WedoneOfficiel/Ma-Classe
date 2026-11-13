@@ -9,12 +9,12 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.9 (alpha)  
+**Version de travail :** V25.0.10 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
-Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative affichée dans les paramètres est **V25.0.9** ; `VERSION.txt` sert de repère de version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative affichée dans les paramètres est **V25.0.10** ; `VERSION.txt` sert de repère de version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
 Le fichier local `data/maclasse.json` ne contenait que les deux comptes provisoires. Il a été retiré du suivi Git et ajouté au `.gitignore`, afin que les futures données réelles d'élèves et d'établissement ne soient pas publiées. Le serveur recrée ce fichier au démarrage s'il est absent.
 
@@ -350,3 +350,45 @@ Pour un test avec un second ordinateur connecté à la même box privée, lance 
 - Les onglets de préparation des bulletins restent alignés à gauche et sont centrés verticalement dans leur barre.
 
 La version affichée dans Paramètres doit être incrémentée à chaque mise à jour de l'application. Toute modification de version doit être reportée dans `_all.js`, `index.html`, `VERSION.txt` et ce README.
+
+
+## Corrections d’interface et audit des comptes — V25.0.10 · 13/11/2026
+
+### Corrections d’interface
+
+- Élèves : la ligne de recherche et le filtre de classe utilisent maintenant une grille à deux colonnes avec un espacement horizontal explicite ; ils passent l’un sous l’autre sur petit écran.
+- Paramètres : correction du conflit qui empêchait la disposition annoncée. Une ancienne règle imposait encore `grid-column: 1 / -1 !important` à la carte Données, et les anciennes coordonnées de grille continuaient de primer sur les zones nommées. Les placements historiques sont maintenant neutralisés avant d’appliquer les cinq zones : Apparence et Salles à gauche, Périodes au centre, Version et Données à droite.
+- Bulletins : les onglets sont centrés horizontalement dans le panneau, avec un très léger ajustement optique vers la droite et vers le haut. Sur petit écran, le défilement horizontal reste prioritaire.
+- Suppression de la mention de compatibilité V19.x dans les paramètres : elle n’a plus de raison d’être pour la nouvelle base.
+- Synchronisation du numéro de version entre l’interface, le serveur, `VERSION.txt` et ce README.
+
+### Refonte des comptes — audit et architecture cible (à implémenter)
+
+L’audit du code actuel confirme trois problèmes structurels :
+
+1. Le serveur crée automatiquement un compte direction **et** un compte enseignant provisoires.
+2. Le navigateur recrée lui aussi un compte enseignant par défaut dans `ensureUsers()`.
+3. L’identité professeur est dupliquée entre `users[]` (identifiants, mot de passe, état du compte) et `teachers[]` (nom, matières, téléphone, classes, profil). Le lien `teacherId` rapproche les deux objets, mais ne supprime pas cette double source de vérité.
+4. Le lanceur réseau exige actuellement que les deux mots de passe provisoires, direction et enseignant, aient été changés. Cela impose de configurer un compte enseignant fictif avant même que la direction ait créé l’équipe.
+
+**Décision d’architecture pour la suite :**
+
+- Au premier démarrage, un seul accès est initialisé : celui de la direction. Son mot de passe d’administration est défini avant l’ouverture du réseau local.
+- Aucun compte enseignant fictif n’est créé au démarrage. La direction peut créer les fiches et les accès enseignants depuis l’application, y compris lorsqu’elle utilise MaClasse depuis un autre ordinateur du Wi-Fi.
+- Une identité professeur devient un enregistrement canonique unique : profil, identifiant, authentification, état actif et paramètres personnels sont portés par le même identifiant. Les classes, matières, fonctions de PP et permissions se rattachent directement à cet identifiant. Il ne doit plus exister de compte enseignant miroir dans une collection séparée.
+- La création, la modification, la désactivation et la réinitialisation d’un accès enseignant sont regroupées dans le même parcours que la fiche professeur. Le professeur peut ensuite modifier ses informations personnelles et son mot de passe sans synchroniser deux objets indépendants.
+- Les comptes élèves restent un cas distinct lié à une fiche élève ; leurs permissions et leur cycle de vie seront revus dans le même audit, sans ouvrir prématurément les modules qui ne sont pas encore sécurisés.
+- Le lancement sur le réseau privé ne dépendra que de la sécurisation du compte direction initial. Les comptes enseignants seront créés ensuite par la direction. Le mode LAN restera expérimental tant que HTTPS et l’audit complet des permissions ne seront pas validés.
+
+**Compatibilité des données :** la V25 est une nouvelle édition de développement. Nous ne chercherons pas à maintenir la compatibilité avec les anciennes sauvegardes V19.x ou avec les anciens modèles de comptes. Le nouveau schéma devra être propre et explicite. En revanche, aucune base V25 existante ne sera effacée silencieusement : une éventuelle remise à zéro devra être annoncée et déclenchée volontairement.
+
+**Ordre de réalisation prévu :**
+
+1. Définir le schéma canonique et les invariants d’identité/permissions.
+2. Refaire l’initialisation serveur et supprimer le compte enseignant de démonstration, côté serveur comme côté navigateur.
+3. Regrouper création et gestion d’un professeur dans un seul parcours ; supprimer les synchronisations croisées entre deux fiches.
+4. Adapter les sessions, projections de données, sauvegardes, messagerie, Cloud et contrôles d’accès à l’identifiant professeur canonique.
+5. Simplifier le lanceur réseau pour qu’il vérifie uniquement le compte direction initial.
+6. Ajouter des tests d’intégration couvrant première installation, création d’un professeur depuis le réseau, connexion, modification du profil, désactivation et séparation des données entre deux enseignants.
+
+Ce plan est une décision d’architecture, **pas une affirmation que la refonte des comptes est déjà terminée**. Le mode réseau ne doit pas être considéré comme prêt pour des données scolaires réelles.
