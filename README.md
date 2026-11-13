@@ -9,12 +9,12 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.14 (alpha)  
+**Version de travail :** V25.0.15 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
-Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.14** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.15** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
 Le fichier `data/maclasse.json` est local et exclu de Git. Une installation neuve démarre sans aucun compte : l'assistant de première configuration crée uniquement le compte direction. Aucun mot de passe ou compte enseignant universel n'existe.
 
@@ -487,7 +487,7 @@ Le serveur ne démarre plus en HTTP lorsqu'il est lié à une adresse IPv4 priv�
 Guide opératoire : [docs/RESEAU_HTTPS.md](docs/RESEAU_HTTPS.md) — installation Fedora/Linux, lancement HTTPS, import de l'autorité de certification sur macOS/Fedora/Windows, pare-feu, adresse IP stable et sauvegarde des clés.
 
 
-## V25.0.14 — accès élèves administrables et réseau HTTPS
+## V25.0.15 — accès élèves administrables et réseau HTTPS
 
 - Les enseignants peuvent désormais consulter les accès des élèves de leurs classes, réinitialiser un mot de passe perdu (nouveau provisoire aléatoire, affiché une seule fois), suspendre un accès et le réactiver.
 - Le serveur vérifie les droits sur la classe pour chaque réinitialisation et changement d'état ; les sessions de l'élève sont révoquées lors d'une réinitialisation ou d'une désactivation.
@@ -500,14 +500,16 @@ Guide opératoire : [docs/RESEAU_HTTPS.md](docs/RESEAU_HTTPS.md) — installatio
 **Limite de livraison :** la CI et les tests d'intégration automatisés ne remplacent pas encore la recette sur le PC Fedora cible et les postes clients réels. Tant que la confiance CA sur les navigateurs, le pare-feu, la stabilité IP, les sauvegardes/restaurations et les tests multi-utilisateurs n'ont pas été vérifiés physiquement, MaClasse reste en alpha et ne doit pas contenir de données scolaires réelles.
 
 
-### Correctif d'autorisation — matières enseignées
+### Comptes élèves canoniques et matières des enseignants — V25.0.15
 
-L'audit des profils a révélé qu'un professeur pouvait modifier lui-même la liste de ses matières via `/api/teacher/profile`. Cette liste sert aussi à limiter les appréciations de matière dans les bulletins : le professeur pouvait donc s'attribuer une matière supplémentaire et élargir ses droits.
-
-- Le champ « matières enseignées » est désormais en lecture seule dans le profil professeur.
-- Seule la direction peut attribuer ou retirer les matières via la gestion des comptes enseignants.
-- Le serveur ignore désormais toute liste `subjects` envoyée par le professeur à son endpoint de profil et conserve les matières administrées.
-- Test HTTP de non-régression : une tentative d'ajout de matière par le professeur ne modifie pas la liste enregistrée.
+- La fiche élève est désormais l'enregistrement canonique du compte : identifiant interne unique, identifiant de connexion, empreinte du mot de passe, état actif et changement obligatoire du mot de passe provisoire sont conservés sur le même objet dans `students[]`.
+- Aucun deuxième compte élève n'est créé dans `users[]`. L'API construit une projection publique compatible avec les écrans existants, sans jamais exposer les empreintes de mots de passe.
+- La connexion, les sessions, le changement de mot de passe, la réinitialisation et l'activation/désactivation des élèves utilisent directement la fiche canonique.
+- Les professeurs peuvent créer des élèves dans leurs classes et leur attribuer un identifiant ainsi qu'un mot de passe provisoire affiché une seule fois.
+- L'enregistrement d'une fiche élève attend maintenant la confirmation du serveur ; en cas d'échec, l'interface restaure l'état précédent au lieu d'annoncer une réussite fictive.
+- Les enseignants retrouvent la modification libre de leurs matières depuis leur profil. Ces matières restent utilisées par l'emploi du temps et les règles de bulletins.
+- Les anciennes sauvegardes V25 utilisant deux enregistrements séparés pour les élèves ne sont pas migrées par cette version : repartir d'une base neuve, comme prévu pour cette recette.
+- Tests d'intégration HTTP : création d'un élève par un professeur, sauvegarde, accès canonique, connexion, changement de mot de passe, réinitialisation et désactivation.
 
 
 ### Intégrité des bulletins — publication et groupes

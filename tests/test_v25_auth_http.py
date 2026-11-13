@@ -101,7 +101,7 @@ def run():
         saved=json.loads((app/'data'/'maclasse.json').read_text())
         teacher_record=next(u for u in saved['users'] if u['id']==teacher_id)
         assert teacher_record['first']=='Alicia' and teacher_record['username']=='alicia.martin' and 'teacherId' not in teacher_record
-        assert teacher_record['subjects']==['Mathématiques'], 'A teacher must not grant themselves additional teaching subjects'
+        assert teacher_record['subjects']==['Mathématiques','Physique'], 'Teachers must be able to manage their own subjects'
         assert call(base,'/api/auth/login','POST',{'username':'alice.martin','password':'unMotDePasseProfEncorePlusFort!'})[0]==401
         status,new_login_headers,new_login_body=call(base,'/api/auth/login','POST',{'username':'alicia.martin','password':'unMotDePasseProfEncorePlusFort!'})
         assert status==200 and not json.loads(new_login_body)['user'].get('mustChangePassword')
@@ -130,6 +130,15 @@ def run():
         seeded['classes'][0]['teacherIds']=[teacher_record['id']]
         seeded['classes'][1]['teacherIds']=[]
         (app/'data'/'maclasse.json').write_text(json.dumps(seeded))
+        # Un professeur crée une fiche dans une classe qui lui est attribuée ; la sauvegarde doit la conserver.
+        status,teacher_data_headers,teacher_data_body=call(base,'/api/data',cookie=teacher)
+        assert status==200
+        teacher_data=json.loads(teacher_data_body)
+        teacher_data['students'].append({'id':'s4','first':'Nina','last':'Durand','classId':'c1','group':'','birth':'','sex':'','email':'','phone':'','notes':''})
+        status,_,_=call(base,'/api/save','POST',teacher_data,teacher,extra_headers={'If-Match':teacher_data_headers.get('X-MaClasse-Revision','')})
+        assert status==200
+        saved=json.loads((app/'data'/'maclasse.json').read_text())
+        assert any(x['id']=='s4' and x['classId']=='c1' for x in saved['students'])
         status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
         assert status==404
         status,_,foreign_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'b2'},teacher)
@@ -142,10 +151,10 @@ def run():
         assert status==200
         view=json.loads(raw)
         assert [x['id'] for x in view['classes']]==['c1']
-        assert [x['id'] for x in view['students']]==['s1','s3']
+        assert [x['id'] for x in view['students']]==['s1','s3','s4']
         assert [g['studentId'] for g in view['evaluations'][0]['grades']]==['s1','s3']
         view['students'][0]['first']='Alicia'
-        view['students'].append({'id':'s4','classId':'c1','first':'Nouveau','last':'Eleve'})
+        view['students'][-1]['first']='Nouveau'
         original_revision=read_headers.get('X-MaClasse-Revision')
         status,_,missing=call(base,'/api/save','POST',view,teacher)
         assert status==428 and json.loads(missing)['code']=='REVISION_REQUIRED'
@@ -172,6 +181,7 @@ def run():
         status,student_login_headers,student_login_body=call(base,'/api/auth/login','POST',{'username':'nouveau','password':teacher_student['temporaryPassword']})
         assert status==200 and json.loads(student_login_body)['user']['mustChangePassword']
         student_session=student_login_headers.get('Set-Cookie').split(';')[0]
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':teacher_student['temporaryPassword'],'newPassword':'MotDePasseEleveTresSolide!'},student_session)[0]==200
         assert call(base,'/api/admin/student-account-reset','POST',{'studentId':'s2'},teacher)[0]==403
         status,_,reset_body=call(base,'/api/admin/student-account-reset','POST',{'studentId':'s4'},teacher)
         assert status==200
@@ -191,8 +201,10 @@ def run():
         status,_,created_account=call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice','password':'eleveTestTresFort!'},admin)
         assert status==200 and json.loads(created_account)['user']['mustChangePassword']
         created_record=json.loads((app/'data'/'maclasse.json').read_text())
-        student_record=next(u for u in created_record['users'] if u.get('role')=='student')
+        student_record=next(st for st in created_record['students'] if st.get('id')=='s1')
+        assert student_record['role']=='student' and student_record['username']=='alice'
         assert student_record['passwordHash'].startswith('pbkdf2_sha256')
+        assert not any(u.get('role')=='student' for u in created_record['users'])
         assert call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice2','password':'eleveTestTresFort!'},admin)[0]==409
         status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
         assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']

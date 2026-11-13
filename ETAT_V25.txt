@@ -1,4 +1,4 @@
-ÉTAT DE CONSTRUCTION — MaClasse V25.0.7 (alpha sécurité)
+ÉTAT DE CONSTRUCTION — MaClasse V25.0.15 (alpha sécurité)
 
 Base de travail indépendante issue de V24.2. La V24.2 d'origine n'est pas modifiée.
 
@@ -318,3 +318,14 @@ MISE À JOUR — RÉSEAU PRIVÉ EXPÉRIMENTAL ET ESPACE ÉLÈVE — 12/11/2026
 - Messagerie élève et Cloud élève restent désactivés jusqu'à audit dédié. Les comptes élèves sont encore une première tranche, pas une version complète.
 - CI Ubuntu + macOS Apple Silicon réussie : run 43318282845. Les scripts .command sont en mode Git 100755.
 - Restent à faire : test physique sur le Mac M5/macOS 27, test réel du second PC sur la box privée, test Firefox complet, audit RBAC global, messagerie/Cloud élève, HTTPS et validation avant données réelles.
+
+
+MISE À JOUR — V25.0.15 — COMPTES ÉLÈVES CANONIQUES ET MATIÈRES ENSEIGNANTS — 13/11/2026
+- La fiche élève porte maintenant les identifiants de connexion, l'empreinte PBKDF2, l'état d'accès et le changement obligatoire du mot de passe provisoire : aucun compte élève séparé n'est ajouté à users[].
+- La connexion, les sessions, le changement de mot de passe, la réinitialisation et l'activation/désactivation consultent et modifient cette fiche canonique.
+- Un professeur peut inscrire un élève dans une de ses classes ; la sauvegarde n'affiche le succès qu'après confirmation serveur.
+- Les enseignants peuvent de nouveau modifier librement leurs matières depuis leur profil.
+- Les anciennes sauvegardes qui séparent fiche élève et compte ne sont pas migrées : recette prévue sur base neuve.
+- CI complète Ubuntu + macOS Apple Silicon réussie pour le code : tests JavaScript, compilation Python, tests HTTP et tests Python.
+- À faire avant validation utilisateur : recette manuelle dans Firefox sur Mac, création d'élève depuis l'espace professeur, attribution du code provisoire, première connexion élève et changement du mot de passe.
+- Le mode réseau local expérimental reste hors périmètre de cette correction et n'est pas déclaré prêt pour des données réelles.
