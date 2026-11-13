@@ -195,6 +195,33 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
 
 
 (async()=>{
+  const refreshStart=source.indexOf('async function refreshLiveScheduleData()');
+  const refreshEnd=source.indexOf('function startLiveScheduleSync(',refreshStart);
+  assert(refreshStart>=0&&refreshEnd>refreshStart,'La synchronisation automatique doit être présente.');
+  context.authUser={role:'teacher'};
+  context.page='schedule';
+  context.document={hidden:false};
+  context.modalOpen=false;
+  context.$=()=>context.modalOpen?{classList:{contains:()=>true}}:null;
+  context.savePending=false;context.saveTimer=null;context.saveError=null;context.liveSyncBusy=false;
+  context.dataRevision='rev1';
+  context.db={schedule:[{id:'local-draft'}]};
+  context.normalize=()=>{};
+  context.renderCount=0;context.render=()=>{context.renderCount++};
+  let resolveFetch;
+  context.fetch=()=>new Promise(resolve=>{resolveFetch=resolve});
+  vm.runInContext(source.slice(refreshStart,refreshEnd),context);
+  const pendingRefresh=vm.runInContext('refreshLiveScheduleData()',context);
+  context.modalOpen=true;
+  resolveFetch({ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-copy'}]})});
+  await pendingRefresh;
+  assert.strictEqual(context.db.schedule[0].id,'local-draft','Une réponse de synchronisation arrivée après l’ouverture d’un formulaire ne doit pas écraser les données locales.');
+  assert.strictEqual(context.dataRevision,'rev1','Une réponse ignorée ne doit pas avancer la révision locale.');
+  context.modalOpen=false;context.liveSyncBusy=false;context.fetch=async()=>({ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-update'}]})});
+  await vm.runInContext('refreshLiveScheduleData()',context);
+  assert.strictEqual(context.db.schedule[0].id,'server-update','Une synchronisation sans modification locale doit appliquer la nouvelle version serveur.');
+  assert.strictEqual(context.dataRevision,'rev2');
+  assert.strictEqual(context.renderCount,1);
   const saveStart=source.indexOf('async function saveSchedule(e,id)');
   const saveEnd=source.indexOf('async function deleteSchedule(',saveStart);
   assert(saveStart>=0&&saveEnd>saveStart,'La sauvegarde du créneau doit être présente.');
