@@ -31,7 +31,7 @@ if /usr/bin/curl --silent --fail "$URL/api/auth/session" >/dev/null 2>&1; then
   exit 0
 fi
 
-echo "MaClasse V25.0.7 démarre sur ce Mac."
+echo "MaClasse V25.0.11 démarre sur ce Mac."
 echo "Adresse locale : $URL"
 echo "Le serveur n'est pas accessible depuis le Wi-Fi ou Internet."
 echo "Laisse cette fenêtre ouverte. Pour arrêter MaClasse : Ctrl+C."
