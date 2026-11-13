@@ -17,7 +17,11 @@ const context = {
   iso(date) { const d = new Date(date); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
 };
 vm.createContext(context);
-vm.runInContext(source.slice(start, end), context);\nconst navStart = source.indexOf('function changeLessonMonth(', end);\nconst navEnd = source.indexOf('function openScheduleOccurrence(', navStart);\nassert(navStart >= 0 && navEnd > navStart, 'Les commandes de navigation doivent être présentes.');\nvm.runInContext(source.slice(navStart, navEnd), context);
+vm.runInContext(source.slice(start, end), context);
+const navStart = source.indexOf('function changeLessonMonth(', end);
+const navEnd = source.indexOf('function openScheduleOccurrence(', navStart);
+assert(navStart >= 0 && navEnd > navStart, 'Les commandes de navigation doivent être présentes.');
+vm.runInContext(source.slice(navStart, navEnd), context);
 
 const asISO = (date) => vm.runInContext('iso(selectedWeek)', context);
 vm.runInContext("selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
