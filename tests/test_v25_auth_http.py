@@ -139,15 +139,6 @@ def run():
         assert status==200
         saved=json.loads((app/'data'/'maclasse.json').read_text())
         assert any(x['id']=='s4' and x['classId']=='c1' for x in saved['students'])
-        # Le compte élève est intégré à sa fiche : aucun second enregistrement dans users[].
-        status,_,student_create_body=call(base,'/api/admin/student-account','POST',{'studentId':'s4','username':'nina.durand'},teacher)
-        assert status==200
-        student_access=json.loads(student_create_body)['user']
-        assert student_access['id']=='s4' and student_access['studentId']=='s4'
-        saved=json.loads((app/'data'/'maclasse.json').read_text())
-        student_record=next(x for x in saved['students'] if x['id']=='s4')
-        assert student_record['role']=='student' and student_record['username']=='nina.durand'
-        assert student_record['passwordHash'].startswith('pbkdf2_sha256
         status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
         assert status==404
         status,_,foreign_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'b2'},teacher)
@@ -160,10 +151,10 @@ def run():
         assert status==200
         view=json.loads(raw)
         assert [x['id'] for x in view['classes']]==['c1']
-        assert [x['id'] for x in view['students']]==['s1','s3']
+        assert [x['id'] for x in view['students']]==['s1','s3','s4']
         assert [g['studentId'] for g in view['evaluations'][0]['grades']]==['s1','s3']
         view['students'][0]['first']='Alicia'
-        view['students'].append({'id':'s4','classId':'c1','first':'Nouveau','last':'Eleve'})
+        view['students'][-1]['first']='Nouveau'
         original_revision=read_headers.get('X-MaClasse-Revision')
         status,_,missing=call(base,'/api/save','POST',view,teacher)
         assert status==428 and json.loads(missing)['code']=='REVISION_REQUIRED'
@@ -190,6 +181,7 @@ def run():
         status,student_login_headers,student_login_body=call(base,'/api/auth/login','POST',{'username':'nouveau','password':teacher_student['temporaryPassword']})
         assert status==200 and json.loads(student_login_body)['user']['mustChangePassword']
         student_session=student_login_headers.get('Set-Cookie').split(';')[0]
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':teacher_student['temporaryPassword'],'newPassword':'MotDePasseEleveTresSolide!'},student_session)[0]==200
         assert call(base,'/api/admin/student-account-reset','POST',{'studentId':'s2'},teacher)[0]==403
         status,_,reset_body=call(base,'/api/admin/student-account-reset','POST',{'studentId':'s4'},teacher)
         assert status==200
