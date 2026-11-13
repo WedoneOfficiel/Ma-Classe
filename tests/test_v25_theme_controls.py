@@ -33,9 +33,11 @@ class ThemeControlsTests(unittest.TestCase):
     def test_theme_application_sets_document_theme_and_native_control_scheme(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
         self.assertIn("root.dataset.mcThemePreference=value", js)
-        self.assertIn("root.dataset.mcTheme=value==='system'&&!dark?'light':value", js)
-        self.assertIn("root.style.colorScheme=value==='system'?(dark?'dark':'light'):value", js)
-        self.assertIn("media.addEventListener?.('change',sync)", js)
+        self.assertIn('root.dataset.mcTheme=effective', js)
+        self.assertIn("value==='system'?(dark?'dark':'light'):value", js)
+        self.assertIn('root.style.colorScheme=effective', js)
+        self.assertIn("MC_COLOR_SCHEME.addEventListener('change',sync)", js)
+        self.assertIn('MC_COLOR_SCHEME.addListener?.(sync)', js)
 
     def test_explicit_theme_styles_exist(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -147,7 +149,8 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="dark"] .focusCard', html)
         self.assertIn('html[data-mc-theme="light"] body', html)
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
-        self.assertIn("root.dataset.mcTheme=value==='system'&&!dark?'light':value", js)
+        self.assertIn('root.dataset.mcTheme=effective', js)
+        self.assertIn("value==='system'?(dark?'dark':'light'):value", js)
 
 
 
