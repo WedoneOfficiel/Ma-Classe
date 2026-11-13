@@ -508,3 +508,12 @@ L'audit des profils a révélé qu'un professeur pouvait modifier lui-même la l
 - Seule la direction peut attribuer ou retirer les matières via la gestion des comptes enseignants.
 - Le serveur ignore désormais toute liste `subjects` envoyée par le professeur à son endpoint de profil et conserve les matières administrées.
 - Test HTTP de non-régression : une tentative d'ajout de matière par le professeur ne modifie pas la liste enregistrée.
+
+
+### Intégrité des bulletins — publication et groupes
+
+Le recalcul serveur des bulletins PDF a été renforcé après ajout d'un test de non-régression : les moyennes officielles excluent désormais les évaluations non publiées, les évaluations dont la date de publication est future, les périodes hors trimestre et les évaluations réservées à un autre groupe. Les statistiques de classe sont recalculées élève par élève avec les mêmes règles de groupe ; les compétences suivent le même périmètre. Les absences et retards restent limités à la classe et à la période du bulletin.
+
+### Persistance lors de la fermeture du navigateur
+
+La déconnexion attend la sauvegarde en attente. En complément, le navigateur affiche maintenant son avertissement natif si l'utilisateur tente de fermer ou recharger l'onglet alors qu'une sauvegarde est en attente ou en échec. Cela réduit le risque de perte en cas de fermeture brutale ; il faut toujours attendre l'état « Enregistré » avant de quitter.
