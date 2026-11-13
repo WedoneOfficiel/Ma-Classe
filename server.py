@@ -1318,7 +1318,10 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 with DATA_LOCK:
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
-                    user=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('username','')).lower()==username and u.get('active') is not False and u.get('role') in ('admin','teacher')),None)\n                    if not user:\n                        student_record=next((st for st in data.get('students',[]) or [] if isinstance(st,dict) and str(st.get('username') or '').lower()==username and st.get('active') is not False and st.get('passwordHash')),None)\n                        if student_record: user={**student_record,'id':str(student_record.get('id') or ''),'role':'student','studentId':str(student_record.get('id') or ''),'name':(str(student_record.get('first') or '')+' '+str(student_record.get('last') or '')).strip()}
+                    user=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('username','')).lower()==username and u.get('active') is not False and u.get('role') in ('admin','teacher')),None)
+                    if not user:
+                        student_record=next((st for st in data.get('students',[]) or [] if isinstance(st,dict) and str(st.get('username') or '').lower()==username and st.get('active') is not False and st.get('passwordHash')),None)
+                        if student_record: user={**student_record,'id':str(student_record.get('id') or ''),'role':'student','studentId':str(student_record.get('id') or ''),'name':(str(student_record.get('first') or '')+' '+str(student_record.get('last') or '')).strip()}
                     valid,legacy=_password_verify(password,user.get('passwordHash','') if user else '')
                     if not user or not valid:
                         user=None
@@ -1685,7 +1688,16 @@ class Handler(SimpleHTTPRequestHandler):
                         data.pop('teachers',None)
                     else:
                         data.pop('teachers',None)
-                    if current is not None:\n                        old_students={str(x.get('id')):x for x in current.get('students',[]) or [] if isinstance(x,dict) and x.get('id')}\n                        for student in data.get('students',[]) or []:\n                            if not isinstance(student,dict): continue\n                            old_student=old_students.get(str(student.get('id') or ''))\n                            if old_student:\n                                for field in ('role','username','passwordHash','mustChangePassword','active'):\n                                    if field in old_student: student[field]=old_student[field]\n                                    else: student.pop(field,None)\n                    if current is not None and current != data:
+                    if current is not None:
+                        old_students={str(x.get('id')):x for x in current.get('students',[]) or [] if isinstance(x,dict) and x.get('id')}
+                        for student in data.get('students',[]) or []:
+                            if not isinstance(student,dict): continue
+                            old_student=old_students.get(str(student.get('id') or ''))
+                            if old_student:
+                                for field in ('role','username','passwordHash','mustChangePassword','active'):
+                                    if field in old_student: student[field]=old_student[field]
+                                    else: student.pop(field,None)
+                    if current is not None and current != data:
                         if user.get('role')=='student':
                             try: data=_merge_student_data(current,data,user)
                             except PermissionError: return self._json({'error':'Périmètre élève non autorisé.'},403)
