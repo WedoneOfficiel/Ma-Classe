@@ -1,0 +1,15 @@
+const fs = require('fs');
+const assert = require('assert');
+const source = fs.readFileSync('_all.js', 'utf8');
+assert(source.includes('name="classIds" multiple'));
+assert(source.includes('function scheduleGroupOptions'));
+assert(source.includes('function refreshScheduleGroupChoices'));
+assert(source.includes('function scheduleRoomOptions'));
+assert(source.includes('onchange="toggleScheduleInterval(this.value)"'));
+assert(source.includes('id="scheduleIntervalField"'));
+assert(source.includes('async function saveSchedule(e,id)'));
+assert(source.includes("await flushPendingSave();db=await api('/api/data');normalize()"));
+assert(source.includes('sharedSlotId'));
+assert(source.includes('async function deleteSchedule(id)'));
+assert(!source.includes('@'+'$'+'{esc(u.username)}'));
+console.log('OK — formulaire EDT multi-classes, groupes/salles liés, intervalle conditionnel et sauvegarde confirmée.');
