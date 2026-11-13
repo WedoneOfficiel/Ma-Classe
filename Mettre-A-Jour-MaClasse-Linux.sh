@@ -4,6 +4,10 @@ cd "$(dirname "$0")"
 fail(){ echo "Mise à jour interrompue : $1"; exit 1; }
 [[ -d .git ]] || fail "Cette installation n'est pas un clone Git."
 [[ -x .venv/bin/python ]] || fail "Environnement Python absent ; lance Installer-MaClasse-Linux.sh."
+REMOTE="$(git remote get-url origin 2>/dev/null || true)"
+[[ "$REMOTE" =~ WedoneOfficiel/Ma-Classe(\.git)?$ ]] || fail "Le dépôt distant origin n'est pas le dépôt officiel MaClasse."
+BRANCH="$(git branch --show-current)"
+[[ "$BRANCH" == "main" ]] || fail "La branche active doit être main (branche actuelle : $BRANCH)."
 [[ -z "$(git status --porcelain)" ]] || fail "Modifications locales détectées ; aucune donnée ne sera écrasée."
 STAMP="$(date +%Y%m%d-%H%M%S)"; BACKUP="../MaClasse-sauvegarde-avant-maj-$STAMP"; mkdir -p "$BACKUP"
 if [[ -d data ]]; then cp -a data "$BACKUP/data"; fi
