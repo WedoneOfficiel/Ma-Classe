@@ -3,7 +3,7 @@ import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime,
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-APP_VERSION='25.0.14'
+APP_VERSION='25.0.16'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
@@ -675,14 +675,26 @@ def _student_visible_data(data,user):
 
 
 def _merge_teacher_data(current,incoming,user):
-    """Fusionne le périmètre professeur sans remplacer les données hors périmètre."""
+    """Fusionne le périmètre professeur, y compris les classes qu'il crée lui-même."""
     if user.get('role')=='admin': return incoming
     if user.get('role')!='teacher': raise PermissionError('Rôle non autorisé')
-    allowed=_teacher_class_ids(current,user)
     tid=str(user.get('id') or user.get('teacherId') or '')
+    current_classes=[x for x in current.get('classes',[]) or [] if isinstance(x,dict)]
+    current_class_ids={str(x.get('id') or '') for x in current_classes if x.get('id')}
+    incoming_classes=[x for x in incoming.get('classes',[]) or [] if isinstance(x,dict)]
+    # Une classe nouvelle n'entre dans le périmètre que si le professeur s'y rattache
+    # explicitement dans le même enregistrement. Cela permet de créer une classe sans
+    # autoriser l'ajout ou la modification des classes d'un autre enseignant.
+    created_class_ids={
+        str(x.get('id') or '') for x in incoming_classes
+        if x.get('id') and str(x.get('id')) not in current_class_ids
+        and tid in {str(v) for v in (x.get('teacherIds') or [])}
+    }
+    allowed=_teacher_class_ids(current,user) | created_class_ids
     merged=dict(current)
-    # Seules ces collections sont modifiables par un professeur.
-    scoped=('students','schedule','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','mailFolders')
+    # Les classes sont fusionnées avant les élèves afin qu'un élève puisse être
+    # enregistré dans une classe créée dans la même sauvegarde.
+    scoped=('classes','students','schedule','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','mailFolders')
     for key in scoped:
         old=[x for x in current.get(key,[]) or [] if isinstance(x,dict)]
         new=[x for x in incoming.get(key,[]) or [] if isinstance(x,dict)]
@@ -690,6 +702,10 @@ def _merge_teacher_data(current,incoming,user):
             ident=str(x.get('id') or '')
             stored=next((z for z in old if ident and str(z.get('id') or '')==ident),None)
             scope_record=stored or x
+            if key=='classes':
+                if stored:
+                    return ident in _teacher_class_ids(current,user)
+                return bool(ident and tid in {str(v) for v in (x.get('teacherIds') or [])})
             if key=='cloudItems':
                 x=scope_record
                 return _cloud_path_allowed(user,x.get('serverName',''),write=True) or _cloud_grant(x,user,current,write=True)
@@ -710,7 +726,6 @@ def _merge_teacher_data(current,incoming,user):
             return _teacher_record_class_id(scope_record,current,key) in allowed
         old_scope={str(x.get('id')):x for x in old if x.get('id') and in_scope(x)}
         new_scope={str(x.get('id')):x for x in new if x.get('id') and in_scope(x)}
-        # Une entrée soumise avec un ID existant hors périmètre ne peut jamais la modifier.
         result=[x for x in old if not (x.get('id') and str(x.get('id')) in old_scope and not (key=='bulletins' and x.get('published') is True))]
         student_ids={str(z.get('id')) for z in current.get('students',[]) or [] if isinstance(z,dict) and str(z.get('classId') or '') in allowed}
         lesson_ids={str(z.get('id')) for z in current.get('lessons',[]) or [] if isinstance(z,dict) and str(z.get('classId') or '') in allowed}
@@ -718,15 +733,25 @@ def _merge_teacher_data(current,incoming,user):
         for entry in new_scope.values():
             item=dict(entry)
             previous=None
+            if key=='classes':
+                previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
+                if previous:
+                    # Un professeur peut modifier le contenu de sa classe, mais pas
+                    # transférer la classe ni changer ses responsables.
+                    item['teacherIds']=list(previous.get('teacherIds') or [])
+                    if 'principalTeacherId' in previous: item['principalTeacherId']=previous['principalTeacherId']
+                    else: item.pop('principalTeacherId',None)
+                else:
+                    if not item.get('name') or len(str(item.get('name')).strip())>120:
+                        continue
+                    item['teacherIds']=[tid]
+                    item['principalTeacherId']=tid if str(item.get('principalTeacherId') or '')==tid else ''
             if key=='conversations':
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
-                    # Une conversation existante ne peut pas être réaffectée ni voir
-                    # ses participants/messages réécrits par un enseignant.
                     for field in ('teacherId','classId','participantIds','type','title','createdAt'):
                         if field in previous: item[field]=previous[field]
                         else: item.pop(field,None)
-                    # Dans l'ancien modèle, seul l'état de lecture personnel est modifiable.
                     incoming_messages=item.get('messages') if isinstance(item.get('messages'),list) else []
                     incoming_by_id={str(m.get('id')):m for m in incoming_messages if isinstance(m,dict) and m.get('id')}
                     safe_messages=[]
@@ -738,16 +763,15 @@ def _merge_teacher_data(current,incoming,user):
                             read_by=list(message.get('readBy') or [])
                             updated_read=list(update.get('readBy') or [])
                             if tid in updated_read and tid not in read_by: read_by.append(tid)
-                            if tid not in updated_read: read_by=[x for x in read_by if str(x)!=tid]
+                            if tid not in updated_read: read_by=[x for x in read_by if x!=tid]
                             message['readBy']=read_by
                         safe_messages.append(message)
                     item['messages']=safe_messages
-                    # Les états d'archivage/classement restent strictement personnels.
                     for field in ('archivedBy','deletedBy','starredBy'):
                         before=list(previous.get(field) or [])
                         after=list(item.get(field) or [])
                         if tid in after and tid not in before: before.append(tid)
-                        if tid not in after: before=[x for x in before if str(x)!=tid]
+                        if tid not in after: before=[x for x in before if x!=tid]
                         item[field]=before
                     old_folders=previous.get('folderByUser') if isinstance(previous.get('folderByUser'),dict) else {}
                     new_folders=item.get('folderByUser') if isinstance(item.get('folderByUser'),dict) else {}
@@ -758,8 +782,6 @@ def _merge_teacher_data(current,incoming,user):
             if key in ('students','schedule','lessons','attendance','attachments','bulletins','evaluations','submissions'):
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
-                    # Les liens de périmètre d'un enregistrement existant ne sont pas modifiables
-                    # par le professeur : classe, élève, séance et période restent canoniques.
                     fields={
                         'students':('classId','role','username','passwordHash','mustChangePassword','active'),
                         'schedule':('classId',),
@@ -776,7 +798,7 @@ def _merge_teacher_data(current,incoming,user):
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
                 lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
-                if not lesson or str(lesson.get('classId') or '') not in allowed: 
+                if not lesson or str(lesson.get('classId') or '') not in allowed:
                     if previous: safe_new.append(dict(previous))
                     continue
                 lesson_class=str(lesson.get('classId') or '')
@@ -789,8 +811,6 @@ def _merge_teacher_data(current,incoming,user):
                     continue
                 item['classId']=lesson_class
             if key=='evaluations':
-                # Les notes doivent concerner des élèves de la classe exacte de l'évaluation,
-                # pas simplement d'une autre classe également attribuée au professeur.
                 evaluation_class=str(item.get('classId') or '')
                 item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids and any(isinstance(st,dict) and str(st.get('id'))==str(g.get('studentId')) and str(st.get('classId') or '')==evaluation_class for st in current.get('students',[]) or [])]
             if key=='attendance':
@@ -800,25 +820,19 @@ def _merge_teacher_data(current,incoming,user):
                 class_record=next((c for c in current.get('classes',[]) or [] if isinstance(c,dict) and str(c.get('id'))==str((previous or item).get('classId') or '')),None)
                 is_principal=bool(class_record and str(class_record.get('principalTeacherId') or '')==tid)
                 if previous and previous.get('published') is True:
-                    # Le bulletin publié est déjà conservé dans result, même si le client le supprime.
                     continue
                 else:
-                    # Les appréciations de matière sont limitées aux matières affectées au professeur.
                     allowed_subjects=_teacher_subject_keys(current,user)
                     old_subject_data=previous.get('subjectData',{}) if previous and isinstance(previous.get('subjectData'),dict) else {}
                     new_subject_data=item.get('subjectData',{}) if isinstance(item.get('subjectData'),dict) else {}
                     filtered_subject_data={}
                     for subject,value in new_subject_data.items():
-                        if str(subject).strip().casefold() in allowed_subjects:
-                            filtered_subject_data[subject]=value
-                        elif subject in old_subject_data:
-                            filtered_subject_data[subject]=old_subject_data[subject]
+                        if str(subject).strip().casefold() in allowed_subjects: filtered_subject_data[subject]=value
+                        elif subject in old_subject_data: filtered_subject_data[subject]=old_subject_data[subject]
                     for subject,value in old_subject_data.items():
-                        if str(subject).strip().casefold() not in allowed_subjects:
-                            filtered_subject_data.setdefault(subject,value)
+                        if str(subject).strip().casefold() not in allowed_subjects: filtered_subject_data.setdefault(subject,value)
                     item['subjectData']=filtered_subject_data
                     if not is_principal:
-                        # Seul le PP peut valider, publier ou modifier l'appréciation générale.
                         for field in ('validated','validatedAt','published','publishedAt','overall','overallUpdatedAt'):
                             if previous and field in previous: item[field]=previous[field]
                             elif field in ('validated','published'): item[field]=False
@@ -828,11 +842,8 @@ def _merge_teacher_data(current,incoming,user):
         merged[key]=result
     if 'mailboxV2' in current or 'mailboxV2' in incoming:
         merged['mailboxV2']=_teacher_merge_mailbox(current,incoming,user,current)
-    # Les professeurs ne peuvent pas modifier les comptes, profils des collègues,
-    # classes, matières, paramètres globaux ou journaux de direction.
-    for key in ('classes','subjects','users','settings','auditLog'):
+    for key in ('subjects','users','settings','auditLog'):
         if key in current: merged[key]=current[key]
-    # Ne pas permettre d'ajouter des clés globales inconnues via une sauvegarde professeur.
     for key in list(merged):
         if key not in current and key not in scoped: merged.pop(key,None)
     return merged
