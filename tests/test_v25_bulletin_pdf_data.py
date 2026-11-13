@@ -1,5 +1,5 @@
 """Server-side bulletin PDF calculations must honor publication, period, class and group."""
-import math, os, sys
+import copy, math, os, sys
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server
 
@@ -52,6 +52,10 @@ def run():
     ]
     assert result['absences']==1 and result['late']==1
     assert math_row['comment']=='Bon travail'
+    nonfinite=copy.deepcopy(db)
+    nonfinite['evaluations'].append({'id':'e10','classId':'c1','subject':'Mathématiques','date':'2026-10-16','published':True,'coefficient':'Infinity','maxScore':20,'grades':[{'studentId':'s1','value':10}]})
+    finite_result=server._bulletin_pdf_data(nonfinite,bulletin,nonfinite['students'][0],nonfinite['classes'][0],nonfinite['settings']['terms'][0],today='2026-11-13')
+    close(finite_result['average'],(18+16+10)/3)
     print('OK — PDF officiel : notes publiées, date de publication, période, classe et groupes appliqués côté serveur.')
 
 if __name__=='__main__':
