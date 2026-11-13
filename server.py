@@ -476,7 +476,7 @@ def _teacher_visible_data(data,user):
     # La fiche professeur est une projection du compte canonique, jamais un second enregistrement.
     canonical=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
     legacy=next((x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tids),None)
-    profile=dict(canonical or legacy or {})
+    profile={k:v for k,v in (canonical or legacy or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
     if profile:
         profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
         out['teachers']=[profile]
@@ -1399,7 +1399,7 @@ class Handler(SimpleHTTPRequestHandler):
                     created=not bool(ident)
                     if created:
                         ident=secrets.token_urlsafe(18); target={'id':ident,'role':'teacher','active':True,'mustChangePassword':True}; accounts.append(target)
-                    target.update({'id':ident,'role':'teacher','teacherId':ident,'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(x.strip() for x in subjects if x.strip())),'profileNotes':notes,'active':target.get('active') is not False})
+                    target.update({'id':ident,'role':'teacher','username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(x.strip() for x in subjects if x.strip())),'profileNotes':notes,'active':target.get('active') is not False})
                     if password:
                         target['passwordHash']=_password_hash(password); target['mustChangePassword']=True
                         for token,session in list(SESSIONS.items()):
@@ -1433,7 +1433,7 @@ class Handler(SimpleHTTPRequestHandler):
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
                     if not target: return self._json({'error':'Compte professeur introuvable.'},404)
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
-                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(str(x).strip() for x in subjects if str(x).strip())),'profileNotes':notes,'teacherId':str(target.get('id'))})
+                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(str(x).strip() for x in subjects if str(x).strip())),'profileNotes':notes})
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
