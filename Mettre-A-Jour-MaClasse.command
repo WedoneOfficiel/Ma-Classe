@@ -10,6 +10,10 @@ fi
 if [[ ! -x .venv/bin/python ]]; then
   fail "L'environnement Python est absent. Lance d'abord Installer-MaClasse.command."
 fi
+REMOTE="$(git remote get-url origin 2>/dev/null || true)"
+[[ "$REMOTE" =~ WedoneOfficiel/Ma-Classe(\.git)?$ ]] || fail "Le dépôt distant origin n'est pas le dépôt officiel MaClasse."
+BRANCH="$(git branch --show-current)"
+[[ "$BRANCH" == "main" ]] || fail "La branche active doit être main (branche actuelle : $BRANCH)."
 if [[ -n "$(git status --porcelain)" ]]; then
   fail "Des fichiers locaux ont été modifiés. La mise à jour s'arrête pour ne rien écraser."
 fi
