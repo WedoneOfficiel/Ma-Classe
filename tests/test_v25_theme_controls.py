@@ -150,6 +150,7 @@ class ThemeControlsTests(unittest.TestCase):
         light = html[html.rfind("V25.6 — thème clair"):]
         for selector in (
             'html[data-mc-theme="light"] .side',
+            'html[data-mc-theme="light"] .side:after',
             'html[data-mc-theme="light"] .top',
             'html[data-mc-theme="light"] .card',
             'html[data-mc-theme="light"] .btn.primary',
@@ -159,6 +160,8 @@ class ThemeControlsTests(unittest.TestCase):
         ):
             self.assertIn(selector, light)
         self.assertIn("rgba(10,40,80,.08)", light)
+        self.assertIn("linear-gradient(145deg,rgba(255,255,255,.70)", light)
+        self.assertIn("html[data-mc-theme=\"light\"] .side:after", light)
         self.assertIn("linear-gradient(135deg,#0a5ecb,#0a84ff 58%,#4aa3ff)", light)
         self.assertIn("rgba(10,80,150,.16)", light)
 
