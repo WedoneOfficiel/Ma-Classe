@@ -1605,10 +1605,11 @@ class Handler(SimpleHTTPRequestHandler):
                     if not hmac.compare_digest(supplied_revision,current_revision):
                         return self._json({'error':'Les données ont été modifiées depuis votre dernier chargement. Recharge MaClasse avant de réessayer.','code':'REVISION_CONFLICT'},409,headers={'X-MaClasse-Revision':current_revision})
                     if current is not None:
-                data['users']=current.get('users',[]) if isinstance(current.get('users'),list) else []
-                data.pop('teachers',None)
-            else: data.pop('teachers',None)
-            if current is not None and current != data:
+                        data['users']=current.get('users',[]) if isinstance(current.get('users'),list) else []
+                        data.pop('teachers',None)
+                    else:
+                        data.pop('teachers',None)
+                    if current is not None and current != data:
                         if user.get('role')=='student':
                             try: data=_merge_student_data(current,data,user)
                             except PermissionError: return self._json({'error':'Périmètre élève non autorisé.'},403)
@@ -1638,7 +1639,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not _cloud_scope_allowed(user,str(obj.get('space','personal')),owner_id=obj.get('ownerId',''),class_id=obj.get('classId',''),group=obj.get('group',''),write=True): return self._json({'error':'Accès à cet espace Cloud refusé.'},403)
                 if not name or name in ('.','..'): return self._json({'error':'Nom de dossier invalide'},400)
                 safe=lambda x: re.sub(r'[^a-zA-Z0-9_-]+','_',str(x or ''))[:120] or 'root'
-                space=safe(obj.get('space','personal')); owner=safe(obj.get('ownerId','teacher-local')); cid=safe(obj.get('classId','')); group=safe(obj.get('group',''))
+                space=safe(obj.get('space','personal')); owner=safe(obj.get('ownerId') or user.get('teacherId') or user.get('id') or ''); cid=safe(obj.get('classId','')); group=safe(obj.get('group',''))
                 parts=['cloud',space]
                 if space=='personal': parts += ['users',owner]
                 else:
