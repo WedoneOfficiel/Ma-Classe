@@ -20,11 +20,10 @@ class StudentScopeTests(unittest.TestCase):
         os.makedirs(server.UPLOADS)
         self.user={'id':'u1','role':'student','studentId':'s1','name':'Alice'}
         self.data={
-            'users':[{'id':'u1','role':'student','studentId':'s1','passwordHash':'secret'}],
-            'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
+            'users':[{'id':'u1','role':'student','studentId':'s1','passwordHash':'secret'},{'id':'t1','role':'teacher','first':'Prof','last':'A'},{'id':'t2','role':'teacher','first':'Prof','last':'B'}],
+            'classes':[{'id':'c1','name':'6A','teacherIds':['t1']},{'id':'c2','name':'6B','teacherIds':['t2']}],
             'students':[{'id':'s1','classId':'c1','first':'Alice','notes':'note interne confidentielle'},{'id':'s2','classId':'c1','first':'Bob'},{'id':'s3','classId':'c2','first':'Chloé'}],
             'schedule':[{'id':'slot1','classId':'c1','teacherId':'t1'},{'id':'slot2','classId':'c2','teacherId':'t2'}],
-            'teachers':[{'id':'t1','first':'Prof A'},{'id':'t2','first':'Prof B'}],
             'lessons':[{'id':'l1','classId':'c1','homework':{'requiresSubmission':True}},{'id':'l1b','classId':'c1','homework':{'requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'requiresSubmission':True}}],
             'evaluations':[{'id':'e1','classId':'c1','published':True,'grades':[{'studentId':'s1','value':14},{'studentId':'s2','value':7}]},{'id':'e2','classId':'c1','published':False,'grades':[{'studentId':'s1','value':19}]}],
             'attendance':[{'id':'a1','classId':'c1','rows':[{'studentId':'s1','status':'present'},{'studentId':'s2','status':'absent'}]}],
