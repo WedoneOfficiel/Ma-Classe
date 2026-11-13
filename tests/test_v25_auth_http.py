@@ -168,8 +168,23 @@ def run():
         teacher_data=json.loads(call(base,'/api/data',cookie=teacher)[2])
         visible_student_account=next(u for u in teacher_data['users'] if u.get('studentId')=='s4')
         assert visible_student_account['username']=='nouveau' and 'passwordHash' not in visible_student_account
-        status,_,_=call(base,'/api/auth/login','POST',{'username':'nouveau','password':teacher_student['temporaryPassword']})
+        status,student_login_headers,student_login_body=call(base,'/api/auth/login','POST',{'username':'nouveau','password':teacher_student['temporaryPassword']})
+        assert status==200 and json.loads(student_login_body)['user']['mustChangePassword']
+        student_session=student_login_headers.get('Set-Cookie').split(';')[0]
+        assert call(base,'/api/admin/student-account-reset','POST',{'studentId':'s2'},teacher)[0]==403
+        status,_,reset_body=call(base,'/api/admin/student-account-reset','POST',{'studentId':'s4'},teacher)
         assert status==200
+        reset_user=json.loads(reset_body)['user']
+        assert len(reset_user['temporaryPassword'])>=8 and reset_user['mustChangePassword'] is True
+        assert call(base,'/api/data',cookie=student_session)[0]==401
+        status,reset_login_headers,reset_login_body=call(base,'/api/auth/login','POST',{'username':'nouveau','password':reset_user['temporaryPassword']})
+        assert status==200 and json.loads(reset_login_body)['user']['mustChangePassword']
+        reset_session=reset_login_headers.get('Set-Cookie').split(';')[0]
+        assert call(base,'/api/admin/student-account-status','POST',{'studentId':'s4','active':False},teacher)[0]==200
+        assert call(base,'/api/data',cookie=reset_session)[0]==401
+        assert call(base,'/api/auth/login','POST',{'username':'nouveau','password':reset_user['temporaryPassword']})[0]==401
+        assert call(base,'/api/admin/student-account-status','POST',{'studentId':'s4','active':True},teacher)[0]==200
+        assert call(base,'/api/auth/login','POST',{'username':'nouveau','password':reset_user['temporaryPassword']})[0]==200
         assert next(x for x in persisted['classes'] if x['id']=='c2')['name']=='6B'
         # La direction crée un compte élève ; le serveur génère directement une empreinte PBKDF2.
         status,_,created_account=call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice','password':'eleveTestTresFort!'},admin)
