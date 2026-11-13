@@ -3,7 +3,7 @@ import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime,
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-APP_VERSION='25.0.12'
+APP_VERSION='25.0.13'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 DATA_LOCK=threading.RLock()
@@ -1266,9 +1266,9 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/auth/setup':
             try: obj=json.loads(body.decode('utf-8'))
             except Exception: return self._json({'error':'Requête invalide.'},400)
-            username=str(obj.get('username') or '').strip().lower(); name=str(obj.get('name') or '').strip(); password=str(obj.get('password') or '')
+            username=str(obj.get('username') or '').strip().lower(); first=str(obj.get('first') or '').strip(); last=str(obj.get('last') or '').strip(); name=(first+' '+last).strip(); password=str(obj.get('password') or '')
             if not re.fullmatch(r'[a-z0-9._-]{3,40}',username): return self._json({'error':'Identifiant invalide : 3 à 40 caractères.'},400)
-            if not name or len(name)>120: return self._json({'error':'Indique le nom de la personne responsable.'},400)
+            if not first or not last or len(first)>80 or len(last)>80: return self._json({'error':'Indique le prénom et le nom de la personne responsable.'},400)
             if len(password)<12 or len(password)>1024: return self._json({'error':'Le mot de passe doit contenir entre 12 et 1024 caractères.'},400)
             with DATA_LOCK:
                 try:
@@ -1277,14 +1277,14 @@ class Handler(SimpleHTTPRequestHandler):
                     users=data.get('users') if isinstance(data.get('users'),list) else []
                     occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students'))
                     if occupied: return self._json({'error':'La première configuration a déjà été effectuée. Connecte-toi avec le compte direction.'},409)
-                    account={'id':secrets.token_urlsafe(18),'role':'admin','username':username,'name':name,'first':name,'last':'','active':True,'passwordHash':_password_hash(password)}
+                    account={'id':secrets.token_urlsafe(18),'role':'admin','username':username,'name':name,'first':first,'last':last,'active':True,'passwordHash':_password_hash(password)}
                     data['users']=[account]; data.pop('teachers',None); data['schemaVersion']=25011
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE)
                 except Exception as exc: return self._json({'error':'Initialisation impossible : '+str(exc)},500)
             token=secrets.token_urlsafe(32)
-            safe_user={'id':account['id'],'role':'admin','teacherId':'','studentId':'','name':name,'first':name,'last':'','email':''}
+            safe_user={'id':account['id'],'role':'admin','teacherId':'','studentId':'','name':name,'first':first,'last':last,'email':''}
             SESSIONS[token]={'user':safe_user,'expires':time.time()+SESSION_TTL,'must_change':False}
             self.send_response(201); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Cache-Control','no-store'); self._set_session_cookie(token); self.end_headers()
             self.wfile.write(json.dumps({'ok':True,'user':safe_user},ensure_ascii=False).encode('utf-8')); return
@@ -1377,7 +1377,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not first or not last or len(first)>80 or len(last)>80: return self._json({'error':'Le prénom et le nom sont obligatoires.'},400)
             if len(email)>254 or len(phone)>40 or len(notes)>4000: return self._json({'error':'Un champ du profil est trop long.'},400)
             if any(not isinstance(x,str) or len(x)>80 for x in subjects): return self._json({'error':'Liste de matières invalide.'},400)
-            if password and len(password)<12: return self._json({'error':'Le mot de passe doit contenir au moins 12 caractères.'},400)
+            if password and len(password)<8: return self._json({'error':'Le mot de passe provisoire doit contenir au moins 8 caractères.'},400)
             if len(password)>1024: return self._json({'error':'Mot de passe trop long.'},400)
             with DATA_LOCK:
                 try:
@@ -1386,7 +1386,10 @@ class Handler(SimpleHTTPRequestHandler):
                     accounts=data.get('users') if isinstance(data.get('users'),list) else []
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None) if ident else None
                     if ident and not target: return self._json({'error':'Compte professeur introuvable.'},404)
-                    if not ident and not password: return self._json({'error':'Un mot de passe provisoire est obligatoire à la création.'},400)
+                    temporary_password=''
+                    if not ident and not password:
+                        temporary_password=secrets.token_urlsafe(8)
+                        password=temporary_password
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=ident for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
                     classes=data.get('classes') if isinstance(data.get('classes'),list) else []
                     valid_ids={str(x.get('id')) for x in classes if isinstance(x,dict)}
@@ -1412,6 +1415,7 @@ class Handler(SimpleHTTPRequestHandler):
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
                     public={k:v for k,v in target.items() if k not in ('passwordHash','password')}; public['teacherId']=ident; public['classIds']=sorted(assigned|principal)
+                    if temporary_password: public['temporaryPassword']=temporary_password
                     return self._json({'ok':True,'user':public},201 if created else 200,headers={'X-MaClasse-Revision':revision})
                 except Exception as exc: return self._json({'error':'Enregistrement du professeur impossible : '+str(exc)},500)
         if path=='/api/teacher/profile':
@@ -1459,7 +1463,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'ok':True,'active':active},headers={'X-MaClasse-Revision':_database_revision()})
                 except Exception as exc: return self._json({'error':'Modification du compte impossible : '+str(exc)},500)
         if path=='/api/admin/student-account':
-            if user.get('role')!='admin': return self._json({'error':'La création des comptes élèves est réservée à la direction.'},403)
+            if user.get('role') not in ('admin','teacher'): return self._json({'error':'Droits insuffisants pour créer un compte élève.'},403)
             try: obj=json.loads(body.decode('utf-8'))
             except Exception: return self._json({'error':'Requête invalide.'},400)
             student_id=str(obj.get('studentId') or '').strip()
@@ -1467,8 +1471,8 @@ class Handler(SimpleHTTPRequestHandler):
             password=str(obj.get('password') or '')
             if not re.fullmatch(r'[a-z0-9._-]{3,40}',username):
                 return self._json({'error':'Identifiant invalide : 3 à 40 caractères, lettres minuscules, chiffres, point, tiret ou underscore.'},400)
-            if len(password)<12 or len(password)>1024:
-                return self._json({'error':'Le mot de passe provisoire doit contenir entre 12 et 1024 caractères.'},400)
+            if password and (len(password)<8 or len(password)>1024):
+                return self._json({'error':'Le mot de passe provisoire doit contenir entre 8 et 1024 caractères.'},400)
             with DATA_LOCK:
                 try:
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
@@ -1477,17 +1481,20 @@ class Handler(SimpleHTTPRequestHandler):
                     class_id=str(student_record.get('classId') or '')
                     if not class_id or not any(isinstance(x,dict) and str(x.get('id'))==class_id for x in data.get('classes',[]) or []):
                         return self._json({'error':'Attribue une classe à cet élève avant de créer son compte.'},400)
+                    if user.get('role')=='teacher' and class_id not in _teacher_class_ids(data,user):
+                        return self._json({'error':'Tu ne peux créer un accès que pour un élève de tes classes.'},403)
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username for x in data.get('users',[]) or []):
                         return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
                     if any(isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id for x in data.get('users',[]) or []):
                         return self._json({'error':'Cet élève possède déjà un compte. Réactive ou réinitialise son compte existant.'},409)
-                    account={'id':secrets.token_urlsafe(18),'role':'student','studentId':student_id,'username':username,'name':str(student_record.get('first') or '')+' '+str(student_record.get('last') or ''),'active':True,'mustChangePassword':True,'passwordHash':_password_hash(password)}
+                    temporary_password=password or secrets.token_urlsafe(8)
+                    account={'id':secrets.token_urlsafe(18),'role':'student','studentId':student_id,'username':username,'name':str(student_record.get('first') or '')+' '+str(student_record.get('last') or ''),'active':True,'mustChangePassword':True,'passwordHash':_password_hash(temporary_password)}
                     data.setdefault('users',[]).append(account)
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE)
                     revision=_database_revision()
-                    public={k:account[k] for k in ('id','role','studentId','username','name','active','mustChangePassword')}
+                    public={k:account[k] for k in ('id','role','studentId','username','name','active','mustChangePassword')}; public['temporaryPassword']=temporary_password
                     return self._json({'ok':True,'user':public},headers={'X-MaClasse-Revision':revision})
                 except Exception as exc:
                     return self._json({'error':'Création du compte impossible : '+str(exc)},500)
