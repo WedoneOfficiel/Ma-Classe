@@ -284,6 +284,17 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
     return {'student':{'name':' '.join(str(student_record.get(k) or '').strip() for k in ('first','last')).strip()},'className':str(class_record.get('name') or '—'),'termName':str((term or {}).get('name') or 'Période'),'published':bulletin.get('published') is True,'publishedAt':str(bulletin.get('publishedAt') or ''),'overall':str(bulletin.get('overall') or ''),'average':overall_average,'overallStats':overall_stats,'rows':rows,'competencies':competencies,'absences':absences,'late':late}
 
 
+def _student_account_users(data):
+    """Projection UI : les comptes élèves sont intégrés aux fiches students[], jamais dupliqués dans users[]."""
+    result=[x for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')!='student']
+    for student in data.get('students',[]) or []:
+        if not isinstance(student,dict) or not student.get('username') or not student.get('passwordHash'): continue
+        account={k:v for k,v in student.items() if k not in ('passwordHash','password','birth','sex','classId','group','notes','phone')}
+        account.update({'id':str(student.get('id') or ''),'role':'student','studentId':str(student.get('id') or ''),'name':(str(student.get('first') or '')+' '+str(student.get('last') or '')).strip()})
+        result.append(account)
+    return result
+
+
 def _teacher_class_ids(data,user):
     """Les classes référencent directement l'identifiant du compte professeur canonique."""
     tid=str(user.get('id') or user.get('teacherId') or '')
@@ -480,7 +491,7 @@ def _teacher_visible_data(data,user):
         profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
         out['teachers']=[profile]
     else: out['teachers']=[]
-    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
+    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
@@ -618,7 +629,7 @@ def _student_visible_data(data,user):
     out['classes']=[{k:v for k,v in class_record.items() if k in class_fields}] if class_record else []
     student_fields=('id','first','last','birth','sex','classId','group','email','phone')
     out['students']=[{k:v for k,v in student_record.items() if k in student_fields}]
-    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
+    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
     schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
     teacher_ids={str(x) for x in (class_record or {}).get('teacherIds',[]) or []}
@@ -750,7 +761,7 @@ def _merge_teacher_data(current,incoming,user):
                     # Les liens de périmètre d'un enregistrement existant ne sont pas modifiables
                     # par le professeur : classe, élève, séance et période restent canoniques.
                     fields={
-                        'students':('classId',),
+                        'students':('classId','role','username','passwordHash','mustChangePassword','active'),
                         'schedule':('classId',),
                         'lessons':('classId',),
                         'attendance':('classId',),
@@ -1253,7 +1264,7 @@ class Handler(SimpleHTTPRequestHandler):
             elif session_user.get('role')=='student': visible=_student_visible_data(data,session_user)
             else:
                 visible=dict(data)
-                visible['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict)]
+                visible['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict)]
                 visible['teachers']=[]
                 for account in data.get('users',[]) or []:
                     if not isinstance(account,dict) or account.get('role')!='teacher': continue
@@ -1306,7 +1317,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 with DATA_LOCK:
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
-                    user=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('username','')).lower()==username and u.get('active') is not False and u.get('role') in ('admin','teacher','student') and (u.get('role')!='student' or any(isinstance(st,dict) and str(st.get('id'))==str(u.get('studentId') or '') for st in data.get('students',[]) or []))),None)
+                    user=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('username','')).lower()==username and u.get('active') is not False and u.get('role') in ('admin','teacher')),None)\n                    if not user:\n                        student_record=next((st for st in data.get('students',[]) or [] if isinstance(st,dict) and str(st.get('username') or '').lower()==username and st.get('active') is not False and st.get('passwordHash')),None)\n                        if student_record: user={**student_record,'id':str(student_record.get('id') or ''),'role':'student','studentId':str(student_record.get('id') or ''),'name':(str(student_record.get('first') or '')+' '+str(student_record.get('last') or '')).strip()}
                     valid,legacy=_password_verify(password,user.get('passwordHash','') if user else '')
                     if not user or not valid:
                         user=None
@@ -1441,7 +1452,7 @@ class Handler(SimpleHTTPRequestHandler):
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
                     if not target: return self._json({'error':'Compte professeur introuvable.'},404)
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
-                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes})
+                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes,'subjects':list(dict.fromkeys(str(x).strip() for x in subjects if str(x).strip()))})
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
@@ -1491,13 +1502,13 @@ class Handler(SimpleHTTPRequestHandler):
                         return self._json({'error':'Attribue une classe à cet élève avant de créer son compte.'},400)
                     if user.get('role')=='teacher' and class_id not in _teacher_class_ids(data,user):
                         return self._json({'error':'Tu ne peux créer un accès que pour un élève de tes classes.'},403)
-                    if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username for x in data.get('users',[]) or []):
+                    if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username for x in list(data.get('users',[]) or [])+list(data.get('students',[]) or [])):
                         return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
-                    if any(isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id for x in data.get('users',[]) or []):
-                        return self._json({'error':'Cet élève possède déjà un compte. Réactive ou réinitialise son compte existant.'},409)
+                    if student_record.get('passwordHash'):
+                        return self._json({'error':'Cet élève possède déjà un accès. Réinitialise-le ou réactive-le.'},409)
                     temporary_password=password or secrets.token_urlsafe(8)
-                    account={'id':secrets.token_urlsafe(18),'role':'student','studentId':student_id,'username':username,'name':str(student_record.get('first') or '')+' '+str(student_record.get('last') or ''),'active':True,'mustChangePassword':True,'passwordHash':_password_hash(temporary_password)}
-                    data.setdefault('users',[]).append(account)
+                    student_record.update({'role':'student','username':username,'active':True,'mustChangePassword':True,'passwordHash':_password_hash(temporary_password)})
+                    account={'id':student_id,'role':'student','studentId':student_id,'username':username,'name':str(student_record.get('first') or '')+' '+str(student_record.get('last') or ''),'active':True,'mustChangePassword':True}
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE)
@@ -1520,10 +1531,10 @@ class Handler(SimpleHTTPRequestHandler):
                     class_id=str(student_record.get('classId') or '')
                     if user.get('role')=='teacher' and class_id not in _teacher_class_ids(data,user):
                         return self._json({'error':'Tu ne peux réinitialiser que les accès des élèves de tes classes.'},403)
-                    account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id),None)
+                    account=student_record if student_record.get('passwordHash') else None
                     if not account: return self._json({'error':"Cet élève n'a pas encore de compte."},404)
                     temporary_password=secrets.token_urlsafe(8)
-                    account['passwordHash']=_password_hash(temporary_password); account['mustChangePassword']=True
+                    account['passwordHash']=_password_hash(temporary_password); account['mustChangePassword']=True; account['active']=True; account['role']='student'
                     for token,session in list(SESSIONS.items()):
                         su=session.get('user') if isinstance(session,dict) else {}
                         if str((su or {}).get('id') or '')==str(account.get('id') or ''): SESSIONS.pop(token,None)
@@ -1549,7 +1560,7 @@ class Handler(SimpleHTTPRequestHandler):
                         return self._json({'error':'Tu ne peux gérer que les accès des élèves de tes classes.'},403)
                     account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id),None)
                     if not account: return self._json({'error':"Cet élève n'a pas encore de compte."},404)
-                    account['active']=active
+                    account['active']=active; account['role']='student'
                     if not active:
                         for token,session in list(SESSIONS.items()):
                             su=session.get('user') if isinstance(session,dict) else {}
@@ -1673,7 +1684,7 @@ class Handler(SimpleHTTPRequestHandler):
                         data.pop('teachers',None)
                     else:
                         data.pop('teachers',None)
-                    if current is not None and current != data:
+                    if current is not None:\n                        old_students={str(x.get('id')):x for x in current.get('students',[]) or [] if isinstance(x,dict) and x.get('id')}\n                        for student in data.get('students',[]) or []:\n                            if not isinstance(student,dict): continue\n                            old_student=old_students.get(str(student.get('id') or ''))\n                            if old_student:\n                                for field in ('role','username','passwordHash','mustChangePassword','active'):\n                                    if field in old_student: student[field]=old_student[field]\n                                    else: student.pop(field,None)\n                    if current is not None and current != data:
                         if user.get('role')=='student':
                             try: data=_merge_student_data(current,data,user)
                             except PermissionError: return self._json({'error':'Périmètre élève non autorisé.'},403)
