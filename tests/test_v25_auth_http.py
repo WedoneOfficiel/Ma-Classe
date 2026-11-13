@@ -134,6 +134,7 @@ def run():
         assert [x['id'] for x in view['students']]==['s1','s3']
         assert [g['studentId'] for g in view['evaluations'][0]['grades']]==['s1','s3']
         view['students'][0]['first']='Alicia'
+        view['students'].append({'id':'s4','classId':'c1','first':'Nouveau','last':'Eleve'})
         original_revision=read_headers.get('X-MaClasse-Revision')
         status,_,missing=call(base,'/api/save','POST',view,teacher)
         assert status==428 and json.loads(missing)['code']=='REVISION_REQUIRED'
@@ -147,6 +148,18 @@ def run():
         persisted=json.loads((app/'data'/'maclasse.json').read_text())
         assert next(x for x in persisted['students'] if x['id']=='s1')['first']=='Alicia'
         assert next(x for x in persisted['students'] if x['id']=='s2')['first']=='Bob'
+        assert next(x for x in persisted['students'] if x['id']=='s4')['first']=='Nouveau'
+        # Un professeur peut créer un accès pour un élève de sa classe, pas pour une autre classe.
+        assert call(base,'/api/admin/student-account','POST',{'studentId':'s2','username':'bob'},teacher)[0]==403
+        status,_,teacher_student_body=call(base,'/api/admin/student-account','POST',{'studentId':'s4','username':'nouveau'},teacher)
+        assert status==200
+        teacher_student=json.loads(teacher_student_body)['user']
+        assert len(teacher_student['temporaryPassword'])>=8 and teacher_student['mustChangePassword'] is True
+        teacher_data=json.loads(call(base,'/api/data',cookie=teacher)[2])
+        visible_student_account=next(u for u in teacher_data['users'] if u.get('studentId')=='s4')
+        assert visible_student_account['username']=='nouveau' and 'passwordHash' not in visible_student_account
+        status,_,_=call(base,'/api/auth/login','POST',{'username':'nouveau','password':teacher_student['temporaryPassword']})
+        assert status==200
         assert next(x for x in persisted['classes'] if x['id']=='c2')['name']=='6B'
         # La direction crée un compte élève ; le serveur génère directement une empreinte PBKDF2.
         status,_,created_account=call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice','password':'eleveTestTresFort!'},admin)
