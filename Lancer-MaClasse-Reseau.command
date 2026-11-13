@@ -59,20 +59,23 @@ if ! .venv/bin/python -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[
   exit 1
 fi
 
-URL="http://$LAN_IP:8765"
+./Configurer-MaClasse-Reseau.command "$LAN_IP"
+CA_CERT="data/tls/ca.crt"
+TLS_CERT="data/tls/server.crt"
+TLS_KEY="data/tls/server.key"
+URL="https://$LAN_IP:8765"
 echo "============================================================"
-echo "MaClasse — MODE TEST SUR RÉSEAU PRIVÉ"
+echo "MaClasse — MODE RÉSEAU PRIVÉ HTTPS"
 echo "Adresse à ouvrir sur le second PC : $URL"
 echo
-echo "IMPORTANT : HTTP n'est pas chiffré sur le réseau local."
-echo "Utilise uniquement ta box privée isolée et des données fictives."
-echo "N'utilise pas ce mode sur le réseau de l'établissement."
-echo "Ne configure aucune redirection de port sur la box."
+echo "HTTPS est activé. Installe data/tls/ca.crt dans les autorités racines de confiance de chaque appareil client."
+echo "Sans cette autorité approuvée, le navigateur affichera un avertissement de certificat."
+echo "Utilise uniquement un réseau privé maîtrisé ; aucune redirection de port sur la box."
 echo "Pour arrêter le serveur : Ctrl+C."
 echo "============================================================"
 echo
 
-MACLASSE_LAN_MODE=1 MACLASSE_HOST="$LAN_IP" MACLASSE_PORT=8765 .venv/bin/python server.py &
+MACLASSE_LAN_MODE=1 MACLASSE_HOST="$LAN_IP" MACLASSE_PORT=8765 MACLASSE_TLS_CERT="$TLS_CERT" MACLASSE_TLS_KEY="$TLS_KEY" .venv/bin/python server.py &
 SERVER_PID=$!
 cleanup() { kill "$SERVER_PID" >/dev/null 2>&1 || true; wait "$SERVER_PID" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
@@ -84,7 +87,7 @@ for _ in {1..20}; do
     echo "Le serveur n'a pas pu démarrer."
     exit 1
   fi
-  if /usr/bin/curl --silent --fail "$URL/api/auth/session" >/dev/null 2>&1; then READY=1; break; fi
+  if /usr/bin/curl --silent --fail --cacert "$CA_CERT" "$URL/api/auth/session" >/dev/null 2>&1; then READY=1; break; fi
   sleep 0.5
 done
 if [[ "$READY" -ne 1 ]]; then echo "Le serveur n'a pas répondu après 10 secondes."; exit 1; fi
