@@ -72,7 +72,9 @@ def run():
         saved=json.loads((app/'data'/'maclasse.json').read_text())
         admin_record=next(u for u in saved['users'] if u['username']=='direction')
         assert admin_record['passwordHash'].startswith('pbkdf2_sha256$')
-        assert len(admin_record['passwordHash'].split(''unMotDePasseProfTresSolide!'
+        assert len(admin_record['passwordHash'].split('$'))==4
+        assert admin_record['first']=='Camille' and admin_record['last']=='Durand'
+        teacher_password='unMotDePasseProfTresSolide!'
         status,created_headers,created_body=call(base,'/api/admin/teacher','POST',{'first':'Alice','last':'Martin','username':'alice.martin','email':'alice@example.test','phone':'','subjects':['Mathématiques'],'profileNotes':'','password':teacher_password,'classIds':[],'ppIds':[]},admin)
         assert status==201
         created=json.loads(created_body)['user']; teacher_id=created['id']
@@ -83,7 +85,10 @@ def run():
         automatic_teacher=json.loads(automatic_teacher_body)['user']
         assert len(automatic_teacher['temporaryPassword'])>=8 and automatic_teacher['mustChangePassword'] is True
         automatic_record=next(u for u in json.loads((app/'data'/'maclasse.json').read_text())['users'] if u['id']==automatic_teacher['id'])
-        assert automatic_record['passwordHash'].startswith('pbkdf2_sha256json.loads((app/'data'/'maclasse.json').read_text())
+        assert automatic_record['passwordHash'].startswith('pbkdf2_sha256$') and 'temporaryPassword' not in automatic_record
+        auto_login_status,auto_login_headers,auto_login_body=call(base,'/api/auth/login','POST',{'username':'benoit.petit','password':automatic_teacher['temporaryPassword']})
+        assert auto_login_status==200 and json.loads(auto_login_body)['user']['mustChangePassword'] is True
+        saved=json.loads((app/'data'/'maclasse.json').read_text())
         teacher_record=next(u for u in saved['users'] if u['id']==teacher_id)
         assert teacher_record['first']=='Alice' and teacher_record['last']=='Martin' and 'teacherId' not in teacher_record
         assert 'teachers' not in saved and teacher_record['passwordHash'].startswith('pbkdf2_sha256$')
