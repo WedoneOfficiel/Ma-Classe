@@ -1358,6 +1358,7 @@ class Handler(SimpleHTTPRequestHandler):
                 with DATA_LOCK:
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
                     target=next((u for u in data.get('users',[]) if isinstance(u,dict) and str(u.get('id'))==str(user.get('id'))),None)
+                    if not target and user.get('role')=='student': target=next((st for st in data.get('students',[]) or [] if isinstance(st,dict) and str(st.get('id'))==str(user.get('studentId') or user.get('id') or '')),None)
                     if not target or not _password_verify(current_password,target.get('passwordHash',''))[0]: return self._json({'error':'Mot de passe actuel incorrect.'},401)
                     target['passwordHash']=new_hash
                     target['mustChangePassword']=False
