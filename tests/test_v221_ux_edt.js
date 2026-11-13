@@ -5,6 +5,6 @@ assert(js.includes("const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','S
 assert((js.match(/DAYS\.map/g)||[]).length>=2,'DAYS must drive schedule day selectors');
 assert(js.includes("function openAttendance(id=null,preset=null)"),'attendance quick preset missing');
 assert(js.includes("openAttendance(null,{classId:'${o.classId}',date:'${date}',slotId:'${sid}'})"),'schedule occurrence attendance action missing');
-assert(js.includes('autofocus onclick="openAuthTeacher()"'),'teacher login should be keyboard-ready');
+assert(js.includes('form onsubmit="performLogin(event)"') && js.includes('autocomplete="username" required autofocus'),'unified login should be keyboard-ready');
 assert(html.includes('.scheduleDays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0;width:100%}'),'7-column schedule styling missing');
 console.log('OK — V21.22 UX actions, attendance shortcuts and 7-day EDT.');
