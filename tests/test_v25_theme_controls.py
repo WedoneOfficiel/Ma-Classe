@@ -225,5 +225,19 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn("onclick=\"selectedWeek=scheduleView==='week'?startWeek(new Date()):new Date();render()\"", schedule)
         self.assertIn("function changeMonth(n){selectedWeek=new Date(selectedWeek.getFullYear(),selectedWeek.getMonth()+n,1);render()}", js)
 
+
+    def test_bulletin_preparation_filters_tabs_and_metrics_have_consistent_spacing(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for selector in (".bulletinPreparation{display:flex", ".bulletinPreparation>.bulletinFilters",
+                         ".bulletinPreparation>.bulletinTabs", ".bulletinMetrics{margin-top:14px",
+                         ".bulletinMetrics>.card.stat{margin:0"):
+            self.assertIn(selector, html)
+
+    def test_settings_cards_use_a_consistent_responsive_grid(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn(".settingsGrid{gap:14px!important", html)
+        self.assertIn(".settingsGrid>.settingsCard{min-width:0", html)
+        self.assertIn(".settingsGrid>.settingsDataCard{grid-column:1/-1!important}", html)
+
 if __name__ == "__main__":
     unittest.main()
