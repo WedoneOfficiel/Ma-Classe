@@ -476,7 +476,7 @@ def _teacher_visible_data(data,user):
         profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
         out['teachers']=[profile]
     else: out['teachers']=[]
-    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
+    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
