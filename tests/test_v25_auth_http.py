@@ -108,7 +108,6 @@ def run():
         # Vérification HTTP de la projection professeur et de la fusion sans écrasement.
         seeded={
             'users':[],
-            'teachers':[],
             'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
             'students':[{'id':'s1','classId':'c1','first':'Alice','notes':'note interne confidentielle'},{'id':'s2','classId':'c2','first':'Bob'},{'id':'s3','classId':'c1','first':'Camille'}],
             'lessons':[{'id':'l1','classId':'c1','homework':{'title':'Exercice','requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'title':'Devoir','requiresSubmission':True}}],

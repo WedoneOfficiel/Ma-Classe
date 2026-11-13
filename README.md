@@ -9,7 +9,7 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.11 (alpha)  
+**Version de travail :** V25.0.12 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
@@ -394,7 +394,7 @@ L’audit du code actuel confirme trois problèmes structurels :
 Ce plan est une décision d’architecture, **pas une affirmation que la refonte des comptes est déjà terminée**. Le mode réseau ne doit pas être considéré comme prêt pour des données scolaires réelles.
 
 
-## Refonte des comptes et de la première installation — V25.0.11 · 13/11/2026
+## Refonte des comptes et de la première installation — V25.0.12 · 13/11/2026
 
 ### Modèle canonique
 
@@ -426,9 +426,18 @@ Ce plan est une décision d’architecture, **pas une affirmation que la refonte
 
 - Le lanceur réseau vérifie désormais uniquement la présence d'un compte direction initialisé avec une empreinte PBKDF2 sécurisée ; aucun compte enseignant n'est requis.
 - Les comptes enseignants peuvent être créés depuis l'interface direction, donc depuis un poste du réseau local lorsque le mode LAN sera autorisé.
-- Les sauvegardes n'exportent plus de collection professeur séparée. À la restauration, l'ancienne clé `teachers` est ignorée : le schéma V25.0.11 est volontairement neuf et ne promet pas la compatibilité avec les anciennes sauvegardes.
+- Les sauvegardes n'exportent plus de collection professeur séparée. À la restauration, l'ancienne clé `teachers` est ignorée : le schéma V25.0.12 est volontairement neuf et ne promet pas la compatibilité avec les anciennes sauvegardes.
 - Le mode LAN reste expérimental : HTTP n'est pas chiffré. Ne pas l'utiliser avec des données scolaires réelles tant que HTTPS, les tests d'intégration complets et la revue des permissions ne sont pas terminés.
 
 ### Vérifications attendues
 
 Les tests d'intégration couvrent l'initialisation unique, le refus des identifiants par défaut, la création d'un compte professeur par la direction, le changement du mot de passe provisoire, la protection des empreintes, la désactivation et l'isolation des données par classe.
+
+
+### Derniers verrouillages du modèle canonique — V25.0.12
+
+- Les contrôles de périmètre, les autorisations Cloud et les boîtes de messagerie identifient désormais un professeur à partir de l'identifiant du compte canonique, sans lire une ancienne collection de fiches professeur.
+- Les comptes élèves reçoivent les noms des enseignants de leur classe depuis les comptes canoniques, avec une projection limitée au prénom et au nom.
+- Les anciennes fiches `teachers[]` ne sont plus utilisées comme solution de repli dans les permissions, les projections ou les sauvegardes. La clé historique est écartée à l'initialisation/restauration.
+- La direction peut également changer son propre mot de passe après la première configuration.
+- Les tests de permissions Cloud, messagerie, espace élève, profil professeur et sauvegarde utilisent désormais le modèle canonique.

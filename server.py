@@ -3,7 +3,7 @@ import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime,
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-APP_VERSION='25.0.11'
+APP_VERSION='25.0.12'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 DATA_LOCK=threading.RLock()
@@ -1215,7 +1215,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/auth/setup-status':
             data=_load_database()
             users=data.get('users') if isinstance(data.get('users'),list) else []
-            occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students','teachers'))
+            occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students'))
             return self._json({'setupRequired':not occupied})
         if path=='/api/auth/session':
             user=self._session_user()
@@ -1275,7 +1275,7 @@ class Handler(SimpleHTTPRequestHandler):
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
                     if not isinstance(data,dict): data={}
                     users=data.get('users') if isinstance(data.get('users'),list) else []
-                    occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students','teachers'))
+                    occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students'))
                     if occupied: return self._json({'error':'La première configuration a déjà été effectuée. Connecte-toi avec le compte direction.'},409)
                     account={'id':secrets.token_urlsafe(18),'role':'admin','username':username,'name':name,'first':name,'last':'','active':True,'passwordHash':_password_hash(password)}
                     data['users']=[account]; data.pop('teachers',None); data['schemaVersion']=25011
