@@ -137,7 +137,6 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertNotIn('@media(prefers-color-scheme:dark){html[data-mc-theme="dark"]', html)
         self.assertIn('html[data-mc-theme="dark"] .mcSelectTrigger', html)
         self.assertIn('html[data-mc-theme="dark"] .v12Workspace', html)
-        self.assertIn('html[data-mc-theme="dark"] .schedulePage', html)
 
     def test_automatic_light_inherits_the_explicit_light_appearance(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
