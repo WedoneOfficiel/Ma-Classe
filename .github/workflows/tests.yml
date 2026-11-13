@@ -29,7 +29,7 @@ jobs:
       - name: Vérifier la syntaxe JavaScript
         run: node --check _all.js
       - name: Vérifier les lanceurs macOS
-        run: bash -n Installer-MaClasse.command Lancer-MaClasse.command Lancer-MaClasse-Reseau.command Configurer-MaClasse-Reseau.command Mettre-A-Jour-MaClasse.command
+        run: bash -n Installer-MaClasse.command Lancer-MaClasse.command Lancer-MaClasse-Reseau.command Configurer-MaClasse-Reseau.command Mettre-A-Jour-MaClasse.command Installer-MaClasse-Linux.sh Lancer-MaClasse-Reseau.sh Configurer-MaClasse-Reseau.sh Mettre-A-Jour-MaClasse-Linux.sh
       - name: Exécuter tous les tests JavaScript
         shell: bash
         run: |
