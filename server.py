@@ -838,7 +838,23 @@ def _merge_teacher_data(current,incoming,user):
                             elif field in ('validated','published'): item[field]=False
                             else: item.pop(field,None)
             safe_new.append(item)
-        result.extend(safe_new)
+        if key=='classes':
+            # Remplacer les classes modifiées à leur position d'origine, supprimer
+            # uniquement celles retirées par leur responsable et ajouter les nouvelles
+            # à la fin, sans réordonner les classes des autres enseignants.
+            safe_by_id={str(x.get('id') or ''):x for x in safe_new if x.get('id')}
+            old_ids={str(x.get('id') or '') for x in old if x.get('id')}
+            ordered=[]
+            for original in old:
+                ident=str(original.get('id') or '')
+                if ident in old_scope:
+                    if ident in safe_by_id: ordered.append(safe_by_id[ident])
+                else:
+                    ordered.append(original)
+            ordered.extend(x for x in safe_new if str(x.get('id') or '') not in old_ids)
+            result=ordered
+        else:
+            result.extend(safe_new)
         merged[key]=result
     if 'mailboxV2' in current or 'mailboxV2' in incoming:
         merged['mailboxV2']=_teacher_merge_mailbox(current,incoming,user,current)
