@@ -15,6 +15,10 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("linear-gradient(135deg,#0a5ecb,#0a84ff 58%,#4aa3ff)", HTML)
         self.assertNotIn("#075db8 0%", HTML)
 
+
+    def test_legacy_stylesheet_has_no_malformed_double_class_selector(self):
+        self.assertNotIn("..lessonLayout{", HTML)
+
     def test_bulletin_filters_and_tabs_have_spacing_hooks(self):
         self.assertIn('class="toolbar bulletinFilters"', JS)
         self.assertIn('class="tabs bulletinTabs"', JS)
