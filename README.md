@@ -441,3 +441,13 @@ Les tests d'intégration couvrent l'initialisation unique, le refus des identifi
 - Les anciennes fiches `teachers[]` ne sont plus utilisées comme solution de repli dans les permissions, les projections ou les sauvegardes. La clé historique est écartée à l'initialisation/restauration.
 - La direction peut également changer son propre mot de passe après la première configuration.
 - Les tests de permissions Cloud, messagerie, espace élève, profil professeur et sauvegarde utilisent désormais le modèle canonique.
+
+
+## Comptes élèves et enregistrement avant déconnexion — V25.0.13 · 13/11/2026
+
+- La fiche de direction demande maintenant un prénom et un nom distincts ; ces deux champs sont conservés dans le compte canonique.
+- La création d'un professeur peut générer automatiquement un mot de passe provisoire aléatoire. Il est affiché une seule fois après création ; le changement vers un mot de passe personnel d'au moins 12 caractères reste obligatoire à la première connexion. Un mot de passe provisoire saisi manuellement peut faire 8 caractères ou plus.
+- Les professeurs peuvent créer les accès des élèves de leurs propres classes depuis le module Élèves. Le serveur vérifie le rattachement réel de la classe au professeur : impossible de créer un accès pour un élève hors périmètre.
+- Les accès élèves peuvent recevoir un mot de passe provisoire aléatoire, affiché une seule fois après création ; l'élève doit le remplacer par un mot de passe personnel d'au moins 12 caractères.
+- Correction d'un risque de perte de fiches lors de la déconnexion : l'enregistrement était différé de 180 ms, mais la déconnexion vidait immédiatement la base locale en mémoire. Le minuteur pouvait donc enregistrer un instantané vide après la déconnexion. La déconnexion attend maintenant la sauvegarde en attente et est annulée si celle-ci échoue.
+- Ces changements ne rendent pas le mode réseau prêt pour un établissement : HTTP reste non chiffré et le mode LAN demeure expérimental. Ne pas y stocker de données scolaires réelles.
