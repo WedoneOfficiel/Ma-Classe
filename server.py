@@ -1521,7 +1521,7 @@ class Handler(SimpleHTTPRequestHandler):
                     account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id),None)
                     if not account: return self._json({'error':"Cet élève n'a pas encore de compte."},404)
                     temporary_password=secrets.token_urlsafe(8)
-                    account['passwordHash']=_password_hash(temporary_password); account['mustChangePassword']=True; account['active']=True
+                    account['passwordHash']=_password_hash(temporary_password); account['mustChangePassword']=True
                     for token,session in list(SESSIONS.items()):
                         su=session.get('user') if isinstance(session,dict) else {}
                         if str((su or {}).get('id') or '')==str(account.get('id') or ''): SESSIONS.pop(token,None)
