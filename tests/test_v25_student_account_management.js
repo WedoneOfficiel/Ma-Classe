@@ -1,0 +1,15 @@
+const fs=require('fs');
+const source=fs.readFileSync('_all.js','utf8');
+const server=fs.readFileSync('server.py','utf8');
+const assert=require('assert');
+assert(source.includes('openStudentAccountManager'));
+assert(source.includes('resetStudentAccount'));
+assert(source.includes('toggleStudentAccount'));
+assert(source.includes('/api/admin/student-account-reset'));
+assert(source.includes('/api/admin/student-account-status'));
+assert(source.includes('Gérer les accès'));
+assert(server.includes("path=='/api/admin/student-account-reset'"));
+assert(server.includes("path=='/api/admin/student-account-status'"));
+assert(server.includes("class_id not in _teacher_class_ids(data,user)"));
+assert(server.includes("account['mustChangePassword']=True"));
+console.log('OK — gestion des accès élèves : affichage, réinitialisation provisoire, suspension et contrôle de périmètre.');
