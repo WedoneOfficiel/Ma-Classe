@@ -4,7 +4,9 @@ cd "$(dirname "$0")"
 umask 077
 LAN_IP="${1:-}"
 if [[ -z "$LAN_IP" ]]; then echo "Usage: $0 ADRESSE_IPV4_PRIVEE"; exit 2; fi
-if ! .venv/bin/python -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert isinstance(a,ipaddress.IPv4Address) and a.is_private and not a.is_loopback and not a.is_link_local and not a.is_multicast and not a.is_unspecified' "$LAN_IP" >/dev/null 2>&1; then
+PYTHON="${PYTHON:-python3}"
+command -v "$PYTHON" >/dev/null 2>&1 || { echo "Python 3 est requis."; exit 2; }
+if ! "$PYTHON" -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert isinstance(a,ipaddress.IPv4Address) and a.is_private and not a.is_loopback and not a.is_link_local and not a.is_multicast and not a.is_unspecified' "$LAN_IP" >/dev/null 2>&1; then
   echo "Adresse IPv4 privée invalide : $LAN_IP"; exit 2
 fi
 command -v openssl >/dev/null 2>&1 || { echo "OpenSSL est requis."; exit 2; }
