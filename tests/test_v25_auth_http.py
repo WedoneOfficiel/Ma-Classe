@@ -130,14 +130,23 @@ def run():
         seeded['classes'][0]['teacherIds']=[teacher_record['id']]
         seeded['classes'][1]['teacherIds']=[]
         (app/'data'/'maclasse.json').write_text(json.dumps(seeded))
+        # Un professeur crée une fiche dans une classe qui lui est attribuée ; la sauvegarde doit la conserver.
+        status,teacher_data_headers,teacher_data_body=call(base,'/api/data',cookie=teacher)
+        assert status==200
+        teacher_data=json.loads(teacher_data_body)
+        teacher_data['students'].append({'id':'s4','first':'Nina','last':'Durand','classId':'c1','group':'','birth':'','sex':'','email':'','phone':'','notes':''})
+        status,_,_=call(base,'/api/save','POST',teacher_data,teacher,extra_headers={'If-Match':teacher_data_headers.get('X-MaClasse-Revision','')})
+        assert status==200
+        saved=json.loads((app/'data'/'maclasse.json').read_text())
+        assert any(x['id']=='s4' and x['classId']=='c1' for x in saved['students'])
         # Le compte élève est intégré à sa fiche : aucun second enregistrement dans users[].
-        status,_,student_create_body=call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice.student'},teacher)
+        status,_,student_create_body=call(base,'/api/admin/student-account','POST',{'studentId':'s4','username':'nina.durand'},teacher)
         assert status==200
         student_access=json.loads(student_create_body)['user']
-        assert student_access['id']=='s1' and student_access['studentId']=='s1'
+        assert student_access['id']=='s4' and student_access['studentId']=='s4'
         saved=json.loads((app/'data'/'maclasse.json').read_text())
-        student_record=next(x for x in saved['students'] if x['id']=='s1')
-        assert student_record['role']=='student' and student_record['username']=='alice.student'
+        student_record=next(x for x in saved['students'] if x['id']=='s4')
+        assert student_record['role']=='student' and student_record['username']=='nina.durand'
         assert student_record['passwordHash'].startswith('pbkdf2_sha256
         status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
         assert status==404
@@ -273,16 +282,16 @@ def run():
 if __name__=='__main__': run()
 )
         assert not any(x.get('role')=='student' for x in saved['users'])
-        status,student_headers,student_login_body=call(base,'/api/auth/login','POST',{'username':'alice.student','password':student_access['temporaryPassword']})
+        status,student_headers,student_login_body=call(base,'/api/auth/login','POST',{'username':'nina.durand','password':student_access['temporaryPassword']})
         assert status==200 and json.loads(student_login_body)['user']['id']=='s1'
         student_cookie=student_headers.get('Set-Cookie').split(';')[0]
         assert json.loads(student_login_body)['user']['mustChangePassword'] is True
         assert call(base,'/api/auth/change-password','POST',{'currentPassword':student_access['temporaryPassword'],'newPassword':'MotDePasseEleveTresSolide!'},student_cookie)[0]==200
         assert call(base,'/api/auth/login','POST',{'username':'alice.student','password':'MotDePasseEleveTresSolide!'})[0]==200
         status,_,student_data_body=call(base,'/api/data',cookie=student_cookie)
-        assert status==200 and json.loads(student_data_body)['students'][0]['id']=='s1'
+        assert status==200 and any(x['id']=='s4' for x in json.loads(student_data_body)['students'])
         assert 'passwordHash' not in json.loads(student_data_body)['students'][0]
-        assert call(base,'/api/admin/student-account-reset','POST',{'studentId':'s1'},teacher)[0]==200
+        assert call(base,'/api/admin/student-account-reset','POST',{'studentId':'s4'},teacher)[0]==200
 
         status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
         assert status==404
