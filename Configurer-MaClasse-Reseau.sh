@@ -10,7 +10,7 @@ if ! "$PYTHON" -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); as
   echo "Adresse IPv4 privée invalide : $LAN_IP"; exit 2
 fi
 command -v openssl >/dev/null 2>&1 || { echo "OpenSSL est requis."; exit 2; }
-TLS_DIR="data/tls"; mkdir -p "$TLS_DIR"
+TLS_DIR="data/tls"; mkdir -p "$TLS_DIR"; chmod 700 "$TLS_DIR"
 CA_KEY="$TLS_DIR/ca.key"; CA_CERT="$TLS_DIR/ca.crt"
 SERVER_KEY="$TLS_DIR/server.key"; SERVER_CSR="$TLS_DIR/server.csr"; SERVER_CERT="$TLS_DIR/server.crt"; EXT="$TLS_DIR/server.ext"; CA_CONFIG="$TLS_DIR/ca.cnf"
 if [[ -f "$CA_KEY" && ! -f "$CA_CERT" ]] || [[ ! -f "$CA_KEY" && -f "$CA_CERT" ]]; then
