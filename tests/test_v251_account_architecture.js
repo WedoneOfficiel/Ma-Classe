@@ -1,0 +1,16 @@
+const fs=require('fs'),assert=require('assert'),root=__dirname+'/..';
+const js=fs.readFileSync(root+'/_all.js','utf8'),server=fs.readFileSync(root+'/server.py','utf8'),lan=fs.readFileSync(root+'/Lancer-MaClasse-Reseau.command','utf8');
+assert(js.includes('async function createInitialAdmin'),'first-run direction setup UI missing');
+assert(js.includes("api('/api/auth/setup'"),'first-run setup must use the server endpoint');
+assert(js.includes("db.teachers=db.users.filter(u=>u&&u.role==='teacher')"),'teacher profiles must be a projection of canonical users');
+assert(js.includes("api('/api/admin/teacher'"),'admin must manage teacher identity and profile together');
+assert(js.includes("api('/api/teacher/profile'"),'teachers must update their own canonical profile');
+assert(!js.includes('u-teacher-local')&&!js.includes('teacher-local'),'synthetic teacher identity must be removed from the client');
+assert(!js.includes('migrateTeacherIdentityV194'),'V19.4 split-identity migration must not run');
+assert(server.includes("if path=='/api/auth/setup-status'")&&server.includes("if path=='/api/auth/setup'"),'server first-run setup endpoints missing');
+assert(server.includes("if path=='/api/admin/teacher'")&&server.includes("if path=='/api/teacher/profile'"),'server canonical teacher endpoints missing');
+assert(server.includes("data.pop('teachers',None)"),'persisted data must not keep a separate teacher collection');
+assert(server.includes("data['users']=current.get('users'"),'general saves must preserve server-managed accounts');
+assert(server.includes("must_change=user.get('mustChangePassword') is True"),'login must not depend on universal default passwords');
+assert(lan.includes('Aucun compte enseignant n\'est nécessaire'),'LAN launcher must not require a dummy teacher');
+console.log('OK — canonical teacher identity, one-time direction setup and no default teacher account.');
