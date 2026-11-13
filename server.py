@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress
+import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 APP_VERSION='25.0.13'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
+TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
+TLS_KEY=os.environ.get('MACLASSE_TLS_KEY','').strip()
 DATA_LOCK=threading.RLock()
 SESSIONS={}
 LOGIN_ATTEMPTS={}
@@ -1137,7 +1139,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._json({'error':'Droits insuffisants.'},403); return None
         return user
     def _set_session_cookie(self, token):
-        self.send_header('Set-Cookie',f'mc_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_TTL}')
+        secure='; Secure' if isinstance(self.connection,ssl.SSLSocket) else ''
+        self.send_header('Set-Cookie',f'mc_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_TTL}{secure}')
     def _origin_allowed(self):
         host=self.headers.get('Host','').strip().lower()
         expected=f'{HOST}:{PORT}'.lower()
@@ -1150,7 +1153,8 @@ class Handler(SimpleHTTPRequestHandler):
         origin=self.headers.get('Origin')
         if not origin:
             return self.command in ('GET','HEAD','OPTIONS')
-        return origin in (f'http://{host}', f'https://{host}')
+        scheme='https' if isinstance(self.connection,ssl.SSLSocket) else 'http'
+        return origin==f'{scheme}://{host}'
     def _require_local_origin(self):
         if self._origin_allowed():
             return True
@@ -1803,6 +1807,23 @@ if __name__=='__main__':
     except ValueError as error:
         print(f'ERREUR DE SÉCURITÉ : {error}')
         raise SystemExit(2)
-    mode='réseau privé — HTTP non chiffré, données fictives uniquement' if HOST not in ('127.0.0.1','localhost','::1') else 'local'
-    print(f'MaClasse V{APP_VERSION} — {mode} — http://{HOST}:{PORT}')
-    ThreadingHTTPServer((HOST,PORT),Handler).serve_forever()
+    if bool(TLS_CERT)!=bool(TLS_KEY):
+        print('ERREUR DE SÉCURITÉ : MACLASSE_TLS_CERT et MACLASSE_TLS_KEY doivent être définis ensemble.')
+        raise SystemExit(2)
+    if HOST not in ('127.0.0.1','localhost','::1') and not TLS_CERT:
+        print('ERREUR DE SÉCURITÉ : le mode réseau exige HTTPS. Configure un certificat TLS avant de démarrer.')
+        raise SystemExit(2)
+    context=None
+    if TLS_CERT:
+        context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version=ssl.TLSVersion.TLSv1_2
+        try: context.load_cert_chain(TLS_CERT,TLS_KEY)
+        except (OSError,ssl.SSLError) as error:
+            print(f'ERREUR DE CERTIFICAT TLS : {error}')
+            raise SystemExit(2)
+    httpd=ThreadingHTTPServer((HOST,PORT),Handler)
+    if context: httpd.socket=context.wrap_socket(httpd.socket,server_side=True)
+    scheme='https' if context else 'http'
+    mode='réseau privé HTTPS' if HOST not in ('127.0.0.1','localhost','::1') else ('local HTTPS' if context else 'local HTTP')
+    print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{HOST}:{PORT}')
+    httpd.serve_forever()
