@@ -519,3 +519,12 @@ Le recalcul serveur des bulletins PDF a été renforcé après ajout d'un test d
 ### Persistance lors de la fermeture du navigateur
 
 La déconnexion attend la sauvegarde en attente. En complément, le navigateur affiche maintenant son avertissement natif si l'utilisateur tente de fermer ou recharger l'onglet alors qu'une sauvegarde est en attente ou en échec. Cela réduit le risque de perte en cas de fermeture brutale ; il faut toujours attendre l'état « Enregistré » avant de quitter.
+
+
+## V25.0.19 — correction du moteur EDT et des noms de fichiers
+
+- La date « À partir du » est maintenant interprétée comme la borne de début de la période ; le premier cours est le premier jour correspondant au jour choisi, à cette date ou après.
+- Les récurrences « une seule fois », toutes les deux semaines, toutes les trois semaines et toutes les N semaines sont ancrées sur cette première occurrence, et non sur le lundi de la date de début. Cela évite les cours absents lorsque le jour choisi n'est pas un lundi.
+- Les tests de calendrier couvrent désormais les sept jours, les premières occurrences, les semaines intermédiaires et les retours de navigation ; le même moteur d'occurrences sert aux vues enseignant et élève.
+- Les noms de fichiers sont transmis en UTF-8 percent-encodé dans un en-tête ASCII, puis décodés côté serveur. Les apostrophes typographiques, accents et caractères combinés ne font plus échouer `fetch`.
+- Le certificat HTTPS local est émis par l'autorité MaClasse. Chaque appareil client doit approuver `data/tls/ca.crt` ; ne jamais contourner l'avertissement ni partager `ca.key` ou `server.key`.
