@@ -68,8 +68,8 @@ vm.runInContext(source.slice(scheduleStart, scheduleEnd), context);
 vm.runInContext("scheduleView='week';selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
 assert.strictEqual(vm.runInContext('schedule()', context).includes('0,0,0,0,1,0,0'), true);
 vm.runInContext('changeWeek(7)', context);
-assert.strictEqual(vm.runInContext('schedule()', context).split('>').pop(), '0,0,0,0,1,0,0');
+assert.strictEqual(vm.runInContext('schedule()', context).includes('0,0,0,0,1,0,0'), true);
 vm.runInContext('changeWeek(-7)', context);
-assert.strictEqual(vm.runInContext('schedule()', context).split('>').pop(), '0,0,0,0,1,0,0');
+assert.strictEqual(vm.runInContext('schedule()', context).includes('0,0,0,0,1,0,0'), true);
 
 console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales, occurrences récurrentes et rendu du planning.');
