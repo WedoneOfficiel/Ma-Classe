@@ -31,13 +31,11 @@ class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
         server.SESSIONS.clear()
         server.LOGIN_ATTEMPTS.clear()
         initial = {
-            "users": [{
-                "id": "student-user-1", "role": "student", "studentId": "student-1",
-                "username": "student", "active": True,
-                "passwordHash": server._password_hash("StudentPass123!")
-            }],
+            "users": [],
             "classes": [{"id": "class-1", "name": "6A", "teacherIds": []}],
-            "students": [{"id": "student-1", "first": "Alice", "last": "Test", "classId": "class-1"}],
+            "students": [{"id": "student-1", "first": "Alice", "last": "Test", "classId": "class-1",
+                          "username": "student", "active": True,
+                          "passwordHash": server._password_hash("StudentPass123!") }],
             "schedule": [],
             "lessons": [{
                 "id": "lesson-1", "classId": "class-1", "date": "2026-11-13",
