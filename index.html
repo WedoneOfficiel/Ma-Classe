@@ -1842,7 +1842,15 @@ html[data-mc-theme="dark"] .modal,html[data-mc-theme="dark"] .modalhead,html[dat
 /* V25.6 — thème clair : reprise fidèle des finitions de l'ancien automatique clair.
    Le sélecteur effectif "light" couvre maintenant Clair ET Automatique en système clair. */
 html[data-mc-theme="light"] .side{
- box-shadow:10px 0 40px rgba(10,40,80,.08)!important
+ background:linear-gradient(145deg,rgba(255,255,255,.70),rgba(242,242,247,.50) 55%,rgba(232,233,238,.48))!important;
+ border-right:1px solid rgba(255,255,255,.62)!important;
+ box-shadow:inset -1px 0 rgba(60,60,67,.06),inset 0 1px rgba(255,255,255,.92),8px 0 32px rgba(0,0,0,.035),10px 0 40px rgba(10,40,80,.08)!important;
+ backdrop-filter:blur(32px) saturate(185%)!important;
+ -webkit-backdrop-filter:blur(32px) saturate(185%)!important
+}
+html[data-mc-theme="light"] .side:after{
+ background:linear-gradient(115deg,rgba(255,255,255,.38),transparent 32%,transparent 70%,rgba(255,255,255,.12))!important;
+ opacity:.9!important
 }
 html[data-mc-theme="light"] .top{
  background:rgba(255,255,255,.52)!important
