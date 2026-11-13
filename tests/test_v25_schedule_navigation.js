@@ -92,7 +92,7 @@ assert.strictEqual(vm.runInContext("studentScheduleOcc(null,new Date('2026-11-13
 assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-20T12:00:00')).length", context), 0, 'Les cours bimensuels ne doivent pas apparaître la semaine intermédiaire.');
 assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-27T12:00:00')).length", context), 3, 'Les cours bimensuels doivent réapparaître après deux semaines.');
 
-const slot = { id:'slot-1', day:4, startDate:'2026-11-09', recurrence:'weekly', time:'09:00', endTime:'10:00' };
+const slot = { id:'slot-1', classId:'class-1', day:4, startDate:'2026-11-09', recurrence:'weekly', time:'09:00', endTime:'10:00' };
 context.db.schedule = [slot];
 assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", context), 1);
 vm.runInContext('changeWeek(7)', context);
