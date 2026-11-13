@@ -5,7 +5,7 @@
 <script id="mc-appearance-bootstrap">
 try{const t=localStorage.getItem('maclasse_appearance_theme');const v=['system','light','dark'].includes(t)?t:'system',dark=window.matchMedia('(prefers-color-scheme: dark)').matches,r=document.documentElement;r.dataset.mcThemePreference=v;r.dataset.mcTheme=v==='system'&&!dark?'light':v;r.style.colorScheme=v==='system'?(dark?'dark':'light'):v}catch(e){document.documentElement.dataset.mcThemePreference='system';document.documentElement.dataset.mcTheme='light';document.documentElement.style.colorScheme='light'}
 </script>
-<title>MaClasse V25.0.7</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
+<title>MaClasse V25.0.8</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
 <!-- Compatibility markers for historical regression tests: MaClasse V21.21 -->
 
 
@@ -1914,12 +1914,43 @@ html[data-mc-theme="light"] .focusCard .muted{
  color:#d8e7f7!important
 }
 
+
+/* V25.0.8 — correctifs ciblés issus du retour utilisateur */
+.mc-select.open{z-index:999!important;position:relative}
+.mc-select-menu{z-index:1000!important}
+.mc-select.open .mc-select-menu{display:block}
+.searchRow,.form,.field,.card{overflow:visible}
+.bulletinPreparation>.bulletinTabs{justify-content:center!important;width:100%;text-align:center}
+.classesAllHeading{margin:30px 0 12px!important}
+.classesAllGrid{margin-top:0!important}
+.classLevelPicker{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:7px;margin-top:9px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--content-bg);max-height:220px;overflow:auto}
+.classLevelOption{display:flex!important;align-items:center;gap:7px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--mc-surface,var(--paper));font-size:12px!important;font-weight:650!important;cursor:pointer}
+.classLevelOption:has(input:checked){border-color:var(--blue);background:var(--blue2)}
+.classLevelOption input{flex:0 0 auto}
+.infoHint{display:inline-grid;place-items:center;width:16px;height:16px;margin-left:3px;border:1px solid var(--muted);border-radius:50%;font-size:10px;color:var(--muted);font-weight:700;cursor:help}
+.recipientCheck input[type="checkbox"]{appearance:none!important;-webkit-appearance:none!important;position:relative;background:rgba(255,255,255,.72)!important}
+.recipientCheck input[type="checkbox"]::before{content:none!important;display:none!important}
+.recipientCheck input[type="checkbox"]::after{content:""!important;width:8px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.top:before,.top:after{content:none!important;display:none!important}
+.globalSearchOpen{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.globalSearchOpen>span{font-size:19px;line-height:1}
+.globalSearchOpen kbd{font:10px -apple-system,BlinkMacSystemFont,sans-serif;padding:3px 5px;border:1px solid var(--line);border-radius:5px;background:var(--content-bg);color:var(--muted)}
+.v12CommandResults{position:static!important;display:none;max-height:42vh;overflow:auto;margin:0 0 8px;border:0;box-shadow:none;background:transparent}
+.v12CommandResults.open{display:block}
+.themeChoice.active{outline:2px solid color-mix(in srgb,var(--blue) 14%,transparent);outline-offset:2px;border-width:2px!important}
+.themeChoice.active{padding:8px!important}
+.settingsGrid{gap:18px!important}
+.settingsCard{min-height:0}
+.settingsCard>.sectionhead{margin-bottom:12px}
+.settingsCard .section{margin-top:16px}
+.settingsGrid>.settingsDataCard{margin-top:2px}
+@media(max-width:760px){.classLevelPicker{grid-template-columns:repeat(3,minmax(0,1fr));max-height:190px}.bulletinPreparation>.bulletinTabs{justify-content:flex-start!important}}
 </style>
 
 
 </head>
 <body>
-<div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire</small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><div class="sidefoot">MaClasse V25.0.7 · édition sans IA<br><span id="spaceFoot">Espace enseignant</span></div></aside><main class="main" id="main"></main></div>
+<div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire</small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><div class="sidefoot" aria-hidden="true"><span id="spaceFoot"></span></div></aside><main class="main" id="main"></main></div>
 <div class="modalback" id="modalback"><div class="modal" id="modal"></div></div><div class="toast" id="toast"></div>
 
 <script src="_all.js"></script>
