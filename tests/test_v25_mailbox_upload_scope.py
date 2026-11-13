@@ -10,8 +10,8 @@ class MailboxAndUploadScopeTests(unittest.TestCase):
         server.UPLOADS=os.path.join(self.tmp.name,'uploads')
         os.makedirs(server.UPLOADS)
         self.data={
-            'teachers':[{'id':'t1','classIds':['c1']},{'id':'t2','classIds':['c2']}],
-            'classes':[{'id':'c1'},{'id':'c2'}],
+            'users':[{'id':'t1','role':'teacher','first':'Prof','last':'Un'},{'id':'t2','role':'teacher','first':'Prof','last':'Deux'}],
+            'classes':[{'id':'c1','teacherIds':['t1']},{'id':'c2','teacherIds':['t2']}],
             'students':[{'id':'s1','classId':'c1'},{'id':'s2','classId':'c2'}],
             'lessons':[{'id':'l1','classId':'c1'}],
             'mailboxV2':{
@@ -29,7 +29,7 @@ class MailboxAndUploadScopeTests(unittest.TestCase):
             'cloudItems':[]
         }
         with open(server.DATA_FILE,'w',encoding='utf-8') as f: json.dump(self.data,f)
-        self.t1={'id':'u1','role':'teacher','teacherId':'t1'}
+        self.t1={'id':'t1','role':'teacher'}
 
     def tearDown(self):
         server.DATA_FILE=self.old_data_file; server.UPLOADS=self.old_uploads; self.tmp.cleanup()
