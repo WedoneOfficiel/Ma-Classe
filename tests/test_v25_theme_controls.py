@@ -149,6 +149,18 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn("root.dataset.mcTheme=value==='system'&&!dark?'light':value", js)
 
 
+
+    def test_global_and_theme_tokens_have_one_canonical_definition(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        css = html[html.index('<style id="v218-ui">'):html.index("</style>")]
+        self.assertEqual(css.count(":root{"), 3)  # canonical root + two responsive overrides
+        self.assertEqual(css.count('html[data-mc-theme="light"]{'), 1)
+        self.assertEqual(css.count('html[data-mc-theme="dark"]{'), 1)
+        self.assertIn("--mc-sidebar:224px", css)
+        self.assertIn("--mc-sidebar:76px", css)
+        self.assertIn("--ui-bg:#f4f5f7", css)
+        self.assertIn("--ui-bg:#171719", css)
+
     def test_explicit_light_restores_the_legacy_automatic_light_materials(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         light = html[html.rfind("V25.6 — thème clair"):]
