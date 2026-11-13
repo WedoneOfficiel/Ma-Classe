@@ -59,6 +59,30 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(merged['users'],self.data['users'])
         self.assertEqual(merged['auditLog'],self.data['auditLog'])
 
+    def test_teacher_can_create_class_and_student_in_same_save(self):
+        view=copy.deepcopy(server._teacher_visible_data(self.data,self.user))
+        view['classes'].append({
+            'id':'c3','name':'6C','level':'6e','levels':['6e'],
+            'teacherIds':['t1'],'principalTeacherId':'t1','groups':[]
+        })
+        view['students'].append({'id':'s3','classId':'c3','first':'Chloé','last':'Test'})
+        merged=server._merge_teacher_data(self.data,view,self.user)
+        created_class=next(x for x in merged['classes'] if x['id']=='c3')
+        created_student=next(x for x in merged['students'] if x['id']=='s3')
+        self.assertEqual(created_class['teacherIds'],['t1'])
+        self.assertEqual(created_class['principalTeacherId'],'t1')
+        self.assertEqual(created_student['classId'],'c3')
+        self.assertTrue(any(x['id']=='c2' for x in merged['classes']))
+        self.assertTrue(any(x['id']=='s2' for x in merged['students']))
+
+    def test_teacher_cannot_create_class_or_student_without_self_assignment(self):
+        view=copy.deepcopy(server._teacher_visible_data(self.data,self.user))
+        view['classes'].append({'id':'forged-class','name':'Classe étrangère','teacherIds':['t2']})
+        view['students'].append({'id':'forged-student','classId':'forged-class','first':'Intrus'})
+        merged=server._merge_teacher_data(self.data,view,self.user)
+        self.assertFalse(any(x.get('id')=='forged-class' for x in merged['classes']))
+        self.assertFalse(any(x.get('id')=='forged-student' for x in merged['students']))
+
     def test_teacher_cannot_create_record_for_unassigned_class(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['lessons'].append({'id':'forged','classId':'c2','title':'Nope'})
