@@ -85,21 +85,12 @@ jobs:
         run: |
           set -euo pipefail
           for test in tests/*.js; do node "$test"; done
-      - name: Python — test_v214_security.py
-        run: python tests/test_v214_security.py
-      - name: Python — test_v25_auth_http.py
-        run: python tests/test_v25_auth_http.py
-      - name: Python — test_v25_backup_restore.py
-        run: python tests/test_v25_backup_restore.py
-      - name: Python — test_v25_cloud_permissions.py
-        run: python tests/test_v25_cloud_permissions.py
-      - name: Python — test_v25_mailbox_upload_scope.py
-        run: python tests/test_v25_mailbox_upload_scope.py
-      - name: Python — test_v25_server.py
-        run: python tests/test_v25_server.py
-      - name: Python — test_v25_student_scope.py
-        run: python tests/test_v25_student_scope.py
-      - name: Python — test_v25_network_bind.py
-        run: python tests/test_v25_network_bind.py
-      - name: Python — test_v25_teacher_data_scope.py
-        run: python tests/test_v25_teacher_data_scope.py
+      - name: Exécuter tous les tests Python
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in tests/*.py; do
+            echo "::group::$test"
+            python "$test"
+            echo "::endgroup::"
+          done
