@@ -191,7 +191,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(result['student']['name'],'Alice Martin')
         self.assertEqual(result['className'],'6A')
         self.assertEqual(result['overall'],'Travail sérieux.')
-        self.assertAlmostEqual(result['average'],17.333333333333332)
+        self.assertAlmostEqual(result['average'],16.0)  # Les évaluations non publiées ne comptent pas dans le bulletin officiel.
         self.assertEqual([x['subject'] for x in result['rows']],['Français','Histoire','Maths'])
         self.assertEqual(result['rows'][0]['studentAverage'],'—')
         self.assertAlmostEqual(result['rows'][2]['studentAverage'],16.0)
