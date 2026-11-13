@@ -61,8 +61,10 @@ Commits de cette reprise : `fe0b449` et `ffaf34b` (allowlist serveur et filtrage
 - [ ] Vérifier que les enseignants ne reçoivent que les données qui leur sont nécessaires.
 - [ ] Finaliser les comptes élèves individuels et leur filtrage strict ; ne pas activer leur connexion avant cela.
 - [ ] Vérifier les écritures partielles et la gestion des conflits entre plusieurs utilisateurs.
-- [ ] Mettre en place HTTPS adapté au réseau local et documenter la confiance du certificat sur les appareils.
-- [ ] N'écouter sur l'adresse LAN qu'après validation de l'authentification, des autorisations et de HTTPS.
+- [x] Le serveur refuse désormais tout démarrage sur une adresse LAN sans certificat TLS ; le mode réseau exige HTTPS avec TLS 1.2 minimum.
+- [x] Les cookies de session portent l'attribut Secure en HTTPS et les origines HTTP sont refusées sur un serveur HTTPS.
+- [ ] Finaliser la distribution et l'installation de l'autorité de certification sur tous les appareils clients, puis vérifier la confiance navigateur par navigateur.
+- [ ] Valider le pare-feu local et la procédure de réservation DHCP/adresse IP stable avant activation en établissement.
 - [ ] Ne configurer aucune redirection de ports sur la box.
 
 ### Fiabilité et validation
@@ -468,3 +470,15 @@ Les tests d'intégration couvrent l'initialisation unique, le refus des identifi
 **Mise à jour locale :** dans un clone Git propre de MaClasse, double-cliquer sur `Mettre-A-Jour-MaClasse.command`. Ne pas supprimer `data/`. Si l'installation n'est pas un clone Git, ne pas utiliser ce script : une procédure de migration dédiée est nécessaire.
 
 **Limite réseau inchangée :** le mode LAN utilise toujours HTTP non chiffré et reste réservé aux données fictives. V25.0.13 n'est pas autorisée pour un usage scolaire réel multi-postes.
+
+
+## Réseau local HTTPS — sécurisation technique en cours
+
+Le serveur ne démarre plus en HTTP lorsqu'il est lié à une adresse IPv4 privée : il exige `MACLASSE_TLS_CERT` et `MACLASSE_TLS_KEY`, utilise TLS 1.2 au minimum, marque les cookies de session `Secure` et refuse une origine HTTP sur le listener HTTPS.
+
+- Mac : `Configurer-MaClasse-Reseau.command` puis `Lancer-MaClasse-Reseau.command`.
+- Linux/Fedora : `Installer-MaClasse-Linux.sh`, puis `Lancer-MaClasse-Reseau.sh`.
+- Le certificat racine public `data/tls/ca.crt` doit être installé comme autorité de confiance sur chaque appareil client. Les clés privées `ca.key` et `server.key` restent exclusivement sur le serveur et sont exclues de Git.
+- Les scripts Linux de mise à jour et de configuration réseau sauvegardent les données locales avant toute mise à jour.
+
+**Important :** cette évolution verrouille le serveur contre le démarrage LAN non chiffré, mais elle ne constitue pas encore une recette réseau complète. La confiance CA côté clients, le renouvellement du certificat, le pare-feu, les changements d'adresse IP, les tests réels entre plusieurs appareils et les tests de charge restent à valider. Aucun usage avec des données scolaires réelles n'est autorisé avant cette recette.
