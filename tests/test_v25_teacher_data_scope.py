@@ -6,9 +6,8 @@ class TeacherDataScopeTests(unittest.TestCase):
     def setUp(self):
         self.data={
             'settings':{'schoolName':'École test'},
-            'classes':[{'id':'c1','name':'6A','principalTeacherId':'t2'},{'id':'c2','name':'6B','principalTeacherId':'t2'}],
-            'teachers':[{'id':'t1','classIds':['c1'],'subjects':['Maths']},{'id':'t2','classIds':['c2'],'subjects':['Français']}],
-            'users':[{'id':'u1','role':'teacher','teacherId':'t1'},{'id':'u2','role':'teacher','teacherId':'t2'}],
+            'classes':[{'id':'c1','name':'6A','principalTeacherId':'t2','teacherIds':['t1']},{'id':'c2','name':'6B','principalTeacherId':'t2','teacherIds':['t2']}],
+            'users':[{'id':'t1','role':'teacher','first':'Prof','last':'A','subjects':['Maths']},{'id':'t2','role':'teacher','first':'Prof','last':'B','subjects':['Français']}],
             'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'}],
             'lessons':[{'id':'l1','classId':'c1'},{'id':'l2','classId':'c2'}],
             'evaluations':[{'id':'e1','classId':'c1','grades':[{'studentId':'s1','value':15},{'studentId':'s2','value':2}]},{'id':'e2','classId':'c2','grades':[{'studentId':'s2','value':18}]}],
@@ -16,7 +15,7 @@ class TeacherDataScopeTests(unittest.TestCase):
             'submissions':[{'id':'sub1','lessonId':'l1','studentId':'s1'},{'id':'sub2','lessonId':'l2','studentId':'s2'}],
             'cloudItems':[], 'auditLog':[{'id':'audit'}]
         }
-        self.user={'id':'u1','role':'teacher','teacherId':'t1'}
+        self.user={'id':'t1','role':'teacher'}
 
     def test_projection_only_exposes_assigned_class(self):
         view=server._teacher_visible_data(self.data,self.user)
