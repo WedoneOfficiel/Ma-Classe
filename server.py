@@ -1139,7 +1139,7 @@ class Handler(SimpleHTTPRequestHandler):
             self._json({'error':'Droits insuffisants.'},403); return None
         return user
     def _set_session_cookie(self, token):
-        secure='; Secure' if isinstance(self.connection,ssl.SSLSocket) else ''
+        secure='; Secure' if isinstance(getattr(self,'connection',None),ssl.SSLSocket) else ''
         self.send_header('Set-Cookie',f'mc_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_TTL}{secure}')
     def _origin_allowed(self):
         host=self.headers.get('Host','').strip().lower()
