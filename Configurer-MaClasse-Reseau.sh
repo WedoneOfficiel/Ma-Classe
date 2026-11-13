@@ -47,3 +47,4 @@ chmod 600 "$CA_KEY" "$SERVER_KEY"; chmod 644 "$CA_CERT" "$SERVER_CERT"
 echo "Certificat HTTPS généré pour $LAN_IP."
 echo "À installer sur chaque appareil client : $CA_CERT"
 echo "Ne communique jamais ca.key ni server.key."
+openssl x509 -in "$CA_CERT" -noout -fingerprint -sha256
