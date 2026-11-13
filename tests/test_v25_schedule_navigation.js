@@ -48,6 +48,17 @@ assert.strictEqual(asISO(), '2026-11-13', 'Une date ISO doit être interprétée
 vm.runInContext("scheduleView='week';setScheduleDate('2026-11-13')", context);
 assert.strictEqual(asISO(), '2026-11-09');
 
+const weekdayStarts = ['2026-11-09','2026-11-10','2026-11-11','2026-11-12','2026-11-13','2026-11-14','2026-11-15'];
+for (let day = 0; day < 7; day++) {
+  const once = {id:'once-'+day,day,startDate:'2026-11-09',recurrence:'once'};
+  assert.strictEqual(vm.runInContext('recurring('+JSON.stringify(once)+', new Date('+JSON.stringify(weekdayStarts[day]+'T12:00:00')+'))', context), true, 'Un cours ponctuel doit apparaître le '+weekdayStarts[day]);
+  const fortnight = {id:'fortnight-'+day,day,startDate:'2026-11-09',recurrence:'biweekly'};
+  assert.strictEqual(vm.runInContext('recurring('+JSON.stringify(fortnight)+', new Date('+JSON.stringify(weekdayStarts[day]+'T12:00:00')+'))', context), true, 'Un cours bimensuel doit apparaître dès sa première occurrence, jour '+day);
+  const nextWeek = new Date(weekdayStarts[day]+'T12:00:00'); nextWeek.setDate(nextWeek.getDate()+7);
+  assert.strictEqual(vm.runInContext('recurring('+JSON.stringify(fortnight)+', new Date('+JSON.stringify(nextWeek.toISOString().slice(0,10)+'T12:00:00')+'))', context), false, 'Un cours bimensuel ne doit pas apparaître la semaine intermédiaire, jour '+day);
+  const secondOccurrence = new Date(weekdayStarts[day]+'T12:00:00'); secondOccurrence.setDate(secondOccurrence.getDate()+14);
+  assert.strictEqual(vm.runInContext('recurring('+JSON.stringify(fortnight)+', new Date('+JSON.stringify(secondOccurrence.toISOString().slice(0,10)+'T12:00:00')+'))', context), true, 'Un cours bimensuel doit réapparaître après 14 jours, jour '+day);
+}
 const recurrenceCases = [
   { recurrence:'once', day:4, startDate:'2026-11-09', dates:['2026-11-13'] },
   { recurrence:'weekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-11-20','2026-11-27'] },
