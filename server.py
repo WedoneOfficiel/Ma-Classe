@@ -1125,7 +1125,10 @@ class Handler(SimpleHTTPRequestHandler):
         session_user=entry.get('user') if isinstance(entry.get('user'),dict) else {}
         user_id=str(session_user.get('id') or '')
         data=_load_database()
-        current=next((u for u in data.get('users',[]) or [] if isinstance(u,dict) and str(u.get('id'))==user_id and u.get('active') is not False and u.get('role') in ('admin','teacher','student')),None)
+        current=next((u for u in data.get('users',[]) or [] if isinstance(u,dict) and str(u.get('id'))==user_id and u.get('active') is not False and u.get('role') in ('admin','teacher')),None)
+        if not current:
+            student_record=next((st for st in data.get('students',[]) or [] if isinstance(st,dict) and str(st.get('id'))==user_id and st.get('role')=='student' and st.get('passwordHash') and st.get('active') is not False),None)
+            if student_record: current={**student_record,'id':user_id,'role':'student','studentId':user_id}
         if not current:
             SESSIONS.pop(token,None); return None
         if current.get('role')=='student':
