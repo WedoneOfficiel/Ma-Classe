@@ -281,19 +281,13 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
 
 
 def _teacher_class_ids(data,user):
-    """Les classes référencent directement l'identifiant du compte professeur."""
+    """Les classes référencent directement l'identifiant du compte professeur canonique."""
     tid=str(user.get('id') or user.get('teacherId') or '')
-    linked={str(c.get('id')) for c in data.get('classes',[]) or [] if isinstance(c,dict) and tid in {str(x) for x in c.get('teacherIds',[]) or []}}
-    legacy=next((t for t in data.get('teachers',[]) or [] if isinstance(t,dict) and str(t.get('id'))==str(user.get('teacherId') or '')),None)
-    linked.update(str(x) for x in (legacy or {}).get('classIds',[]) or [])
-    return linked
+    return {str(c.get('id')) for c in data.get('classes',[]) or [] if isinstance(c,dict) and tid in {str(x) for x in c.get('teacherIds',[]) or []}}
 
 
 def _teacher_subject_keys(data,user):
     subjects=user.get('subjects') if isinstance(user.get('subjects'),list) else []
-    if not subjects:
-        legacy=next((t for t in data.get('teachers',[]) or [] if isinstance(t,dict) and str(t.get('id'))==str(user.get('teacherId') or user.get('id') or '')),None)
-        subjects=(legacy or {}).get('subjects',[]) or []
     return {str(x).strip().casefold() for x in subjects if str(x).strip()}
 
 
@@ -321,7 +315,7 @@ def _mail_user_key(role, ident):
 def _teacher_visible_mailbox(mailbox, user, data):
     """Projection stricte de la messagerie : messages adressés/partagés au professeur."""
     if not isinstance(mailbox,dict): return {}
-    tid=str(user.get('teacherId') or '')
+    tid=str(user.get('id') or user.get('teacherId') or '')
     me=_mail_user_key('teacher',tid)
     messages=mailbox.get('messages') if isinstance(mailbox.get('messages'),list) else []
     visible=[]
@@ -354,7 +348,7 @@ def _teacher_merge_mailbox(current, incoming, user, data):
     """Fusionne uniquement la boîte personnelle du professeur; les messages envoyés sont immuables."""
     old=current.get('mailboxV2') if isinstance(current.get('mailboxV2'),dict) else {}
     new=incoming.get('mailboxV2') if isinstance(incoming.get('mailboxV2'),dict) else {}
-    tid=str(user.get('teacherId') or '')
+    tid=str(user.get('id') or user.get('teacherId') or '')
     me=_mail_user_key('teacher',tid)
     old_messages=old.get('messages') if isinstance(old.get('messages'),list) else []
     new_messages=new.get('messages') if isinstance(new.get('messages'),list) else []
@@ -374,7 +368,7 @@ def _teacher_merge_mailbox(current, incoming, user, data):
             item['hiddenFor']=hidden
         result_messages.append(item)
     allowed_classes=_teacher_class_ids(data,user)
-    valid_teachers={str(x.get('id')) for x in data.get('teachers',[]) or [] if isinstance(x,dict)}
+    valid_teachers={str(x.get('id')) for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher'}
     valid_students={str(x.get('id')) for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in allowed_classes}
     for ident,message in new_by_id.items():
         if ident in old_by_id: continue
@@ -441,7 +435,7 @@ def _teacher_can_access_upload(user, relative, write=False):
 def _teacher_visible_data(data,user):
     if user.get('role')=='admin': return data
     if user.get('role')!='teacher': return {}
-    tids=str(user.get('teacherId') or '')
+    tids=str(user.get('id') or user.get('teacherId') or '')
     class_ids=_teacher_class_ids(data,user)
     student_ids={str(x.get('id')) for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids}
     lesson_ids={str(x.get('id')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids}
@@ -475,8 +469,7 @@ def _teacher_visible_data(data,user):
     out['students']=[x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
     # La fiche professeur est une projection du compte canonique, jamais un second enregistrement.
     canonical=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
-    legacy=next((x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tids),None)
-    profile={k:v for k,v in (canonical or legacy or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
+    profile={k:v for k,v in (canonical or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
     if profile:
         profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
         out['teachers']=[profile]
@@ -622,9 +615,10 @@ def _student_visible_data(data,user):
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
     schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
-    teacher_ids={str(x.get('teacherId')) for x in out['schedule'] if x.get('teacherId')}
+    teacher_ids={str(x) for x in (class_record or {}).get('teacherIds',[]) or []}
+    teacher_ids.update(str(x.get('teacherId')) for x in out['schedule'] if x.get('teacherId'))
     teacher_ids.update(str(x.get('teacherId')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and x.get('teacherId'))
-    out['teachers']=[{k:v for k,v in x.items() if k in ('id','first','last')} for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id')) in teacher_ids]
+    out['teachers']=[{'id':str(x.get('id')),'first':x.get('first',''),'last':x.get('last','')} for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher' and str(x.get('id')) in teacher_ids]
     out['lessons']=[]
     for item in data.get('lessons',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or (item.get('group') and str(item.get('group'))!=str(student_record.get('group') or '')): continue
@@ -819,7 +813,7 @@ def _merge_teacher_data(current,incoming,user):
         merged['mailboxV2']=_teacher_merge_mailbox(current,incoming,user,current)
     # Les professeurs ne peuvent pas modifier les comptes, profils des collègues,
     # classes, matières, paramètres globaux ou journaux de direction.
-    for key in ('classes','teachers','subjects','users','settings','auditLog'):
+    for key in ('classes','subjects','users','settings','auditLog'):
         if key in current: merged[key]=current[key]
     # Ne pas permettre d'ajouter des clés globales inconnues via une sauvegarde professeur.
     for key in list(merged):
@@ -870,7 +864,7 @@ def _cloud_path_allowed(user,relative,write=False):
         if len(parts)>=4 and parts[1]=='personal' and parts[2]=='users':
             root_access=_cloud_scope_allowed(user,'personal',owner_id=parts[3],data=data,write=write)
         elif len(parts)>=4 and parts[1] in ('class','group') and parts[2]=='classes':
-            root_access=_cloud_scope_allowed(user,parts[1],owner_id=user.get('teacherId',''),class_id=parts[3],data=data,write=write)
+            root_access=_cloud_scope_allowed(user,parts[1],owner_id=user.get('id') or user.get('teacherId',''),class_id=parts[3],data=data,write=write)
         else: return False
         # Appliquer ensuite les partages de l'élément/dossier le plus proche.
         candidates=[]
