@@ -11,6 +11,8 @@ assert(source.includes('Gérer les accès'));
 assert(source.includes("async function clearSession(){try{await flushPendingSave();"));
 assert(source.includes('async function flushPendingSave()'));
 assert(source.includes('await saveQueue;if(saveError)throw saveError'));
+assert(source.includes("window.addEventListener('beforeunload'"));
+assert(source.includes('savePending||saveError'));
 assert(server.includes("path=='/api/admin/student-account-reset'"));
 assert(server.includes("path=='/api/admin/student-account-status'"));
 assert(server.includes("class_id not in _teacher_class_ids(data,user)"));
