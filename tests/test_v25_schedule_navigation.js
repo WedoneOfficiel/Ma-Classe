@@ -76,13 +76,20 @@ for (const testCase of recurrenceCases) {
   }
 }
 const groupSlots = [
+  {id:'class-wide',classId:'class-1',group:'',day:4,startDate:'2026-11-09',recurrence:'biweekly'},
   {id:'class-a',classId:'class-1',group:'A',day:4,startDate:'2026-11-09',recurrence:'biweekly'},
   {id:'class-b',classId:'class-1',group:'B',day:4,startDate:'2026-11-09',recurrence:'biweekly'}
 ];
 context.db.schedule = groupSlots;
-assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-13T12:00:00')).length", context), 2, 'Les groupes A et B doivent garder leur occurrence du premier vendredi.');
+assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-13T12:00:00')).length", context), 3, 'Les cours de classe et de groupes doivent garder leur première occurrence.');
+const studentOccStart = source.indexOf('function studentScheduleOcc(');
+const studentOccEnd = source.indexOf('function studentLessonItems(', studentOccStart);
+assert(studentOccStart >= 0 && studentOccEnd > studentOccStart);
+context.student = id => ({id,classId:'class-1',group:'A'});
+vm.runInContext(source.slice(studentOccStart, studentOccEnd), context);
+assert.strictEqual(vm.runInContext("studentScheduleOcc(null,new Date('2026-11-13T12:00:00')).length", context), 2, 'L’élève du groupe A voit les cours de classe et de son groupe, pas ceux du groupe B.');
 assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-20T12:00:00')).length", context), 0, 'Les cours bimensuels ne doivent pas apparaître la semaine intermédiaire.');
-assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-27T12:00:00')).length", context), 2, 'Les cours bimensuels doivent réapparaître après deux semaines.');
+assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-27T12:00:00')).length", context), 3, 'Les cours bimensuels doivent réapparaître après deux semaines.');
 
 const slot = { id:'slot-1', day:4, startDate:'2026-11-09', recurrence:'weekly', time:'09:00', endTime:'10:00' };
 context.db.schedule = [slot];
