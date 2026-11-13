@@ -4,7 +4,7 @@ const assert = require('assert');
 
 const source = fs.readFileSync('_all.js', 'utf8');
 const start = source.indexOf('function monday(d)');
-const end = source.indexOf('function dayDistance(', start);
+const end = source.indexOf('function lessonFor(', start);
 assert(start >= 0 && end > start, 'Les helpers de calendrier doivent être présents.');
 
 const context = {
