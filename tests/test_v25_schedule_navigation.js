@@ -53,4 +53,23 @@ assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,20,12)).length", con
 vm.runInContext('changeWeek(-7)', context);
 assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", context), 1);
 
-console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales et occurrences récurrentes.');
+
+const scheduleStart = source.indexOf('function schedule(){');
+const scheduleEnd = source.indexOf('function scheduleWeek(', scheduleStart);
+assert(scheduleStart >= 0 && scheduleEnd > scheduleStart, 'Le rendu du planning doit être présent.');
+context.window = {};
+context.shell = () => '';
+context.esc = value => String(value ?? '');
+context.subjectColor = () => ['#fff','#ddd','#000'];
+context.scheduleWeek = (dates, getOccurrences) => dates.map(date => getOccurrences(date).length).join(',');
+context.scheduleDay = (date, getOccurrences) => String(getOccurrences(date).length);
+context.scheduleMonth = (date, getOccurrences) => String(getOccurrences(date).length);
+vm.runInContext(source.slice(scheduleStart, scheduleEnd), context);
+vm.runInContext("scheduleView='week';selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
+assert.strictEqual(vm.runInContext('schedule()', context).split('>').pop(), '0,0,0,0,1,0,0');
+vm.runInContext('changeWeek(7)', context);
+assert.strictEqual(vm.runInContext('schedule()', context).split('>').pop(), '0,0,0,0,1,0,0');
+vm.runInContext('changeWeek(-7)', context);
+assert.strictEqual(vm.runInContext('schedule()', context).split('>').pop(), '0,0,0,0,1,0,0');
+
+console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales, occurrences récurrentes et rendu du planning.');
