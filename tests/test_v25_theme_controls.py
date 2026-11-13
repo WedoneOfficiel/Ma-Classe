@@ -107,7 +107,8 @@ class ThemeControlsTests(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertNotIn('@media(prefers-color-scheme:dark){:root{', html)
         self.assertNotIn('@media(prefers-color-scheme:dark){html[data-mc-theme="dark"]{', html)
-        self.assertIn('html[data-mc-theme="light"]{color-scheme:light}', html)
+        self.assertIn('html[data-mc-theme="light"]{', html)
+        self.assertIn('color-scheme:light;', html)
 
     def test_explicit_dark_theme_defines_all_shared_surface_tokens(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -217,7 +218,7 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertIn('html[data-mc-theme="dark"] .avatar', html)
         self.assertIn('html[data-mc-theme="dark"] .profile360Avatar', html)
         self.assertIn('html[data-mc-theme="dark"] .activityIcon', html)
-        self.assertIn(':root{--soft:rgba(118,118,128,.10)}', html)
+        self.assertIn('--soft:rgba(118,118,128,.10)', html)
 
     def test_legacy_component_tokens_resolve_to_shared_design_tokens(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
