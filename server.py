@@ -1504,6 +1504,59 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'ok':True,'user':public},headers={'X-MaClasse-Revision':revision})
                 except Exception as exc:
                     return self._json({'error':'Création du compte impossible : '+str(exc)},500)
+        if path=='/api/admin/student-account-reset':
+            if user.get('role') not in ('admin','teacher'): return self._json({'error':'Droits insuffisants.'},403)
+            try: obj=json.loads(body.decode('utf-8'))
+            except Exception: return self._json({'error':'Requête invalide.'},400)
+            student_id=str(obj.get('studentId') or '').strip()
+            if not student_id: return self._json({'error':'Élève invalide.'},400)
+            with DATA_LOCK:
+                try:
+                    with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
+                    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
+                    if not student_record: return self._json({'error':'Élève introuvable.'},404)
+                    class_id=str(student_record.get('classId') or '')
+                    if user.get('role')=='teacher' and class_id not in _teacher_class_ids(data,user):
+                        return self._json({'error':'Tu ne peux réinitialiser que les accès des élèves de tes classes.'},403)
+                    account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id),None)
+                    if not account: return self._json({'error':"Cet élève n'a pas encore de compte."},404)
+                    temporary_password=secrets.token_urlsafe(8)
+                    account['passwordHash']=_password_hash(temporary_password); account['mustChangePassword']=True; account['active']=True
+                    for token,session in list(SESSIONS.items()):
+                        su=session.get('user') if isinstance(session,dict) else {}
+                        if str((su or {}).get('id') or '')==str(account.get('id') or ''): SESSIONS.pop(token,None)
+                    tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
+                    with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+                    os.replace(tmp,DATA_FILE); revision=_database_revision()
+                    public={k:v for k,v in account.items() if k not in ('passwordHash','password')}; public['temporaryPassword']=temporary_password
+                    return self._json({'ok':True,'user':public},headers={'X-MaClasse-Revision':revision})
+                except Exception as exc: return self._json({'error':'Réinitialisation du mot de passe impossible : '+str(exc)},500)
+        if path=='/api/admin/student-account-status':
+            if user.get('role') not in ('admin','teacher'): return self._json({'error':'Droits insuffisants.'},403)
+            try: obj=json.loads(body.decode('utf-8'))
+            except Exception: return self._json({'error':'Requête invalide.'},400)
+            student_id=str(obj.get('studentId') or '').strip(); active=obj.get('active')
+            if not student_id or not isinstance(active,bool): return self._json({'error':'Élève ou statut invalide.'},400)
+            with DATA_LOCK:
+                try:
+                    with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
+                    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
+                    if not student_record: return self._json({'error':'Élève introuvable.'},404)
+                    class_id=str(student_record.get('classId') or '')
+                    if user.get('role')=='teacher' and class_id not in _teacher_class_ids(data,user):
+                        return self._json({'error':'Tu ne peux gérer que les accès des élèves de tes classes.'},403)
+                    account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='student' and str(x.get('studentId') or '')==student_id),None)
+                    if not account: return self._json({'error':"Cet élève n'a pas encore de compte."},404)
+                    account['active']=active
+                    if not active:
+                        for token,session in list(SESSIONS.items()):
+                            su=session.get('user') if isinstance(session,dict) else {}
+                            if str((su or {}).get('id') or '')==str(account.get('id') or ''): SESSIONS.pop(token,None)
+                    tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
+                    with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+                    os.replace(tmp,DATA_FILE); revision=_database_revision()
+                    return self._json({'ok':True,'active':active},headers={'X-MaClasse-Revision':revision})
+                except Exception as exc: return self._json({'error':'Modification du compte élève impossible : '+str(exc)},500)
         if path=='/api/backup/restore':
             if user.get('role')!='admin': return self._json({'error':'La restauration complète est réservée à la direction.'},403)
             if length>100*1024*1024: return self._json({'error':'Archive trop volumineuse (100 Mo maximum).'},413)
