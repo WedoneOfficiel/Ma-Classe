@@ -41,7 +41,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         data['users'][0].update({'passwordHash':'pbkdf2_sha256$310000$salt$digest','password':'legacy-secret'})
         view=server._teacher_visible_data(data,self.user)
         self.assertEqual(len(view['users']),1)
-        self.assertEqual(view['users'][0]['id'],'u1')
+        self.assertEqual(view['users'][0]['id'],'t1')
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertNotIn('password',view['users'][0])
 
