@@ -118,7 +118,7 @@ class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(fresh["submissions"][0]["files"][0]["name"], uploaded["name"])
         revision = headers.get("X-MaClasse-Revision")
-        status, file_body, _ = self.request("/data/uploads/" + uploaded["name"])
+        status, file_body, _ = self.request("/data/uploads/" + quote(uploaded["name"], safe="/"))
         self.assertEqual(status, 200)
         self.assertEqual(file_body, content)
         fresh["submissions"][0]["status"] = "submitted"
