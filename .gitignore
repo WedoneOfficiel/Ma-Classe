@@ -2,6 +2,7 @@
 data/maclasse.json
 data/uploads/
 data/backups/
+data/tls/
 
 # Environnement Python
 .venv/
