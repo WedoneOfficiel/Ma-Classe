@@ -115,4 +115,13 @@ assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-20'), 'Le
 vm.runInContext('changeWeek(-7)', context);
 assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit réapparaître après le retour à la semaine initiale.');
 
+const overlapStart = source.indexOf('function scheduleOverlap(');
+const overlapEnd = source.indexOf('function scheduleConflicts(', overlapStart);
+assert(overlapStart >= 0 && overlapEnd > overlapStart, 'Le contrôle des chevauchements doit être présent.');
+vm.runInContext(source.slice(overlapStart, overlapEnd), context);
+assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:6,startDate:'2026-11-09',recurrence:'weekly'},{day:6,startDate:'2026-11-09',recurrence:'weekly'})", context), true, 'Les conflits du dimanche doivent être détectés.');
+assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'2026-11-09',recurrence:'biweekly'},{day:4,startDate:'2026-11-16',recurrence:'biweekly'})", context), false, 'Deux récurrences bimensuelles décalées d’une semaine ne se chevauchent jamais.');
+assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'2026-11-09',recurrence:'biweekly',exceptions:['2026-11-13']},{day:4,startDate:'2026-11-09',recurrence:'biweekly'})", context), true, 'Une exception ponctuelle ne doit pas masquer le chevauchement des occurrences suivantes.');
+assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-01-01',recurrence:'biweekly'},{day:4,startDate:'1900-01-08',recurrence:'biweekly',endDate:'2999-12-31'})", context), false, 'Une longue période sans intersection doit être résolue par cycle, pas jour après jour.');
+
 console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales, occurrences récurrentes et rendu du planning.');
