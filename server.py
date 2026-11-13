@@ -1439,7 +1439,7 @@ class Handler(SimpleHTTPRequestHandler):
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
                     if not target: return self._json({'error':'Compte professeur introuvable.'},404)
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
-                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(str(x).strip() for x in subjects if str(x).strip())),'profileNotes':notes})
+                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes})
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
