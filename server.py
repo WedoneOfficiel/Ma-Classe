@@ -43,20 +43,7 @@ def _password_verify(password, stored):
     legacy=hashlib.sha256(password.encode('utf-8')).hexdigest()
     return hmac.compare_digest(stored,legacy),True
 
-def _ensure_bootstrap_accounts():
-    try:
-        with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
-    except Exception: data={}
-    if not isinstance(data,dict): data={}
-    users=data.get('users') if isinstance(data.get('users'),list) else []
-    if not any(isinstance(u,dict) and u.get('role')=='admin' for u in users):
-        users.append({'id':'u-admin','role':'admin','username':'admin','passwordHash':hashlib.sha256(b'admin').hexdigest(),'name':'Direction','active':True})
-    if not any(isinstance(u,dict) and u.get('role')=='teacher' for u in users):
-        users.append({'id':'u-teacher-local','role':'teacher','username':'enseignant','passwordHash':hashlib.sha256(b'enseignant').hexdigest(),'teacherId':'teacher-local','name':'Enseignant','active':True})
-    data['users']=users
-    with open(DATA_FILE,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
-
-_ensure_bootstrap_accounts()
+# Les comptes sont créés exclusivement par l'assistant de première configuration.
 
 
 
@@ -163,9 +150,10 @@ def _restore_backup_archive(raw_bytes):
             raise ValueError('Le fichier de données de la sauvegarde est invalide.') from exc
         if not isinstance(restored, dict):
             raise ValueError('La base de données doit être un objet JSON.')
-        for key in ('classes', 'students', 'teachers', 'users'):
+        for key in ('classes', 'students', 'users'):
             if key in restored and not isinstance(restored[key], list):
                 raise ValueError(f'La collection {key} est invalide.')
+        restored.pop('teachers',None)
         os.makedirs(DATA_DIR, exist_ok=True)
         if os.path.exists(UPLOADS):
             os.replace(UPLOADS, old_uploads)
@@ -293,15 +281,19 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
 
 
 def _teacher_class_ids(data,user):
-    tid=str(user.get('teacherId') or '')
-    teacher=next((t for t in data.get('teachers',[]) or [] if isinstance(t,dict) and str(t.get('id'))==tid),None)
-    return {str(x) for x in (teacher or {}).get('classIds',[]) or []}
+    """Les classes référencent directement l'identifiant du compte professeur."""
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    linked={str(c.get('id')) for c in data.get('classes',[]) or [] if isinstance(c,dict) and tid in {str(x) for x in c.get('teacherIds',[]) or []}}
+    legacy=next((t for t in data.get('teachers',[]) or [] if isinstance(t,dict) and str(t.get('id'))==str(user.get('teacherId') or '')),None)
+    linked.update(str(x) for x in (legacy or {}).get('classIds',[]) or [])
+    return linked
 
 
 def _teacher_subject_keys(data,user):
-    tid=str(user.get('teacherId') or '')
-    teacher=next((t for t in data.get('teachers',[]) or [] if isinstance(t,dict) and str(t.get('id'))==tid),None)
-    subjects=(teacher or {}).get('subjects',[]) or []
+    subjects=user.get('subjects') if isinstance(user.get('subjects'),list) else []
+    if not subjects:
+        legacy=next((t for t in data.get('teachers',[]) or [] if isinstance(t,dict) and str(t.get('id'))==str(user.get('teacherId') or user.get('id') or '')),None)
+        subjects=(legacy or {}).get('subjects',[]) or []
     return {str(x).strip().casefold() for x in subjects if str(x).strip()}
 
 
@@ -481,8 +473,14 @@ def _teacher_visible_data(data,user):
         out['settings']={key:settings[key] for key in shared_settings if key in settings}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
-    out['teachers']=[x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tids]
-    # Le professeur peut connaître son profil, jamais récupérer son empreinte d'authentification.
+    # La fiche professeur est une projection du compte canonique, jamais un second enregistrement.
+    canonical=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
+    legacy=next((x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tids),None)
+    profile=dict(canonical or legacy or {})
+    if profile:
+        profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
+        out['teachers']=[profile]
+    else: out['teachers']=[]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
@@ -1124,7 +1122,8 @@ class Handler(SimpleHTTPRequestHandler):
             linked=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==student_id),None)
             if not linked:
                 SESSIONS.pop(token,None); return None
-        safe_user={k:current.get(k,'') for k in ('id','role','teacherId','studentId','name')}
+        safe_user={k:current.get(k,'') for k in ('id','role','studentId','name','first','last','email')}
+        safe_user['teacherId']=str(current.get('id') or '') if current.get('role')=='teacher' else str(current.get('teacherId') or '')
         entry['user']=safe_user
         entry['expires']=time.time()+SESSION_TTL
         return safe_user
@@ -1217,6 +1216,11 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path=urlparse(self.path).path
         if not self._require_local_origin(): return
+        if path=='/api/auth/setup-status':
+            data=_load_database()
+            users=data.get('users') if isinstance(data.get('users'),list) else []
+            occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students','teachers'))
+            return self._json({'setupRequired':not occupied})
         if path=='/api/auth/session':
             user=self._session_user()
             token='';
@@ -1242,7 +1246,16 @@ class Handler(SimpleHTTPRequestHandler):
                     revision=_database_revision()
             except Exception: data={}; revision=_database_revision()
             session_user=self._session_user() or {}
-            visible=_teacher_visible_data(data,session_user) if session_user.get('role')=='teacher' else (_student_visible_data(data,session_user) if session_user.get('role')=='student' else data)
+            if session_user.get('role')=='teacher': visible=_teacher_visible_data(data,session_user)
+            elif session_user.get('role')=='student': visible=_student_visible_data(data,session_user)
+            else:
+                visible=dict(data)
+                visible['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in data.get('users',[]) or [] if isinstance(x,dict)]
+                visible['teachers']=[]
+                for account in data.get('users',[]) or []:
+                    if not isinstance(account,dict) or account.get('role')!='teacher': continue
+                    profile={k:v for k,v in account.items() if k not in ('passwordHash','password','mustChangePassword')}
+                    profile['teacherId']=str(account.get('id') or ''); profile['classIds']=sorted(_teacher_class_ids(data,account)); visible['teachers'].append(profile)
             return self._json(visible,headers={'X-MaClasse-Revision':revision})
         if not self._safe_static_path(path):
             return self.send_error(404)
@@ -1254,6 +1267,31 @@ class Handler(SimpleHTTPRequestHandler):
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
         if length<0 or length>100*1024*1024: return self._json({'error':'Requête trop volumineuse (100 Mo maximum).'},413)
         body=self.rfile.read(length)
+        if path=='/api/auth/setup':
+            try: obj=json.loads(body.decode('utf-8'))
+            except Exception: return self._json({'error':'Requête invalide.'},400)
+            username=str(obj.get('username') or '').strip().lower(); name=str(obj.get('name') or '').strip(); password=str(obj.get('password') or '')
+            if not re.fullmatch(r'[a-z0-9._-]{3,40}',username): return self._json({'error':'Identifiant invalide : 3 à 40 caractères.'},400)
+            if not name or len(name)>120: return self._json({'error':'Indique le nom de la personne responsable.'},400)
+            if len(password)<12 or len(password)>1024: return self._json({'error':'Le mot de passe doit contenir entre 12 et 1024 caractères.'},400)
+            with DATA_LOCK:
+                try:
+                    with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
+                    if not isinstance(data,dict): data={}
+                    users=data.get('users') if isinstance(data.get('users'),list) else []
+                    occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students','teachers'))
+                    if occupied: return self._json({'error':'La première configuration a déjà été effectuée. Connecte-toi avec le compte direction.'},409)
+                    account={'id':secrets.token_urlsafe(18),'role':'admin','username':username,'name':name,'first':name,'last':'','active':True,'passwordHash':_password_hash(password)}
+                    data['users']=[account]; data.pop('teachers',None); data['schemaVersion']=25011
+                    tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
+                    with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+                    os.replace(tmp,DATA_FILE)
+                except Exception as exc: return self._json({'error':'Initialisation impossible : '+str(exc)},500)
+            token=secrets.token_urlsafe(32)
+            safe_user={'id':account['id'],'role':'admin','teacherId':'','studentId':'','name':name,'first':name,'last':'','email':''}
+            SESSIONS[token]={'user':safe_user,'expires':time.time()+SESSION_TTL,'must_change':False}
+            self.send_response(201); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Cache-Control','no-store'); self._set_session_cookie(token); self.end_headers()
+            self.wfile.write(json.dumps({'ok':True,'user':safe_user},ensure_ascii=False).encode('utf-8')); return
         if path=='/api/auth/login':
             try: obj=json.loads(body.decode('utf-8'))
             except Exception: return self._json({'error':'Requête invalide.'},400)
@@ -1270,7 +1308,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if not user or not valid:
                         user=None
                     else:
-                        must_change=password in ('admin','enseignant') or user.get('mustChangePassword') is True
+                        must_change=user.get('mustChangePassword') is True
                         if legacy:
                             user['passwordHash']=_password_hash(password)
                             tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
@@ -1281,7 +1319,7 @@ class Handler(SimpleHTTPRequestHandler):
                 attempts.append(now); LOGIN_ATTEMPTS[ip]=attempts
                 return self._json({'error':'Identifiant ou mot de passe incorrect.'},401)
             LOGIN_ATTEMPTS.pop(ip,None)
-            token=secrets.token_urlsafe(32); safe_user={k:user.get(k,'') for k in ('id','role','teacherId','studentId','name')}
+            token=secrets.token_urlsafe(32); safe_user={k:user.get(k,'') for k in ('id','role','studentId','name','first','last','email')}; safe_user['teacherId']=str(user.get('id') or '') if user.get('role')=='teacher' else str(user.get('teacherId') or '')
             SESSIONS[token]={'user':safe_user,'expires':now+SESSION_TTL,'must_change':must_change}
             public_user={**safe_user,'mustChangePassword':must_change}
             self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Cache-Control','no-store'); self._set_session_cookie(token); self.end_headers(); self.wfile.write(json.dumps({'ok':True,'user':public_user},ensure_ascii=False).encode('utf-8')); return
@@ -1328,6 +1366,102 @@ class Handler(SimpleHTTPRequestHandler):
         allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin','teacher')
         user=self._require_auth(roles=allowed_roles)
         if not user: return
+        if path=='/api/admin/teacher':
+            if user.get('role')!='admin': return self._json({'error':'Réservé à la direction.'},403)
+            try: obj=json.loads(body.decode('utf-8'))
+            except Exception: return self._json({'error':'Requête invalide.'},400)
+            ident=str(obj.get('id') or '').strip(); username=str(obj.get('username') or '').strip().lower()
+            first=str(obj.get('first') or '').strip(); last=str(obj.get('last') or '').strip()
+            email=str(obj.get('email') or '').strip(); phone=str(obj.get('phone') or '').strip()
+            subjects=obj.get('subjects') if isinstance(obj.get('subjects'),list) else []
+            notes=str(obj.get('profileNotes') or '').strip(); password=str(obj.get('password') or '')
+            class_ids=obj.get('classIds') if isinstance(obj.get('classIds'),list) else []
+            pp_ids=obj.get('ppIds') if isinstance(obj.get('ppIds'),list) else []
+            if not re.fullmatch(r'[a-z0-9._-]{3,40}',username): return self._json({'error':'Identifiant invalide : 3 à 40 caractères.'},400)
+            if not first or not last or len(first)>80 or len(last)>80: return self._json({'error':'Le prénom et le nom sont obligatoires.'},400)
+            if len(email)>254 or len(phone)>40 or len(notes)>4000: return self._json({'error':'Un champ du profil est trop long.'},400)
+            if any(not isinstance(x,str) or len(x)>80 for x in subjects): return self._json({'error':'Liste de matières invalide.'},400)
+            if password and len(password)<12: return self._json({'error':'Le mot de passe doit contenir au moins 12 caractères.'},400)
+            if len(password)>1024: return self._json({'error':'Mot de passe trop long.'},400)
+            with DATA_LOCK:
+                try:
+                    with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
+                    if not isinstance(data,dict): return self._json({'error':'Base de données invalide.'},500)
+                    accounts=data.get('users') if isinstance(data.get('users'),list) else []
+                    target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None) if ident else None
+                    if ident and not target: return self._json({'error':'Compte professeur introuvable.'},404)
+                    if not ident and not password: return self._json({'error':'Un mot de passe provisoire est obligatoire à la création.'},400)
+                    if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=ident for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
+                    classes=data.get('classes') if isinstance(data.get('classes'),list) else []
+                    valid_ids={str(x.get('id')) for x in classes if isinstance(x,dict)}
+                    assigned={str(x) for x in class_ids}; principal={str(x) for x in pp_ids}
+                    if not assigned.issubset(valid_ids) or not principal.issubset(valid_ids): return self._json({'error':'Une classe sélectionnée est introuvable.'},400)
+                    created=not bool(ident)
+                    if created:
+                        ident=secrets.token_urlsafe(18); target={'id':ident,'role':'teacher','active':True,'mustChangePassword':True}; accounts.append(target)
+                    target.update({'id':ident,'role':'teacher','teacherId':ident,'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(x.strip() for x in subjects if x.strip())),'profileNotes':notes,'active':target.get('active') is not False})
+                    if password:
+                        target['passwordHash']=_password_hash(password); target['mustChangePassword']=True
+                        for token,session in list(SESSIONS.items()):
+                            su=session.get('user') if isinstance(session,dict) else {}
+                            if str((su or {}).get('id') or '')==ident: SESSIONS.pop(token,None)
+                    for record in classes:
+                        if not isinstance(record,dict): continue
+                        record['teacherIds']=[str(x) for x in record.get('teacherIds',[]) or [] if str(x)!=ident]
+                        if str(record.get('id')) in assigned or str(record.get('id')) in principal: record['teacherIds'].append(ident)
+                        if str(record.get('id')) in principal: record['principalTeacherId']=ident
+                        elif str(record.get('principalTeacherId') or '')==ident: record['principalTeacherId']=''
+                    data['users']=accounts; data.pop('teachers',None)
+                    tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
+                    with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+                    os.replace(tmp,DATA_FILE); revision=_database_revision()
+                    public={k:v for k,v in target.items() if k not in ('passwordHash','password')}; public['teacherId']=ident; public['classIds']=sorted(assigned|principal)
+                    return self._json({'ok':True,'user':public},201 if created else 200,headers={'X-MaClasse-Revision':revision})
+                except Exception as exc: return self._json({'error':'Enregistrement du professeur impossible : '+str(exc)},500)
+        if path=='/api/teacher/profile':
+            if user.get('role')!='teacher': return self._json({'error':'Réservé au compte professeur concerné.'},403)
+            try: obj=json.loads(body.decode('utf-8'))
+            except Exception: return self._json({'error':'Requête invalide.'},400)
+            username=str(obj.get('username') or '').strip().lower(); first=str(obj.get('first') or '').strip(); last=str(obj.get('last') or '').strip()
+            email=str(obj.get('email') or '').strip(); phone=str(obj.get('phone') or '').strip()
+            subjects=obj.get('subjects') if isinstance(obj.get('subjects'),list) else []; notes=str(obj.get('profileNotes') or '').strip()
+            if not re.fullmatch(r'[a-z0-9._-]{3,40}',username) or not first or not last: return self._json({'error':'Prénom, nom et identifiant valide sont obligatoires.'},400)
+            with DATA_LOCK:
+                try:
+                    with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
+                    accounts=data.get('users') if isinstance(data.get('users'),list) else []
+                    target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
+                    if not target: return self._json({'error':'Compte professeur introuvable.'},404)
+                    if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
+                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(str(x).strip() for x in subjects if str(x).strip())),'profileNotes':notes,'teacherId':str(target.get('id'))})
+                    tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
+                    with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+                    os.replace(tmp,DATA_FILE); revision=_database_revision()
+                    public={k:v for k,v in target.items() if k not in ('passwordHash','password')}
+                    return self._json({'ok':True,'user':public},headers={'X-MaClasse-Revision':revision})
+                except Exception as exc: return self._json({'error':'Modification du profil impossible : '+str(exc)},500)
+        if path=='/api/admin/user-status':
+            if user.get('role')!='admin': return self._json({'error':'Réservé à la direction.'},403)
+            try: obj=json.loads(body.decode('utf-8'))
+            except Exception: return self._json({'error':'Requête invalide.'},400)
+            ident=str(obj.get('id') or ''); active=obj.get('active')
+            if not ident or not isinstance(active,bool): return self._json({'error':'Compte ou statut invalide.'},400)
+            with DATA_LOCK:
+                try:
+                    with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
+                    target=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident),None)
+                    if not target: return self._json({'error':'Compte introuvable.'},404)
+                    if target.get('role')=='admin': return self._json({'error':'Le compte direction initial ne peut pas être désactivé ici.'},400)
+                    target['active']=active
+                    tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
+                    with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+                    os.replace(tmp,DATA_FILE)
+                    if not active:
+                        for token,session in list(SESSIONS.items()):
+                            su=session.get('user') if isinstance(session,dict) else {}
+                            if str((su or {}).get('id') or '')==ident: SESSIONS.pop(token,None)
+                    return self._json({'ok':True,'active':active},headers={'X-MaClasse-Revision':_database_revision()})
+                except Exception as exc: return self._json({'error':'Modification du compte impossible : '+str(exc)},500)
         if path=='/api/admin/student-account':
             if user.get('role')!='admin': return self._json({'error':'La création des comptes élèves est réservée à la direction.'},403)
             try: obj=json.loads(body.decode('utf-8'))
@@ -1470,7 +1604,11 @@ class Handler(SimpleHTTPRequestHandler):
                         return self._json({'error':'Version de données manquante. Recharge MaClasse avant d’enregistrer.','code':'REVISION_REQUIRED'},428,headers={'X-MaClasse-Revision':current_revision})
                     if not hmac.compare_digest(supplied_revision,current_revision):
                         return self._json({'error':'Les données ont été modifiées depuis votre dernier chargement. Recharge MaClasse avant de réessayer.','code':'REVISION_CONFLICT'},409,headers={'X-MaClasse-Revision':current_revision})
-                    if current is not None and current != data:
+                    if current is not None:
+                data['users']=current.get('users',[]) if isinstance(current.get('users'),list) else []
+                data.pop('teachers',None)
+            else: data.pop('teachers',None)
+            if current is not None and current != data:
                         if user.get('role')=='student':
                             try: data=_merge_student_data(current,data,user)
                             except PermissionError: return self._json({'error':'Périmètre élève non autorisé.'},403)
