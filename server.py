@@ -1277,7 +1277,8 @@ class Handler(SimpleHTTPRequestHandler):
             allowed_roles=('admin','teacher','student') if path=='/api/data' or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
         if path.startswith('/data/uploads/'):
-            rel=path[len('/data/uploads/'):]
+            try: rel=unquote(path[len('/data/uploads/'):],encoding='utf-8',errors='strict')
+            except UnicodeDecodeError: return self.send_error(404)
             try: _safe_upload_path(rel)
             except ValueError: return self.send_error(404)
             current_user=self._session_user() or {}
