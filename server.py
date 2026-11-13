@@ -231,15 +231,18 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
     evaluations=[e for e in database.get('evaluations',[]) or [] if isinstance(e,dict)]
     students=[s for s in database.get('students',[]) or [] if isinstance(s,dict) and str(s.get('classId') or '')==class_id]
     subjects=sorted({str(e.get('subject')).strip() for e in evaluations if str(e.get('classId') or '')==class_id and str(e.get('subject') or '').strip()} | {str(x.get('subject')).strip() for x in database.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and str(x.get('subject') or '').strip()},key=lambda x:x.casefold())
-    def subject_average(sid,subject):
+    def eligible_for_student(sid):
         st=next((x for x in students if str(x.get('id'))==str(sid)),{})
         eligible=[]
         for e in evaluations:
-            if str(e.get('classId') or '')!=class_id or str(e.get('subject') or '')!=subject: continue
-            if e.get('published') is False or (str(e.get('publishAt') or '') and str(e.get('publishAt'))>today): continue
-            if e.get('group') and str(e.get('group'))!=str(st.get('group') or ''): continue
+            if str(e.get('classId') or '')!=class_id or e.get('published') is not True: continue
+            if str(e.get('publishAt') or '')>today and e.get('publishAt'): continue
             if not in_term(e): continue
+            if e.get('group') and str(e.get('group'))!=str(st.get('group') or ''): continue
             eligible.append(e)
+        return eligible
+    def subject_average(sid,subject):
+        eligible=[e for e in eligible_for_student(sid) if str(e.get('subject') or '')==subject]
         return average(eligible,sid)
     def stats(values):
         nums=[]
@@ -254,12 +257,10 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
     for subject in subjects:
         record=subject_data.get(subject,{})
         rows.append({'subject':subject,'studentAverage':subject_average(student_id,subject),'classStats':stats([subject_average(st.get('id'),subject) for st in students]),'comment':record.get('comment','') if isinstance(record,dict) else ''})
-    overall_evaluations=[e for e in evaluations if str(e.get('classId') or '')==class_id and in_term(e)]
-    overall_average=average(overall_evaluations,student_id)
-    overall_stats=stats([average(overall_evaluations,st.get('id')) for st in students])
+    overall_average=average(eligible_for_student(student_id),student_id)
+    overall_stats=stats([average(eligible_for_student(st.get('id')),st.get('id')) for st in students])
     competency_names=set(); competency_ratings={}
-    for e in evaluations:
-        if str(e.get('classId') or '')!=class_id or not in_term(e,allow_missing_date=True): continue
+    for e in eligible_for_student(student_id):
         for name in e.get('competencies',[]) or []:
             if not isinstance(name,str) or not name: continue
             competency_names.add(name)
