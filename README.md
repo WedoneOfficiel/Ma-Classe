@@ -307,7 +307,7 @@ Le serveur refusait déjà les chemins d'accès non autorisés, mais son ancienn
 
 ### Essai sur un réseau privé (expérimental)
 
-Pour un test avec un second ordinateur connecté à la même box privée, lance `Lancer-MaClasse-Reseau.command` sur le Mac serveur. Le script affiche l'adresse à saisir sur l'autre PC. Le serveur se lie à l'adresse IPv4 privée du Mac, jamais à toutes les interfaces. Ce mode utilise HTTP non chiffré : données fictives uniquement, box isolée, aucun accès depuis le réseau de l'établissement et aucune redirection de port. Le lanceur habituel reste local.
+Pour un test avec un second ordinateur connecté à la même box privée, lance `Lancer-MaClasse-Reseau.command` sur le Mac serveur. Le script affiche l'adresse à saisir sur l'autre PC. Le serveur se lie à l'adresse IPv4 privée du Mac, jamais à toutes les interfaces. Le mode réseau a depuis été renforcé : il exige désormais HTTPS et un certificat local approuvé sur les clients. La recette multi-appareils reste à effectuer avant tout usage réel.
 
 
 ## Essai LAN privé et première tranche de l'espace élève — 12/11/2026
@@ -317,7 +317,7 @@ Pour un test avec un second ordinateur connecté à la même box privée, lance 
 - `Lancer-MaClasse-Reseau.command` lie le serveur à l'adresse IPv4 privée précise détectée sur le Mac ; le lanceur local reste lié à loopback.
 - Le mode LAN exige que les mots de passe provisoires direction et enseignant aient été changés. Il n'écoute pas sur `0.0.0.0` et refuse les adresses publiques.
 - Le contrôle Host est lié à l'adresse configurée pour limiter le DNS rebinding.
-- **HTTP LAN n'est pas chiffré** : box privée isolée et données fictives uniquement. Aucun usage sur le réseau de l'établissement, aucune redirection de port. HTTPS et validation réseau complète restent à faire.
+- À cette date, le mode LAN utilisait HTTP non chiffré. Cette limitation a été corrigée depuis : le serveur exige maintenant HTTPS, mais la confiance des certificats sur les clients et la recette réseau restent à valider.
 
 ### Comptes élèves individuels — première tranche
 
@@ -429,7 +429,7 @@ Ce plan est une décision d’architecture, **pas une affirmation que la refonte
 - Le lanceur réseau vérifie désormais uniquement la présence d'un compte direction initialisé avec une empreinte PBKDF2 sécurisée ; aucun compte enseignant n'est requis.
 - Les comptes enseignants peuvent être créés depuis l'interface direction, donc depuis un poste du réseau local lorsque le mode LAN sera autorisé.
 - Les sauvegardes n'exportent plus de collection professeur séparée. À la restauration, l'ancienne clé `teachers` est ignorée : le schéma V25.0.12 est volontairement neuf et ne promet pas la compatibilité avec les anciennes sauvegardes.
-- Le mode LAN reste expérimental : HTTP n'est pas chiffré. Ne pas l'utiliser avec des données scolaires réelles tant que HTTPS, les tests d'intégration complets et la revue des permissions ne sont pas terminés.
+- Le mode LAN reste expérimental. Depuis la mise à jour de sécurisation TLS, le serveur refuse HTTP sur le réseau ; la validation de la confiance des certificats et la recette complète restent nécessaires.
 
 ### Vérifications attendues
 
@@ -452,7 +452,7 @@ Les tests d'intégration couvrent l'initialisation unique, le refus des identifi
 - Les professeurs peuvent créer les accès des élèves de leurs propres classes depuis le module Élèves. Le serveur vérifie le rattachement réel de la classe au professeur : impossible de créer un accès pour un élève hors périmètre.
 - Les accès élèves peuvent recevoir un mot de passe provisoire aléatoire, affiché une seule fois après création ; l'élève doit le remplacer par un mot de passe personnel d'au moins 12 caractères.
 - Correction d'un risque de perte de fiches lors de la déconnexion : l'enregistrement était différé de 180 ms, mais la déconnexion vidait immédiatement la base locale en mémoire. Le minuteur pouvait donc enregistrer un instantané vide après la déconnexion. La déconnexion attend maintenant la sauvegarde en attente et est annulée si celle-ci échoue.
-- Ces changements ne rendent pas le mode réseau prêt pour un établissement : HTTP reste non chiffré et le mode LAN demeure expérimental. Ne pas y stocker de données scolaires réelles.
+- Ces changements ne rendent pas le mode réseau prêt pour un établissement : le serveur exige désormais HTTPS, mais la confiance CA sur les appareils et les tests réels multi-postes restent à effectuer. Ne pas y stocker de données scolaires réelles.
 
 
 ## V25.0.13 — comptes élèves, identifiants provisoires et déconnexion
@@ -469,7 +469,7 @@ Les tests d'intégration couvrent l'initialisation unique, le refus des identifi
 
 **Mise à jour locale :** dans un clone Git propre de MaClasse, double-cliquer sur `Mettre-A-Jour-MaClasse.command`. Ne pas supprimer `data/`. Si l'installation n'est pas un clone Git, ne pas utiliser ce script : une procédure de migration dédiée est nécessaire.
 
-**Limite réseau inchangée :** le mode LAN utilise toujours HTTP non chiffré et reste réservé aux données fictives. V25.0.13 n'est pas autorisée pour un usage scolaire réel multi-postes.
+**Limite réseau :** le mode LAN est maintenant chiffré en HTTPS et HTTP est refusé sur une adresse privée. Il reste réservé aux tests tant que la confiance CA des clients et la recette réseau ne sont pas validées.
 
 
 ## Réseau local HTTPS — sécurisation technique en cours
@@ -482,3 +482,6 @@ Le serveur ne démarre plus en HTTP lorsqu'il est lié à une adresse IPv4 priv�
 - Les scripts Linux de mise à jour et de configuration réseau sauvegardent les données locales avant toute mise à jour.
 
 **Important :** cette évolution verrouille le serveur contre le démarrage LAN non chiffré, mais elle ne constitue pas encore une recette réseau complète. La confiance CA côté clients, le renouvellement du certificat, le pare-feu, les changements d'adresse IP, les tests réels entre plusieurs appareils et les tests de charge restent à valider. Aucun usage avec des données scolaires réelles n'est autorisé avant cette recette.
+
+
+Guide opératoire : [docs/RESEAU_HTTPS.md](docs/RESEAU_HTTPS.md) — installation Fedora/Linux, lancement HTTPS, import de l'autorité de certification sur macOS/Fedora/Windows, pare-feu, adresse IP stable et sauvegarde des clés.
