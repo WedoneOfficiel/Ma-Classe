@@ -140,9 +140,13 @@ class ThemeControlsTests(unittest.TestCase):
 
     def test_automatic_light_inherits_the_explicit_light_appearance(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
+        css = html[html.index('<style id="v218-ui">'):html.index("</style>")]
+        self.assertNotIn('data-mc-theme="system"', css)
         self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="dark"] .side', html)
         self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="dark"] .focusCard', html)
         self.assertIn('html[data-mc-theme="light"] body', html)
+        js = (ROOT / "_all.js").read_text(encoding="utf-8")
+        self.assertIn("root.dataset.mcTheme=value==='system'&&!dark?'light':value", js)
 
 
     def test_explicit_light_restores_the_legacy_automatic_light_materials(self):
