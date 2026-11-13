@@ -222,7 +222,8 @@ class ThemeControlsTests(unittest.TestCase):
 
     def test_timetable_today_and_month_navigation_keep_the_selected_period(self):
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
-        self.assertIn("selectedWeek=scheduleView==='week'?startWeek(new Date()):new Date()", js)
+        schedule = js[js.index("function schedule(){"):js.index("function scheduleWeek", js.index("function schedule(){"))]
+        self.assertIn('onclick="selectedWeek=scheduleView===\\'week\\'?startWeek(new Date()):new Date();render()"', schedule)
         self.assertIn("function changeMonth(n){selectedWeek=new Date(selectedWeek.getFullYear(),selectedWeek.getMonth()+n,1);render()}", js)
 
 if __name__ == "__main__":
