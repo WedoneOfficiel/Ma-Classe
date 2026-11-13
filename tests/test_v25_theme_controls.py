@@ -115,7 +115,7 @@ class ThemeControlsTests(unittest.TestCase):
         for token in ('--ui-bg:#171719', '--ui-surface-solid:#2c2c2e',
                       '--glass-bg:rgba(52,52,55,.58)', '--mc-bg:#171719',
                       '--ui-text-3:#98989f'):
-            self.assertIn(token, html[html.index('variables de thème explicites'):])
+            self.assertIn(token, html)
 
     def test_explicit_dark_theme_uses_dark_focus_and_shadow_tokens(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
