@@ -138,7 +138,7 @@ assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le
 assert.strictEqual(vm.runInContext('db.schedule.length', context), 1, 'Changer de vue ou de période ne doit jamais vider les créneaux enregistrés.');
 
 const studentScheduleStart = source.indexOf('function studentSchedule(){');
-const studentScheduleEnd = source.indexOf('function studentScheduleWeek(', studentScheduleStart);
+const studentScheduleEnd = source.indexOf('function openStudentLesson(', studentScheduleStart);
 assert(studentScheduleStart >= 0 && studentScheduleEnd > studentScheduleStart, 'La page EDT élève doit être présente.');
 context.studentClass = () => ({name:'Classe 1'});
 context.subjectColor = () => ['#fff','#ddd','#000'];
