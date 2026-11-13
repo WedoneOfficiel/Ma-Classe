@@ -1,5 +1,6 @@
 """Server-side bulletin PDF calculations must honor publication, period, class and group."""
-import math
+import math, os, sys
+sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server
 
 def close(a,b):
