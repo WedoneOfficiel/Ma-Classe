@@ -211,15 +211,16 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
         if not isinstance(grade,dict) or grade.get('value') in ('',None): return None
         try: raw=float(str(grade.get('value')).strip().replace(',','.'))
         except (TypeError,ValueError): return None
+        if not math.isfinite(raw): return None
         try: maximum=float(e.get('maxScore') or 20)
         except (TypeError,ValueError): maximum=20
-        if maximum<=0: maximum=20
+        if not math.isfinite(maximum) or maximum<=0: maximum=20
         if raw<0 or raw>maximum: return None
         return raw/maximum*20
     def coefficient(e):
         try: value=float(e.get('coefficient') or 1)
         except (TypeError,ValueError): value=1
-        return value if value>0 else 1
+        return value if math.isfinite(value) and value>0 else 1
     def average(items,sid):
         weighted=weight=0.0
         for e in items:
