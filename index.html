@@ -1919,7 +1919,7 @@ html[data-mc-theme="light"] .focusCard .muted{
 .mc-select.open{z-index:999!important;position:relative}
 .mc-select-menu{z-index:1000!important}
 .mc-select.open .mc-select-menu{display:block}
-.searchRow,.form,.field,.card{overflow:visible}
+.searchRow{position:relative;z-index:2;overflow:visible}.field:has(.mc-select.open){position:relative;z-index:1000}
 .bulletinPreparation>.bulletinTabs{justify-content:center!important;width:100%;text-align:center}
 .classesAllHeading{margin:30px 0 12px!important}
 .classesAllGrid{margin-top:0!important}
@@ -1937,7 +1937,7 @@ html[data-mc-theme="light"] .focusCard .muted{
 .globalSearchOpen kbd{font:10px -apple-system,BlinkMacSystemFont,sans-serif;padding:3px 5px;border:1px solid var(--line);border-radius:5px;background:var(--content-bg);color:var(--muted)}
 .v12CommandResults{position:static!important;display:none;max-height:42vh;overflow:auto;margin:0 0 8px;border:0;box-shadow:none;background:transparent}
 .v12CommandResults.open{display:block}
-.themeChoice.active{outline:2px solid color-mix(in srgb,var(--blue) 14%,transparent);outline-offset:2px;border-width:2px!important}
+.themeChoice.active{outline:none!important;outline-offset:0!important;border-width:2px!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue) 20%,transparent)!important}
 .themeChoice.active{padding:8px!important}
 .settingsGrid{gap:18px!important}
 .settingsCard{min-height:0}
