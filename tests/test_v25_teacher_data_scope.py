@@ -115,9 +115,8 @@ class TeacherDataScopeTests(unittest.TestCase):
     def test_teacher_cannot_move_existing_evaluation_to_another_assigned_class(self):
         data=copy.deepcopy(self.data)
         data['classes'][1]['teacherIds']=['t1']
-        data['teachers'][0]['classIds']=['c1','c2']
         data['evaluations']=[{'id':'e1','classId':'c1','subject':'Maths','grades':[{'studentId':'s1','value':15}]}]
-        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        user={'id':'t1','role':'teacher'}
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['evaluations'][0]['classId']='c2'
         view['evaluations'][0]['grades'].append({'studentId':'s2','value':20})
@@ -129,8 +128,7 @@ class TeacherDataScopeTests(unittest.TestCase):
     def test_teacher_cannot_add_other_assigned_class_student_to_evaluation(self):
         data=copy.deepcopy(self.data)
         data['classes'][1]['teacherIds']=['t1']
-        data['teachers'][0]['classIds']=['c1','c2']
-        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        user={'id':'t1','role':'teacher'}
         data['evaluations']=[{'id':'e1','classId':'c1','grades':[{'studentId':'s1','value':15}]}]
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['evaluations'][0]['grades'].append({'studentId':'s2','value':20})
@@ -152,8 +150,8 @@ class TeacherDataScopeTests(unittest.TestCase):
 
     def test_teacher_cannot_add_other_assigned_class_student_to_attendance(self):
         data=copy.deepcopy(self.data)
-        data['teachers'][0]['classIds']=['c1','c2']
-        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        data['classes'][0]['teacherIds']=['t1']; data['classes'][1]['teacherIds']=['t1']
+        user={'id':'t1','role':'teacher'}
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['attendance'][0]['rows'].append({'studentId':'s2','status':'absent'})
         merged=server._merge_teacher_data(data,view,user)
@@ -161,8 +159,8 @@ class TeacherDataScopeTests(unittest.TestCase):
 
     def test_teacher_cannot_link_submission_to_student_from_another_assigned_class(self):
         data=copy.deepcopy(self.data)
-        data['teachers'][0]['classIds']=['c1','c2']
-        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        data['classes'][0]['teacherIds']=['t1']; data['classes'][1]['teacherIds']=['t1']
+        user={'id':'t1','role':'teacher'}
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['submissions'][0]['studentId']='s2'
         merged=server._merge_teacher_data(data,view,user)
@@ -170,7 +168,7 @@ class TeacherDataScopeTests(unittest.TestCase):
 
     def test_nested_records_must_match_the_exact_class(self):
         data=copy.deepcopy(self.data)
-        data['teachers'][0]['classIds']=['c1','c2']
+        data['classes'][0]['teacherIds']=['t1']; data['classes'][1]['teacherIds']=['t1']
         data['evaluations'][0]['grades'].append({'studentId':'s2','value':2})
         data['attendance'][0]['rows'].append({'studentId':'s2','status':'absent'})
         data['submissions'].append({'id':'cross','lessonId':'l1','studentId':'s2'})
@@ -247,8 +245,8 @@ class TeacherDataScopeTests(unittest.TestCase):
 
     def test_teacher_cannot_move_existing_student_or_lesson_between_assigned_classes(self):
         data=copy.deepcopy(self.data)
-        data['teachers'][0]['classIds']=['c1','c2']
-        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        data['classes'][0]['teacherIds']=['t1']; data['classes'][1]['teacherIds']=['t1']
+        user={'id':'t1','role':'teacher'}
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['students'][0]['classId']='c2'
         view['lessons'][0]['classId']='c2'
@@ -258,9 +256,9 @@ class TeacherDataScopeTests(unittest.TestCase):
 
     def test_teacher_cannot_move_existing_attendance_or_attachment_between_assigned_classes(self):
         data=copy.deepcopy(self.data)
-        data['teachers'][0]['classIds']=['c1','c2']
+        data['classes'][0]['teacherIds']=['t1']; data['classes'][1]['teacherIds']=['t1']
         data['attachments']=[{'id':'att1','classId':'c1','studentId':'s1','lessonId':'l1','name':'copie.pdf'}]
-        user={'id':'u1','role':'teacher','teacherId':'t1'}
+        user={'id':'t1','role':'teacher'}
         view=copy.deepcopy(server._teacher_visible_data(data,user))
         view['attendance'][0]['classId']='c2'
         view['attachments'][0]['classId']='c2'
