@@ -276,6 +276,9 @@ if __name__=='__main__': run()
         status,student_headers,student_login_body=call(base,'/api/auth/login','POST',{'username':'alice.student','password':student_access['temporaryPassword']})
         assert status==200 and json.loads(student_login_body)['user']['id']=='s1'
         student_cookie=student_headers.get('Set-Cookie').split(';')[0]
+        assert json.loads(student_login_body)['user']['mustChangePassword'] is True
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':student_access['temporaryPassword'],'newPassword':'MotDePasseEleveTresSolide!'},student_cookie)[0]==200
+        assert call(base,'/api/auth/login','POST',{'username':'alice.student','password':'MotDePasseEleveTresSolide!'})[0]==200
         status,_,student_data_body=call(base,'/api/data',cookie=student_cookie)
         assert status==200 and json.loads(student_data_body)['students'][0]['id']=='s1'
         assert 'passwordHash' not in json.loads(student_data_body)['students'][0]
