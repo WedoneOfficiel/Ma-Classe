@@ -3,7 +3,7 @@ import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime,
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-APP_VERSION='25.0.17'
+APP_VERSION='25.0.18'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()

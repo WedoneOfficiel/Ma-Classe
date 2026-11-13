@@ -1,3 +1,15 @@
+MaClasse V25.0.18 — stabilisation de l’EDT, de l’espace élève et de la maintenance
+
+- Correction du plantage de l’emploi du temps élève causé par une variable de motif non définie.
+- Réparation de la structure HTML des pages Emploi du temps et Séances & leçons côté élève : le contenu n’est plus injecté dans la barre d’actions du titre.
+- Harmonisation du rendu semaine/jour élève avec le moteur de calendrier commun, sur les sept jours.
+- Navigation adaptée au mode affiché : jour, semaine ou mois.
+- Actualisation automatique des données partagées toutes les cinq secondes sur les pages d’emploi du temps et de séances, sans écraser une saisie en cours ni un formulaire ouvert.
+- Messages d’erreur de téléversement plus explicites et sauvegarde confirmée des pièces jointes et des rendus élèves.
+- Envoi d’un devoir uniquement après confirmation de la sauvegarde serveur.
+- Commandes de mise à jour macOS et Linux renforcées : sauvegarde préalable de data/ (y compris les fichiers téléversés), vérification des versions et contrôles après mise à jour.
+- Retour automatique au commit précédent et réinstallation des dépendances précédentes si une validation post-mise-à-jour échoue.
+
 MaClasse V25.0 — première base de correction
 
 - Création d'une copie de travail indépendante de V24.2.
