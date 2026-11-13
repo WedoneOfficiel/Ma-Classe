@@ -19,6 +19,12 @@ class VisualConsistencyTests(unittest.TestCase):
     def test_legacy_stylesheet_has_no_malformed_double_class_selector(self):
         self.assertNotIn("..lessonLayout{", HTML)
 
+
+    def test_repeated_messaging_rules_are_consolidated(self):
+        self.assertEqual(HTML.count(".v15ThreadDot{flex:0 0 30px}"), 1)
+        self.assertEqual(HTML.count(".v15ChatMessages{overflow:auto}"), 1)
+        self.assertEqual(HTML.count(".v15ChatHead .actions{display:flex;gap:6px}"), 1)
+
     def test_bulletin_filters_and_tabs_have_spacing_hooks(self):
         self.assertIn('class="toolbar bulletinFilters"', JS)
         self.assertIn('class="tabs bulletinTabs"', JS)
