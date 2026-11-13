@@ -17,10 +17,11 @@ class CloudPermissionTests(unittest.TestCase):
         server.UPLOADS = os.path.join(self.tmp.name, 'uploads')
         os.makedirs(server.UPLOADS)
         self.data = {
-            'teachers': [
-                {'id': 't1', 'classIds': ['c1']},
-                {'id': 't2', 'classIds': ['c2']},
+            'users': [
+                {'id': 't1', 'role': 'teacher', 'first': 'Prof', 'last': 'Un'},
+                {'id': 't2', 'role': 'teacher', 'first': 'Prof', 'last': 'Deux'},
             ],
+            'classes': [{'id':'c1','teacherIds':['t1']},{'id':'c2','teacherIds':['t2']}],
             'cloudItems': [
                 {'id': 'personal1', 'type': 'file', 'space': 'personal', 'ownerId': 't1', 'serverName': 'cloud/personal/users/t1/a.pdf', 'shares': []},
                 {'id': 'class1', 'type': 'file', 'space': 'class', 'ownerId': 't1', 'classId': 'c1', 'serverName': 'cloud/class/classes/c1/a.pdf', 'shares': []},
@@ -30,8 +31,8 @@ class CloudPermissionTests(unittest.TestCase):
         }
         with open(server.DATA_FILE, 'w', encoding='utf-8') as f:
             json.dump(self.data, f)
-        self.t1 = {'id': 'u1', 'role': 'teacher', 'teacherId': 't1'}
-        self.t2 = {'id': 'u2', 'role': 'teacher', 'teacherId': 't2'}
+        self.t1 = {'id': 't1', 'role': 'teacher'}
+        self.t2 = {'id': 't2', 'role': 'teacher'}
 
     def tearDown(self):
         server.DATA_FILE = self.old_data_file
@@ -91,7 +92,7 @@ class CloudPermissionTests(unittest.TestCase):
     def test_teacher_can_create_in_assigned_class_only(self):
         allowed = {'cloudItems': [{'id': 'new', 'space': 'class', 'ownerId': 't1', 'classId': 'c1', 'serverName': 'cloud/class/classes/c1/new.pdf'}]}
         denied = {'cloudItems': [{'id': 'new', 'space': 'class', 'ownerId': 't1', 'classId': 'c2', 'serverName': 'cloud/class/classes/c2/new.pdf'}]}
-        self.assertTrue(server._validate_cloud_item_changes({'teachers': self.data['teachers'], 'cloudItems': []}, allowed, self.t1))
+        self.assertTrue(server._validate_cloud_item_changes({'users': self.data['users'], 'classes': self.data['classes'], 'cloudItems': []}, allowed, self.t1))
         self.assertFalse(server._validate_cloud_item_changes({'teachers': self.data['teachers'], 'cloudItems': []}, denied, self.t1))
 
 
