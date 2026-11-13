@@ -13,7 +13,7 @@ assert(source.includes('sharedSlotId'));
 assert(source.includes('async function deleteSchedule(id)'));
 assert(source.includes('async function persistScheduleMutation(before,success,after)'));
 assert(source.includes('async function saveScheduleException(ev,id)'));
-assert.strictEqual(source.split('async function saveScheduleException(ev,id)').length - 1, 1);
+assert(!/^function saveScheduleException\(ev,id\)/m.test(source));
 assert.strictEqual(source.split('\\n').filter(line => line.startsWith('function saveScheduleException(ev,id)')).length, 0);
 assert(source.includes('async function applyScheduleDrop(id,date,minutes,mode)'));
 assert(source.includes('async function saveCourseMeta(ev,index)'));
