@@ -3,6 +3,9 @@ const vm = require('vm');
 const assert = require('assert');
 
 const source = fs.readFileSync('_all.js', 'utf8');
+assert(source.includes("scheduleView='day';setScheduleDate('${iso(x)}')"), 'Les clics du calendrier mensuel doivent passer par le normalisateur local.');
+assert(!source.includes("selectedWeek=new Date('${iso(x)}');scheduleView='day';render()"));
+assert(source.includes("selectedWeek=startWeek(scheduleLocalDate('${iso(x)}'))"), 'Le mini-calendrier doit aussi utiliser la date locale.');
 const start = source.indexOf('function monday(d)');
 const end = source.indexOf('function lessonFor(', start);
 assert(start >= 0 && end > start, 'Les helpers de calendrier doivent être présents.');
