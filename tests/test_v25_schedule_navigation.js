@@ -129,18 +129,18 @@ assert(colorHelpersStart > dayRendererStart && dragHelpersStart > colorHelpersSt
 vm.runInContext(source.slice(colorHelpersStart, dragHelpersStart), context);
 vm.runInContext(source.slice(minuteHelpersStart, miniCalendarStart), context);
 vm.runInContext("scheduleView='week';selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
-assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit apparaître le vendredi de la semaine initiale.');
+assert(vm.runInContext('schedule()', context).includes('data-schedule-id="slot-1" data-date="2026-11-13"'), 'Le cours doit apparaître le vendredi de la semaine initiale.');
 vm.runInContext('changeWeek(7)', context);
-assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-20'), 'Le cours récurrent doit apparaître la semaine suivante.');
+assert(vm.runInContext('schedule()', context).includes('data-schedule-id="slot-1" data-date="2026-11-20"'), 'Le cours récurrent doit apparaître la semaine suivante.');
 vm.runInContext('changeWeek(-7)', context);
-assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit réapparaître après le retour à la semaine initiale.');
+assert(vm.runInContext('schedule()', context).includes('data-schedule-id="slot-1" data-date="2026-11-13"'), 'Le cours doit réapparaître après le retour à la semaine initiale.');
 
 vm.runInContext("scheduleView='day';setScheduleDate('2026-11-13')", context);
-assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit rester visible en passant à la vue jour.');
+assert(vm.runInContext('schedule()', context).includes('data-schedule-id="slot-1" data-date="2026-11-13"'), 'Le cours doit rester visible en passant à la vue jour.');
 vm.runInContext("scheduleView='month';setScheduleDate('2026-11-13')", context);
 assert(vm.runInContext('schedule()', context).includes('1 cours'), 'Le cours doit rester comptabilisé dans la vue mois.');
 vm.runInContext("scheduleView='week';setScheduleDate('2026-11-13')", context);
-assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit rester visible après le retour à la vue semaine.');
+assert(vm.runInContext('schedule()', context).includes('data-schedule-id="slot-1" data-date="2026-11-13"'), 'Le cours doit rester visible après le retour à la vue semaine.');
 assert.strictEqual(vm.runInContext('db.schedule.length', context), 1, 'Changer de vue ou de période ne doit jamais vider les créneaux enregistrés.');
 
 const studentScheduleStart = source.indexOf('function studentSchedule(){');
