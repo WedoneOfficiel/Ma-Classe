@@ -85,6 +85,7 @@ assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-13T12:00:00')).leng
 const studentOccStart = source.indexOf('function studentScheduleOcc(');
 const studentOccEnd = source.indexOf('function studentLessonItems(', studentOccStart);
 assert(studentOccStart >= 0 && studentOccEnd > studentOccStart);
+context.activeStudent = () => 'student-1';
 context.student = id => ({id,classId:'class-1',group:'A'});
 vm.runInContext(source.slice(studentOccStart, studentOccEnd), context);
 assert.strictEqual(vm.runInContext("studentScheduleOcc(null,new Date('2026-11-13T12:00:00')).length", context), 2, 'L’élève du groupe A voit les cours de classe et de son groupe, pas ceux du groupe B.');
