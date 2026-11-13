@@ -23,4 +23,22 @@ for host in ('8.8.8.8','0.0.0.0','fe80::1','not-an-ip'):
     except ValueError:
         continue
     raise AssertionError(f'Adresse réseau non sûre acceptée : {host}')
+
+# Vérifier que le mode LAN accepte uniquement le Host et l'Origin exacts du serveur.
+from types import SimpleNamespace
+old_host, old_port = server.HOST, server.PORT
+server.HOST, server.PORT = '192.168.50.12', 8765
+def origin_allowed(host, origin, method='POST'):
+    headers = {'Host': host}
+    if origin is not None:
+        headers['Origin'] = origin
+    return server.Handler._origin_allowed(SimpleNamespace(headers=headers, command=method))
+base = '192.168.50.12:8765'
+assert origin_allowed(base, 'http://' + base) is True
+assert origin_allowed('attacker.invalid', 'http://' + base) is False
+assert origin_allowed(base, 'http://attacker.invalid') is False
+assert origin_allowed(base, None, 'POST') is False
+assert origin_allowed(base, None, 'GET') is True
+server.HOST, server.PORT = old_host, old_port
+
 print('OK — loopback par défaut ; mode LAN limité à une IPv4 privée précise et explicitement activée.')
