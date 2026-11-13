@@ -11,7 +11,23 @@ function blank(){return {evaluationTemplates:[],competencyLibrary:[],settings:{r
 async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='/api/data'||path==='/api/save')){const rev=r.headers.get('X-MaClasse-Revision');if(rev)dataRevision=rev}if(!r.ok){let detail=await r.text();try{const parsed=JSON.parse(detail);if(parsed.code==='REVISION_CONFLICT'||parsed.code==='REVISION_REQUIRED')detail='Les données ont changé sur le serveur. Recharge la page avant de continuer pour éviter d’écraser le travail d’un autre utilisateur.';else detail=parsed.error||detail}catch{}const error=Error(detail);error.status=r.status;throw error}return r.json()}
 async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser)db=await api('/api/data');else db=blank()}catch(e){offline=true;db=blank();authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync()}
 let liveSyncTimer=null,liveSyncBusy=false;
-async function refreshLiveScheduleData(){if(liveSyncBusy||!authUser||!['schedule','studentSchedule','lessons','studentLessons','studentWork'].includes(page)||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open'))return;const previous=dataRevision;liveSyncBusy=true;try{const latest=await api('/api/data');if(previous&&dataRevision!==previous){db=latest;normalize();render()}}catch(err){console.warn('MaClasse actualisation en direct impossible',err)}finally{liveSyncBusy=false}}
+async function refreshLiveScheduleData(){
+ if(liveSyncBusy||!authUser||!['schedule','studentSchedule','lessons','studentLessons','studentWork'].includes(page)||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open'))return;
+ const previous=dataRevision,requestedPage=page;
+ liveSyncBusy=true;
+ try{
+  const response=await fetch('/api/data',{cache:'no-store'});
+  if(!response.ok)throw Error('Actualisation du planning indisponible ('+response.status+').');
+  const latestRevision=response.headers.get('X-MaClasse-Revision');
+  const latest=await response.json();
+  // Une requête de synchronisation peut se terminer après l'ouverture d'un formulaire
+  // ou le début d'une sauvegarde. Dans ce cas, ne jamais remplacer les données locales
+  // ni avancer la révision : le prochain cycle relira l'état serveur après la sauvegarde.
+  if(page!==requestedPage||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open')||dataRevision!==previous)return;
+  if(previous&&latestRevision&&latestRevision!==previous){dataRevision=latestRevision;db=latest;normalize();render()}
+ }catch(err){console.warn('MaClasse actualisation en direct impossible',err)}
+ finally{liveSyncBusy=false}
+}
 function startLiveScheduleSync(){if(liveSyncTimer)return;liveSyncTimer=window.setInterval(refreshLiveScheduleData,5000)}
 function save(silent=false){clearTimeout(saveTimer);savePending=true;saveTimer=setTimeout(()=>{saveTimer=null;const snapshot=JSON.stringify(db);saveQueue=saveQueue.catch(()=>{}).then(()=>api('/api/save',{method:'POST',headers:{'Content-Type':'application/json','If-Match':dataRevision||''},body:snapshot})).then(()=>{saveError=null;savePending=false;document.querySelectorAll('[data-bulletin-save]').forEach(el=>{if(el.textContent==='Enregistrement…')el.textContent='Enregistré'});if(!silent)toast('Enregistré')}).catch(e=>{saveError=e;savePending=true;console.error('MaClasse save failed',e);if(!silent)toast(e.message||'Erreur de sauvegarde');document.querySelectorAll('[data-bulletin-save]').forEach(el=>{if(el.textContent==='Enregistrement…')el.textContent='Échec — réessayer'})})},180)}
 async function flushPendingSave(){if(saveTimer){clearTimeout(saveTimer);saveTimer=null;const snapshot=JSON.stringify(db);saveQueue=saveQueue.catch(()=>{}).then(()=>api('/api/save',{method:'POST',headers:{'Content-Type':'application/json','If-Match':dataRevision||''},body:snapshot})).then(()=>{saveError=null}).catch(e=>{saveError=e;savePending=true;throw e})}await saveQueue;if(saveError)throw saveError;savePending=false}
