@@ -9,14 +9,14 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.10 (alpha)  
+**Version de travail :** V25.0.11 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
 Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative affichée dans les paramètres est **V25.0.10** ; `VERSION.txt` sert de repère de version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
-Le fichier local `data/maclasse.json` ne contenait que les deux comptes provisoires. Il a été retiré du suivi Git et ajouté au `.gitignore`, afin que les futures données réelles d'élèves et d'établissement ne soient pas publiées. Le serveur recrée ce fichier au démarrage s'il est absent.
+Le fichier `data/maclasse.json` est local et exclu de Git. Une installation neuve démarre sans aucun compte : l'assistant de première configuration crée uniquement le compte direction. Aucun mot de passe ou compte enseignant universel n'existe.
 
 ---
 
@@ -392,3 +392,43 @@ L’audit du code actuel confirme trois problèmes structurels :
 6. Ajouter des tests d’intégration couvrant première installation, création d’un professeur depuis le réseau, connexion, modification du profil, désactivation et séparation des données entre deux enseignants.
 
 Ce plan est une décision d’architecture, **pas une affirmation que la refonte des comptes est déjà terminée**. Le mode réseau ne doit pas être considéré comme prêt pour des données scolaires réelles.
+
+
+## Refonte des comptes et de la première installation — V25.0.11 · 13/11/2026
+
+### Modèle canonique
+
+- La collection persistée `users` est la source de vérité des identités et des authentifications.
+- Un professeur est un compte unique : identifiant, prénom, nom, e-mail, téléphone, matières, notes de profil, empreinte de mot de passe et statut actif sont stockés ensemble dans le même enregistrement.
+- Il n'existe plus de collection persistée `teachers`. La liste `db.teachers` du navigateur est une projection calculée des comptes `users` de rôle `teacher`, pour alimenter les modules qui affichent les profils.
+- Les classes référencent directement l'identifiant du compte professeur dans `teacherIds` et `principalTeacherId`. Les classes enseignées sont calculées depuis ces relations, pas synchronisées dans une deuxième fiche.
+- Les comptes élèves restent dans `users` avec un lien vers une fiche élève par `studentId`, car l'élève est une personne scolarisée dont le dossier existe indépendamment de son accès numérique.
+
+### Première installation
+
+- Le serveur ne crée plus de comptes au démarrage.
+- `GET /api/auth/setup-status` indique si la base est vierge.
+- L'assistant de première ouverture demande le nom, l'identifiant et un mot de passe de direction d'au moins 12 caractères.
+- `POST /api/auth/setup` est à usage unique : il refuse toute seconde initialisation ou une base déjà occupée. Il crée un seul compte direction et ouvre sa session.
+- Il n'existe plus de compte `enseignant`, de mot de passe universel, ni d'étape locale consistant à sécuriser un professeur fictif.
+- La connexion est unifiée : le serveur identifie le rôle à partir du compte, sans demander de choisir à l'avance un espace qui pourrait ne pas encore exister.
+
+### Gestion des professeurs
+
+- L'administration crée et modifie le compte et le profil dans un seul formulaire.
+- La route serveur `/api/admin/teacher` valide les champs, l'unicité de l'identifiant, le mot de passe provisoire et les classes/PP attribuées. L'empreinte est calculée côté serveur.
+- Le professeur modifie son propre profil via `/api/teacher/profile`. Le changement de mot de passe reste une opération d'authentification séparée, vérifiant le mot de passe actuel.
+- La désactivation passe par `/api/admin/user-status` et invalide immédiatement les sessions de ce compte.
+- Les sauvegardes générales ne peuvent ni créer, ni remplacer, ni écraser les comptes ou leurs empreintes. Les comptes sont gérés exclusivement par les routes dédiées.
+- Les réponses `/api/data` n'exposent jamais les empreintes de mots de passe au navigateur, y compris dans la projection de fiche professeur.
+
+### Réseau local et sauvegardes
+
+- Le lanceur réseau vérifie désormais uniquement la présence d'un compte direction initialisé avec une empreinte PBKDF2 sécurisée ; aucun compte enseignant n'est requis.
+- Les comptes enseignants peuvent être créés depuis l'interface direction, donc depuis un poste du réseau local lorsque le mode LAN sera autorisé.
+- Les sauvegardes n'exportent plus de collection professeur séparée. À la restauration, l'ancienne clé `teachers` est ignorée : le schéma V25.0.11 est volontairement neuf et ne promet pas la compatibilité avec les anciennes sauvegardes.
+- Le mode LAN reste expérimental : HTTP n'est pas chiffré. Ne pas l'utiliser avec des données scolaires réelles tant que HTTPS, les tests d'intégration complets et la revue des permissions ne sont pas terminés.
+
+### Vérifications attendues
+
+Les tests d'intégration couvrent l'initialisation unique, le refus des identifiants par défaut, la création d'un compte professeur par la direction, le changement du mot de passe provisoire, la protection des empreintes, la désactivation et l'isolation des données par classe.
