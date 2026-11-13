@@ -1812,6 +1812,31 @@ html[data-mc-theme="dark"] .modal,html[data-mc-theme="dark"] .modalhead,html[dat
  .scheduleCalendarSurface .scheduleDays{min-width:700px}
 }
 
+
+/* V25.5 — alignement des espacements Bulletins et Paramètres */
+.bulletinPreparation{display:flex!important;flex-direction:column;gap:12px!important;padding:16px!important}
+.bulletinPreparation>.sectionhead{margin:0!important;min-height:28px}
+.bulletinPreparation>.bulletinFilters{display:flex;align-items:center;gap:8px 10px;margin:0!important;padding:0!important}
+.bulletinPreparation>.bulletinTabs{display:flex;align-items:center;gap:7px;margin:0!important;padding:10px 0 0!important;border-top:1px solid var(--line)}
+.bulletinPreparation>.bulletinTabs .tab{margin:0}
+.bulletinMetrics{margin-top:14px!important;gap:10px!important}
+.bulletinMetrics>.card.stat{margin:0!important;min-width:0;min-height:88px;padding:14px 16px}
+.bulletinMetrics>.metric{min-width:0;padding:11px 13px}
+.settingsGrid{gap:14px!important;align-items:start}
+.settingsGrid>.settingsCard{min-width:0;padding:18px!important;border-radius:14px}
+.settingsGrid>.settingsDataCard{grid-column:1/-1!important}
+.settingsCard>.section{margin-top:14px}
+.settingsCard .settingsTerm{padding:12px 0;border-bottom:1px solid var(--line)}
+.settingsCard .settingsTerm:first-child{padding-top:0}
+.settingsCard .settingsTerm:last-child{padding-bottom:0;border-bottom:0}
+.settingsCard .settingsTerm .form{gap:10px}
+@media(max-width:760px){
+ .bulletinPreparation{padding:13px!important;gap:10px!important}
+ .bulletinPreparation>.bulletinTabs{overflow-x:auto;flex-wrap:nowrap}
+ .bulletinPreparation>.bulletinTabs .tab{white-space:nowrap}
+ .settingsGrid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+ .settingsGrid>.settingsDataCard{grid-column:1!important}
+}
 </style>
 
 
