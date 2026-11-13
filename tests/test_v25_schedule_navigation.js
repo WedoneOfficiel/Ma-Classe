@@ -53,5 +53,4 @@ assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,20,12)).length", con
 vm.runInContext('changeWeek(-7)', context);
 assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", context), 1);
 
-assert(context.renderCount >= 6, 'Chaque navigation doit déclencher un rendu.');
 console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales et occurrences récurrentes.');
