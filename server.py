@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 APP_VERSION='25.0.18'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
@@ -1873,6 +1873,9 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/upload':
             if length>50*1024*1024: return self._json({'error':'Fichier trop volumineux (50 Mo maximum).'},413)
             raw_name=self.headers.get('X-Filename','fichier') or 'fichier'
+            if raw_name.startswith('utf8:'):
+                try: raw_name=unquote(raw_name[5:],encoding='utf-8',errors='strict')
+                except (UnicodeDecodeError,ValueError): return self._json({'error':'Nom de fichier UTF-8 invalide.'},400)
             name=os.path.basename(raw_name).strip() or 'fichier'
             raw_folder=self.headers.get('X-Upload-Folder','general') or 'general'
             folder='/'.join(x for x in re.split(r'[/\\]+',raw_folder) if x not in ('','.','..'))
