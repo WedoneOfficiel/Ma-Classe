@@ -156,7 +156,33 @@ assert(vm.runInContext('studentSchedule()', context).includes('2'), 'Les cours v
 vm.runInContext("scheduleView='day';setScheduleDate('2026-11-13')", context);
 assert(vm.runInContext('studentSchedule()', context).includes('2'), 'Les cours visibles par l’élève doivent rester rendus en jour.');
 vm.runInContext("scheduleView='month';setScheduleDate('2026-11-13')", context);
+
 assert(vm.runInContext('studentSchedule()', context).includes('2026-11-13'), 'La vue mois élève doit conserver les dates et les occurrences.');
+const renderStart=source.indexOf('function render(){');
+const shellStart=source.indexOf('function shell(',renderStart);
+assert(renderStart>=0&&shellStart>renderStart,'Le routeur principal doit être présent.');
+context.authGuard=()=>true;
+context.nav=()=>{};
+context.main={innerHTML:''};
+context.document={getElementById:()=>context.main};
+context.console={error:()=>{}};
+context.shell=()=>'<div class="top"></div>';
+context.window.messages=()=>'<div></div>';
+context.window.studentMessages=()=>'<div></div>';
+for(const name of ['dashboard','today','activity','notifications','teachersModule','lessons','studentsModule','evaluations','attendance','attendanceFollowup','bulletins','documents','classes','ppDashboard','settings','adminUsers','studentHome','studentResults','studentLife','studentDocuments'])context[name]=()=>'<div></div>';
+vm.runInContext(source.slice(renderStart,shellStart),context);
+context.page='schedule';
+context.scheduleView='week';
+context.render();
+assert(context.main.innerHTML.includes('schedulePage')&&context.main.innerHTML.includes('data-schedule-id="slot-1"'),'Le routeur doit afficher le véritable EDT enseignant et ses créneaux.');
+context.scheduleView='day';context.render();
+assert(context.main.innerHTML.includes('data-schedule-id="slot-1"'),'Le routeur doit afficher le créneau en vue jour.');
+context.scheduleView='month';context.render();
+assert(context.main.innerHTML.includes('1 cours'),'Le routeur doit afficher le calendrier mensuel avec son cours.');
+context.page='studentSchedule';
+context.scheduleView='week';context.render();
+assert(context.main.innerHTML.includes('data-schedule-id="class-wide"')||context.main.innerHTML.includes('data-schedule-id="class-a"'),'Le routeur doit afficher les cours autorisés dans l’espace élève.');
+
 
 const overlapStart = source.indexOf('function scheduleOverlap(');
 const overlapEnd = source.indexOf('function scheduleConflicts(', overlapStart);
