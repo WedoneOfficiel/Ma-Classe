@@ -9,8 +9,10 @@ JS = (ROOT / "_all.js").read_text(encoding="utf-8")
 
 
 class VisualConsistencyTests(unittest.TestCase):
-    def test_home_focus_card_uses_original_palette(self):
+    def test_home_focus_card_keeps_dark_base_and_legacy_light_blue_gradient(self):
         self.assertIn(".focusCard{background:linear-gradient(135deg,#102a43,#1b4777)", HTML)
+        self.assertIn('html[data-mc-theme="light"] .focusCard{', HTML)
+        self.assertIn("linear-gradient(135deg,#0a5ecb,#0a84ff 58%,#4aa3ff)", HTML)
         self.assertNotIn("#075db8 0%", HTML)
 
     def test_bulletin_filters_and_tabs_have_spacing_hooks(self):
