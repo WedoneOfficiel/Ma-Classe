@@ -25,6 +25,7 @@ def run():
             {'id':'e6','classId':'c1','subject':'Mathématiques','date':'2026-10-06','published':True,'publishAt':'2026-12-01','coefficient':1,'maxScore':20,'grades':[{'studentId':'s1','value':0}]},
             {'id':'e7','classId':'c2','subject':'Mathématiques','date':'2026-10-07','published':True,'coefficient':1,'maxScore':20,'grades':[{'studentId':'s1','value':0}]},
             {'id':'e8','classId':'c1','subject':'Mathématiques','date':'2027-01-02','published':True,'coefficient':1,'maxScore':20,'grades':[{'studentId':'s1','value':0}]}
+            ,{'id':'e9','classId':'c1','subject':'Mathématiques','date':'2026-10-15','published':True,'coefficient':'Infinity','maxScore':20,'grades':[{'studentId':'s1','value':'NaN'}]}
         ],
         'attendance':[
             {'id':'a1','classId':'c1','date':'2026-10-10','rows':[{'studentId':'s1','status':'absent'},{'studentId':'s2','status':'present'}]},
