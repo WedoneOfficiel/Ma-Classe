@@ -144,6 +144,24 @@ class ThemeControlsTests(unittest.TestCase):
         self.assertNotIn('@media(prefers-color-scheme:light){html[data-mc-theme="dark"] .focusCard', html)
         self.assertIn('html[data-mc-theme="light"] body', html)
 
+
+    def test_explicit_light_restores_the_legacy_automatic_light_materials(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        light = html[html.rfind("V25.6 — thème clair"):]
+        for selector in (
+            'html[data-mc-theme="light"] .side',
+            'html[data-mc-theme="light"] .top',
+            'html[data-mc-theme="light"] .card',
+            'html[data-mc-theme="light"] .btn.primary',
+            'html[data-mc-theme="light"] .stat:after',
+            'html[data-mc-theme="light"] .focusCard',
+            'html[data-mc-theme="light"] .focusCard .muted',
+        ):
+            self.assertIn(selector, light)
+        self.assertIn("rgba(10,40,80,.08)", light)
+        self.assertIn("linear-gradient(135deg,#0a5ecb,#0a84ff 58%,#4aa3ff)", light)
+        self.assertIn("rgba(10,80,150,.16)", light)
+
     def test_timetable_uses_a_dedicated_full_width_page_architecture(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         js = (ROOT / "_all.js").read_text(encoding="utf-8")
