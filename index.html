@@ -5,7 +5,7 @@
 <script id="mc-appearance-bootstrap">
 try{const t=localStorage.getItem('maclasse_appearance_theme');const v=['system','light','dark'].includes(t)?t:'system',dark=window.matchMedia('(prefers-color-scheme: dark)').matches,r=document.documentElement;r.dataset.mcThemePreference=v;r.dataset.mcTheme=v==='system'&&!dark?'light':v;r.style.colorScheme=v==='system'?(dark?'dark':'light'):v}catch(e){document.documentElement.dataset.mcThemePreference='system';document.documentElement.dataset.mcTheme='light';document.documentElement.style.colorScheme='light'}
 </script>
-<title>MaClasse V25.0.8</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
+<title>MaClasse V25.0.9</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
 <!-- Compatibility markers for historical regression tests: MaClasse V21.21 -->
 
 
@@ -1945,6 +1945,42 @@ html[data-mc-theme="light"] .focusCard .muted{
 .settingsCard .section{margin-top:16px}
 .settingsGrid>.settingsDataCard{margin-top:2px}
 @media(max-width:760px){.classLevelPicker{grid-template-columns:repeat(3,minmax(0,1fr));max-height:190px}.bulletinPreparation>.bulletinTabs{justify-content:flex-start!important}}
+
+/* V25.0.9 — finitions de l'espace de travail et des contrôles */
+.classLevelPicker{grid-template-columns:repeat(auto-fit,minmax(118px,1fr))!important;gap:9px!important;padding:12px!important;width:100%;box-sizing:border-box}
+.classLevelOption{min-width:0;min-height:38px;white-space:nowrap;justify-content:flex-start;padding:8px 10px!important;gap:8px!important}
+.classLevelOption span{min-width:0;white-space:nowrap;font-size:13px}
+@media(max-width:650px){.classLevelPicker{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}.classLevelOption{padding:7px 8px!important}.classLevelOption span{font-size:12px}}
+/* Une seule coche CSS, identique dans toutes les zones et tous les navigateurs. */
+input[type="checkbox"]{-webkit-appearance:none!important;appearance:none!important;position:relative;flex:0 0 18px;overflow:hidden}
+input[type="checkbox"]::before,input[type="checkbox"]::after{content:none!important;display:none!important}
+input[type="checkbox"]:checked::before{content:none!important;display:none!important}
+input[type="checkbox"]:checked::after{content:""!important;display:block!important;position:absolute!important;left:4px!important;top:4px!important;width:8px!important;height:5px!important;border-left:2px solid #fff!important;border-bottom:2px solid #fff!important;border-top:0!important;border-right:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;transform:rotate(-45deg)!important}
+.recipientCheck input[type="checkbox"]::after{content:none!important}
+.studentDirectory>.searchRow{margin-bottom:20px!important;padding-bottom:2px}
+.studentDirectory>.tablewrap{margin-top:0!important}
+.settingsGrid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods data"!important;align-items:start!important;gap:18px!important}
+.settingsGrid>.settingsCard:nth-child(1){grid-area:appearance}
+.settingsGrid>.settingsCard:nth-child(2){grid-area:periods}
+.settingsGrid>.settingsCard:nth-child(3){grid-area:rooms}
+.settingsGrid>.settingsCard:nth-child(4){grid-area:version}
+.settingsGrid>.settingsCard:nth-child(5){grid-area:data}
+.settingsGrid>.settingsCard{min-width:0;margin:0!important}
+@media(max-width:900px){.settingsGrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;grid-template-areas:"appearance periods" "rooms periods" "version data"!important}}
+@media(max-width:650px){.settingsGrid{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "data"!important;gap:12px!important}}
+.bulletinPreparation>.bulletinTabs{justify-content:flex-start!important;align-items:center!important;text-align:left!important;min-height:44px;box-sizing:border-box}
+.bulletinPreparation>.bulletinTabs .tab{align-self:center}
+.cloudPage{display:flex;flex-direction:column;gap:16px;width:100%;min-width:0}
+.cloudWorkspaceNav{width:100%;padding:10px 12px;border:1px solid var(--glass-line);border-radius:16px;background:var(--paper);box-shadow:var(--shadow);box-sizing:border-box}
+.cloudWorkspaceNav .cloudTabs{margin:0!important;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cloudWorkspaceHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border:1px solid var(--glass-line);border-radius:16px;background:var(--paper);box-shadow:var(--shadow);min-width:0}
+.cloudWorkspaceHeader h2{margin:0 0 4px;font-size:17px}
+.cloudWorkspaceHeader p{margin:0;color:var(--muted);font-size:12px}
+.cloudPage>.miniKpis{margin:0!important}
+.cloudPage .cloudLayout{margin:0;min-width:0}
+.cloudDocumentList{margin:0!important}
+.cloudTopActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media(max-width:760px){.cloudWorkspaceHeader{align-items:flex-start;flex-direction:column}.cloudWorkspaceNav{padding:8px}.cloudWorkspaceNav .cloudTabs{overflow-x:auto;flex-wrap:nowrap}.cloudWorkspaceNav .cloudTab{white-space:nowrap}}
 </style>
 
 
