@@ -10,14 +10,27 @@ fi
 command -v openssl >/dev/null 2>&1 || { echo "OpenSSL est requis."; exit 2; }
 TLS_DIR="data/tls"; mkdir -p "$TLS_DIR"
 CA_KEY="$TLS_DIR/ca.key"; CA_CERT="$TLS_DIR/ca.crt"
-SERVER_KEY="$TLS_DIR/server.key"; SERVER_CSR="$TLS_DIR/server.csr"; SERVER_CERT="$TLS_DIR/server.crt"; EXT="$TLS_DIR/server.ext"
+SERVER_KEY="$TLS_DIR/server.key"; SERVER_CSR="$TLS_DIR/server.csr"; SERVER_CERT="$TLS_DIR/server.crt"; EXT="$TLS_DIR/server.ext"; CA_CONFIG="$TLS_DIR/ca.cnf"
 if [[ -f "$CA_KEY" && ! -f "$CA_CERT" ]] || [[ ! -f "$CA_KEY" && -f "$CA_CERT" ]]; then
   echo "Autorité de certification incomplète. Restaure le couple ca.key/ca.crt."; exit 2
 fi
 if [[ ! -f "$CA_KEY" ]]; then
   echo "Création de l'autorité de certification locale MaClasse…"
   openssl genrsa -out "$CA_KEY" 4096
-  openssl req -x509 -new -sha256 -days 3650 -key "$CA_KEY" -out "$CA_CERT" -subj "/CN=MaClasse Local Network CA"
+  cat > "$CA_CONFIG" <<'EOF'
+[req]
+distinguished_name=dn
+x509_extensions=v3_ca
+prompt=no
+[dn]
+CN=MaClasse Local Network CA
+[v3_ca]
+basicConstraints=critical,CA:TRUE
+keyUsage=critical,keyCertSign,cRLSign
+subjectKeyIdentifier=hash
+EOF
+  openssl req -x509 -new -sha256 -days 3650 -key "$CA_KEY" -out "$CA_CERT" -config "$CA_CONFIG"
+  rm -f "$CA_CONFIG"
 fi
 if [[ ! -f "$SERVER_KEY" ]]; then openssl genrsa -out "$SERVER_KEY" 2048; fi
 openssl req -new -key "$SERVER_KEY" -out "$SERVER_CSR" -subj "/CN=$LAN_IP"
