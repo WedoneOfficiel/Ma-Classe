@@ -76,9 +76,9 @@ for (const testCase of recurrenceCases) {
   }
 }
 const groupSlots = [
-  {id:'class-wide',classId:'class-1',group:'',day:4,startDate:'2026-11-09',recurrence:'biweekly'},
-  {id:'class-a',classId:'class-1',group:'A',day:4,startDate:'2026-11-09',recurrence:'biweekly'},
-  {id:'class-b',classId:'class-1',group:'B',day:4,startDate:'2026-11-09',recurrence:'biweekly'}
+  {id:'class-wide',classId:'class-1',group:'',day:4,startDate:'2026-11-09',recurrence:'biweekly',time:'09:00'},
+  {id:'class-a',classId:'class-1',group:'A',day:4,startDate:'2026-11-09',recurrence:'biweekly',time:'10:00'},
+  {id:'class-b',classId:'class-1',group:'B',day:4,startDate:'2026-11-09',recurrence:'biweekly',time:'11:00'}
 ];
 context.db.schedule = groupSlots;
 assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-13T12:00:00')).length", context), 3, 'Les cours de classe et de groupes doivent garder leur première occurrence.');
