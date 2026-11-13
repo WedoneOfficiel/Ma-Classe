@@ -61,8 +61,8 @@ for (let day = 0; day < 7; day++) {
 }
 const recurrenceCases = [
   { recurrence:'once', day:4, startDate:'2026-11-09', dates:['2026-11-13'] },
-  { recurrence:'weekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-11-20','2026-11-27'] },
-  { recurrence:'biweekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-11-27'] },
+  { recurrence:'weekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-11-20','2026-11-27','2026-12-04','2026-12-11'] },
+  { recurrence:'biweekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-11-27','2026-12-11'] },
   { recurrence:'triweekly', day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-12-04'] },
   { recurrence:'custom', intervalWeeks:4, day:4, startDate:'2026-11-09', dates:['2026-11-13','2026-12-11'] },
   { recurrence:'once', day:2, startDate:'2026-11-13', dates:['2026-11-18'] },
