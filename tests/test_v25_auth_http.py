@@ -201,8 +201,10 @@ def run():
         status,_,created_account=call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice','password':'eleveTestTresFort!'},admin)
         assert status==200 and json.loads(created_account)['user']['mustChangePassword']
         created_record=json.loads((app/'data'/'maclasse.json').read_text())
-        student_record=next(u for u in created_record['users'] if u.get('role')=='student')
+        student_record=next(st for st in created_record['students'] if st.get('id')=='s1')
+        assert student_record['role']=='student' and student_record['username']=='alice'
         assert student_record['passwordHash'].startswith('pbkdf2_sha256')
+        assert not any(u.get('role')=='student' for u in created_record['users'])
         assert call(base,'/api/admin/student-account','POST',{'studentId':'s1','username':'alice2','password':'eleveTestTresFort!'},admin)[0]==409
         status,student_headers,student_body=call(base,'/api/auth/login','POST',{'username':'alice','password':'eleveTestTresFort!'})
         assert status==200 and json.loads(student_body)['user']['role']=='student' and json.loads(student_body)['user']['mustChangePassword']
