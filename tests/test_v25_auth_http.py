@@ -101,6 +101,7 @@ def run():
         saved=json.loads((app/'data'/'maclasse.json').read_text())
         teacher_record=next(u for u in saved['users'] if u['id']==teacher_id)
         assert teacher_record['first']=='Alicia' and teacher_record['username']=='alicia.martin' and 'teacherId' not in teacher_record
+        assert teacher_record['subjects']==['Mathématiques'], 'A teacher must not grant themselves additional teaching subjects'
         assert call(base,'/api/auth/login','POST',{'username':'alice.martin','password':'unMotDePasseProfEncorePlusFort!'})[0]==401
         status,new_login_headers,new_login_body=call(base,'/api/auth/login','POST',{'username':'alicia.martin','password':'unMotDePasseProfEncorePlusFort!'})
         assert status==200 and not json.loads(new_login_body)['user'].get('mustChangePassword')
