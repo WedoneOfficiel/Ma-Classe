@@ -13,7 +13,6 @@ Le serveur refuse maintenant de démarrer sur une adresse LAN en HTTP. Les sessi
 Depuis le dossier cloné du dépôt :
 
 ```bash
-chmod +x ./*.sh
 ./Installer-MaClasse-Linux.sh
 ```
 
@@ -40,7 +39,7 @@ Au premier lancement, le serveur crée :
 - `data/tls/server.key` : clé privée du serveur ; elle doit rester sur le serveur.
 - `data/tls/server.crt` : certificat du serveur pour l'adresse IP actuelle.
 
-Copie uniquement `ca.crt` vers les clients, par un moyen local sûr.
+Copie uniquement `ca.crt` vers les clients, par un moyen local sûr. Compare l'empreinte SHA-256 affichée par le lanceur avec celle du certificat reçu avant de l'installer ; ne transfère jamais `ca.key` ou `server.key`.
 
 ### macOS client
 
