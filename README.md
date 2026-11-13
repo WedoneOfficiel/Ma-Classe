@@ -9,12 +9,12 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.12 (alpha)  
+**Version de travail :** V25.0.13 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
-Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative affichée dans les paramètres est **V25.0.10** ; `VERSION.txt` sert de repère de version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.13** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
 Le fichier `data/maclasse.json` est local et exclu de Git. Une installation neuve démarre sans aucun compte : l'assistant de première configuration crée uniquement le compte direction. Aucun mot de passe ou compte enseignant universel n'existe.
 
@@ -451,3 +451,20 @@ Les tests d'intégration couvrent l'initialisation unique, le refus des identifi
 - Les accès élèves peuvent recevoir un mot de passe provisoire aléatoire, affiché une seule fois après création ; l'élève doit le remplacer par un mot de passe personnel d'au moins 12 caractères.
 - Correction d'un risque de perte de fiches lors de la déconnexion : l'enregistrement était différé de 180 ms, mais la déconnexion vidait immédiatement la base locale en mémoire. Le minuteur pouvait donc enregistrer un instantané vide après la déconnexion. La déconnexion attend maintenant la sauvegarde en attente et est annulée si celle-ci échoue.
 - Ces changements ne rendent pas le mode réseau prêt pour un établissement : HTTP reste non chiffré et le mode LAN demeure expérimental. Ne pas y stocker de données scolaires réelles.
+
+
+## V25.0.13 — comptes élèves, identifiants provisoires et déconnexion
+
+- La configuration initiale accepte désormais le prénom et le nom distincts de la direction, tout en conservant la compatibilité avec les clients historiques qui transmettent un seul champ de nom.
+- La création d'un compte professeur génère un mot de passe provisoire aléatoire si le champ est laissé vide. Le mot de passe est communiqué une seule fois dans la réponse de création ; l'obligation de changement vers un mot de passe personnel d'au moins 12 caractères reste active.
+- Les professeurs peuvent créer des comptes élèves uniquement pour les élèves de leurs classes. Le serveur vérifie cette appartenance et génère un mot de passe provisoire si aucun n'est fourni.
+- La projection de données professeur inclut les informations publiques des comptes élèves de son périmètre, sans transmettre les empreintes de mots de passe.
+- La déconnexion attend la fin de la sauvegarde différée ; si celle-ci échoue, la déconnexion est annulée au lieu de vider l'état local.
+- Tests HTTP ajoutés pour la création d'élèves par un professeur, le refus d'un élève hors périmètre, l'accès au compte créé et sa visibilité sans empreinte de mot de passe.
+- Une mise à jour macOS non destructive est fournie par `Mettre-A-Jour-MaClasse.command` : elle vérifie l'état Git, sauvegarde `data/`, refuse les branches divergentes, applique uniquement une avance rapide et vérifie le serveur. Elle ne remplace pas une sauvegarde externe régulière.
+
+**Validation CI :** le run [#43425595733](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/43425595733) a terminé avec succès sur Ubuntu et macOS, y compris l'installateur Apple Silicon et tous les tests Python/JavaScript. Cela valide les tests automatisés, pas une recette multi-appareils réelle.
+
+**Mise à jour locale :** dans un clone Git propre de MaClasse, double-cliquer sur `Mettre-A-Jour-MaClasse.command`. Ne pas supprimer `data/`. Si l'installation n'est pas un clone Git, ne pas utiliser ce script : une procédure de migration dédiée est nécessaire.
+
+**Limite réseau inchangée :** le mode LAN utilise toujours HTTP non chiffré et reste réservé aux données fictives. V25.0.13 n'est pas autorisée pour un usage scolaire réel multi-postes.
