@@ -1,0 +1,82 @@
+const fs = require('fs');
+const vm = require('vm');
+const assert = require('assert');
+
+const source = fs.readFileSync('_all.js', 'utf8');
+assert(source.includes("scheduleView='day';setScheduleDate('${iso(x)}')"), 'Les clics du calendrier mensuel doivent passer par le normalisateur local.');
+assert(!source.includes("selectedWeek=new Date('${iso(x)}');scheduleView='day';render()"));
+assert(source.includes("selectedWeek=startWeek(scheduleLocalDate('${iso(x)}'))"), 'Le mini-calendrier doit aussi utiliser la date locale.');
+const start = source.indexOf('function monday(d)');
+const end = source.indexOf('function lessonFor(', start);
+assert(start >= 0 && end > start, 'Les helpers de calendrier doivent être présents.');
+
+const context = {
+  DAYS: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
+  selectedWeek: null,
+  scheduleView: 'week',
+  renderCount: 0,
+  render() { this.renderCount += 1; },
+  db: { schedule: [], classes: [] },
+  iso(date) { const d = new Date(date); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+};
+vm.createContext(context);
+vm.runInContext(source.slice(start, end), context);
+const navStart = source.indexOf('function changeLessonMonth(', end);
+const navEnd = source.indexOf('function openScheduleOccurrence(', navStart);
+assert(navStart >= 0 && navEnd > navStart, 'Les commandes de navigation doivent être présentes.');
+vm.runInContext(source.slice(navStart, navEnd), context);
+
+const asISO = (date) => vm.runInContext('iso(selectedWeek)', context);
+vm.runInContext("selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
+assert.strictEqual(asISO(), '2026-11-09', 'La semaine doit commencer le lundi local.');
+assert.deepStrictEqual(
+  Array.from(vm.runInContext('weekDates().map(iso)', context)),
+  ['2026-11-09','2026-11-10','2026-11-11','2026-11-12','2026-11-13','2026-11-14','2026-11-15']
+);
+
+vm.runInContext('changeWeek(7)', context);
+assert.strictEqual(asISO(), '2026-11-16');
+vm.runInContext('changeWeek(-7)', context);
+assert.strictEqual(asISO(), '2026-11-09', 'Aller une semaine plus loin puis revenir doit restaurer la semaine initiale.');
+
+vm.runInContext("setScheduleDate(new Date(2026,10,13,19,45))", context);
+assert.strictEqual(asISO(), '2026-11-09', '« Aujourd’hui » doit conserver la bonne semaine, même avec une heure tardive.');
+
+vm.runInContext("scheduleView='day';setScheduleDate('2026-11-13')", context);
+assert.strictEqual(asISO(), '2026-11-13', 'Une date ISO doit être interprétée en date locale, pas en UTC.');
+
+vm.runInContext("scheduleView='week';setScheduleDate('2026-11-13')", context);
+assert.strictEqual(asISO(), '2026-11-09');
+
+const slot = { id:'slot-1', day:4, startDate:'2026-11-09', recurrence:'weekly', time:'09:00', endTime:'10:00' };
+context.db.schedule = [slot];
+assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", context), 1);
+vm.runInContext('changeWeek(7)', context);
+assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,20,12)).length", context), 1);
+vm.runInContext('changeWeek(-7)', context);
+assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", context), 1);
+
+
+const scheduleStart = source.indexOf('function schedule(){');
+const scheduleEnd = source.indexOf('function scheduleWeek(', scheduleStart);
+assert(scheduleStart >= 0 && scheduleEnd > scheduleStart, 'Le rendu du planning doit être présent.');
+context.window = {};
+context.shell = () => '';
+context.esc = value => String(value ?? '');
+context.subjectColor = () => ['#fff','#ddd','#000'];
+context.eventCard = (item, date) => item.id+'@'+context.iso(date);
+context.scheduleDay = (date, getOccurrences) => String(getOccurrences(date).length);
+context.scheduleMonth = (date, getOccurrences) => String(getOccurrences(date).length);
+vm.runInContext(source.slice(scheduleStart, scheduleEnd), context);
+const weekRendererStart = source.indexOf('function scheduleWeek(');
+const weekRendererEnd = source.indexOf('function scheduleDay(', weekRendererStart);
+assert(weekRendererStart >= 0 && weekRendererEnd > weekRendererStart, 'Le vrai rendu hebdomadaire doit être présent.');
+vm.runInContext(source.slice(weekRendererStart, weekRendererEnd), context);
+vm.runInContext("scheduleView='week';selectedWeek=startWeek(new Date(2026,10,13,19,30))", context);
+assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit apparaître le vendredi de la semaine initiale.');
+vm.runInContext('changeWeek(7)', context);
+assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-20'), 'Le cours récurrent doit apparaître la semaine suivante.');
+vm.runInContext('changeWeek(-7)', context);
+assert(vm.runInContext('schedule()', context).includes('slot-1@2026-11-13'), 'Le cours doit réapparaître après le retour à la semaine initiale.');
+
+console.log('OK — navigation semaine aller/retour, bouton Aujourd’hui, dates locales, occurrences récurrentes et rendu du planning.');
