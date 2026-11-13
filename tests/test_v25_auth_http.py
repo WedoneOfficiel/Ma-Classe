@@ -32,20 +32,28 @@ def run():
         for _ in range(40):
             try: call(base,'/'); break
             except Exception: time.sleep(.1)
+        status,_,body=call(base,'/api/auth/setup-status')
+        assert status==200 and json.loads(body)['setupRequired'] is True
         assert call(base,'/api/data')[0]==401
         assert call(base,'/api/auth/session',extra_headers={'Host':'attacker.invalid'})[0]==403
         assert call(base,'/api/upload','POST',{},send_origin=False)[0]==403
         assert call(base,'/api/auth/login','POST',{'username':'admin','password':'admin'},send_origin=False)[0]==403
-        status,headers,body=call(base,'/api/auth/login','POST',{'username':'admin','password':'admin'})
-        assert status==200 and json.loads(body)['user']['mustChangePassword']
+        assert call(base,'/api/auth/login','POST',{'username':'admin','password':'admin'})[0]==401
+        assert call(base,'/api/auth/setup','POST',{'name':'Direction','username':'direction','password':'court'})[0]==400
+        initial_admin_password='unMotDePasseAdminTresSolide!'
+        status,headers,body=call(base,'/api/auth/setup','POST',{'name':'Direction','username':'direction','password':initial_admin_password})
+        assert status==201 and json.loads(body)['user']['role']=='admin'
         admin=headers.get('Set-Cookie').split(';')[0]
-        assert call(base,'/api/data',cookie=admin)[0]==428
-        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'admin','newPassword':'court'},admin)[0]==400
-        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'admin','newPassword':'unMotDePasseAdminTresSolide!'},admin)[0]==200
-        status,other_headers,_=call(base,'/api/auth/login','POST',{'username':'admin','password':'unMotDePasseAdminTresSolide!'})
+        assert json.loads(call(base,'/api/auth/setup-status')[2])['setupRequired'] is False
+        assert call(base,'/api/auth/setup','POST',{'name':'Autre','username':'autre','password':'unAutreMotDePasseTresSolide!'})[0]==409
+        assert call(base,'/api/data',cookie=admin)[0]==200
+        saved=json.loads((app/'data'/'maclasse.json').read_text())
+        assert len(saved['users'])==1 and saved['users'][0]['role']=='admin' and 'teachers' not in saved
+        assert 'passwordHash' not in json.loads(call(base,'/api/data',cookie=admin)[2])['users'][0]
+        status,other_headers,_=call(base,'/api/auth/login','POST',{'username':'direction','password':initial_admin_password})
         assert status==200
         other_admin=other_headers.get('Set-Cookie').split(';')[0]
-        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'unMotDePasseAdminTresSolide!','newPassword':'unMotDePasseAdminEncorePlusFort!'},admin)[0]==200
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':initial_admin_password,'newPassword':'unMotDePasseAdminEncorePlusFort!'},admin)[0]==200
         assert call(base,'/api/data',cookie=other_admin)[0]==401
         assert call(base,'/api/data',cookie=admin)[0]==200
         assert call(base,'/api/cloud-delete','POST',{'path':'../outside'},admin)[0]==400
@@ -62,22 +70,28 @@ def run():
         assert 'sandbox' in upload_headers.get('Content-Security-Policy','').lower()
         assert "default-src 'none'" in upload_headers.get('Content-Security-Policy','')
         saved=json.loads((app/'data'/'maclasse.json').read_text())
-        admin_record=next(u for u in saved['users'] if u['username']=='admin')
+        admin_record=next(u for u in saved['users'] if u['username']=='direction')
         assert admin_record['passwordHash'].startswith('pbkdf2_sha256$')
         assert len(admin_record['passwordHash'].split('$'))==4
-        status,headers,body=call(base,'/api/auth/login','POST',{'username':'enseignant','password':'enseignant'})
+        teacher_password='unMotDePasseProfTresSolide!'
+        status,created_headers,created_body=call(base,'/api/admin/teacher','POST',{'first':'Alice','last':'Martin','username':'alice.martin','email':'alice@example.test','phone':'','subjects':['Mathématiques'],'profileNotes':'','password':teacher_password,'classIds':[],'ppIds':[]},admin)
+        assert status==201
+        created=json.loads(created_body)['user']; teacher_id=created['id']
+        assert created['role']=='teacher' and created['mustChangePassword'] is True
+        saved=json.loads((app/'data'/'maclasse.json').read_text())
+        teacher_record=next(u for u in saved['users'] if u['id']==teacher_id)
+        assert teacher_record['first']=='Alice' and teacher_record['last']=='Martin' and 'teacherId' not in teacher_record
+        assert 'teachers' not in saved and teacher_record['passwordHash'].startswith('pbkdf2_sha256$')
+        status,headers,body=call(base,'/api/auth/login','POST',{'username':'alice.martin','password':teacher_password})
         assert status==200 and json.loads(body)['user']['mustChangePassword']
         teacher=headers.get('Set-Cookie').split(';')[0]
-        assert call(base,'/api/auth/change-password','POST',{'currentPassword':'enseignant','newPassword':'unMotDePasseProfTresSolide!'},teacher)[0]==200
-        saved=json.loads((app/'data'/'maclasse.json').read_text())
-        teacher_record=next(u for u in saved['users'] if u['username']=='enseignant')
-        assert teacher_record['passwordHash'].startswith('pbkdf2_sha256$')
+        assert call(base,'/api/auth/change-password','POST',{'currentPassword':teacher_password,'newPassword':'unMotDePasseProfEncorePlusFort!'},teacher)[0]==200
         assert call(base,'/api/reset','POST',{},teacher)[0]==403
         assert call(base,'/api/reset','POST',{},admin)[0]==200
         # Vérification HTTP de la projection professeur et de la fusion sans écrasement.
         seeded={
             'users':[],
-            'teachers':[{'id':'teacher-local','classIds':['c1']},{'id':'t2','classIds':['c2']}],
+            'teachers':[],
             'classes':[{'id':'c1','name':'6A'},{'id':'c2','name':'6B'}],
             'students':[{'id':'s1','classId':'c1','first':'Alice','notes':'note interne confidentielle'},{'id':'s2','classId':'c2','first':'Bob'},{'id':'s3','classId':'c1','first':'Camille'}],
             'lessons':[{'id':'l1','classId':'c1','homework':{'title':'Exercice','requiresSubmission':True}},{'id':'l2','classId':'c2','homework':{'title':'Devoir','requiresSubmission':True}}],
@@ -86,6 +100,8 @@ def run():
         }
         # Conserver les comptes authentifiés pendant le test de cloisonnement.
         seeded['users']=[admin_record,teacher_record]
+        seeded['classes'][0]['teacherIds']=[teacher_record['id']]
+        seeded['classes'][1]['teacherIds']=[]
         (app/'data'/'maclasse.json').write_text(json.dumps(seeded))
         status,_,missing_pdf=call(base,'/api/bulletin-pdf','POST',{'bulletinId':'absent'},teacher)
         assert status==404
