@@ -162,6 +162,7 @@ const renderStart=source.indexOf('function render(){');
 const shellStart=source.indexOf('function shell(',renderStart);
 assert(renderStart>=0&&shellStart>renderStart,'Le routeur principal doit être présent.');
 context.authGuard=()=>true;
+context.authUser=null;
 context.nav=()=>{};
 context.main={innerHTML:''};
 context.document={getElementById:()=>context.main};
