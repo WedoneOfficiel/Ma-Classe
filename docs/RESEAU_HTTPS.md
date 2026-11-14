@@ -66,6 +66,10 @@ Si Firefox n'utilise pas automatiquement les autorités système, ouvre Paramèt
 
 Une fois le certificat approuvé, ouvre l'adresse HTTPS affichée dans le terminal du serveur, par exemple `https://192.168.1.20:8765`. L'adresse réelle est celle affichée par le lanceur.
 
+## Si Firefox affiche SEC_ERROR_UNKNOWN_ISSUER
+
+Ce code signifie que Firefox ne reconnaît pas l'autorité qui a signé le certificat local. Il ne faut pas ajouter une exception aveugle au serveur : installe le certificat public de l'autorité MaClasse `data/tls/ca.crt` dans les autorités de confiance du navigateur. Dans Firefox : Paramètres → Vie privée et sécurité → Certificats → Afficher les certificats → Autorités → Importer ; sélectionne `ca.crt` et coche « Faire confiance à cette autorité pour identifier des sites web ». Ne sélectionne jamais `ca.key` ni `server.key`. Redémarre Firefox si nécessaire. Sur macOS, Firefox peut aussi utiliser les autorités racines ajoutées au trousseau système lorsque l'option d'approbation automatique des certificats tiers est activée.
+
 ## Adresse IP, pare-feu et renouvellement
 
 - Réserve une adresse IP stable au serveur dans le DHCP de la box. Si l'adresse change, relance le lanceur : il régénère le certificat serveur avec la nouvelle adresse en conservant la même autorité locale.

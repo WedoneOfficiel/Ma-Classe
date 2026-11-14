@@ -7,6 +7,7 @@ import unittest
 from http.server import ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request, build_opener, HTTPCookieProcessor
+from urllib.parse import quote
 from http.cookiejar import CookieJar
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -99,12 +100,13 @@ class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
         revision = headers.get("X-MaClasse-Revision")
         self.assertTrue(revision)
         content = b"piece jointe de devoir"
+        original_name = "Capture d’écran 2026-10-11 à 15.32.16.png"
         status, uploaded, _ = self.request(
             "/api/upload", "POST", raw=content,
-            extra_headers={"X-Filename": "devoir.txt", "X-Upload-Folder": "submissions/student-1"}
+            extra_headers={"X-Filename": "utf8:" + quote(original_name, safe=""), "X-Upload-Folder": "submissions/student-1"}
         )
         self.assertEqual(status, 200, uploaded)
-        self.assertEqual(uploaded["name"], "submissions/student-1/devoir.txt")
+        self.assertEqual(uploaded["name"], "submissions/student-1/" + original_name)
         visible["submissions"].append({
             "id": "submission-1", "lessonId": "lesson-1", "studentId": "student-1",
             "status": "draft", "files": [uploaded], "correctionFiles": [],
@@ -116,7 +118,7 @@ class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(fresh["submissions"][0]["files"][0]["name"], uploaded["name"])
         revision = headers.get("X-MaClasse-Revision")
-        status, file_body, _ = self.request("/data/uploads/" + uploaded["name"])
+        status, file_body, _ = self.request("/data/uploads/" + quote(uploaded["name"], safe="/"))
         self.assertEqual(status, 200)
         self.assertEqual(file_body, content)
         fresh["submissions"][0]["status"] = "submitted"

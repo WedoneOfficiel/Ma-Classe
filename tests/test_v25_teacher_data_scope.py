@@ -45,6 +45,22 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertNotIn('password',view['users'][0])
 
+    def test_teacher_schedule_projection_and_save_preserve_other_classes(self):
+        data=copy.deepcopy(self.data)
+        data['schedule']=[
+            {'id':'slot-c1','classId':'c1','day':4,'time':'09:00','subject':'Maths'},
+            {'id':'slot-c2','classId':'c2','day':2,'time':'10:00','subject':'Français'}
+        ]
+        view=server._teacher_visible_data(data,self.user)
+        self.assertEqual([x['id'] for x in view['schedule']],['slot-c1'])
+        view['schedule'][0]['subject']='Mathématiques'
+        view['schedule'].append({'id':'slot-new','classId':'c1','day':1,'time':'11:00','subject':'Histoire'})
+        merged=server._merge_teacher_data(data,view,self.user)
+        by_id={x['id']:x for x in merged['schedule']}
+        self.assertEqual(by_id['slot-c1']['subject'],'Mathématiques')
+        self.assertEqual(by_id['slot-new']['subject'],'Histoire')
+        self.assertEqual(by_id['slot-c2']['subject'],'Français')
+
     def test_teacher_save_merges_only_assigned_class(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['students'][0]['first']='Alicia'
