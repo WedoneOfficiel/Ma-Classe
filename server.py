@@ -49,7 +49,7 @@ def _schedule_update_timer(timestamp):
                    check=True,capture_output=True,text=True,timeout=10)
     subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
                    check=False,capture_output=True,text=True,timeout=10)
-    unit='[Unit]\\nDescription=MaClasse — maintenance programmée\\n\\n[Timer]\\nOnCalendar='+calendar+'\\nPersistent=false\\nUnit=maclasse-update-apply.service\\n\\n[Install]\\nWantedBy=timers.target\\n'
+    unit='[Unit]\nDescription=MaClasse — maintenance programmée\n\n[Timer]\nOnCalendar='+calendar+'\nPersistent=false\nUnit=maclasse-update-apply.service\n\n[Install]\nWantedBy=timers.target\n'
     tmp=unit_path+'.tmp'
     with open(tmp,'w',encoding='utf-8') as f:
         f.write(unit)
@@ -1843,10 +1843,18 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     with open(maintenance_path,encoding='utf-8') as f: old_maintenance=json.load(f)
                 except (OSError,ValueError): pass
-                _schedule_update_timer(scheduled_at)
                 tmp=maintenance_path+'.tmp'
                 with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
                 os.replace(tmp,maintenance_path)
+                try:
+                    _schedule_update_timer(scheduled_at)
+                except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                    if old_maintenance and old_maintenance.get('status')=='scheduled':
+                        _schedule_update_timer(old_maintenance.get('scheduled_at'))
+                    else:
+                        try: os.unlink(maintenance_path)
+                        except OSError: pass
+                    raise
                 return self._json({'scheduled':True,'maintenance':maintenance},201)
             except (ValueError,TypeError,KeyError,json.JSONDecodeError):
                 return self._json({'error':'Date ou demande de programmation invalide.'},400)
