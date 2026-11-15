@@ -20,7 +20,6 @@ class TeacherAssignmentTests(unittest.TestCase):
                 {"id": "t4", "role": "teacher", "subjects": []},
                 {"id": "t5", "role": "teacher", "subjects": []},
                 {"id": "t6", "role": "teacher", "subjects": ["Legacy subject"]},
-                {"id": "t6", "role": "teacher", "subjects": ["Legacy subject"]},
             ],
             "classes": [{"id": "c1", "name": "6e A", "teacherIds": ["t6"], "principalTeacherId": "pp"}],
             "students": [{"id": "s1", "classId": "c1", "first": "Alice", "last": "Test"}],
