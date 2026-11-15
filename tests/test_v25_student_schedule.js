@@ -11,9 +11,21 @@ assert(source.includes('Le serveur n’a pas confirmé l’envoi du travail'));
 
 assert(source.includes("${studentMode?'':`<button class=\"eventEdit\""), 'Le bouton de modification du créneau doit être absent du DOM élève.');
 assert(source.includes("${studentMode?'':'ondragover=\"allowScheduleDrop(event)\""), 'Les zones de dépôt doivent être désactivées dans l’EDT élève.');
-assert(source.includes('name="color" value="${esc(s.color||subjectColor(s.subject)[2])}"'), 'Le formulaire EDT doit proposer la couleur du cours.');
-assert(source.includes('c.color=o.color||old.color||subjectColor(c.subject)[2]'), 'La couleur choisie doit être conservée lors de la modification.');
-assert(source.includes('c.color=o.color||subjectColor(c.subject)[2]'), 'La couleur choisie doit être conservée lors de la création.');
+assert(source.includes('name="color" value="${esc(subjectColor(s.subject)[2])}"'), 'Le formulaire EDT doit proposer la couleur globale de la matière.');
+assert(source.includes('db.settings.subjectColors??={}'), 'Les couleurs personnalisées doivent être stockées dans les paramètres.');
+assert(source.includes("const c=subjectColor(o.subject), pattern=o.pattern||'none';"), 'Les créneaux doivent lire la couleur depuis la matière.');
+assert(source.includes('db.schedule.filter(x=>subjectColorKey(x.subject)===subjectColorKey(o.subject)).forEach(x=>delete x.color)'), 'La sauvegarde doit supprimer les anciennes couleurs locales de la matière.');
+assert(source.includes('La couleur est commune à une matière dans tout l’établissement'), 'Le gestionnaire doit expliquer la portée globale de la couleur.');
+
+const colorStart = source.indexOf('const SUBJECT_COLORS=');
+const colorEnd = source.indexOf('\\nfunction eventCard', colorStart);
+assert(colorStart >= 0 && colorEnd > colorStart);
+const colorContext = { db: { settings: { subjectColors: { francais: '#123456' } } } };
+vm.createContext(colorContext);
+vm.runInContext(source.slice(colorStart, colorEnd), colorContext);
+assert.strictEqual(vm.runInContext("subjectColor('Français')[2]", colorContext), '#123456');
+assert.strictEqual(vm.runInContext("subjectColor(' francais  ')[2]", colorContext), '#123456',
+  'La couleur doit être commune malgré les accents, la casse et les espaces.');
 assert(source.includes('const scrollTop=window.scrollY;closeModal();render();window.scrollTo(0,scrollTop)'), 'La sauvegarde d’un créneau doit préserver la position de défilement.');
 
 const context = {
