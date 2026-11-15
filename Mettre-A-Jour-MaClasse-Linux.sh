@@ -24,11 +24,14 @@ BRANCH="$(git branch --show-current)"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP="../MaClasse-sauvegarde-avant-maj-$STAMP"
 mkdir -p "$BACKUP"
-if [[ -d data ]]; then cp -a data "$BACKUP/data"; fi
+if [[ -d data ]]; then
+  mkdir -p "$BACKUP/data"
+  tar -C data --exclude=./tls -cf - . | tar -C "$BACKUP/data" -xf -
+fi
 PREVIOUS="$(git rev-parse HEAD)"
 PREVIOUS_VERSION="$(cat VERSION.txt)"
 printf "Version précédente : %s\nCommit précédent : %s\nDate : %s\n" "$PREVIOUS_VERSION" "$PREVIOUS" "$STAMP" > "$BACKUP/INFORMATIONS.txt"
-echo "Sauvegarde créée : $BACKUP (base, pièces jointes et fichiers de data/)."
+echo "Sauvegarde créée : $BACKUP (base, pièces jointes et fichiers de data/, hors certificats et clés TLS)."
 git fetch origin main || fail "Impossible de récupérer la version officielle."
 git merge-base --is-ancestor "$PREVIOUS" origin/main || fail "Branche locale divergente ; aucune réinitialisation automatique."
 git merge --ff-only origin/main || fail "Mise à jour Git impossible."
