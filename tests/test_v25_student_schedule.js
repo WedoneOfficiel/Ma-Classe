@@ -27,6 +27,7 @@ assert.strictEqual(vm.runInContext("subjectColor('Français')[2]", colorContext)
 assert.strictEqual(vm.runInContext("subjectColor(' francais  ')[2]", colorContext), '#123456',
   'La couleur doit être commune malgré les accents, la casse et les espaces.');
 assert(source.includes('function refreshSchedulePage(){'), 'La sauvegarde doit disposer d’un rafraîchissement ciblé du calendrier.');
+assert(source.includes("typeof document==='undefined'||typeof document.getElementById!=='function'"), 'Le rafraîchissement ciblé doit conserver un fallback dans les contextes sans DOM.');
 assert(source.includes('current.replaceWith(next)'), 'La sauvegarde doit remplacer uniquement le calendrier, pas toute la page.');
 assert(source.includes('closeModal();refreshSchedulePage();window.scrollTo(0,scrollTop)'), 'Après sauvegarde, le calendrier doit être actualisé sans recharger toute la vue.');
 assert(source.includes("catch(err){db=JSON.parse(before);normalize();toast('Échec de sauvegarde : '+(err.message||'réessaie.'))}"), 'En cas d’échec, le formulaire reste ouvert pour permettre une correction ou une nouvelle tentative.');
