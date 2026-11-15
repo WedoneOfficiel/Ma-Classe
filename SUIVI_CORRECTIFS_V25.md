@@ -159,6 +159,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 #### 15/11/2026 — Ajustement après échec du test EDT ciblé
 
-- **CI run #630 : échec** des suites JavaScript Linux et macOS dans `tests/test_v25_schedule_navigation.js:267`. Le scénario de sauvegarde simulait un environnement sans DOM ; le nouveau rafraîchissement ciblé supposait à tort que `document.getElementById` était disponible. Le serveur de test n'a pas mis en évidence une régression de calcul de récurrence, mais le test de sauvegarde n'a pas abouti.
-- Correction : `refreshSchedulePage()` utilise le rafraîchissement ciblé lorsque le DOM est disponible et conserve un fallback `render()` dans les contextes sans DOM. Ajout d'une assertion dédiée.
-- **État :** correction poussée ; nouvelle CI nécessaire. Ne pas considérer le correctif de sauvegarde comme validé avant réussite de cette exécution.
+- **CI run #630 puis #633 : échec** des suites JavaScript Linux/macOS dans `tests/test_v25_schedule_navigation.js:267`. Le scénario de sauvegarde extrait `saveSchedule()` isolément et ne fournissait pas le nouveau helper `subjectColorKey()` appelé lors de l'enregistrement de la couleur matière. L'exception était interceptée par le `catch`, qui restaurait l'état initial ; le test constatait donc zéro créneau.
+- Le premier diagnostic centré sur l'absence de DOM était incomplet : le fallback DOM a été conservé pour les contextes isolés, mais il ne suffisait pas à ce test. Le stub de test reçoit maintenant aussi `subjectColorKey()`.
+- **État :** correction du test poussée ; nouvelle CI nécessaire. Le code de production reste inchangé dans cette dernière correction. Ne pas considérer le correctif de sauvegarde comme validé avant réussite de cette exécution.
