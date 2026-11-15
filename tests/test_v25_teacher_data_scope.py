@@ -17,6 +17,14 @@ class TeacherDataScopeTests(unittest.TestCase):
         }
         self.user={'id':'t1','role':'teacher'}
 
+    def test_teacher_can_fill_bulletin_for_a_past_term_they_taught(self):
+        data=copy.deepcopy(self.data)
+        data['settings']['terms']=[{'id':'term-old','start':'2025-09-01','end':'2025-12-20'}]
+        data['teacherAssignments']=[{'id':'a1','classId':'c1','teacherId':'t1','subject':'Maths',
+                                     'startDate':'2025-09-01','endDate':'2025-12-20'}]
+        self.assertTrue(server._teacher_can_teach_subject_for_term(data,self.user,'c1','Maths','term-old'))
+        self.assertFalse(server._teacher_can_teach_subject(data,self.user,'c1','Maths'))
+
     def test_one_off_substitute_can_edit_the_taught_subject_bulletin(self):
         data=copy.deepcopy(self.data)
         data['schedule']=[{'id':'slot1','classId':'c1','subject':'Maths','teacherId':'t2',
