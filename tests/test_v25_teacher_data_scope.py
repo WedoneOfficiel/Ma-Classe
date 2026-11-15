@@ -342,7 +342,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
         merged=server._merge_teacher_data(self.data,view,self.user)
-        self.assertEqual(merged['settings'],{'schoolName':'École test'})
+        self.assertEqual(merged['settings'],{'schoolName':'École test','subjectColors':{'francais':'#123456'}})
 
 
     def test_projection_exposes_only_explicitly_shared_top_level_keys(self):
