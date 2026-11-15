@@ -248,3 +248,14 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - La gestion des mises à jour du serveur est enregistrée séparément comme demande d'amélioration AMEL-01, et non comme bug confirmé. Le fonctionnement manuel par commandes doit être conservé.
 - Le registre comporte désormais **16 bugs** (11 en cours de résolution, 5 détectés) et **1 demande d'amélioration**. Aucun bug n'est marqué résolu sans recette.
 - **État du code historique :** la référence `pat` n'apparaît plus dans le chemin actuel de `studentEventCard()`, mais le scénario exact avec un vrai compte élève n'a pas encore été reproduit. Le bug reste donc en cours de résolution, pas déclaré résolu.
+
+
+#### 15/11/2026 — Recoupement du registre avec les tests existants
+
+- Le recoupement de `tests/test_v25_student_schedule.js` et du code actuel montre que plusieurs signalements historiques disposent déjà de protections/tests, sans que cela suffise à clore la recette :
+  - **EDT-04** : `refreshLiveScheduleData` et son rafraîchissement périodique sont présents ; le test vérifie le mécanisme, mais pas une synchronisation réelle entre deux comptes.
+  - **EDT-05** : le test couvre les déplacements jour/semaine/mois ; il ne mesure pas encore le saut visuel signalé dans le navigateur.
+  - **LEC-01** : le test vérifie que la page Séances & Leçons utilise le shell avec son en-tête ; l'actualisation des données en situation réelle reste à contrôler.
+  - **JS-01** : le test interdit l'interpolation `${pat}` non définie et le chemin actuel `studentEventCard()` n'utilise plus cette variable ; le scénario historique reste à reproduire sur le compte élève.
+- Le registre a été ajusté en conséquence : **16 bugs**, dont **14 en cours de résolution** et **2 détectés**. **DEV-01** (upload de pièce jointe à un devoir) et **EVAL-04** (cohérence des droits de modification des évaluations) restent au stade détecté faute de preuve suffisante d'un correctif dédié.
+- La suite de tests complète du commit applicatif #672 est verte. Les exécutions déclenchées par les commits documentaires sont distinctes et doivent être suivies sans confondre leur état avec la validation applicative.
