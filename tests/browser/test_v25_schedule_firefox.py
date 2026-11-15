@@ -240,6 +240,17 @@ def main() -> None:
                 }""")
                 mailbox = student_page.locator('.v2104App')
                 expect(mailbox).to_be_visible()
+                mailbox_state = student_page.evaluate("""() => ({
+                  user:authUser,
+                  page,
+                  studentCount:db.students?.length,
+                  classTeacherIds:db.classes?.[0]?.teacherIds,
+                  teachers:db.teachers?.map(t=>t.id),
+                  mailbox:db.mailboxV2,
+                  body:document.body.innerText.slice(0,1200)
+                })""")
+                if mailbox.locator('.v2104Row').count() == 0:
+                    raise AssertionError("Student mailbox has no message row: "+json.dumps(mailbox_state,ensure_ascii=False))
                 expect(mailbox.locator('.v2104Row')).to_contain_text("Message de test élève")
                 student_page.evaluate("""() => {
                   page='studentSchedule';
