@@ -513,7 +513,7 @@ function evaluationModelDate(e){return String(e?.date||'')}
 function evaluationModelTerms(db){const raw=db?.settings?.terms||db?.terms||[];return Array.isArray(raw)?raw:[]}
 function evaluationModelTerm(db,termId){if(!termId)return null;return evaluationModelTerms(db).find(t=>String(t.id)===String(termId))||null}
 function evaluationModelInTerm(e,term){if(!term)return true;const d=evaluationModelDate(e);if(!d)return false;return (!term.start||d>=String(term.start))&&(!term.end||d<=String(term.end))}
-function evaluationModelPublished(e,today){if(e?.published===false)return false;const at=String(e?.publishAt||'');return !at||!today||at<=String(today)}
+function evaluationModelPublished(e,today){if(e?.published===false)return false;const at=String(e?.publishAt||'').trim();if(!at)return true;const reference=String(today||new Date().toISOString());if(at.length<=10)return at<=reference.slice(0,10);const published=Date.parse(at),now=Date.parse(reference.length<=10?reference+'T23:59:59.999Z':reference);return Number.isFinite(published)&&Number.isFinite(now)&&published<=now}
 function evaluationModelTargetStudents(db,e){return (db?.students||[]).filter(s=>s.classId===e?.classId&&(!e?.group||s.group===e.group))}
 function evaluationModelGrade(e,studentId){return (e?.grades||[]).find(g=>String(g.studentId)===String(studentId))||null}
 function evaluationModelNumericGrade(e,g){if(!g||g.value===''||g.value===null||g.value===undefined)return null;const raw=gradeNumber(g.value);if(raw===null)return null;const max=evaluationModelMaxScore(e);return raw>=0&&raw<=max?raw:max<0?null:raw>max?null:raw}
@@ -577,6 +577,8 @@ function canEditBulletinSubject(classId,subject){
  const tid=String(currentTeacherProfile()?.id||''),norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toLocaleLowerCase('fr'),key=norm(subject),today=iso(new Date());
  if(!tid||!key)return false;
  const slots=db.schedule.filter(s=>String(s.classId)===String(classId)&&norm(s.subject)===key&&([String(s.teacherId||''),...(s.teacherIds||[]).map(String)].includes(tid))&&!teacherScheduleSuspended(s,tid,today));
+ const replacements=db.schedule.filter(s=>String(s.classId)===String(classId)&&norm(s.subject)===key&&s.overrides?.[today]?.status!=='cancelled'&&String(s.overrides?.[today]?.replacementTeacherId||'')===tid);
+ if(replacements.length)return true;
  const assignments=db.teacherAssignments.filter(a=>String(a.classId)===String(classId)&&String(a.teacherId)===tid&&norm(a.subject)===key);
  const active=[...slots,...assignments].some(a=>{const start=a.startDate||'',end=a.endDate||'';return (!start||start<=today)&&(!end||today<=end)});
  if(active)return true;
@@ -1084,15 +1086,15 @@ const __v205SaveMetaOriginal = __v205SaveEvaluationMeta;
 // FormData ignores disabled controls; hidden fields above carry the chosen values.
 const __v205StudentGrades = studentGrades;
 studentGrades = function(sid=activeStudent()){
-  const today=iso(new Date());
-  return db.evaluations.filter(e=>e.published===true && (!e.publishAt || e.publishAt<=today)).flatMap(e=>{
+  const now=new Date().toISOString();
+  return db.evaluations.filter(e=>e.published===true && evaluationModelPublished(e,now)).flatMap(e=>{
     const g=(e.grades||[]).find(x=>x.studentId===sid); if(!g)return [];
     const hasGridResult=Object.keys(g.criterionScores||{}).length>0 || Object.keys(g.competencyRatings||{}).length>0;
     return g.value!=='' || hasGridResult || g.comment ? [{e,g}] : [];
   }).sort((a,b)=>String(b.e.date||'').localeCompare(String(a.e.date||'')));
 };
-function v205IsPublished(e){return e?.published===true && (!e.publishAt || e.publishAt<=iso(new Date()));}
-const __v205WeightedAvg=weightedAvg; weightedAvg=function(ids){if(appSpace!=='student')return __v205WeightedAvg(ids);const today=iso(new Date()),allowed=db.evaluations.filter(e=>e.published===true&&(!e.publishAt||e.publishAt<=today));return weightedAverageForEvaluations(allowed,ids)};
+function v205IsPublished(e){return e?.published===true && evaluationModelPublished(e,new Date().toISOString());}
+const __v205WeightedAvg=weightedAvg; weightedAvg=function(ids){if(appSpace!=='student')return __v205WeightedAvg(ids);const now=new Date().toISOString(),allowed=db.evaluations.filter(e=>e.published===true&&evaluationModelPublished(e,now));return weightedAverageForEvaluations(allowed,ids)};
 function attendanceFollowup(){
  const params=new URLSearchParams(location.search), classFilter=params.get('class')||'', statusFilter=params.get('status')||'pending';
  const rows=[];
@@ -1367,9 +1369,7 @@ function studentReportEvaluationInTerm(e,selectedTerm){
   return (!selectedTerm.start||date>=selectedTerm.start)&&(!selectedTerm.end||date<=selectedTerm.end);
 }
 function studentReportIsPublished(e,today){
-  if(e?.published!==true)return false;
-  const publishedAt=String(e.publishAt||'');
-  return !publishedAt||publishedAt<=today;
+  return e?.published===true&&evaluationModelPublished(e,today);
 }
 function studentReportGradeHasContent(g){
   if(!g)return false;
@@ -1554,6 +1554,8 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
  };
  function v217DeepMeta(e,id){
    const cid=e.classId||'';
+   const publicationMode=e.published!==true?'draft':(e.publishAt?'scheduled':'now');
+   const publicationLocal=e.publishAt?(()=>{const d=new Date(e.publishAt);return Number.isNaN(d.getTime())?'':new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)})():'';
    const templates=(db.evaluationTemplates||[]).filter(t=>{const level=cls(cid)?.level||'';return !t.level||!level||String(t.level).toLocaleLowerCase('fr')===String(level).toLocaleLowerCase('fr')});
    const hasGrid=(e.criteria?.length||e.competencies?.length);
    return `<div class="v217EvalHead"><div><h2>${id?'Modifier l’évaluation':'Créer une évaluation'}</h2><div class="muted">Configure l’essentiel, puis passe directement à la saisie.</div></div></div>
@@ -1576,18 +1578,27 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
       <div class="field" style="margin-top:12px"><label>Compétences de l'évaluation</label><div class="muted" style="margin-bottom:8px">Filtrées automatiquement selon le niveau et la matière. Coche seulement celles à évaluer.</div><div id="v217CompetencyPicker">${v217RenderCompetencyPicker(e.competencies||[],e.level||'',e.subject||'')}</div></div>
     </div>
    </div>
+   <div class="v217GridOption section"><h3>3 · Publication aux élèves</h3><p class="muted">Les notes restent invisibles tant qu’elles ne sont pas publiées. Tu peux les publier immédiatement ou programmer leur mise en ligne.</p>
+    <div class="form"><div class="field"><label>Publication</label><select class="select" name="publicationMode"><option value="draft" ${publicationMode==='draft'?'selected':''}>Garder en brouillon — invisible</option><option value="now" ${publicationMode==='now'?'selected':''}>Publier maintenant</option><option value="scheduled" ${publicationMode==='scheduled'?'selected':''}>Programmer la publication</option></select></div>
+    <div class="field"><label>Date et heure de publication</label><input class="input" type="datetime-local" name="publishAtLocal" value="${esc(publicationLocal)}"><small class="muted">Fuseau horaire de ton appareil. Obligatoire si tu choisis une publication programmée.</small></div></div>
+   </div>
    <div class="modalfoot"><button type="button" class="btn" onclick="closeModal()">Annuler</button><button class="btn primary">${id?'Enregistrer':'Créer puis saisir les notes'}</button></div></form>`;
  }
  function v217DeepGridPreview(e){const c=e.criteria||[],k=e.competencies||[];if(!c.length&&!k.length)return '<div class="notice">📝 <b>Note uniquement</b><br><small>Le tableau de saisie restera compact.</small></div>';return `<div class="notice">📋 <b>Grille active</b><br><small>${c.length} critère(s)${k.length?' · '+k.length+' compétence(s)':''}. Elle sera affichée directement dans le tableau de saisie.</small></div>`}
  window.v217DeepRefreshGroups=function(cid){const el=document.getElementById('v217DeepGroup');if(!el)return;el.innerHTML='<option value="">Classe entière</option>'+groups(cid).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}
  window.v217DeepApplyTemplate=function(id){const t=(db.evaluationTemplates||[]).find(x=>x.id===id);if(!t)return;const f=document.querySelector('#modal form');if(!f)return;f.querySelector('#v217DeepCriteria').value=JSON.stringify(t.criteria||[]);f.querySelector('[name="competenciesText"]').value=(t.competencies||[]).join('\n');v217RefreshCompetencyPicker();const total=v217CriteriaTotal(t.criteria||[]);if(total>0)f.querySelector('[name="maxScore"]').value=total;const p=document.getElementById('v217DeepGridPreview');if(p)p.innerHTML=v217DeepGridPreview(t);}
  window.v217DeepSaveMeta=function(ev,id){ev.preventDefault();const f=ev.target,o=Object.fromEntries(new FormData(f));let criteria=[];try{criteria=JSON.parse(o.criteriaJson||'[]')}catch(_){}o.coefficient=Number(o.coefficient||1);o.maxScore=Number(o.maxScore||20);o.criteria=Array.isArray(criteria)?criteria:[];o.competencies=String(o.competenciesText||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);
+   const mode=String(o.publicationMode||'draft'),local=String(o.publishAtLocal||'').trim();
+   if(mode==='scheduled'){const scheduled=new Date(local);if(!local||Number.isNaN(scheduled.getTime())){toast('Indique une date et une heure valides pour programmer la publication.');return}o.published=true;o.publishAt=scheduled.toISOString()}
+   else if(mode==='now'){o.published=true;o.publishAt=''}
+   else{o.published=false;o.publishAt=''}
+   delete o.publicationMode;delete o.publishAtLocal;
    const selectedClass=cls(o.classId); o.level=String(selectedClass?.level||o.level||'').trim();delete o.criteriaJson;delete o.competenciesText;db.competencyLibrary??=[];o.competencies.forEach(c=>{if(!db.competencyLibrary.includes(c))db.competencyLibrary.push(c)});if(id){const e=db.evaluations.find(x=>x.id===id);if(!e)return;Object.assign(e,o);evaluationModelNormalize(e);save();toast('Évaluation enregistrée');v217DeepOpenEvaluation(id)}else{const e={id:uid(),...o,grades:[],competencies:o.competencies||[],criteria:o.criteria||[]};e.grades=evaluationModelTargetStudents(db,e).map(s=>({studentId:s.id,value:'',comment:'',competencyRatings:{},criterionScores:{}}));db.evaluations.push(e);auditEvent('Évaluation créée',e.title||'Évaluation');save();toast('Évaluation créée');v217DeepOpenEvaluation(e.id)}}
  function v217CriteriaLevelOptions(c,g){return `<option value="">—</option>${(c.levels||[]).map(v=>`<option value="${esc(v)}" ${String(g?.criterionScores?.[c.id]??'')===String(v)?'selected':''}>${esc(v)}</option>`).join('')}`}
  window.v217DeepGradeKey=function(ev,eid,sid){const key=ev.key;if(!['Enter','ArrowDown','ArrowUp','Tab'].includes(key))return;if(ev.shiftKey&&key==='Tab')return;const inputs=[...document.querySelectorAll('.v217GradeInput')];const i=inputs.indexOf(ev.target);if(i<0)return;let n=i+(key==='ArrowUp'?-1:key==='ArrowDown'||key==='Enter'||key==='Tab'?1:0);if(n>=0&&n<inputs.length){ev.preventDefault();inputs[n].focus();inputs[n].select()}}
  window.v217DeepSetGrade=function(eid,sid,v,el){const r=evaluationModelSetGrade(db,eid,sid,cleanValue(v));if(!r.ok){toast(r.error==='invalid_grade'?`Note entre 0 et ${r.max}.`:'Évaluation introuvable.');if(el)el.focus();return}save();if(el){el.closest('tr')?.classList.add('v217RowDone');const s=el.closest('tr')?.querySelector('.v217Saved');if(s){s.textContent='✓';setTimeout(()=>s.textContent='',1000)}}}
  window.v217DeepSetComment=function(eid,sid,v){setGradeComment(eid,sid,v)}
- function v217DeepEntry(e){const students=evaluationModelTargetStudents(db,e),criteria=e.criteria||[],competencies=e.competencies||[],max=evaluationModelMaxScore(e);return `<div class="v217EvalHead"><div><h2>${esc(e.title||'Évaluation')}</h2><div class="muted">${esc(e.subject||'')} · ${esc(cls(e.classId)?.name||'')} · ${e.group?esc(e.group):'Classe entière'}</div><div class="v217Meta"><span class="v217Chip">📅 ${fmtDate(e.date)}</span><span class="v217Chip">/${max}</span><span class="v217Chip">coef. ${evaluationModelCoefficient(e)}</span>${criteria.length?`<span class="v217Chip">📋 ${criteria.length} critère(s)</span>`:''}${competencies.length?`<span class="v217Chip">🧩 ${competencies.length} compétence(s)</span>`:''}</div></div><div><button class="btn" onclick="v217DeepEditMeta('${e.id}')">Modifier la configuration</button></div></div>
+ function v217DeepEntry(e){const students=evaluationModelTargetStudents(db,e),criteria=e.criteria||[],competencies=e.competencies||[],max=evaluationModelMaxScore(e);return `<div class="v217EvalHead"><div><h2>${esc(e.title||'Évaluation')}</h2><div class="muted">${esc(e.subject||'')} · ${esc(cls(e.classId)?.name||'')} · ${e.group?esc(e.group):'Classe entière'}</div><div class="v217Meta"><span class="v217Chip">📅 ${fmtDate(e.date)}</span><span class="v217Chip">/${max}</span><span class="v217Chip">coef. ${evaluationModelCoefficient(e)}</span><span class="v217Chip">${e.published!==true?'Brouillon — invisible':(e.publishAt?'Publication programmée':'Publiée')}</span>${criteria.length?`<span class="v217Chip">📋 ${criteria.length} critère(s)</span>`:''}${competencies.length?`<span class="v217Chip">🧩 ${competencies.length} compétence(s)</span>`:''}</div></div><div><button class="btn" onclick="v217DeepEditMeta('${e.id}')">Modifier la configuration</button></div></div>
  <div class="gradeStats"><div class="metric"><small>Élèves</small><b>${students.length}</b></div><div class="metric"><small>Notes saisies</small><b>${students.filter(s=>evaluationModelGrade(e,s.id)?.value!=='').length}</b></div><div class="metric"><small>Moyenne</small><b>${evalAverage(e)} /20</b></div><div class="metric"><small>Barème</small><b>/${max}</b></div></div>
  <div class="v217EntryBar"><div><b>Saisie rapide</b><div class="muted">Clique une note puis utilise ↑ ↓ ou Entrée pour avancer. La sauvegarde est immédiate.</div></div><div><button class="btn small" onclick="v217DeepFocusFirst()">Première note</button></div></div>
  <div class="v217EntryTable"><table class="table"><thead><tr><th class="v217StudentCell">Élève</th><th>Note /${max}</th>${criteria.map(c=>`<th>${esc(c.name)}<small style="display:block">/${evaluationModelCriterionMax(c)}</small></th>`).join('')}${competencies.map(c=>`<th>${esc(c)}</th>`).join('')}<th>Observation</th></tr></thead><tbody>${students.map(st=>{const g=evaluationModelGrade(e,st.id)||{value:'',comment:'',criterionScores:{},competencyRatings:{}};return `<tr><td class="v217StudentCell"><b>${esc(st.last?.toUpperCase()||'')} ${esc(st.first||'')}</b><small class="muted" style="display:block">${esc(st.group||'Classe entière')}</small></td><td class="v217QuickCell"><input class="input v217GradeInput" type="text" inputmode="decimal" autocomplete="off" data-eid="${e.id}" data-sid="${st.id}" value="${esc(g.value??'')}" placeholder="—" aria-label="Note de ${esc(st.first||'')}" onkeydown="v217DeepGradeKey(event,'${e.id}','${st.id}')" onchange="v217DeepSetGrade('${e.id}','${st.id}',this.value,this)"><span class="v217Saved"></span></td>${criteria.map(c=>`<td><select class="select v217CriterionSelect" onchange="setCriterionScore('${e.id}','${st.id}','${c.id}',this.value)">${v217CriteriaLevelOptions(c,g)}</select></td>`).join('')}${competencies.map(c=>`<td><select class="select" onchange="setCompetencyRating('${e.id}','${st.id}',${JSON.stringify(c).replace(/"/g,'&quot;')},this.value)"><option value="">—</option>${[['1','Insuffisant'],['2','Fragile'],['3','Bien'],['4','Très bien']].map(([v,l])=>`<option value="${v}" ${String(g.competencyRatings?.[c]??'')===v?'selected':''}>${l}</option>`).join('')}</select></td>`).join('')}<td><input class="input" value="${esc(g.comment||'')}" placeholder="Commentaire…" onchange="v217DeepSetComment('${e.id}','${st.id}',this.value)"></td></tr>`}).join('')}</tbody></table></div>
