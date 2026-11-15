@@ -178,3 +178,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **CI run #651 : échec des trois jobs** (`tests`, Firefox réel et validation macOS). Le contrôle de syntaxe Python a identifié une `IndentationError` dans `server.py` ligne 593, introduite lors de l'ajout de la validation des pièces jointes des messages sortants élèves.
 - Correction : réalignement du bloc de validation du chemin et du contrôle des liens symboliques ; la validation continue à exiger un chemin dans le dossier mail propre de l'élève et un fichier existant.
 - **État :** correctif de syntaxe poussé ; nouvelle exécution CI indispensable avant de juger les tests de messagerie.
+
+
+#### 15/11/2026 — Échec CI #653 : filtre des brouillons appliqué au mauvais rôle
+
+- **CI run #653 :** le contrôle de syntaxe et les tests JavaScript ont progressé, mais les tests Python ont échoué dans `tests/test_v25_mailbox_upload_scope.py`. Une modification de filtrage des pièces jointes de brouillons avait été insérée dans `_teacher_visible_mailbox()` au lieu de `_student_visible_mailbox()` ; elle utilisait donc des variables (`sid`, `teachers`) inexistantes pour un compte professeur (`NameError`).
+- Correction : restauration du filtrage historique des brouillons dans la projection professeur et déplacement du filtrage strict (dossier propre à l'élève + destinataires enseignants autorisés) dans la projection élève.
+- **État :** correction poussée ; nouvelle CI nécessaire. Le job Firefox du run #653 a réussi, mais la suite complète n'est pas verte.
