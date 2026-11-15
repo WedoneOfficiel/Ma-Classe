@@ -482,6 +482,21 @@ def _student_accessible_teacher_ids(data, student_record):
     return ids & valid
 
 
+
+def _mailbox_message_safe_attachments(message, prefixes):
+    """Ne conserve que les pièces jointes situées dans les dossiers explicitement autorisés."""
+    item=dict(message)
+    safe=[]
+    for attachment in item.get('attachments') or []:
+        if not isinstance(attachment,dict): continue
+        url=str(attachment.get('url') or '').replace(chr(92),'/')
+        if '/data/uploads/' not in url: continue
+        rel=url.split('/data/uploads/',1)[1]
+        if any(rel.startswith(prefix) for prefix in prefixes):
+            safe.append(attachment)
+    item['attachments']=safe
+    return item
+
 def _student_visible_mailbox(mailbox, user, data):
     """Projection de la boîte élève : messages propres et messages des enseignants autorisés."""
     if not isinstance(mailbox,dict): return {}
@@ -499,9 +514,9 @@ def _student_visible_mailbox(mailbox, user, data):
         recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
         if me in (message.get('hiddenFor') or []): continue
         if sender_key==me:
-            visible.append(message)
+            visible.append(_mailbox_message_safe_attachments(message,(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')))
         elif sender.get('role')=='teacher' and str(sender.get('id') or '') in teachers and sender_key==_mail_user_key('teacher',sender.get('id')) and me in recipients:
-            safe=dict(message)
+            safe=_mailbox_message_safe_attachments(message,(f'mail-v2/teacher:{sender.get(\"id\")}/',f'mail-v2-drafts/teacher:{sender.get(\"id\")}/'))
             safe['bcc']=[]
             visible.append(safe)
     states=mailbox.get('states') if isinstance(mailbox.get('states'),dict) else {}
@@ -559,10 +574,12 @@ def _student_merge_mailbox(current, incoming, user, data):
         for attachment in message.get('attachments') or []:
             if not isinstance(attachment,dict): continue
             url=str(attachment.get('url') or '').replace(chr(92),'/')
-            if '/data/uploads/' in url:
-                rel=url.split('/data/uploads/',1)[1]
-                prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
-                if not rel.startswith(prefixes):
+            if '/data/uploads/' not in url:
+                valid=False
+                break
+            rel=url.split('/data/uploads/',1)[1]
+            prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
+            if not rel.startswith(prefixes):
                     valid=False
                     break
                 try:
@@ -584,7 +601,13 @@ def _student_merge_mailbox(current, incoming, user, data):
     old_drafts=old.get('drafts') if isinstance(old.get('drafts'),list) else []
     new_drafts=new.get('drafts') if isinstance(new.get('drafts'),list) else []
     drafts=[x for x in old_drafts if isinstance(x,dict) and str(x.get('owner') or '')!=me]
-    drafts.extend(x for x in new_drafts if isinstance(x,dict) and str(x.get('owner') or '')==me)
+    for draft in new_drafts:
+        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me: continue
+        item=dict(draft)
+        item['attachments']=_mailbox_message_safe_attachments(item,(f'mail-v2-drafts/student:{sid}/',))
+        for field in ('to','cc','bcc'):
+            item[field]=[x for x in item.get(field,[]) or [] if isinstance(x,str) and x.startswith('teacher:') and x.split(':',1)[1] in teachers]
+        drafts.append(item)
     old_folders=old.get('folders') if isinstance(old.get('folders'),list) else []
     new_folders=new.get('folders') if isinstance(new.get('folders'),list) else []
     folders=[x for x in old_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')!=me]
