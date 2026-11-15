@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**Statut : conception validée, implémentation à réaliser.**  
+**Statut : conception validée ; socle de supervision Linux en cours, gestionnaire de mises à jour non encore implémenté.**  
 **Branche de travail :** `feature/amel-01-update-manager`  
 **Branche de départ :** `fix/v25-student-teacher-workflows` (PR #9 conservée intacte).
 
@@ -71,7 +71,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 ### Phase A — socle de publication et de supervision
 - Définir le format du manifeste et le processus de publication GitHub Release.
-- Ajouter le superviseur Linux systemd utilisateur et son installateur/désinstallateur.
+- [x] Ajouter le premier superviseur Linux systemd utilisateur et ses scripts d'installation/désinstallation (validation CI et recette Fedora encore nécessaires).
 - Garder le mode de lancement manuel utilisable comme secours.
 - Ajouter tests d'installation, de démarrage, d'arrêt, de redémarrage et de permissions.
 
