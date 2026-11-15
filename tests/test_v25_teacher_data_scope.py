@@ -5,7 +5,7 @@ import server
 class TeacherDataScopeTests(unittest.TestCase):
     def setUp(self):
         self.data={
-            'settings':{'schoolName':'École test'},
+            'settings':{'schoolName':'École test','subjectColors':{'francais':'#123456'}},
             'classes':[{'id':'c1','name':'6A','principalTeacherId':'t2','teacherIds':['t1']},{'id':'c2','name':'6B','principalTeacherId':'t2','teacherIds':['t2']}],
             'users':[{'id':'t1','role':'teacher','first':'Prof','last':'A','subjects':['Maths']},{'id':'t2','role':'teacher','first':'Prof','last':'B','subjects':['Français']}],
             'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'}],
@@ -25,6 +25,8 @@ class TeacherDataScopeTests(unittest.TestCase):
 
     def test_projection_only_exposes_assigned_class(self):
         view=server._teacher_visible_data(self.data,self.user)
+        self.assertEqual(view['settings']['subjectColors'],{'francais':'#123456'})
+        self.assertNotIn('schoolName',view['settings'])
         self.assertEqual([x['id'] for x in view['classes']],['c1'])
         self.assertEqual([x['id'] for x in view['students']],['s1'])
         self.assertEqual([x['id'] for x in view['lessons']],['l1'])
