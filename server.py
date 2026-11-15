@@ -1775,7 +1775,7 @@ class Handler(SimpleHTTPRequestHandler):
                     metadata=json.load(meta_file)
                 if metadata.get('sha256')!=update_state.get('sha256') or metadata.get('status')!='prepared':
                     return self._json({'error':'La version préparée ne correspond plus à son manifeste.'},409)
-                if not os.path.isfile(os.path.join(target,'.venv','bin','python')) or not os.path.isfile(os.path.join(target,'server.py')):
+                if not os.path.isfile(os.path.join(target,'.venv','bin','python')) or not os.path.isfile(os.path.join(target,'maclasse-runtime-ready.json')) or not os.path.isfile(os.path.join(target,'server.py')):
                     return self._json({'error':'La version préparée est incomplète.'},409)
                 subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
                                check=True,capture_output=True,text=True,timeout=5)
