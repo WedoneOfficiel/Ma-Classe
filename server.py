@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys
+import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys, subprocess
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -1741,6 +1741,30 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({'error':'La préparation de la mise à jour a échoué. La version active n’a pas été modifiée.'},502)
             except (OSError,TypeError,ValueError):
                 return self._json({'error':'Impossible de préparer la mise à jour. La version active n’a pas été modifiée.'},500)
+        if path=='/api/admin/updates/install':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            try:
+                with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
+                    update_state=json.load(state_file)
+                version=str(update_state.get('version') or '').lstrip('vV')
+                if update_state.get('status')!='prepared' or not re.fullmatch(r'\\d+\\.\\d+\\.\\d+',version):
+                    return self._json({'error':'Aucune mise à jour prête à installer.'},409)
+                versions_root=os.path.realpath(os.path.join(DATA_DIR,'program','versions'))
+                target=os.path.realpath(os.path.join(versions_root,'V'+version))
+                if os.path.commonpath((target,versions_root))!=versions_root:
+                    return self._json({'error':'Dossier de version refusé.'},400)
+                with open(os.path.join(target,'maclasse-prepared.json'),encoding='utf-8') as meta_file:
+                    metadata=json.load(meta_file)
+                if metadata.get('sha256')!=update_state.get('sha256') or metadata.get('status')!='prepared':
+                    return self._json({'error':'La version préparée ne correspond plus à son manifeste.'},409)
+                if not os.path.isfile(os.path.join(target,'.venv','bin','python')) or not os.path.isfile(os.path.join(target,'server.py')):
+                    return self._json({'error':'La version préparée est incomplète.'},409)
+                subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
+                               check=True,capture_output=True,text=True,timeout=5)
+                return self._json({'installing':True,'version':update_state.get('version')},202)
+            except (OSError,ValueError,KeyError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
         if path=='/api/auth/setup':
             try: obj=json.loads(body.decode('utf-8'))
             except Exception: return self._json({'error':'Requête invalide.'},400)
