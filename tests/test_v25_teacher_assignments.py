@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for timetable-derived teacher permissions and temporary assignments."""
+import copy
 import datetime
 import os
 import sys
@@ -97,7 +98,7 @@ class TeacherAssignmentTests(unittest.TestCase):
         self.assertTrue(any(x["id"] == "a1" for x in view["teacherAssignments"]))
 
     def test_teacher_cannot_self_assign_or_assign_a_substitute(self):
-        data = self.data
+        data = copy.deepcopy(self.data)
         data["classes"][0]["teacherIds"] = ["t1"]
         data["schedule"][0]["teacherId"] = "t2"
         data["schedule"][0]["teacherIds"] = []
