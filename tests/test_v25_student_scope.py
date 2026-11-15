@@ -78,6 +78,16 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual(original['correctionComment'],'Prof feedback')
         self.assertTrue(any(x['id']=='old' for x in merged['submissions']))
 
+    def test_student_cannot_modify_schedule_or_lesson_content(self):
+        incoming=server._student_visible_data(self.data,self.user)
+        incoming['schedule'][0]['subject']='Cours falsifié'
+        incoming['schedule'].append({'id':'forged-slot','classId':'c1','subject':'Cours ajouté'})
+        incoming['lessons'][0]['content']='Contenu falsifié'
+        incoming['lessons'].append({'id':'forged-lesson','classId':'c1','content':'Séance ajoutée'})
+        merged=server._merge_student_data(self.data,incoming,self.user)
+        self.assertEqual(merged['schedule'],self.data['schedule'])
+        self.assertEqual(merged['lessons'],self.data['lessons'])
+
     def test_student_file_access_is_limited_to_referenced_own_files(self):
         folder=os.path.join(server.UPLOADS,'submissions','s1')
         os.makedirs(folder)
