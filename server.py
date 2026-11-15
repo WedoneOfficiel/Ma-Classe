@@ -588,20 +588,20 @@ def _student_merge_mailbox(current, incoming, user, data):
             rel=url.split('/data/uploads/',1)[1]
             prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
             if not rel.startswith(prefixes):
+                valid=False
+                break
+            try:
+                lexical=os.path.join(UPLOADS,*rel.split('/'))
+                if os.path.islink(lexical):
                     valid=False
                     break
-                try:
-                    lexical=os.path.join(UPLOADS,*rel.split('/'))
-                    if os.path.islink(lexical):
-                        valid=False
-                        break
-                    path=_safe_upload_path(rel)
-                    if not os.path.isfile(path):
-                        valid=False
-                        break
-                except (ValueError,OSError):
+                path=_safe_upload_path(rel)
+                if not os.path.isfile(path):
                     valid=False
                     break
+            except (ValueError,OSError):
+                valid=False
+                break
         if valid:
             item=dict(message)
             item['hiddenFor']=[]
