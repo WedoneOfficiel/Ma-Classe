@@ -38,6 +38,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -70,4 +71,3 @@ jobs:
             dist/maclasse-update.zip \
             dist/maclasse-update.json \
             --notes-file dist/release-notes.md
-            --generate-notes
