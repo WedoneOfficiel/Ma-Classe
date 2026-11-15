@@ -18,7 +18,7 @@ Dernière mise à jour : 15 novembre 2026
 
 | Identifiant | Bug | Description simple du bug | Description détaillée | État |
 |---|---|---|---|---|
-| EDT-01 | Différence d'affichage des emplois du temps | L'emploi du temps n'a pas le même aspect pour un élève et un professeur. | Les deux espaces utilisaient des structures et des assemblages visuels différents, même si une partie du moteur de calendrier était commune. La vue élève a été rapprochée de la structure et des composants de la vue professeur, tout en conservant ses restrictions. Il reste à comparer les vues réelles dans le navigateur (jour, semaine et mois) pour confirmer la parité visuelle. | En cours de résolution |
+| EDT-01 | Différence d'affichage des emplois du temps | L'emploi du temps n'a pas le même aspect pour un élève et un professeur. | Les deux espaces utilisaient des structures et des assemblages visuels différents, même si une partie du moteur de calendrier était commune. La vue élève a été rapprochée de la structure et des composants de la vue professeur, tout en conservant ses restrictions. Il reste à comparer les vues réelles dans le navigateur (jour, semaine et mois) pour confirmer la parité visuelle. | Supposé résolu |
 | EDT-02 | Rechargement apparent après enregistrement d'un créneau | Quand on enregistre un créneau, la page semble se décharger ou se recharger. | Le parcours de sauvegarde provoquait un rendu global de l'application après la confirmation serveur, donnant une impression de rechargement et pouvant faire perdre le contexte visuel. Un rafraîchissement ciblé du calendrier et la conservation de la position de défilement ont été mis en place. Les tests automatisés passent ; il reste à vérifier le parcours complet en utilisation réelle, y compris en cas d'erreur serveur. | Supposé résolu |
 | EDT-03 | Couleur personnalisée des matières | On ne peut pas choisir librement la couleur d'une matière. | Le formulaire de créneau ne proposait pas de choix de couleur et la couleur était déterminée automatiquement. Un sélecteur et une préférence globale `settings.subjectColors` ont été ajoutés, avec transmission aux espaces professeur et élève. Il reste à vérifier qu'une couleur choisie est cohérente dans toutes les classes, tous les créneaux et les deux types de comptes. | Supposé résolu |
 | EDT-04 | Actualisation de l'EDT élève en temps réel | Les changements d'emploi du temps ne se reflètent pas correctement chez l'élève. | Signalement du 13/11 : l'EDT élève ne s'actualise pas en temps réel après les changements. Ce problème est distinct de la différence d'affichage et du saut de page lors de la navigation. Un rafraîchissement périodique via `refreshLiveScheduleData` est présent. Le test Firefox réel ouvre deux sessions distinctes (direction et élève), modifie l'EDT côté direction et vérifie que le nouveau cours apparaît automatiquement côté élève sans rechargement manuel. La recette sur l'installation de l'utilisateur reste à confirmer. | Supposé résolu |
@@ -45,8 +45,8 @@ Dernière mise à jour : 15 novembre 2026
 
 - Bugs suivis : **16**
 - Corrigés (confirmés par l'utilisateur) : **0**
-- Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **15**
-- En cours de résolution : **1**
+- Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
+- En cours de résolution : **0**
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
