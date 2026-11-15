@@ -90,6 +90,7 @@ class TeacherAssignmentTests(unittest.TestCase):
 
     def test_long_term_replacement_suspends_only_the_selected_co_teacher(self):
         data = copy.deepcopy(self.data)
+        data["schedule"][0]["endDate"] = "2028-12-31"
         data["teacherAssignments"].append({
             "id": "a3", "scheduleId": "slot1", "classId": "c1",
             "subject": "Mathématiques", "teacherId": "t3",
