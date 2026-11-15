@@ -25,6 +25,13 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertTrue(server._teacher_can_teach_subject_for_term(data,self.user,'c1','Maths','term-old'))
         self.assertFalse(server._teacher_can_teach_subject(data,self.user,'c1','Maths'))
 
+    def test_current_replacement_does_not_block_a_past_term_bulletin(self):
+        data=copy.deepcopy(self.data)
+        data['settings']['terms']=[{'id':'term-old','start':'2025-09-01','end':'2025-12-20'}]
+        data['schedule']=[{'id':'slot1','classId':'c1','subject':'Maths','teacherId':'t1'}]
+        data['teacherAssignments']=[{'id':'replacement-now','classId':'c1','teacherId':'t2','supersedesTeacherId':'t1','subject':'Maths','type':'replacement','startDate':'2026-01-01','endDate':'2026-12-31'}]
+        self.assertTrue(server._teacher_can_teach_subject_for_term(data,self.user,'c1','Maths','term-old'))
+
     def test_one_off_substitute_can_edit_the_taught_subject_bulletin(self):
         data=copy.deepcopy(self.data)
         data['schedule']=[{'id':'slot1','classId':'c1','subject':'Maths','teacherId':'t2',
