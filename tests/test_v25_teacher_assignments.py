@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Tests for timetable-derived teacher permissions and temporary assignments."""
 import datetime
+import os
+import sys
 import unittest
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server
 
 
