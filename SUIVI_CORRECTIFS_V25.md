@@ -55,3 +55,31 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **EDT-02 — piste non confirmée :** `saveSchedule()` appelle `save(true)`, attend `flushPendingSave()`, puis recharge les données via `/api/data` et rend le module. Aucun `location.reload()` n'apparaît dans `_all.js`. Le symptôme de « déchargement » peut être un rendu complet de l'application après sauvegarde, mais cela doit être reproduit pour confirmer.
 - **BUL-01 :** le code comporte plusieurs étapes de calcul, sauvegarde, validation/publication et PDF ; les tests existants couvrent notamment les droits PP, la source serveur du PDF et le filtrage élève. Le dépôt ne permet pas de savoir quel symptôme l'utilisateur rencontre encore. Je ne déclarerai pas ce point résolu sur la seule base des tests antérieurs.
 - **État des tests de cette campagne :** aucun test navigateur/API exécuté à ce stade ; aucune correction fonctionnelle fusionnée ou publiée.
+
+#### 15/11/2026 — Première tranche de corrections (branche isolée)
+
+**Modifications effectuées**
+- `_all.js` : en mode élève, le bouton crayon de modification des créneaux n'est plus rendu dans le DOM.
+- `_all.js` : les zones de dépôt drag-and-drop des vues jour/semaine sont maintenant conditionnées au mode enseignant ; l'élève ne reçoit plus ces gestionnaires d'édition.
+- `_all.js` : le formulaire de créneau dispose maintenant d'un sélecteur de couleur ; la couleur choisie est enregistrée à la création et à la modification du créneau.
+- `_all.js` : après sauvegarde, le rendu de l'application préserve la position de défilement afin d'éviter l'impression de déchargement/saut de page. La sauvegarde serveur et sa confirmation restent inchangées.
+- `_all.js` : création de `studentSettings()`, avec profil en lecture seule, accès au changement de mot de passe existant et choix de thème local ; ajout du lien Paramètres dans la navigation élève.
+- `tests/test_v25_student_schedule.js` : assertions sur l'absence du bouton d'édition, le retrait des drop targets, le champ couleur et la préservation du scroll.
+- `tests/test_v25_student_scope.py` : nouveau test vérifiant qu'une sauvegarde élève falsifiée ne modifie ni l'EDT ni le contenu des séances.
+- Nouveau `tests/test_v25_student_settings.js` : vérifie la présence et le contenu minimal du module Paramètres élève.
+
+**État des demandes après ces modifications**
+| ID | État | Résultat actuel |
+|---|---|---|
+| EDT-01 | En cours | Le calendrier conserve le moteur partagé ; parité visuelle complète pas encore validée en navigateur. |
+| EDT-02 | Correctif candidat | La sauvegarde ne fait pas de rechargement navigateur ; elle re-rend l'application. Le scroll est maintenant préservé. Reproduction manuelle et CI nécessaires. |
+| EDT-03 | Correctif candidat | Sélecteur couleur ajouté et sauvegardé par créneau/cours. Vérifier la cohérence des couleurs sur tous les cours d'une même matière. |
+| SEC-01 | Renforcé | Contrôles UI et test serveur : édition EDT/séances interdite côté serveur à l'élève, et contrôles d'édition retirés de l'EDT élève. CI à exécuter. |
+| ELEVE-01 | Correctif candidat | Paramètres élève ajoutés (profil lecture seule, changement de mot de passe, thème). CI et parcours navigateur à exécuter. |
+| MAIL-01 | Non résolu / volontairement bloqué | L'accès élève reste désactivé tant que la projection et la fusion sécurisées des messages privés ne sont pas développées et testées. Ne pas réactiver le widget seul. |
+| BUL-01 | Non résolu | Les protections existantes sont présentes, mais le symptôme fonctionnel reste à identifier ; aucune modification hasardeuse du calcul/publication n'a été faite. |
+
+**Limites de validation à ce stade**
+- Les tests ont été ajoutés, mais ils n'ont pas encore été exécutés dans GitHub Actions.
+- Aucun test manuel Firefox n'a été effectué dans le dossier local de test.
+- Aucun correctif de cette campagne n'est fusionné dans `main` ni déployé.
