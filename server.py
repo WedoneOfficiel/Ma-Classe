@@ -377,7 +377,7 @@ def _teacher_can_teach_subject(data,user,class_id,subject,on_date=None):
             return True
     # Compatibilité transitoire : les anciennes fiches conservent leurs droits tant
     # qu'aucune affectation explicite n'a été créée pour cette classe et cet enseignant.
-    has_explicit=any(isinstance(s,dict) and str(s.get('classId') or '')==class_id and (str(s.get('teacherId') or '')==tid or tid in {str(v) for v in s.get('teacherIds',[]) or []}) for s in data.get('schedule',[]) or []) or any(isinstance(a,dict) and str(a.get('classId') or '')==class_id and str(a.get('teacherId') or '')==tid for a in data.get('teacherAssignments',[]) or [])
+    has_explicit=any(isinstance(s,dict) and str(s.get('classId') or '')==class_id and (str(s.get('teacherId') or '')==tid or tid in {str(v) for v in s.get('teacherIds',[]) or []} or any(isinstance(ov,dict) and str(ov.get('replacementTeacherId') or '')==tid for ov in (s.get('overrides') or {}).values())) for s in data.get('schedule',[]) or []) or any(isinstance(a,dict) and str(a.get('classId') or '')==class_id and str(a.get('teacherId') or '')==tid for a in data.get('teacherAssignments',[]) or [])
     if not has_explicit:
         account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tid and x.get('role')=='teacher'),{})
         return any(_norm_text(x)==key for x in (account.get('subjects') or []))
