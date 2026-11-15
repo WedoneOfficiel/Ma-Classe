@@ -319,7 +319,7 @@ def _teacher_class_ids(data,user):
     for slot in data.get('schedule',[]) or []:
         if not isinstance(slot,dict) or not slot.get('classId'): continue
         override=(slot.get('overrides') or {}).get(today,{})
-        if str(override.get('replacementTeacherId') or '')==tid and override.get('status')!='cancelled':
+        if isinstance(override,dict) and str(override.get('replacementTeacherId') or '')==tid and override.get('status')!='cancelled':
             ids.add(str(slot.get('classId')))
     return ids
 
@@ -569,7 +569,7 @@ def _teacher_visible_data(data,user):
     else: out['teachers']=[]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
-    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('teacherId') or '')==tids or str(x.get('classId') or '') in class_ids)]
+    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and str(x.get('teacherId') or '')==tids]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
     for item in data.get('evaluations',[]) or []:
@@ -1561,7 +1561,7 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception: return self._json({'error':'Requête invalide.'},400)
             username=str(obj.get('username') or '').strip().lower(); first=str(obj.get('first') or '').strip(); last=str(obj.get('last') or '').strip()
             email=str(obj.get('email') or '').strip(); phone=str(obj.get('phone') or '').strip()
-            subjects=obj.get('subjects') if isinstance(obj.get('subjects'),list) else []; notes=str(obj.get('profileNotes') or '').strip()
+            subjects=obj.get('subjects') if isinstance(obj.get('subjects'),list) else None; notes=str(obj.get('profileNotes') or '').strip()
             if not re.fullmatch(r'[a-z0-9._-]{3,40}',username) or not first or not last: return self._json({'error':'Prénom, nom et identifiant valide sont obligatoires.'},400)
             with DATA_LOCK:
                 try:
@@ -1570,7 +1570,8 @@ class Handler(SimpleHTTPRequestHandler):
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
                     if not target: return self._json({'error':'Compte professeur introuvable.'},404)
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
-                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes,'subjects':list(dict.fromkeys(str(x).strip() for x in subjects if str(x).strip()))})
+                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes})
+                    if subjects is not None: target['subjects']=list(dict.fromkeys(str(v).strip() for v in subjects if str(v).strip()))
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
