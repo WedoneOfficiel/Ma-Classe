@@ -534,7 +534,7 @@ function canEditBulletinSubject(classId,subject){
  const assignments=db.teacherAssignments.filter(a=>String(a.classId)===String(classId)&&String(a.teacherId)===tid&&norm(a.subject)===key);
  const active=[...slots,...assignments].some(a=>{const start=a.startDate||'',end=a.endDate||'';return (!start||start<=today)&&(!end||today<=end)});
  if(active)return true;
- const hasExplicit=[...db.schedule,...db.teacherAssignments].some(a=>String(a.classId)===String(classId)&&([String(a.teacherId||''),...(a.teacherIds||[]).map(String)].includes(tid)));
+ const hasExplicit=db.schedule.some(a=>String(a.classId)===String(classId)&&([String(a.teacherId||''),...(a.teacherIds||[]).map(String)].includes(tid)||Object.values(a.overrides||{}).some(ov=>String(ov?.replacementTeacherId||'')===tid)))||db.teacherAssignments.some(a=>String(a.classId)===String(classId)&&String(a.teacherId)===tid);
  if(hasExplicit)return false;
  const t=currentTeacherProfile(),c=cls(classId);
  return !!t&&!!c&&((c.teacherIds||[]).includes(tid)||c.principalTeacherId===tid)&&(t.subjects||[]).some(v=>norm(v)===key);
