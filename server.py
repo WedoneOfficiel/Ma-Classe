@@ -1507,6 +1507,11 @@ def _format_day_name(d):
 
 
 
+class MaClasseHTTPServer(ThreadingHTTPServer):
+    # L'arrêt du service attend la fin des requêtes déjà engagées.
+    daemon_threads=False
+
+
 class Handler(SimpleHTTPRequestHandler):
     def _session_user(self):
         raw=self.headers.get('Cookie','')
@@ -2402,9 +2407,14 @@ if __name__=='__main__':
         except (OSError,ssl.SSLError) as error:
             print(f'ERREUR DE CERTIFICAT TLS : {error}')
             raise SystemExit(2)
-    httpd=ThreadingHTTPServer((HOST,PORT),Handler)
+    httpd=MaClasseHTTPServer((HOST,PORT),Handler)
     if context: httpd.socket=context.wrap_socket(httpd.socket,server_side=True)
     scheme='https' if context else 'http'
     mode='réseau privé HTTPS' if HOST not in ('127.0.0.1','localhost','::1') else ('local HTTPS' if context else 'local HTTP')
     print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{HOST}:{PORT}')
-    httpd.serve_forever()
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print('Arrêt demandé : attente de la fin des requêtes en cours…')
+    finally:
+        httpd.server_close()
