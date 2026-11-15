@@ -1715,6 +1715,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'error':'Cette version est incompatible avec la structure actuelle des données.'},409)
                 staging=os.path.join(DATA_DIR,'update-staging')
                 prepared=update_manager.prepare_release(release,staging)
+                update_manager.prepare_runtime(prepared)
                 return self._json({'prepared':True,'version':release['version'],'prepared_at':int(time.time())})
             except update_manager.UpdateError:
                 return self._json({'error':'La préparation de la mise à jour a échoué. La version active n’a pas été modifiée.'},502)
