@@ -29,7 +29,10 @@ jobs:
             echo "Le tag $TAG ne correspond pas à VERSION.txt ($VERSION)." >&2
             exit 1
           }
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          VERSION_NUMBER="${TAG#v}"
+          grep -Fq "APP_VERSION='$VERSION_NUMBER'" server.py
+          grep -Fq "const MC_VERSION='V$VERSION_NUMBER'" _all.js
+          echo "version=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Construire l'archive et le manifeste vérifié
         env:
