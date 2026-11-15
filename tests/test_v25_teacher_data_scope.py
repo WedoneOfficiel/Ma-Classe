@@ -381,4 +381,25 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertNotIn('privateFutureCollection',view)
         self.assertNotIn('secretConfig',view)
 
+    def test_teacher_cannot_modify_or_delete_evaluation_of_another_subject_in_same_class(self):
+        data=copy.deepcopy(self.data)
+        data['schedule']=[
+            {'id':'maths','classId':'c1','subject':'Maths','teacherId':'t1'},
+            {'id':'french','classId':'c1','subject':'Français','teacherId':'t2'}
+        ]
+        data['evaluations']=[
+            {'id':'maths-eval','classId':'c1','subject':'Maths','date':'2026-11-10','title':'Calcul','grades':[{'studentId':'s1','value':12}]},
+            {'id':'french-eval','classId':'c1','subject':'Français','date':'2026-11-10','title':'Dictée','grades':[{'studentId':'s1','value':15}]}
+        ]
+        view=server._teacher_visible_data(data,self.user)
+        view['evaluations']=[x for x in view['evaluations'] if x['id']!='french-eval']
+        next(x for x in view['evaluations'] if x['id']=='maths-eval')['subject']='Français'
+        merged=server._merge_teacher_data(data,view,self.user)
+        by_id={x['id']:x for x in merged['evaluations']}
+        self.assertEqual(set(by_id),{'maths-eval','french-eval'})
+        self.assertEqual(by_id['maths-eval']['subject'],'Maths')
+        self.assertEqual(by_id['french-eval']['title'],'Dictée')
+        self.assertTrue(server._teacher_can_edit_evaluation(data,self.user,by_id['maths-eval']))
+        self.assertFalse(server._teacher_can_edit_evaluation(data,self.user,by_id['french-eval']))
+
 if __name__=='__main__': unittest.main()
