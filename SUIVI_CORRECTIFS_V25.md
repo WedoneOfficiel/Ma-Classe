@@ -331,3 +331,17 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Conclusion technique : **Supposé résolu**. La recette dans l'EDT avec un vrai compte élève reste nécessaire avant que l'utilisateur puisse confirmer « Corrigé ».
 
 - Test serveur complémentaire ajouté dans `tests/test_v25_mailbox_upload_scope.py` : un enseignant peut déposer une pièce jointe dans `submissions/<créneau>` ; le fichier n'est lisible qu'après que la séance/devoir enregistré le référence. Cela couvre le trajet réel de permission du dépôt enseignant.
+
+
+#### 15/11/2026 — Reclassement des correctifs vérifiés en « Supposé résolu »
+
+- EDT-02 : sauvegarde par rafraîchissement ciblé et conservation du scroll, couverts par tests de code et régression navigateur.
+- EDT-03 : couleurs de matière centralisées, normalisées (accents/casse/espaces) et propagées, couvertes par test dédié.
+- EDT-05 : navigation jour/semaine/mois couverte par tests et régression Firefox.
+- SEC-01 : commandes d'édition élève masquées dans l'interface et refus des modifications falsifiées côté serveur, couverts par tests frontend/backend.
+- ELEVE-01 : page Paramètres élève, profil en lecture seule, changement de mot de passe et thème local couverts par test dédié.
+- LEC-01 : en-tête et structure de la page Séances & Leçons élève vérifiés par le test de rendu.
+- BUL-01 : droits d'appréciation vérifiés sur les périodes passées, accents et remplacements ponctuels par tests frontend/backend.
+- Ces sept anomalies passent à **Supposé résolu** sur la base du code et des tests. L'utilisateur doit encore confirmer les parcours réels ; aucun statut « Corrigé » n'est attribué.
+- EDT-01 reste en cours (parité visuelle complète à confirmer), EDT-04 reste en cours (actualisation réellement multi-comptes à confirmer), DEV-01 reste en cours (recette pièces jointes avec vrais comptes), MAIL-01 reste en cours (recette messagerie élève/professeur).
+- CI run #714 : tests Linux JS/Python et Firefox réel réussis ; validation macOS encore en cours au dernier relevé.
