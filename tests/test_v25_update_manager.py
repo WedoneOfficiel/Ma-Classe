@@ -103,6 +103,21 @@ class ReleaseCheckerTests(unittest.TestCase):
         with self.assertRaises(updater.UpdateError):
             updater._request("http://example.test/archive", 100)
 
+    def test_rejects_untrusted_https_host(self):
+        with self.assertRaises(updater.UpdateError):
+            updater._request("https://example.test/archive", 100)
+
+    def test_rejects_windows_path_and_backslash(self):
+        for name in ("C:/outside.txt", "folder\\\\..\\\\outside.txt"):
+            with self.assertRaises(updater.UpdateError):
+                updater._safe_member_path(name)
+
+    def test_rejects_boolean_data_schema(self):
+        self.manifest["min_data_schema"] = True
+        with patch.object(updater, "_request", side_effect=self.fake_request):
+            with self.assertRaises(updater.UpdateError):
+                updater.check_latest_release("25.0.22")
+
     def test_manifest_must_match_release_tag(self):
         self.manifest["tag_name"] = "v99.0.0"
         with patch.object(updater, "_request", side_effect=self.fake_request):
