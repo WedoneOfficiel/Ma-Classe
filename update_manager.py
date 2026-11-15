@@ -12,6 +12,8 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
@@ -208,6 +210,47 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
         shutil.rmtree(target, ignore_errors=True)
         raise UpdateError(f"Impossible d'enregistrer les métadonnées de préparation : {exc}") from exc
     return target
+
+
+def prepare_runtime(program_dir: str | Path) -> Path:
+    """Create an isolated per-version venv and validate the prepared program."""
+    program_dir = Path(program_dir).resolve()
+    requirements = program_dir / "requirements.txt"
+    if not requirements.is_file():
+        raise UpdateError("Le fichier requirements.txt est absent de la version téléchargée.")
+    requirements_hash = hashlib.sha256(requirements.read_bytes()).hexdigest()
+    venv_dir = program_dir / ".venv"
+    python = venv_dir / "bin" / "python"
+    ready_file = program_dir / "maclasse-runtime-ready.json"
+    try:
+        if ready_file.is_file() and python.is_file():
+            ready = json.loads(ready_file.read_text(encoding="utf-8"))
+            if ready.get("requirements_sha256") == requirements_hash:
+                return python
+        shutil.rmtree(venv_dir, ignore_errors=True)
+        ready_file.unlink(missing_ok=True)
+        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)],
+                       check=True, capture_output=True, text=True, timeout=120)
+        if not python.is_file():
+            raise UpdateError("La création de l'environnement Python isolé a échoué.")
+        subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check",
+                        "--no-input", "-r", str(requirements)],
+                       check=True, capture_output=True, text=True, timeout=600)
+        subprocess.run([str(python), "-m", "py_compile", str(program_dir / "server.py")],
+                       check=True, capture_output=True, text=True, timeout=60)
+        node = shutil.which("node")
+        if node:
+            subprocess.run([node, "--check", str(program_dir / "_all.js")],
+                           check=True, capture_output=True, text=True, timeout=60)
+        ready_file.write_text(json.dumps({"requirements_sha256": requirements_hash,
+                                          "prepared_at": int(time.time())},
+                                         ensure_ascii=False, indent=2), encoding="utf-8")
+        return python
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+        shutil.rmtree(venv_dir, ignore_errors=True)
+        ready_file.unlink(missing_ok=True)
+        detail = getattr(exc, "stderr", "") or str(exc)
+        raise UpdateError("Préparation de l'environnement Python impossible : " + str(detail)[-1200:]) from exc
 
 
 if __name__ == "__main__":
