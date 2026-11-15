@@ -378,3 +378,17 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Cela valide le flux de dépôt enseignant → sauvegarde serveur → projection élève → accès au fichier. Le test vérifie aussi l'absence d'erreurs JavaScript sur les pages utilisées.
 - Le run #729 passe sur Linux et Firefox réel ; validation macOS encore en cours au dernier relevé.
 - DEV-01 passe à **Supposé résolu**. L'utilisateur doit encore confirmer sur son installation avant le statut « Corrigé ».
+
+
+#### 15/11/2026 — EDT-01 : parité visuelle vérifiée dans Firefox réel
+
+- Les deux écrans d'EDT s'appuient sur les mêmes fonctions de rendu semaine/jour/mois et les mêmes cartes de cours ; le mode élève désactive uniquement les commandes de modification et de glisser-déposer.
+- Le test Firefox compare désormais les deux vues avec un vrai compte professeur et un vrai compte élève : présence et nombre des composants, mode d'affichage, nombre de colonnes, espacements, rayons et marges internes des panneaux, grilles, colonnes, en-têtes et cartes. Il vérifie également que l'élève ne voit aucune commande d'édition.
+- Le test Firefox passe dans le run #733 ; les tests Linux passent aussi. Validation macOS encore en cours au dernier relevé.
+- EDT-01 passe à **Supposé résolu**. La confirmation de l'utilisateur dans son installation reste nécessaire avant « Corrigé ».
+
+#### Bilan de la campagne V25 au 15/11/2026
+
+- 16 anomalies recensées.
+- 16 **Supposées résolues** sur la base des correctifs et tests automatisés/navigateur ; 0 **Corrigé** sans confirmation de l'utilisateur ; 0 encore en cours de résolution.
+- Les validations de recette sur l'installation réelle de l'utilisateur restent à faire pour confirmer les 16 anomalies. La PR reste en brouillon, sans merge ni déploiement.
