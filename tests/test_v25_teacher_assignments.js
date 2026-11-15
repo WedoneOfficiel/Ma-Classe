@@ -7,6 +7,7 @@ assert(js.includes('function openScheduleAssignments'),'long-term assignments ha
 assert(js.includes('replacementTeacherId'),'one-off replacement is linked to a teacher account');
 assert(js.includes('function canEditBulletinSubject'),'bulletin editing has a central permission check');
 assert(js.includes('function teacherScheduleSuspended'),'a replaced teacher temporarily loses only the rights being replaced');
+assert(js.includes('function effectiveScheduleTeacherIds'),'the timetable shows the effective teachers during a replacement');
 assert(js.includes('supersedesTeacherId')&&js.includes('replacementOfTeacherId'),'both long-term and one-off replacements identify the replaced teacher');
 assert(js.includes('Les matières et les classes enseignées sont déduites'),'teacher profile no longer asks for duplicate subject declarations');
 assert(py.includes('def _teacher_can_teach_subject'),'server validates teacher subject permissions');
