@@ -9,12 +9,12 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.17 (alpha)  
+**Version de travail :** V25.0.22 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
-Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.17** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.22** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
 Le fichier `data/maclasse.json` est local et exclu de Git. Une installation neuve démarre sans aucun compte : l'assistant de première configuration crée uniquement le compte direction. Aucun mot de passe ou compte enseignant universel n'existe.
 
@@ -521,7 +521,27 @@ Le recalcul serveur des bulletins PDF a été renforcé après ajout d'un test d
 La déconnexion attend la sauvegarde en attente. En complément, le navigateur affiche maintenant son avertissement natif si l'utilisateur tente de fermer ou recharger l'onglet alors qu'une sauvegarde est en attente ou en échec. Cela réduit le risque de perte en cas de fermeture brutale ; il faut toujours attendre l'état « Enregistré » avant de quitter.
 
 
-## V25.0.19 — correction du moteur EDT et des noms de fichiers
+## V25.0.22 — affectations pédagogiques et droits enseignants
+
+- L’emploi du temps devient la référence des matières enseignées : le profil professeur ne demande plus une seconde déclaration des matières.
+- Un créneau peut être affecté à plusieurs enseignants, pour les matières assurées en équipe ou en co-intervention.
+- Ajout d’affectations temporaires administrables depuis le créneau EDT : remplacement longue durée ou intervention complémentaire, avec dates de début et de fin. Lors d’un remplacement, on désigne le professeur remplacé : ses droits sur cette matière sont suspendus pendant la période, sans retirer ceux des éventuels co-enseignants.
+- Les exceptions de cours peuvent désigner un professeur remplaçant lié à un compte MaClasse ; cette autorisation ne vaut que pour la date concernée.
+- Les droits de saisie des évaluations et des appréciations de bulletin sont contrôlés côté serveur à partir des affectations. Le professeur principal conserve ses droits distincts de validation, publication et appréciation générale.
+- Les affectations temporaires expirent sans effacer les notes ni les appréciations déjà enregistrées. Les anciens profils restent compatibles pendant la transition.
+- Tests dédiés aux affectations multiples, remplacements temporaires, remplacements ponctuels et droits expirés.
+
+## V25.0.21 — correction de la disparition des cours dans l’EDT
+
+- Le filtre de classe utilise maintenant un identifiant HTML distinct de sa variable d’état. Firefox exposait auparavant le champ via `window.scheduleClassFilter` ; lors d’un nouveau rendu, le code prenait l’élément HTML pour la valeur du filtre et masquait tous les cours, sans supprimer les données.
+- Ajout d’un test d’intégration dans un vrai Firefox : navigation « Aujourd’hui », vues mois/semaine, aller-retour entre semaines, création et sauvegarde d’un cours, puis synchronisation d’une modification serveur indépendante.
+- La date « À partir du » est maintenant interprétée comme la borne de début de la période ; le premier cours est le premier jour correspondant au jour choisi, à cette date ou après.
+- Les récurrences « une seule fois », toutes les deux semaines, toutes les trois semaines et toutes les N semaines sont ancrées sur cette première occurrence, et non sur le lundi de la date de début. Cela évite les cours absents lorsque le jour choisi n'est pas un lundi.
+- Les tests de calendrier couvrent désormais les sept jours, les premières occurrences, les semaines intermédiaires et les retours de navigation ; le même moteur d'occurrences sert aux vues enseignant et élève.
+- Le contrôle des conflits compare les cycles récurrents (au plus le PPCM des périodes hebdomadaires, plus les exceptions), au lieu de parcourir chaque journée jusqu'à la fin théorique du calendrier ; les cours du dimanche sont également contrôlés.
+- La synchronisation automatique du planning n'applique plus une réponse serveur si l'utilisateur a ouvert un formulaire, commencé une sauvegarde ou changé de page pendant la requête ; elle ne peut donc plus écraser un brouillon local avec une réponse arrivée en retard.
+- Les noms de fichiers sont transmis en UTF-8 percent-encodé dans un en-tête ASCII, puis décodés côté serveur. Les apostrophes typographiques, accents et caractères combinés ne font plus échouer `fetch`.
+- Le certificat HTTPS local est émis par l'autorité MaClasse. Chaque appareil client doit approuver `data/tls/ca.crt` ; ne jamais contourner l'avertissement ni partager `ca.key` ou `server.key`.
 
 - La date « À partir du » est maintenant interprétée comme la borne de début de la période ; le premier cours est le premier jour correspondant au jour choisi, à cette date ou après.
 - Les récurrences « une seule fois », toutes les deux semaines, toutes les trois semaines et toutes les N semaines sont ancrées sur cette première occurrence, et non sur le lundi de la date de début. Cela évite les cours absents lorsque le jour choisi n'est pas un lundi.

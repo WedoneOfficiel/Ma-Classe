@@ -3,7 +3,7 @@ import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime,
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
-APP_VERSION='25.0.19'
+APP_VERSION='25.0.22'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
@@ -295,17 +295,112 @@ def _student_account_users(data):
     return result
 
 
+def _teacher_assignment_active(item, on_date=None):
+    """Une affectation datée n'accorde des droits que pendant sa période."""
+    on_date=str(on_date or datetime.date.today().isoformat())
+    start=str(item.get('startDate') or '')
+    end=str(item.get('endDate') or '')
+    return (not start or start<=on_date) and (not end or on_date<=end)
+
+
+
+def _teacher_schedule_assignment_suspended(data,slot,teacher_id,on_date=None):
+    """Le titulaire perd temporairement les droits de matière quand il est remplacé."""
+    tid=str(teacher_id or '')
+    date=str(on_date or datetime.date.today().isoformat())
+    teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+    override=(slot.get('overrides') or {}).get(date,{})
+    if isinstance(override,dict) and override.get('status')!='cancelled':
+        replacement=str(override.get('replacementTeacherId') or '')
+        replaced=str(override.get('replacementOfTeacherId') or '')
+        if replacement and replacement!=tid and tid in teachers and (not replaced or replaced==tid): return True
+    class_id=str(slot.get('classId') or '')
+    subject=_norm_text(slot.get('subject'))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if not isinstance(assignment,dict) or assignment.get('type')!='replacement': continue
+        if str(assignment.get('classId') or '')!=class_id or _norm_text(assignment.get('subject'))!=subject: continue
+        if str(assignment.get('supersedesTeacherId') or '')==tid and _teacher_assignment_active(assignment,date): return True
+    return False
+
 def _teacher_class_ids(data,user):
-    """Les classes référencent directement l'identifiant du compte professeur canonique."""
+    """Classes accessibles via responsabilité de classe ou affectation pédagogique active."""
     tid=str(user.get('id') or user.get('teacherId') or '')
-    return {str(c.get('id')) for c in data.get('classes',[]) or [] if isinstance(c,dict) and tid in {str(x) for x in c.get('teacherIds',[]) or []}}
+    ids={str(c.get('id')) for c in data.get('classes',[]) or [] if isinstance(c,dict) and tid in {str(x) for x in c.get('teacherIds',[]) or []}}
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or not slot.get('classId') or not _teacher_assignment_active(slot): continue
+        teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+        if tid in teachers and not _teacher_schedule_assignment_suspended(data,slot,tid): ids.add(str(slot.get('classId')))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if isinstance(assignment,dict) and str(assignment.get('teacherId') or '')==tid and assignment.get('classId') and _teacher_assignment_active(assignment):
+            ids.add(str(assignment.get('classId')))
+    # Un remplacement ponctuel ouvre l'accès à la classe uniquement le jour concerné.
+    today=datetime.date.today().isoformat()
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or not slot.get('classId'): continue
+        override=(slot.get('overrides') or {}).get(today,{})
+        if isinstance(override,dict) and str(override.get('replacementTeacherId') or '')==tid and override.get('status')!='cancelled':
+            ids.add(str(slot.get('classId')))
+    return ids
 
 
-def _teacher_subject_keys(data,user):
-    ident=str(user.get('id') or user.get('teacherId') or '')
-    account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),{})
-    subjects=account.get('subjects') if isinstance(account.get('subjects'),list) else []
-    return {str(x).strip().casefold() for x in subjects if str(x).strip()}
+def _teacher_subject_keys(data,user,class_id=None,term_id=None):
+    """Matières déduites des cours et affectations; profil utilisé seulement en compatibilité."""
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    class_id=str(class_id or '')
+    term=next((x for x in (data.get('settings',{}).get('terms',[]) or []) if isinstance(x,dict) and str(x.get('id'))==str(term_id)),None) if term_id else None
+    start=str(term.get('start') or '') if term else datetime.date.today().isoformat()
+    end=str(term.get('end') or '') if term else datetime.date.today().isoformat()
+    found=set()
+    has_explicit=False
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or not slot.get('subject'): continue
+        if class_id and str(slot.get('classId') or '')!=class_id: continue
+        teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+        if tid not in teachers: continue
+        has_explicit=True
+        slot_start=str(slot.get('startDate') or '')
+        slot_end=str(slot.get('endDate') or '')
+        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start) and not _teacher_schedule_assignment_suspended(data,slot,tid):
+            found.add(_norm_text(slot.get('subject')))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if not isinstance(assignment,dict) or str(assignment.get('teacherId') or '')!=tid or not assignment.get('subject'): continue
+        if class_id and str(assignment.get('classId') or '')!=class_id: continue
+        has_explicit=True
+        a_start=str(assignment.get('startDate') or '')
+        a_end=str(assignment.get('endDate') or '')
+        if (not end or not a_start or a_start<=end) and (not start or not a_end or a_end>=start):
+            found.add(_norm_text(assignment.get('subject')))
+    if not has_explicit:
+        account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tid and x.get('role')=='teacher'),{})
+        found.update(_norm_text(x) for x in (account.get('subjects') or []) if str(x).strip())
+    return {x for x in found if x}
+
+
+def _teacher_can_teach_subject(data,user,class_id,subject,on_date=None):
+    """Vérifie une affectation habituelle, multiple, temporaire ou un remplacement ponctuel."""
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    class_id=str(class_id or '')
+    key=_norm_text(subject)
+    if not tid or not class_id or not key: return False
+    date=str(on_date or datetime.date.today().isoformat())
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or str(slot.get('classId') or '')!=class_id or _norm_text(slot.get('subject'))!=key: continue
+        if date in (slot.get('exceptions') or []): continue
+        override=(slot.get('overrides') or {}).get(date,{})
+        if override.get('status')=='cancelled': continue
+        if str(override.get('replacementTeacherId') or '')==tid: return True
+        teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+        if tid in teachers and _teacher_assignment_active(slot,date) and not _teacher_schedule_assignment_suspended(data,slot,tid,date): return True
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if isinstance(assignment,dict) and str(assignment.get('teacherId') or '')==tid and str(assignment.get('classId') or '')==class_id and _norm_text(assignment.get('subject'))==key and _teacher_assignment_active(assignment,date):
+            return True
+    # Compatibilité transitoire : les anciennes fiches conservent leurs droits tant
+    # qu'aucune affectation explicite n'a été créée pour cette classe et cet enseignant.
+    has_explicit=any(isinstance(s,dict) and str(s.get('classId') or '')==class_id and (str(s.get('teacherId') or '')==tid or tid in {str(v) for v in s.get('teacherIds',[]) or []} or any(isinstance(ov,dict) and str(ov.get('replacementTeacherId') or '')==tid for ov in (s.get('overrides') or {}).values())) for s in data.get('schedule',[]) or []) or any(isinstance(a,dict) and str(a.get('classId') or '')==class_id and str(a.get('teacherId') or '')==tid for a in data.get('teacherAssignments',[]) or [])
+    if not has_explicit:
+        account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tid and x.get('role')=='teacher'),{})
+        return any(_norm_text(x)==key for x in (account.get('subjects') or []))
+    return False
 
 
 # Isolation des données scolaires : une session professeur ne reçoit et ne remplace
@@ -449,6 +544,17 @@ def _teacher_can_access_upload(user, relative, write=False):
         return False
 
 
+
+def _teacher_can_edit_evaluation(data,user,evaluation):
+    """Compatibilité pour les anciennes évaluations sans matière, sans élargir les nouvelles."""
+    subject=str(evaluation.get('subject') or '').strip()
+    class_id=str(evaluation.get('classId') or '')
+    if subject:
+        return _teacher_can_teach_subject(data,user,class_id,subject,evaluation.get('date'))
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    has_explicit=any(isinstance(s,dict) and str(s.get('classId') or '')==class_id and (str(s.get('teacherId') or '')==tid or tid in {str(v) for v in s.get('teacherIds',[]) or []} or any(isinstance(ov,dict) and str(ov.get('replacementTeacherId') or '')==tid for ov in (s.get('overrides') or {}).values())) for s in data.get('schedule',[]) or []) or any(isinstance(a,dict) and str(a.get('classId') or '')==class_id and str(a.get('teacherId') or '')==tid for a in data.get('teacherAssignments',[]) or [])
+    return not has_explicit and class_id in _teacher_class_ids(data,user)
+
 def _teacher_visible_data(data,user):
     if user.get('role')=='admin': return data
     if user.get('role')!='teacher': return {}
@@ -493,6 +599,7 @@ def _teacher_visible_data(data,user):
     else: out['teachers']=[]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
+    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('teacherId') or '')==tids or str(x.get('supersedesTeacherId') or '')==tids)]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
     for item in data.get('evaluations',[]) or []:
@@ -649,6 +756,10 @@ def _student_visible_data(data,user):
     out['evaluations']=[]
     for item in data.get('evaluations',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
+        # Une note programmée pour une publication ultérieure ne doit pas être
+        # transmise au navigateur élève, même si published est déjà positionné.
+        publish_at=str(item.get('publishAt') or '')[:10]
+        if publish_at and publish_at>datetime.date.today().isoformat(): continue
         if item.get('group') and str(item.get('group'))!=str(student_record.get('group') or ''): continue
         copy=dict(item)
         copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '')==sid]
@@ -784,7 +895,7 @@ def _merge_teacher_data(current,incoming,user):
                 if previous:
                     fields={
                         'students':('classId','role','username','passwordHash','mustChangePassword','active'),
-                        'schedule':('classId',),
+                        'schedule':('classId','subject','teacherId','teacherIds'),
                         'lessons':('classId',),
                         'attendance':('classId',),
                         'attachments':('classId','studentId','lessonId'),
@@ -795,6 +906,32 @@ def _merge_teacher_data(current,incoming,user):
                     for field in fields:
                         if field in previous: item[field]=previous[field]
                         else: item.pop(field,None)
+            if key=='schedule':
+                if previous:
+                    old_overrides=previous.get('overrides') if isinstance(previous.get('overrides'),dict) else {}
+                    new_overrides=item.get('overrides') if isinstance(item.get('overrides'),dict) else {}
+                    safe_overrides={}
+                    for date,value in new_overrides.items():
+                        if not isinstance(value,dict): continue
+                        safe_value=dict(value)
+                        if date in old_overrides and isinstance(old_overrides[date],dict):
+                            for protected in ('replacementTeacherId','replacementOfTeacherId'):
+                                if protected in old_overrides[date]: safe_value[protected]=old_overrides[date][protected]
+                                else: safe_value.pop(protected,None)
+                        else:
+                            safe_value.pop('replacementTeacherId',None); safe_value.pop('replacementOfTeacherId',None)
+                        safe_overrides[date]=safe_value
+                    item['overrides']=safe_overrides
+                else:
+                    # Un professeur peut créer son propre cours dans une classe accessible,
+                    # mais ne peut pas s'affecter un collègue ni lui attribuer un remplaçant.
+                    item['teacherId']=tid
+                    item['teacherIds']=[tid]
+                    safe_overrides={}
+                    for date,value in (item.get('overrides') or {}).items():
+                        if isinstance(value,dict):
+                            safe_value=dict(value); safe_value.pop('replacementTeacherId',None); safe_value.pop('replacementOfTeacherId',None); safe_overrides[date]=safe_value
+                    item['overrides']=safe_overrides
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
                 lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
@@ -812,6 +949,9 @@ def _merge_teacher_data(current,incoming,user):
                 item['classId']=lesson_class
             if key=='evaluations':
                 evaluation_class=str(item.get('classId') or '')
+                if not _teacher_can_edit_evaluation(current,user,item):
+                    if previous: safe_new.append(dict(previous))
+                    continue
                 item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids and any(isinstance(st,dict) and str(st.get('id'))==str(g.get('studentId')) and str(st.get('classId') or '')==evaluation_class for st in current.get('students',[]) or [])]
             if key=='attendance':
                 attendance_class=str(item.get('classId') or '')
@@ -822,15 +962,17 @@ def _merge_teacher_data(current,incoming,user):
                 if previous and previous.get('published') is True:
                     continue
                 else:
-                    allowed_subjects=_teacher_subject_keys(current,user)
                     old_subject_data=previous.get('subjectData',{}) if previous and isinstance(previous.get('subjectData'),dict) else {}
                     new_subject_data=item.get('subjectData',{}) if isinstance(item.get('subjectData'),dict) else {}
                     filtered_subject_data={}
                     for subject,value in new_subject_data.items():
-                        if str(subject).strip().casefold() in allowed_subjects: filtered_subject_data[subject]=value
-                        elif subject in old_subject_data: filtered_subject_data[subject]=old_subject_data[subject]
+                        if _teacher_can_teach_subject(current,user,item.get('classId'),subject):
+                            filtered_subject_data[subject]=value
+                        elif subject in old_subject_data:
+                            filtered_subject_data[subject]=old_subject_data[subject]
                     for subject,value in old_subject_data.items():
-                        if str(subject).strip().casefold() not in allowed_subjects: filtered_subject_data.setdefault(subject,value)
+                        if not _teacher_can_teach_subject(current,user,item.get('classId'),subject):
+                            filtered_subject_data.setdefault(subject,value)
                     item['subjectData']=filtered_subject_data
                     if not is_principal:
                         for field in ('validated','validatedAt','published','publishedAt','overall','overallUpdatedAt'):
@@ -1479,7 +1621,7 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception: return self._json({'error':'Requête invalide.'},400)
             username=str(obj.get('username') or '').strip().lower(); first=str(obj.get('first') or '').strip(); last=str(obj.get('last') or '').strip()
             email=str(obj.get('email') or '').strip(); phone=str(obj.get('phone') or '').strip()
-            subjects=obj.get('subjects') if isinstance(obj.get('subjects'),list) else []; notes=str(obj.get('profileNotes') or '').strip()
+            subjects=obj.get('subjects') if isinstance(obj.get('subjects'),list) else None; notes=str(obj.get('profileNotes') or '').strip()
             if not re.fullmatch(r'[a-z0-9._-]{3,40}',username) or not first or not last: return self._json({'error':'Prénom, nom et identifiant valide sont obligatoires.'},400)
             with DATA_LOCK:
                 try:
@@ -1488,7 +1630,8 @@ class Handler(SimpleHTTPRequestHandler):
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
                     if not target: return self._json({'error':'Compte professeur introuvable.'},404)
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
-                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes,'subjects':list(dict.fromkeys(str(x).strip() for x in subjects if str(x).strip()))})
+                    target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes})
+                    if subjects is not None: target['subjects']=list(dict.fromkeys(str(v).strip() for v in subjects if str(v).strip()))
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()

@@ -25,8 +25,9 @@ assert(source.includes("await flushPendingSave();db=await api('/api/data');norma
 assert(source.includes('const saved=student(studentId)'));
 assert(source.includes('const savedClass=cls(classId)'));
 const profile=source.slice(source.indexOf('function openTeacherSelfEditor'),source.indexOf('async function saveTeacherSelfProfile'));
-assert(profile.includes('Mes matières (séparées par des virgules)'));
-assert(source.includes("subjects:String(f.get('subjects')||'').split(',')"));
+assert(profile.includes('Les matières et les classes enseignées sont déduites des affectations dans l’emploi du temps.'));
+assert(!profile.includes('name="subjects"'));
+assert(!source.includes("subjects:String(f.get('subjects')||'').split(',')"));
 const profileApi=server.slice(server.indexOf("if path=='/api/teacher/profile'"),server.indexOf("if path=='/api/admin/user-status'"));
-assert(profileApi.includes("'subjects':list(dict.fromkeys"));
-console.log('OK — comptes élèves canoniques, accès, sauvegarde confirmée et matières modifiables.');
+assert(profileApi.includes("if subjects is not None: target['subjects']=list(dict.fromkeys"));
+console.log('OK — comptes élèves canoniques, accès, sauvegarde confirmée et matières dérivées de l’EDT.');

@@ -14,7 +14,7 @@ assert(src.includes("/api/admin/student-account"), 'student credentials must be 
 assert(src.includes("upload(file,'submissions/'+sid)"), 'student homework uploads must use the student-specific submission folder');
 assert(src.includes("scheduleView==='week'?studentScheduleWeek(ds,occ):scheduleView==='day'?studentScheduleDay(sel,occ):studentScheduleMonth(sel,occ)"), 'student timetable must use read-only student event cards');
 assert(src.includes('La messagerie élève arrive dans une prochaine étape'), 'unreviewed student messaging must remain unavailable');
-assert(src.includes("for(const k of ['schedule','bulletins','attachments','conversations','teachers','subjects','cloudItems','mailFolders','users','notifications','auditLog','messages'])"),'all collections normalized defensively');
+assert(src.includes("for(const k of ['schedule','teacherAssignments','bulletins','attachments','conversations','teachers','subjects','cloudItems','mailFolders','users','notifications','auditLog','messages'])"),'all collections normalized defensively');
 assert(src.includes("cls(defaultClass)?.attendanceMode==='hour'"),'attendance mode must use the stored hour value');
 const singleDeleteStart=src.indexOf('function cloudDelete(){'),singleDeleteEnd=src.indexOf('function ',singleDeleteStart+10);
 assert(singleDeleteStart>=0&&singleDeleteEnd>singleDeleteStart,'single Cloud delete handler exists');

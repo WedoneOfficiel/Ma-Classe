@@ -1,0 +1,18 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const js=fs.readFileSync(path.join(__dirname,'..','_all.js'),'utf8');
+const py=fs.readFileSync(path.join(__dirname,'..','server.py'),'utf8');
+assert(js.includes('name="teacherIds" multiple'),'EDT supports several teachers on one course');
+assert(js.includes('teacherAssignments'),'client initializes and reads temporary teacher assignments');
+assert(js.includes('function openScheduleAssignments'),'long-term assignments have a management screen');
+assert(js.includes('replacementTeacherId'),'one-off replacement is linked to a teacher account');
+assert(js.includes('function canEditBulletinSubject'),'bulletin editing has a central permission check');
+assert(js.includes('function teacherScheduleSuspended'),'a replaced teacher temporarily loses only the rights being replaced');
+assert(js.includes('function effectiveScheduleTeacherIds'),'the timetable shows the effective teachers during a replacement');
+assert(js.includes('supersedesTeacherId')&&js.includes('replacementOfTeacherId'),'both long-term and one-off replacements identify the replaced teacher');
+assert(js.includes('Les matières et les classes enseignées sont déduites'),'teacher profile no longer asks for duplicate subject declarations');
+assert(py.includes('def _teacher_can_teach_subject'),'server validates teacher subject permissions');
+assert(py.includes('def _teacher_assignment_active'),'temporary assignments have bounded dates');
+assert(py.includes('def _teacher_schedule_assignment_suspended'),'server suspends the replaced teacher during the replacement period');
+assert(py.includes('def _teacher_can_edit_evaluation(data,user,evaluation)'),'evaluation writes are scoped to assigned subjects, with a narrow legacy fallback');
+assert(py.includes("if _teacher_can_teach_subject(current,user,item.get('classId'),subject)"),'bulletin subject writes are scoped to assigned subjects');
+console.log('OK — affectations EDT, remplacements et droits bulletins/évaluations.');
