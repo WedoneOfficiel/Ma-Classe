@@ -15,6 +15,7 @@ Les données métier et les fichiers téléversés ne doivent jamais être rempl
 ### 1. Versions officielles
 
 - Les versions distribuées sont des **GitHub Releases stables**, identifiées par un tag immuable (`v25.x.y`).
+- Le workflow `publish-release.yml` construit l'archive depuis les fichiers suivis par Git, vérifie la concordance tag/`VERSION.txt` et publie un manifeste avec SHA-256 et le schéma de données minimal. L'archive n'embarque donc pas les données locales non suivies par Git.
 - La branche `main` n'est jamais installée directement sur une instance en production.
 - Chaque publication fournit un manifeste versionné (version, tag, notes, version minimale du schéma de données, éventuelles migrations, empreinte SHA-256 de l'archive).
 - L'archive est téléchargée depuis la release puis vérifiée avant d'être considérée comme installable. L'instance n'exécute jamais un script téléchargé depuis une URL arbitraire.
@@ -63,6 +64,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 - `VERSION.txt`, `server.py` et `_all.js` exposent un numéro de version, mais aucun contrôle de release n'est intégré.
 - Les scripts macOS et Linux font actuellement un `git fetch origin main` puis une avance rapide du clone local.
+- Un premier module `update_manager.py` sait interroger la dernière release stable, valider son manifeste, vérifier l'empreinte SHA-256 et extraire l'archive dans un répertoire temporaire isolé. Il ne l'installe pas encore.
+- La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
 - Les scripts ne gèrent ni la programmation, ni les notifications, ni l'arrêt/redémarrage supervisé, ni le contrôle de santé après redémarrage.
 - Le lanceur actuel exécute `server.py` en processus enfant et attend ce processus ; ce modèle ne suffit pas pour un auto-remplacement robuste.
 - Les paramètres affichent uniquement le numéro de version.
@@ -70,7 +73,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 ## Plan d'implémentation
 
 ### Phase A — socle de publication et de supervision
-- Définir le format du manifeste et le processus de publication GitHub Release.
+- [x] Définir le format du manifeste et le processus de publication GitHub Release.
 - [x] Ajouter le premier superviseur Linux systemd utilisateur et ses scripts d'installation/désinstallation (validation CI et recette Fedora encore nécessaires).
 - Le socle Linux est expérimental : après initialisation locale et création du compte direction, l'installation se lance avec `bash Installer-Service-MaClasse-Linux.sh`. L'arrêt se fait avec `systemctl --user stop maclasse.service` ; les journaux sont consultables avec `journalctl --user -u maclasse.service -f`.
 - L'installateur active le maintien du gestionnaire utilisateur au démarrage via `loginctl enable-linger` (demande sudo si nécessaire). Il ne supprime ni le programme ni les données lors de la désinstallation.
