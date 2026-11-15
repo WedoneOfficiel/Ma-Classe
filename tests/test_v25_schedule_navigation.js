@@ -248,6 +248,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.FormData=FakeFormData;
   context.uid=()=> 'created-slot';
   context.subjectColor=()=>['#fff','#ddd','#000'];
+  context.subjectColorKey=value=>String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().replace(/\\s+/g,' ').toLowerCase();
   context.time=value=>String(value||'').slice(0,5);
   context.addHour=value=>'10:00';
   context.save=()=>{};
