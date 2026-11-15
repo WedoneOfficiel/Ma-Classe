@@ -13,7 +13,7 @@ async function load(){let offline=false,mustChange=false;try{const status=await 
 let liveSyncTimer=null,liveSyncBusy=false;
 async function refreshLiveScheduleData(){
  if(liveSyncBusy||!authUser||!['schedule','studentSchedule','lessons','studentLessons','studentWork'].includes(page)||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open'))return;
- const previous=dataRevision,requestedPage=page,requestedView=scheduleView,requestedWeek=iso(selectedWeek),requestedFilter=window.scheduleClassFilter||'';
+ const previous=dataRevision,requestedPage=page,requestedView=scheduleView,requestedWeek=iso(selectedWeek),requestedFilter=window.scheduleClassFilterValue||'';
  liveSyncBusy=true;
  try{
   const response=await fetch('/api/data',{cache:'no-store'});
@@ -22,7 +22,7 @@ async function refreshLiveScheduleData(){
   const latest=await response.json();
   // Ne jamais appliquer une réponse démarrée avant une interaction de calendrier :
   // elle pourrait repeindre l'EDT au milieu d'un changement de vue/semaine/filtre.
-  if(page!==requestedPage||scheduleView!==requestedView||iso(selectedWeek)!==requestedWeek||(window.scheduleClassFilter||'')!==requestedFilter||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open')||dataRevision!==previous)return;
+  if(page!==requestedPage||scheduleView!==requestedView||iso(selectedWeek)!==requestedWeek||(window.scheduleClassFilterValue||'')!==requestedFilter||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open')||dataRevision!==previous)return;
   if(previous&&latestRevision&&latestRevision!==previous){
    const projection=data=>JSON.stringify({schedule:data.schedule||[],classes:data.classes||[],students:data.students||[],teachers:data.teachers||[],settings:data.settings||{}});
    const scheduleChanged=projection(db)!==projection(latest);
@@ -256,7 +256,7 @@ function applyClassGroupNames(id){const c=cls(id);if(!c)return;const names=[...n
 function saveClassGroupAssignments(id){const c=cls(id);if(!c)return;const old=new Map(db.students.filter(s=>s.classId===id).map(s=>[s.id,s.group||'']));document.querySelectorAll('[data-student-group]').forEach(el=>{const s=student(el.dataset.studentGroup);if(s&&s.classId===id)s.group=el.value||''});auditEvent('Répartition des groupes modifiée',c.name);save();closeModal();render();toast('Groupes enregistrés')}
 
 function schedule(){
- const ds=weekDates(),sel=selectedWeek,filtered=window.scheduleClassFilter||'';
+ const ds=weekDates(),sel=selectedWeek,filtered=window.scheduleClassFilterValue||'';
  const occ=d=>dayOcc(d).filter(x=>!filtered||x.classId===filtered);
  const subjects=[...new Set(db.schedule.map(x=>x.subject).filter(Boolean))].slice(0,12);
  const rangeLabel=scheduleView==='month'?sel.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}):scheduleView==='day'?sel.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):`Du ${ds[0].toLocaleDateString('fr-FR',{day:'numeric',month:'short'})} au ${ds[6].toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})}`;
@@ -284,8 +284,8 @@ function schedule(){
      </div>
     </div>
     <div class="scheduleFilters">
-     <label for="scheduleClassFilter">Classe</label>
-     <select id="scheduleClassFilter" class="select" onchange="window.scheduleClassFilter=this.value;render()"><option value="">Toutes les classes</option>${db.classes.map(c=>`<option value="${c.id}" ${filtered===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+     <label for="scheduleClassFilterSelect">Classe</label>
+     <select id="scheduleClassFilterSelect" class="select" onchange="window.scheduleClassFilterValue=this.value;render()"><option value="">Toutes les classes</option>${db.classes.map(c=>`<option value="${c.id}" ${filtered===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
      <span class="scheduleFilterHint">Filtrez les cours affichés sans modifier le planning.</span>
     </div>
     ${subjects.length?`<div class="scheduleLegend" aria-label="Légende des matières"><span class="scheduleLegendTitle">Matières</span>${subjects.map(x=>{const c=subjectColor(x);return `<span class="chip"><i style="width:8px;height:8px;border-radius:50%;background:${c[2]}"></i>${esc(x)}</span>`}).join('')}</div>`:''}
