@@ -20,7 +20,7 @@ PYTHON="$APP_ROOT/.venv/bin/python"
 
 # Le certificat et les données restent dans data/, hors du répertoire de programme versionné.
 cd "$ROOT"
-.venv/bin/python - <<'PY'
+"$PYTHON" - <<'PY'
 import json, sys
 from pathlib import Path
 try:
