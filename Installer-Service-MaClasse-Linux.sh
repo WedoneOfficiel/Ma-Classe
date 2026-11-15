@@ -8,7 +8,7 @@ command -v loginctl >/dev/null 2>&1 || { echo "loginctl est requis pour activer 
 ROOT="$(pwd -P)"
 [[ "$(id -u)" -ne 0 ]] || { echo "Lance cet installateur depuis le compte utilisateur MaClasse, sans sudo devant le script."; exit 1; }
 USER_NAME="$(id -un)"
-case "$ROOT" in *[[:space:]\"\\%]*) echo "Déplace MaClasse dans un chemin sans espaces ni caractères spéciaux pour systemd."; exit 1;; esac
+if [[ "$ROOT" =~ [[:space:]%] ]]; then echo "Déplace MaClasse dans un chemin sans espaces ni caractère % pour systemd."; exit 1; fi
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_FILE="$UNIT_DIR/maclasse.service"
 mkdir -p "$UNIT_DIR"
