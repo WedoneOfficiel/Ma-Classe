@@ -99,3 +99,13 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **CI run #610** : les tests ont validé les correctifs précédents jusqu'à `test_v25_student_schedule.js`, qui mockait les anciens wrappers `studentScheduleWeek/Day/Month`. Le rendu élève utilise maintenant volontairement les renderers communs `scheduleWeek/Day/Month` ; le test a été adapté pour fournir ces fonctions communes.
 - Le job Firefox réel du run #610 est encore en cours au moment de cette entrée ; les étapes installateur, bash et syntaxe JS ont réussi.
 - Aucun résultat CI n'est considéré comme vert tant que les trois jobs ne sont pas terminés.
+
+
+#### 15/11/2026 — Correctifs candidats BUL-01 ajoutés à la branche
+
+- `_all.js` : le contrôle navigateur des cases d'appréciation reconnaît désormais le remplacement ponctuel actif via `schedule[].overrides[date].replacementTeacherId`, en cohérence avec le contrôle serveur déjà présent.
+- `_all.js` : le formulaire réellement utilisé (`v217DeepMeta` / `v217DeepSaveMeta`) propose désormais brouillon invisible, publication immédiate ou programmation date/heure. La date/heure saisie dans le fuseau local de l'appareil est convertie en timestamp ISO absolu lors de l'enregistrement. L'écran de saisie indique aussi le statut de publication.
+- `_all.js` : les filtres des notes élèves, de la moyenne élève et du rapport comparent les dates programmées à l'heure courante, et non plus uniquement à la date.
+- `server.py` : ajout de `_evaluation_publication_due()` ; la projection serveur élève masque une note jusqu'à l'instant exact programmé. Les anciennes valeurs date seule restent compatibles ; une valeur date/heure invalide est masquée par défaut.
+- Tests ajoutés : heure programmée avant/après l'instant de référence, compatibilité date seule, timestamp invalide masqué, et droit d'un remplaçant ponctuel sur la matière enseignée. Assertions JS sur le formulaire de publication actif et la reconnaissance du remplacement.
+- **Validation :** les fichiers ont été commités sur `fix/v25-student-teacher-workflows`. Les tests automatisés et la CI de cette nouvelle tête de branche restent à exécuter ; aucun résultat vert n'est revendiqué à ce stade. Recette réelle avec deux comptes (enseignant et élève) encore nécessaire.
