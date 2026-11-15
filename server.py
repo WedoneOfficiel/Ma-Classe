@@ -525,6 +525,17 @@ def _teacher_can_access_upload(user, relative, write=False):
         return False
 
 
+
+def _teacher_can_edit_evaluation(data,user,evaluation):
+    """Compatibilité pour les anciennes évaluations sans matière, sans élargir les nouvelles."""
+    subject=str(evaluation.get('subject') or '').strip()
+    class_id=str(evaluation.get('classId') or '')
+    if subject:
+        return _teacher_can_teach_subject(data,user,class_id,subject,evaluation.get('date'))
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    has_explicit=any(isinstance(s,dict) and str(s.get('classId') or '')==class_id and (str(s.get('teacherId') or '')==tid or tid in {str(v) for v in s.get('teacherIds',[]) or []} or any(isinstance(ov,dict) and str(ov.get('replacementTeacherId') or '')==tid for ov in (s.get('overrides') or {}).values())) for s in data.get('schedule',[]) or []) or any(isinstance(a,dict) and str(a.get('classId') or '')==class_id and str(a.get('teacherId') or '')==tid for a in data.get('teacherAssignments',[]) or [])
+    return not has_explicit and class_id in _teacher_class_ids(data,user)
+
 def _teacher_visible_data(data,user):
     if user.get('role')=='admin': return data
     if user.get('role')!='teacher': return {}
@@ -913,7 +924,7 @@ def _merge_teacher_data(current,incoming,user):
                 item['classId']=lesson_class
             if key=='evaluations':
                 evaluation_class=str(item.get('classId') or '')
-                if not _teacher_can_teach_subject(current,user,evaluation_class,item.get('subject'),item.get('date')):
+                if not _teacher_can_edit_evaluation(current,user,item):
                     if previous: safe_new.append(dict(previous))
                     continue
                 item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids and any(isinstance(st,dict) and str(st.get('id'))==str(g.get('studentId')) and str(st.get('classId') or '')==evaluation_class for st in current.get('students',[]) or [])]
