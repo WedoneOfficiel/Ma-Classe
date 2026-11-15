@@ -32,7 +32,7 @@ Dernière mise à jour : 15 novembre 2026
 | EVAL-01 | Notes saisies non visibles par les élèves | Une note saisie par l'enseignant n'apparaît pas dans l'espace élève. | Signalement distinct du blocage des appréciations de bulletin : les notes doivent apparaître à l'élève selon le mode de publication choisi. Le formulaire propose maintenant brouillon, publication immédiate ou programmation à une date/heure ; le filtrage élève vérifie l'état publié et l'instant exact de publication. Il reste à vérifier le parcours complet avec comptes enseignant et élève, y compris après l'heure programmée. | En cours de résolution |
 | EVAL-02 | Mauvaise conversion des notes sur 10 | Une note sur 10 est parfois traitée comme une note sur 20. | Défaut relevé pendant l'audit : par exemple, 8/10 doit être converti en 16/20 pour le calcul de moyenne. Le modèle commun normalise désormais la note en fonction du barème maximal ; un test de régression vérifie explicitement 8/10 = 16/20. La recette sur les moyennes affichées dans les différents écrans reste à faire. | En cours de résolution |
 | EVAL-03 | Notes non publiées ou programmées visibles trop tôt | Une note en brouillon ou dont la date de publication est future peut apparaître prématurément. | Défaut relevé pendant l'audit : les filtres de visibilité ne tenaient pas toujours compte de la publication ou de l'heure programmée. Le filtrage frontend et la projection serveur ont été renforcés pour masquer les notes non publiées jusqu'à l'instant exact prévu ; des tests couvrent les dates seules, les timestamps et les timestamps invalides. Une vérification réelle de l'espace élève reste nécessaire. | En cours de résolution |
-| EVAL-04 | Droits de modification des évaluations incohérents | Les droits pour modifier les notes ne sont pas vérifiés de manière uniforme. | Défaut relevé pendant l'audit : plusieurs fonctions de l'interface et contrôles serveur pouvaient appliquer des règles différentes aux enseignants, matières et classes. Il faut terminer l'inventaire des points d'entrée, confirmer que chaque modification est autorisée côté serveur et tester les cas enseignant titulaire/remplaçant. | Détecté |
+| EVAL-04 | Droits de modification des évaluations incohérents | Les droits pour modifier les notes ne sont pas vérifiés de manière uniforme. | Défaut relevé pendant l'audit : l'accès à une classe pouvait être confondu avec le droit d'enseigner toutes ses matières, notamment lors de la suppression d'une évaluation. Le serveur vérifie maintenant l'affectation à la matière pour les créations, modifications et suppressions ; l'interface bloque aussi l'ouverture et les actions de saisie, de critères, de compétences et de commentaires hors affectation. Des tests backend et frontend couvrent les matières, les accents et les remplacements ponctuels. La recette avec de vrais comptes enseignant reste à faire. | En cours de résolution |
 
 ## Demande d'amélioration hors registre des bugs
 
@@ -44,8 +44,8 @@ Dernière mise à jour : 15 novembre 2026
 
 - Bugs suivis : **16**
 - Résolus : **0**
-- En cours de résolution : **15**
-- Détectés : **1**
+- En cours de résolution : **16**
+- Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
 Ce bilan est volontairement prudent : la CI du correctif applicatif précédent est verte, mais les recettes fonctionnelles réelles ne sont pas toutes terminées. Les anomalies historiques non encore reprises dans la campagne actuelle restent explicitement visibles dans le registre.
