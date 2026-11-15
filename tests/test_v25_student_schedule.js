@@ -6,7 +6,7 @@ assert(!source.includes('$'+'{pat}'), 'Aucune interpolation de motif non défini
 const eventContext={eventCard:(slot,date,isStudent)=>({slot,date,isStudent})};
 vm.createContext(eventContext);
 const studentCardStart=source.indexOf('function studentEventCard(');
-const studentCardEnd=source.indexOf('\\n',studentCardStart);
+const studentCardEnd=source.indexOf('\n',studentCardStart);
 assert(studentCardStart>=0&&studentCardEnd>studentCardStart,'Le rendu d’un événement élève doit exister.');
 vm.runInContext(source.slice(studentCardStart,studentCardEnd),eventContext);
 const renderedStudentCard=vm.runInContext("studentEventCard({id:'slot-1'},'2026-11-16')",eventContext);
