@@ -181,9 +181,13 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
     except Exception:
         shutil.rmtree(target, ignore_errors=True)
         raise
-    metadata = {key: release.get(key) for key in ("version", "min_data_schema", "sha256")}
-    metadata.update({"prepared_at": int(time.time()), "status": "prepared"})
-    (target / "maclasse-prepared.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        metadata = {key: release.get(key) for key in ("version", "min_data_schema", "sha256")}
+        metadata.update({"prepared_at": int(time.time()), "status": "prepared"})
+        (target / "maclasse-prepared.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError as exc:
+        shutil.rmtree(target, ignore_errors=True)
+        raise UpdateError(f"Impossible d'enregistrer les métadonnées de préparation : {exc}") from exc
     return target
 
 
