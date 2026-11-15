@@ -14,11 +14,23 @@ function updateSettingsCard(){
  if(updateCheckResult?.available){
   html+='<div class="notice '+(updateCheckResult.compatible?'':'warn')+'" style="margin-top:12px"><b>'+esc(updateCheckResult.version)+'</b><p>'+esc(updateCheckResult.release_notes||'Nouvelle version stable disponible.')+'</p><p>'+(updateCheckResult.compatible?'Compatible avec les données actuelles.':esc(updateCheckResult.compatibility_message||'Mise à jour incompatible.'))+'</p></div>';
   if(updateCheckResult.compatible&&!updateCheckResult.prepared)html+='<button class="btn" style="margin-top:10px" onclick="prepareUpdate()">Télécharger et préparer</button>';
-  if(updateCheckResult.prepared)html+='<p class="hint">Version téléchargée et vérifiée. Elle est prête pour une installation ultérieure.</p>';
+  if(updateCheckResult.prepared)html+='<p class="hint">Version téléchargée, vérifiée et prête à installer. Le serveur ne sera interrompu qu’au lancement de l’installation.</p><button class="btn primary" style="margin-top:10px" onclick="installUpdate()">Installer maintenant</button>';
 
  }else if(updateCheckResult?.error){html+='<p class="hint">'+esc(updateCheckResult.error)+'</p>'}
  else if(updateCheckResult&&!updateCheckResult.available){html+='<p class="hint">Aucune nouvelle version stable disponible.</p>'}
  return html+'</div>';
+}
+async function installUpdate(){
+ if(!authCanManage())return toast('L’installation est réservée à la direction.');
+ if(!updateCheckResult?.prepared||updateCheckBusy)return;
+ if(!confirm('Installer cette mise à jour maintenant ? MaClasse sera temporairement inaccessible pendant le redémarrage.'))return;
+ updateCheckBusy=true;render();
+ try{
+  const result=await api('/api/admin/updates/install',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  updateCheckResult={...updateCheckResult,prepared:false,installing:true};
+  toast('Installation lancée. MaClasse va redémarrer ; ne ferme pas le PC serveur.');
+ }catch(error){toast(error.message||'Impossible de lancer l’installation.')}
+ finally{updateCheckBusy=false;render()}
 }
 async function prepareUpdate(){
  if(!authCanManage())return toast('La préparation est réservée à la direction.');
