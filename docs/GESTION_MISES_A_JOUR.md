@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**Statut : socle de supervision Linux et première chaîne de détection/préparation implémentés ; installation et planification à développer.**  
+**Statut : chaîne Linux de détection, préparation et première installation avec retour arrière implémentée dans une branche dédiée ; validation complète et planification/notifications encore à faire.**  
 **Branche de travail :** `feature/amel-01-update-manager`  
 **Branche de départ :** `fix/v25-student-teacher-workflows` (PR #9 conservée intacte).
 
@@ -64,11 +64,13 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 - `VERSION.txt`, `server.py` et `_all.js` exposent un numéro de version, mais aucun contrôle de release n'est intégré.
 - Les scripts macOS et Linux font actuellement un `git fetch origin main` puis une avance rapide du clone local.
-- Le module `update_manager.py` interroge la dernière release stable, valide son manifeste, limite les téléchargements aux hôtes GitHub en HTTPS, vérifie l'empreinte SHA-256 et extrait l'archive sans liens symboliques ni chemins traversants dans `data/program/versions/Vx.y.z/`. Il prépare aussi un environnement Python propre à la version et vérifie la compilation Python/JavaScript. Il n'active pas encore la version.
+- Le module `update_manager.py` interroge la dernière release stable, valide son manifeste, limite les téléchargements aux hôtes GitHub en HTTPS, vérifie l'empreinte SHA-256 et extrait l'archive sans liens symboliques ni chemins traversants dans `data/program/versions/Vx.y.z/`. Il prépare aussi un environnement Python propre à la version et vérifie la compilation Python/JavaScript.
 - La direction peut lancer cette recherche dans Paramètres puis télécharger/préparer une version compatible. Chaque version préparée possède son propre `.venv` et un marqueur `maclasse-prepared.json`. Le serveur actif n'est pas interrompu.
 - La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
-- Les scripts ne gèrent ni la programmation, ni les notifications, ni l'arrêt/redémarrage supervisé, ni le contrôle de santé après redémarrage.
-- Le lanceur actuel exécute `server.py` en processus enfant et attend ce processus ; ce modèle ne suffit pas pour un auto-remplacement robuste.
+- Le premier script indépendant `Appliquer-Mise-A-Jour-MaClasse-Linux.sh` est ajouté : sauvegarde de `maclasse.json`, arrêt propre du service, bascule atomique du lien de version, redémarrage, contrôle de santé HTTPS et retour à la version précédente en cas d'échec. Il n'a pas encore été exécuté sur le PC Fedora cible.
+- La base, les pièces jointes et les certificats sont désormais servis depuis `MACLASSE_DATA_DIR`, indépendamment du dossier de code versionné. Le serveur attend la fin des requêtes déjà engagées lors de l'arrêt supervisé.
+- La programmation des maintenances et les notifications multi-rôles ne sont pas encore implémentées.
+- Le lanceur systemd utilise `data/program/current` pour sélectionner le code actif. Le lancement manuel classique reste distinct et n'expose pas les actions d'installation depuis l'interface.
 - Les paramètres affichent uniquement le numéro de version.
 
 ## Plan d'implémentation
@@ -88,14 +90,14 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Tester les archives invalides, versions incompatibles, interruptions réseau et échecs de préparation.
 
 ### Phase C — interface et planification
-- Ajouter l'API authentifiée de consultation et d'action réservée à la direction.
-- Ajouter le centre de mises à jour dans Paramètres.
+- [x] Ajouter l'API authentifiée de consultation et d'action réservée à la direction (vérification, préparation et demande d'installation immédiate).
+- [x] Ajouter le centre de mises à jour dans Paramètres, visible uniquement à la direction.
 - Ajouter la programmation, l'annulation et les notifications multi-rôles.
 - Tester les fuseaux horaires, changements d'heure, maintenance annulée et utilisateurs connectés.
 
 ### Phase D — installation atomique et reprise
-- Ajouter le verrouillage bref des écritures, sauvegarde cohérente, bascule atomique de version, redémarrage et contrôle de santé.
-- Simuler les pannes à chaque étape et vérifier le retour à la version précédente.
+- [x] Ajouter la première chaîne Linux : environnement par version, sauvegarde de la base, arrêt propre avec attente des requêtes, bascule atomique, redémarrage, health-check HTTPS et rollback du code.
+- Ajouter des tests d'intégration qui simulent les échecs à chaque étape et vérifient le retour à la version précédente.
 - Tester sur Fedora avec le matériel cible avant toute utilisation avec des données scolaires réelles.
 
 ### Phase E — macOS
