@@ -41,6 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
+          gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG" --jq .body > dist/release-notes.md
           git archive --format=zip --prefix=MaClasse/ "$GITHUB_SHA" > dist/maclasse-update.zip
           python - <<'PY'
           import hashlib, json, os
@@ -53,7 +54,7 @@ jobs:
               "min_data_schema": 25011,
               "archive_asset": archive.name,
               "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
-              "release_notes": f"Version stable MaClasse {os.environ['RELEASE_TAG']}. Consultez les notes de publication GitHub."
+              "release_notes": Path("dist/release-notes.md").read_text(encoding="utf-8")[:20000]
           }
           Path("dist/maclasse-update.json").write_text(
               json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
@@ -68,5 +69,5 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             dist/maclasse-update.zip \
             dist/maclasse-update.json \
-            --title "MaClasse ${GITHUB_REF_NAME}" \
+            --notes-file dist/release-notes.md
             --generate-notes
