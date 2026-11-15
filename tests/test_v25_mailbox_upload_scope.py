@@ -65,6 +65,27 @@ class MailboxAndUploadScopeTests(unittest.TestCase):
         self.assertTrue(server._teacher_can_access_upload(self.t1,'lessons/c1/shared.pdf',write=False))
         self.assertFalse(server._teacher_can_access_upload(self.t1,'lessons/c1/secret.pdf',write=False))
 
+    def test_teacher_can_upload_homework_attachment_then_read_it_after_lesson_save(self):
+        folder='submissions/slot-1'
+        self.assertTrue(server._teacher_can_access_upload(self.t1,folder,write=True))
+        disk=os.path.join(server.UPLOADS,'submissions','slot-1')
+        os.makedirs(disk)
+        path=os.path.join(disk,'annexe.pdf')
+        with open(path,'wb') as handle: handle.write(b'homework')
+        relative='submissions/slot-1/annexe.pdf'
+        self.assertFalse(server._teacher_can_access_upload(self.t1,relative,write=False),
+                         'an uploaded file is not readable to the teacher until its lesson references it')
+        self.data['lessons'].append({
+            'id':'lesson-attachment','classId':'c1','scheduleId':'slot-1',
+            'homework':{'title':'Devoir','files':[{
+                'name':relative,'url':'/data/uploads/'+relative,'size':8
+            }]}
+        })
+        with open(server.DATA_FILE,'w',encoding='utf-8') as handle:
+            json.dump(self.data,handle)
+        self.assertTrue(server._teacher_can_access_upload(self.t1,relative,write=False),
+                        'the teacher must be able to open the attachment after saving the lesson')
+
     def test_teacher_cannot_upload_into_another_teachers_mailbox(self):
         self.assertFalse(server._teacher_can_access_upload(self.t1,'mail-v2/teacher:t2',write=True))
         self.assertFalse(server._teacher_can_access_upload(self.t1,'mail-v2-drafts/teacher:t2',write=True))
