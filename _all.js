@@ -23,14 +23,15 @@ function updateSettingsCard(){
 async function installUpdate(){
  if(!authCanManage())return toast('L’installation est réservée à la direction.');
  if(!updateCheckResult?.prepared||updateCheckBusy)return;
- if(!confirm('Installer cette mise à jour maintenant ? MaClasse sera temporairement inaccessible pendant le redémarrage.'))return;
- updateCheckBusy=true;render();
- try{
-  const result=await api('/api/admin/updates/install',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-  updateCheckResult={...updateCheckResult,prepared:false,installing:true};
-  toast('Installation lancée. MaClasse va redémarrer ; ne ferme pas le PC serveur.');
- }catch(error){toast(error.message||'Impossible de lancer l’installation.')}
- finally{updateCheckBusy=false;render()}
+ confirmModal('Installer cette mise à jour maintenant ? MaClasse sera temporairement inaccessible pendant le redémarrage.','Installer la mise à jour',async()=>{
+  updateCheckBusy=true;render();
+  try{
+   await api('/api/admin/updates/install',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+   updateCheckResult={...updateCheckResult,prepared:false,installing:true};
+   toast('Installation lancée. MaClasse va redémarrer ; ne ferme pas le PC serveur.');
+  }catch(error){toast(error.message||'Impossible de lancer l’installation.')}
+  finally{updateCheckBusy=false;render()}
+ });
 }
 async function prepareUpdate(){
  if(!authCanManage())return toast('La préparation est réservée à la direction.');
