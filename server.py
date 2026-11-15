@@ -749,7 +749,7 @@ def _student_visible_data(data,user):
         if key in data: out[key]=data[key]
     settings=data.get('settings')
     if isinstance(settings,dict):
-        out['settings']={k:settings[k] for k in ('rooms','termMode','terms','competencyLevels') if k in settings}
+        out['settings']={k:settings[k] for k in ('rooms','termMode','terms','competencyLevels','subjectColors') if k in settings}
     class_record=next((x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),None)
     class_fields=('id','name','level','group','groups','room','attendanceMode','periodMode')
     out['classes']=[{k:v for k,v in class_record.items() if k in class_fields}] if class_record else []
