@@ -96,6 +96,8 @@ class TeacherAssignmentTests(unittest.TestCase):
     def test_teacher_cannot_self_assign_or_assign_a_substitute(self):
         data = self.data
         data["classes"][0]["teacherIds"] = ["t1"]
+        data["schedule"][0]["teacherId"] = "t2"
+        data["schedule"][0]["teacherIds"] = []
         user = {"id": "t1", "role": "teacher"}
         view = server._teacher_visible_data(data, user)
         view["schedule"][0]["teacherId"] = "t1"
@@ -111,7 +113,8 @@ class TeacherAssignmentTests(unittest.TestCase):
         }]
         merged = server._merge_teacher_data(data, view, user)
         saved = next(x for x in merged["schedule"] if x["id"] == "slot1")
-        self.assertEqual(saved["teacherId"], "t1")  # t1 was already co-teacher? see below
+        self.assertEqual(saved["teacherId"], "t2")
+        self.assertEqual(saved["teacherIds"], [])
         self.assertNotEqual(saved["overrides"][self.tomorrow].get("replacementTeacherId"), "t3")
         self.assertFalse(any(x.get("id") == "forged" for x in merged.get("teacherAssignments", [])))
 
