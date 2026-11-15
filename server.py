@@ -1745,9 +1745,14 @@ class Handler(SimpleHTTPRequestHandler):
             if not user: return
             if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire de mises à jour Linux doit être installé avant de préparer une version.'},501)
             try:
+                request_payload=json.loads(body.decode('utf-8'))
+                requested_version=str(request_payload.get('version') or '') if isinstance(request_payload,dict) else ''
+                if not requested_version: return self._json({'error':'Version cible manquante. Relance la recherche de mises à jour.'},400)
                 release=update_manager.check_latest_release(APP_VERSION)
                 if not release.get('available'):
                     return self._json({'error':'Aucune nouvelle version stable à préparer.'},409)
+                if release.get('version')!=requested_version:
+                    return self._json({'error':'La version disponible a changé. Relance la recherche avant de préparer.'},409)
                 data=_load_database()
                 current_schema=int(data.get('schemaVersion',0) or 0)
                 if release.get('min_data_schema',1)>current_schema:
@@ -1771,11 +1776,16 @@ class Handler(SimpleHTTPRequestHandler):
             if not user: return
             if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire indépendant Linux n’est pas installé sur ce serveur.'},501)
             try:
+                request_payload=json.loads(body.decode('utf-8'))
+                requested_version=str(request_payload.get('version') or '') if isinstance(request_payload,dict) else ''
+                if not requested_version: return self._json({'error':'Version cible manquante.'},400)
                 with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
                     update_state=json.load(state_file)
                 version=str(update_state.get('version') or '').lstrip('vV')
                 if update_state.get('status')!='prepared' or not re.fullmatch(r'\d+\.\d+\.\d+',version):
                     return self._json({'error':'Aucune mise à jour prête à installer.'},409)
+                if update_state.get('version')!=requested_version:
+                    return self._json({'error':'La version préparée ne correspond plus à la version affichée.'},409)
                 versions_root=os.path.realpath(os.path.join(DATA_DIR,'program','versions'))
                 target=os.path.realpath(os.path.join(versions_root,'V'+version))
                 if os.path.commonpath((target,versions_root))!=versions_root:
