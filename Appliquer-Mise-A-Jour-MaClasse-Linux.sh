@@ -78,7 +78,7 @@ PY
 )
 TARGET="$VERSIONS_ROOT/V$VERSION_NUMBER"
 [[ -d "$TARGET" ]] || { echo "Dossier de version préparée absent."; exit 1; }
-[[ -x "$TARGET/.venv/bin/python" && -f "$TARGET/server.py" && -f "$TARGET/_all.js" ]] || { echo "Version préparée incomplète."; exit 1; }
+[[ -x "$TARGET/.venv/bin/python" && -f "$TARGET/maclasse-runtime-ready.json" && -f "$TARGET/server.py" && -f "$TARGET/_all.js" ]] || { echo "Version préparée incomplète."; exit 1; }
 EXPECTED_VERSION="$VERSION_NUMBER"
 grep -Fq "APP_VERSION='$EXPECTED_VERSION'" "$TARGET/server.py" || { echo "Version du serveur incohérente."; exit 1; }
 grep -Fq "const MC_VERSION='V$EXPECTED_VERSION'" "$TARGET/_all.js" || { echo "Version de l'interface incohérente."; exit 1; }
@@ -87,7 +87,8 @@ VERSIONS_REAL="$(realpath "$VERSIONS_ROOT")"
 [[ "$TARGET_REAL" == "$VERSIONS_REAL/"* ]] || { echo "Chemin de version hors du stockage autorisé."; exit 1; }
 META="$TARGET/maclasse-prepared.json"
 META_SHA="$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sha256"])' "$META")"
-[[ "$META_SHA" == "$EXPECTED_SHA" ]] || { echo "L'empreinte de la version préparée ne correspond plus."; exit 1; }
+META_VERSION="$(/usr/bin/python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["version"]).lstrip("vV"))' "$META")"
+[[ "$META_SHA" == "$EXPECTED_SHA" && "$META_VERSION" == "$VERSION_NUMBER" ]] || { echo "Le manifeste de la version préparée ne correspond plus."; exit 1; }
 PREVIOUS_TARGET="$(readlink -f "$CURRENT_LINK")"
 case "$PREVIOUS_TARGET" in "$ROOT"|"$VERSIONS_REAL"/*) ;; *) echo "Cible active précédente non reconnue."; exit 1;; esac
 PREVIOUS_VERSION="$(/usr/bin/python3 - "$PREVIOUS_TARGET" <<'PY'
