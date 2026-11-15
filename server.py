@@ -1701,6 +1701,24 @@ class Handler(SimpleHTTPRequestHandler):
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
         if length<0 or length>100*1024*1024: return self._json({'error':'Requête trop volumineuse (100 Mo maximum).'},413)
         body=self.rfile.read(length)
+        if path=='/api/admin/updates/prepare':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            try:
+                release=update_manager.check_latest_release(APP_VERSION)
+                if not release.get('available'):
+                    return self._json({'error':'Aucune nouvelle version stable à préparer.'},409)
+                data=_load_database()
+                current_schema=int(data.get('schemaVersion',0) or 0)
+                if release.get('min_data_schema',1)>current_schema:
+                    return self._json({'error':'Cette version est incompatible avec la structure actuelle des données.'},409)
+                staging=os.path.join(DATA_DIR,'update-staging')
+                prepared=update_manager.prepare_release(release,staging)
+                return self._json({'prepared':True,'version':release['version'],'prepared_at':int(time.time())})
+            except update_manager.UpdateError:
+                return self._json({'error':'La préparation de la mise à jour a échoué. La version active n’a pas été modifiée.'},502)
+            except (OSError,TypeError,ValueError):
+                return self._json({'error':'Impossible de préparer la mise à jour. La version active n’a pas été modifiée.'},500)
         if path=='/api/auth/setup':
             try: obj=json.loads(body.decode('utf-8'))
             except Exception: return self._json({'error':'Requête invalide.'},400)
