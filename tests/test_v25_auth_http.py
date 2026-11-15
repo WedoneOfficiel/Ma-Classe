@@ -37,6 +37,7 @@ def run():
         assert call(base,'/api/data')[0]==401
         assert call(base,'/api/admin/updates/check')[0]==401
         assert call(base,'/api/admin/updates/prepare','POST',{})[0]==401
+        assert call(base,'/api/admin/updates/install','POST',{})[0]==401
         assert call(base,'/api/auth/session',extra_headers={'Host':'attacker.invalid'})[0]==403
         assert call(base,'/api/upload','POST',{},send_origin=False)[0]==403
         assert call(base,'/api/auth/login','POST',{'username':'admin','password':'admin'},send_origin=False)[0]==403
@@ -100,6 +101,7 @@ def run():
         assert call(base,'/api/auth/change-password','POST',{'currentPassword':teacher_password,'newPassword':'unMotDePasseProfEncorePlusFort!'},teacher)[0]==200
         assert call(base,'/api/admin/updates/check',cookie=teacher)[0]==403
         assert call(base,'/api/admin/updates/prepare','POST',{},teacher)[0]==403
+        assert call(base,'/api/admin/updates/install','POST',{},teacher)[0]==403
         status,_,profile_body=call(base,'/api/teacher/profile','POST',{'first':'Alicia','last':'Martin','username':'alicia.martin','email':'alicia@example.test','phone':'0102030405','subjects':['Mathématiques','Physique'],'profileNotes':'Profil mis à jour'},teacher)
         assert status==200 and json.loads(profile_body)['user']['first']=='Alicia'
         saved=json.loads((app/'data'/'maclasse.json').read_text())
