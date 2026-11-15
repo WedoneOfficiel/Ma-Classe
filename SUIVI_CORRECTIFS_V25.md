@@ -137,3 +137,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le statut affiché dans la saisie bascule maintenant de « Publication programmée » à « Publiée » une fois l'heure atteinte.
 - Ajout d'un test d'intégration de la projection élève : une évaluation programmée une heure dans le futur reste absente, tandis qu'une évaluation dont l'heure est passée est transmise avec uniquement la note de l'élève concerné.
 - Ce test complète le test unitaire du helper de date/heure. Résultats CI sur ces derniers commits encore attendus.
+
+
+#### 15/11/2026 — Couleur des matières unifiée dans l’EDT
+
+- Diagnostic : la couleur était stockée sur chaque créneau et le gestionnaire regroupait les créneaux par classe/enseignant/sous-groupe. Une modification ne pouvait donc pas garantir une couleur identique pour une même matière dans toutes les classes.
+- Correctif candidat : ajout d’un dictionnaire `settings.subjectColors`, indexé par le nom de matière normalisé (accents, casse et espaces neutralisés). Le rendu des EDT lit désormais cette couleur commune ; le formulaire de créneau et le gestionnaire de cours l’enregistrent au niveau de la matière.
+- Lors d’une modification, les anciennes couleurs locales des créneaux de la matière sont supprimées afin qu’elles ne masquent pas la couleur commune. Les hachures restent propres aux créneaux/cours.
+- Test de régression ajouté : persistance de la couleur et résolution identique pour « Français » et « francais » avec espaces/casse différents.
+- **À valider :** exécution CI sur le nouveau commit, puis recette visuelle dans un compte de direction/professeur et un compte élève. Ce correctif n’est pas encore déclaré validé.
