@@ -19,7 +19,7 @@ After=default.target
 [Service]
 Type=simple
 WorkingDirectory=$ROOT
-ExecStart=$ROOT/Lancer-MaClasse-Service-Linux.sh
+ExecStart=/usr/bin/bash $ROOT/Lancer-MaClasse-Service-Linux.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
