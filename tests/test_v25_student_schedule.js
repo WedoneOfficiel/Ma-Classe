@@ -26,7 +26,10 @@ vm.runInContext(source.slice(colorStart, colorEnd), colorContext);
 assert.strictEqual(vm.runInContext("subjectColor('Français')[2]", colorContext), '#123456');
 assert.strictEqual(vm.runInContext("subjectColor(' francais  ')[2]", colorContext), '#123456',
   'La couleur doit être commune malgré les accents, la casse et les espaces.');
-assert(source.includes('const scrollTop=window.scrollY;closeModal();render();window.scrollTo(0,scrollTop)'), 'La sauvegarde d’un créneau doit préserver la position de défilement.');
+assert(source.includes('function refreshSchedulePage(){'), 'La sauvegarde doit disposer d’un rafraîchissement ciblé du calendrier.');
+assert(source.includes('current.replaceWith(next)'), 'La sauvegarde doit remplacer uniquement le calendrier, pas toute la page.');
+assert(source.includes('closeModal();refreshSchedulePage();window.scrollTo(0,scrollTop)'), 'Après sauvegarde, le calendrier doit être actualisé sans recharger toute la vue.');
+assert(source.includes("catch(err){db=JSON.parse(before);normalize();toast('Échec de sauvegarde : '+(err.message||'réessaie.'))}"), 'En cas d’échec, le formulaire reste ouvert pour permettre une correction ou une nouvelle tentative.');
 
 const context = {
   activeStudent: () => 'student-1',
