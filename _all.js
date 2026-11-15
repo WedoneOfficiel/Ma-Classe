@@ -1369,7 +1369,12 @@ function studentReportEvaluationInTerm(e,selectedTerm){
   return (!selectedTerm.start||date>=selectedTerm.start)&&(!selectedTerm.end||date<=selectedTerm.end);
 }
 function studentReportIsPublished(e,today){
-  return e?.published===true&&evaluationModelPublished(e,today);
+  if(e?.published!==true)return false;
+  const publishedAt=String(e.publishAt||'');
+  if(!publishedAt)return true;
+  if(publishedAt.length<=10)return publishedAt<=String(today||'');
+  const timestamp=Date.parse(publishedAt);
+  return Number.isFinite(timestamp)&&timestamp<=Date.now();
 }
 function studentReportGradeHasContent(g){
   if(!g)return false;
