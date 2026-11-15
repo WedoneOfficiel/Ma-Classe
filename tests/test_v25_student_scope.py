@@ -31,7 +31,7 @@ class StudentScopeTests(unittest.TestCase):
             'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','validated':True,'published':True},{'id':'b2','studentId':'s2','classId':'c1','validated':True,'published':True}],
             'submissions':[{'id':'old','studentId':'s1','lessonId':'l1b','classId':'c1','status':'submitted','corrected':True,'correctionComment':'Prof feedback'},{'id':'other','studentId':'s2','lessonId':'l1','classId':'c1','status':'submitted'}],
             'attachments':[],'conversations':[{'id':'private','participantIds':['s2']}],
-            'cloudItems':[{'id':'private','ownerId':'s2'}],'notifications':[],'settings':{'schoolName':'private','terms':[]}
+            'cloudItems':[{'id':'private','ownerId':'s2'}],'notifications':[],'settings':{'schoolName':'private','terms':[],'subjectColors':{'francais':'#123456'}}
         }
         with open(server.DATA_FILE,'w',encoding='utf-8') as f: json.dump(self.data,f)
 
@@ -42,6 +42,8 @@ class StudentScopeTests(unittest.TestCase):
 
     def test_projection_contains_only_own_student_data_and_published_results(self):
         view=server._student_visible_data(self.data,self.user)
+        self.assertEqual(view['settings']['subjectColors'],{'francais':'#123456'})
+        self.assertNotIn('schoolName',view['settings'])
         self.assertEqual([x['id'] for x in view['students']],['s1'])
         self.assertNotIn('notes',view['students'][0])
         self.assertEqual([x['id'] for x in view['classes']],['c1'])
