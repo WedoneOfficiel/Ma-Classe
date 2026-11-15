@@ -55,6 +55,8 @@ ProtectSystem=full
 ReadWritePaths=$ROOT/data
 EOF
 chmod 600 "$UPDATE_UNIT_FILE"
+touch "$ROOT/data/update-manager.enabled"
+chmod 600 "$ROOT/data/update-manager.enabled"
 
 # Le gestionnaire utilisateur doit rester actif après la fermeture de session et au redémarrage.
 LINGER="$(loginctl show-user "$USER_NAME" -p Linger --value 2>/dev/null || true)"
