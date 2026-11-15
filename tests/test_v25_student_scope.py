@@ -77,7 +77,7 @@ class StudentScopeTests(unittest.TestCase):
             ],
             'states':{'student:s1':{'teacher-to-s1':{'read':False}},'student:s2':{'teacher-to-s2':{'read':False}},'teacher:t1':{'x':{}}},
             'folders':[{'id':'own-folder','owner':'student:s1'},{'id':'other-folder','owner':'student:s2'}],
-            'drafts':[{'id':'own-draft','owner':'student:s1'},{'id':'other-draft','owner':'student:s2'}],
+            'drafts':[{'id':'own-draft','owner':'student:s1','attachments':[{'name':'draft.txt','url':'/data/uploads/mail-v2-drafts/student:s1/draft.txt'},{'name':'private.txt','url':'/data/uploads/mail-v2/teacher:t2/private.txt'}]},{'id':'other-draft','owner':'student:s2'}],
             'resetPending':False
         }
         view=server._student_visible_data(self.data,self.user)
@@ -89,6 +89,7 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual(set(mailbox['states']),{'student:s1'})
         self.assertEqual([x['id'] for x in mailbox['folders']],['own-folder'])
         self.assertEqual([x['id'] for x in mailbox['drafts']],['own-draft'])
+        self.assertEqual([x['name'] for x in mailbox['drafts'][0]['attachments']],['draft.txt'])
 
     def test_student_can_read_only_attachments_referenced_by_its_mailbox(self):
         teacher_dir=os.path.join(server.UPLOADS,'mail-v2','teacher:t1')
