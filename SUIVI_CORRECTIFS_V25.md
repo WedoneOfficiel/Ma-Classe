@@ -159,6 +159,7 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 #### 15/11/2026 — Ajustement après échec du test EDT ciblé
 
-- **CI run #630 puis #633 : échec** des suites JavaScript Linux/macOS dans `tests/test_v25_schedule_navigation.js:267`. Le scénario de sauvegarde extrait `saveSchedule()` isolément et ne fournissait pas le nouveau helper `subjectColorKey()` appelé lors de l'enregistrement de la couleur matière. L'exception était interceptée par le `catch`, qui restaurait l'état initial ; le test constatait donc zéro créneau.
-- Le premier diagnostic centré sur l'absence de DOM était incomplet : le fallback DOM a été conservé pour les contextes isolés, mais il ne suffisait pas à ce test. Le stub de test reçoit maintenant aussi `subjectColorKey()`.
-- **État :** correction du test poussée ; nouvelle CI nécessaire. Le code de production reste inchangé dans cette dernière correction. Ne pas considérer le correctif de sauvegarde comme validé avant réussite de cette exécution.
+- **CI runs #630, #633 et #634 : échec** des suites JavaScript Linux/macOS dans `tests/test_v25_schedule_navigation.js` au scénario de sauvegarde. Le test extrait `saveSchedule()` isolément, mais n'extrait pas le helper `refreshSchedulePage()` défini plus haut dans le fichier. Lors du scénario simulé, cet appel non fourni déclenchait le `catch` et restaurait l'état initial.
+- Le helper de rafraîchissement lui-même conserve un fallback sans DOM ; le problème observé était donc un helper absent du contexte de test isolé, et non un défaut de la sauvegarde serveur.
+- Correction : le test de sauvegarde fournit maintenant un stub `refreshSchedulePage()` ; le comportement du helper réel reste vérifié séparément par les assertions dédiées de `test_v25_student_schedule.js`.
+- **État :** correction du test poussée ; nouvelle CI nécessaire. Aucun correctif de production supplémentaire n'a été fait dans cette étape.
