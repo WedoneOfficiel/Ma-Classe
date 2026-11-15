@@ -361,3 +361,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le premier essai a échoué parce que le compte élève de test était encore en état `mustChangePassword` ; le test a été complété pour suivre le parcours normal de première connexion. Le test révisé passe dans le run #720.
 - EDT-04 passe à **Supposé résolu**. La confirmation de l'utilisateur dans son installation reste requise avant « Corrigé ».
 - Run #720 : tests Linux réussis, Firefox réel réussi ; validation macOS encore en cours au dernier relevé. Runs #714 et #716 sont entièrement verts sur les trois jobs.
+
+
+#### 15/11/2026 — MAIL-01 : boîte élève validée dans Firefox réel
+
+- Le test navigateur crée un véritable compte professeur via `/api/admin/teacher`, l'associe à la classe, crée un compte élève et suit son premier changement de mot de passe.
+- Un message envoyé par l'enseignant et adressé à l'élève est injecté dans la boîte serveur ; le compte élève ouvre ensuite `studentMessages` dans Firefox et retrouve le message dans sa boîte de réception.
+- Le premier essai du test a révélé que le professeur de test n'avait pas été créé par l'API canonique : les sauvegardes `/api/save` conservent volontairement la liste `users` côté serveur et ignoraient l'insertion directe du professeur dans le JSON client. Le test utilise désormais `/api/admin/teacher`, comme l'application réelle.
+- Le nouveau test Firefox passe dans le run #725 ; les tests Linux passent aussi. Validation macOS encore en cours au dernier relevé.
+- MAIL-01 passe à **Supposé résolu**. La confirmation utilisateur reste requise avant « Corrigé ».
