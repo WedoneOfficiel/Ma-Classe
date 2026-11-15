@@ -246,6 +246,10 @@ def prepare_runtime(program_dir: str | Path) -> Path:
                                           "prepared_at": int(time.time())},
                                          ensure_ascii=False, indent=2), encoding="utf-8")
         return python
+    except UpdateError:
+        shutil.rmtree(venv_dir, ignore_errors=True)
+        ready_file.unlink(missing_ok=True)
+        raise
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
         shutil.rmtree(venv_dir, ignore_errors=True)
         ready_file.unlink(missing_ok=True)
