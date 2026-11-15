@@ -155,3 +155,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - En cas d’échec, les données locales sont restaurées et le formulaire reste ouvert pour permettre de corriger ou de réessayer, au lieu de remplacer toute la page.
 - Test de régression ajouté sur le rafraîchissement ciblé et l’absence de rerendu complet.
 - **À valider :** CI du commit et test manuel de création/modification/suppression avec contrôle visuel de l’absence de flash/rechargement.
+
+
+#### 15/11/2026 — Ajustement après échec du test EDT ciblé
+
+- **CI run #630 : échec** des suites JavaScript Linux et macOS dans `tests/test_v25_schedule_navigation.js:267`. Le scénario de sauvegarde simulait un environnement sans DOM ; le nouveau rafraîchissement ciblé supposait à tort que `document.getElementById` était disponible. Le serveur de test n'a pas mis en évidence une régression de calcul de récurrence, mais le test de sauvegarde n'a pas abouti.
+- Correction : `refreshSchedulePage()` utilise le rafraîchissement ciblé lorsque le DOM est disponible et conserve un fallback `render()` dans les contextes sans DOM. Ajout d'une assertion dédiée.
+- **État :** correction poussée ; nouvelle CI nécessaire. Ne pas considérer le correctif de sauvegarde comme validé avant réussite de cette exécution.
