@@ -1,0 +1,69 @@
+name: Publier une version stable MaClasse
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code de la version taguée
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Vérifier la cohérence du tag et de VERSION.txt
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="$(tr -d '\r\n' < VERSION.txt)"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$VERSION" == "V${TAG#v}" ]] || {
+            echo "Le tag $TAG ne correspond pas à VERSION.txt ($VERSION)." >&2
+            exit 1
+          }
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Construire l'archive et le manifeste vérifié
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          git archive --format=zip --prefix=MaClasse/ "$GITHUB_SHA" > dist/maclasse-update.zip
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          archive = Path("dist/maclasse-update.zip")
+          manifest = {
+              "schema_version": 1,
+              "version": os.environ["RELEASE_VERSION"],
+              "tag_name": os.environ["RELEASE_TAG"],
+              "min_data_schema": 1,
+              "archive_asset": archive.name,
+              "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+              "release_notes": f"Version stable MaClasse {os.environ['RELEASE_TAG']}. Consultez les notes de publication GitHub."
+          }
+          Path("dist/maclasse-update.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n",
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Publier la release stable et ses artefacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/maclasse-update.zip \
+            dist/maclasse-update.json \
+            --title "MaClasse ${GITHUB_REF_NAME}" \
+            --generate-notes
