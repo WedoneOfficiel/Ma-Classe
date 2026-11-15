@@ -64,6 +64,75 @@ class StudentGradePublicationTests(unittest.TestCase):
         )
         self.assertEqual([e["id"] for e in visible["evaluations"]], ["today"])
 
+    def test_assigned_teacher_can_publish_and_only_valid_student_grades_are_saved(self):
+        today = datetime.date.today().isoformat()
+        current = {
+            "users": [{"id": "t1", "role": "teacher"}],
+            "classes": [{"id": "c1", "teacherIds": ["t1"], "principalTeacherId": "pp"}],
+            "students": [{"id": "s1", "classId": "c1"}],
+            "schedule": [{
+                "id": "slot", "classId": "c1", "subject": "Maths",
+                "teacherId": "t1", "teacherIds": [],
+                "startDate": "2020-01-01", "endDate": "2999-12-31",
+            }],
+            "evaluations": [{
+                "id": "e1", "classId": "c1", "subject": "Maths",
+                "date": today, "published": False,
+                "grades": [{"studentId": "s1", "value": ""}],
+            }],
+            "teacherAssignments": [], "lessons": [], "attendance": [],
+            "bulletins": [], "attachments": [], "submissions": [],
+            "conversations": [], "cloudItems": [], "notifications": [],
+            "mailFolders": [],
+        }
+        import copy
+        incoming = copy.deepcopy(current)
+        incoming["evaluations"][0]["published"] = True
+        incoming["evaluations"][0]["grades"] = [
+            {"studentId": "s1", "value": "15"},
+            {"studentId": "intruder", "value": "20"},
+        ]
+        merged = server._merge_teacher_data(
+            current, incoming, {"id": "t1", "role": "teacher"}
+        )
+        saved = next(e for e in merged["evaluations"] if e["id"] == "e1")
+        self.assertIs(saved["published"], True)
+        self.assertEqual(saved["grades"], [{"studentId": "s1", "value": "15"}])
+
+    def test_teacher_without_subject_assignment_cannot_publish_or_overwrite_grades(self):
+        today = datetime.date.today().isoformat()
+        current = {
+            "users": [{"id": "t1", "role": "teacher"}],
+            "classes": [{"id": "c1", "teacherIds": ["t1"]}],
+            "students": [{"id": "s1", "classId": "c1"}],
+            "schedule": [{
+                "id": "slot", "classId": "c1", "subject": "Histoire",
+                "teacherId": "t1", "teacherIds": [],
+                "startDate": "2020-01-01", "endDate": "2999-12-31",
+            }],
+            "evaluations": [{
+                "id": "e1", "classId": "c1", "subject": "Maths",
+                "date": today, "published": False,
+                "grades": [{"studentId": "s1", "value": "12"}],
+            }],
+            "teacherAssignments": [], "lessons": [], "attendance": [],
+            "bulletins": [], "attachments": [], "submissions": [],
+            "conversations": [], "cloudItems": [], "notifications": [],
+            "mailFolders": [],
+        }
+        import copy
+        incoming = copy.deepcopy(current)
+        incoming["evaluations"][0]["published"] = True
+        incoming["evaluations"][0]["grades"] = [
+            {"studentId": "s1", "value": "20"}
+        ]
+        merged = server._merge_teacher_data(
+            current, incoming, {"id": "t1", "role": "teacher"}
+        )
+        saved = next(e for e in merged["evaluations"] if e["id"] == "e1")
+        self.assertIs(saved["published"], False)
+        self.assertEqual(saved["grades"], [{"studentId": "s1", "value": "12"}])
+
 
 if __name__ == "__main__":
     unittest.main()
