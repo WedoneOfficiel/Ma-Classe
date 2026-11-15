@@ -55,6 +55,13 @@ class StudentScopeTests(unittest.TestCase):
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
 
+    def test_scheduled_evaluation_publication_uses_exact_datetime(self):
+        now=datetime.datetime(2026,11,15,12,0,tzinfo=datetime.timezone.utc)
+        self.assertFalse(server._evaluation_publication_due('2026-11-15T12:01:00Z',now))
+        self.assertTrue(server._evaluation_publication_due('2026-11-15T11:59:00Z',now))
+        self.assertTrue(server._evaluation_publication_due('2026-11-15',now))
+        self.assertFalse(server._evaluation_publication_due('not-a-date',now))
+
     def test_student_can_only_create_own_submission_and_cannot_change_profile_or_correction(self):
         upload_dir=os.path.join(server.UPLOADS,'submissions','s1')
         os.makedirs(upload_dir)
