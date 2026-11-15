@@ -83,3 +83,13 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Les tests ont été ajoutés, mais ils n'ont pas encore été exécutés dans GitHub Actions.
 - Aucun test manuel Firefox n'a été effectué dans le dossier local de test.
 - Aucun correctif de cette campagne n'est fusionné dans `main` ni déployé.
+
+#### 15/11/2026 — Parité visuelle et corrections de tests CI
+
+- Diagnostic confirmé pour **EDT-01** : l'enseignant utilisait `.schedulePage`, `.scheduleControlPanel`, `.scheduleDateControls`, `.scheduleViewSwitch`, `.scheduleLegend` et `.scheduleCalendarSurface`; l'élève avait un ancien assemblage `.toolbar` + cartes séparées et un calendrier mensuel spécifique. Le moteur semaine/jour était commun, mais pas la structure visuelle.
+- Correction : `studentSchedule()` utilise maintenant la même structure visuelle et les mêmes composants de calendrier jour/semaine/mois que le professeur, en conservant une navigation élève sans actions d'édition.
+- **CI run #605** : échec du test JS existant car le routeur de test ne fournissait pas le nouveau stub `studentSettings`. Correction du harnais de test.
+- **CI run #607/#608** : le test de régression EDT vérifiait l'ancien helper étudiant spécifique. Mise à jour de l'attente pour le moteur calendrier partagé.
+- **CI run #609** : le test de sauvegarde a révélé que le mock navigateur ne définissait pas `window.scrollTo`. Correction du mock dans `tests/test_v25_schedule_navigation.js`. Le navigateur réel Firefox a passé le job dans les runs #608 et #609.
+- Les installations de test Linux/macOS et la vérification syntaxique JS/Python ont passé les étapes correspondantes dans ces runs ; la suite JavaScript complète a interrompu les tests Python à cause des assertions de test ci-dessus.
+- **Statut** : pas encore de suite CI entièrement verte sur le dernier commit ; attendre le run suivant avant de qualifier les correctifs de validés.
