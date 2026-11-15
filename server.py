@@ -1585,6 +1585,18 @@ class Handler(SimpleHTTPRequestHandler):
         if urlparse(getattr(self,'path','')).path.startswith('/data/uploads/'):
             self.send_header('Content-Security-Policy',"sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'")
         super().end_headers()
+    def translate_path(self,path):
+        parsed=urlparse(path).path
+        if parsed in ('/data/uploads','/data/uploads/'):
+            return UPLOADS
+        prefix='/data/uploads/'
+        if parsed.startswith(prefix):
+            try:
+                relative=unquote(parsed[len(prefix):],encoding='utf-8',errors='strict')
+                return _safe_upload_path(relative)
+            except (UnicodeDecodeError,ValueError):
+                return os.path.join(UPLOADS,'__invalid_upload_path__')
+        return super().translate_path(path)
     def _safe_static_path(self,path):
         if path in ('/','/index.html','/_all.js'):
             return True
