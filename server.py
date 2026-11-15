@@ -1665,8 +1665,15 @@ class Handler(SimpleHTTPRequestHandler):
                     result['compatible']=result.get('min_data_schema',1)<=current_schema
                     if not result['compatible']:
                         result['compatibility_message']='Cette version exige une structure de données plus récente. La mise à jour est bloquée.'
+                    try:
+                        with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
+                            update_state=json.load(state_file)
+                        result['prepared']=bool(update_state.get('status')=='prepared' and update_state.get('version')==result.get('version') and update_state.get('sha256')==result.get('sha256'))
+                    except (OSError,ValueError,AttributeError):
+                        result['prepared']=False
                 else:
                     result['compatible']=True
+                    result['prepared']=False
                 return self._json(result)
             except update_manager.UpdateError:
                 return self._json({'error':'Impossible de vérifier les mises à jour officielles pour le moment.'},502)
@@ -1723,7 +1730,13 @@ class Handler(SimpleHTTPRequestHandler):
                 staging=os.path.join(DATA_DIR,'program','versions')
                 prepared=update_manager.prepare_release(release,staging)
                 update_manager.prepare_runtime(prepared)
-                return self._json({'prepared':True,'version':release['version'],'prepared_at':int(time.time())})
+                update_state={'status':'prepared','version':release['version'],'sha256':release['sha256'],'min_data_schema':release['min_data_schema'],'prepared_at':int(time.time())}
+                state_path=os.path.join(DATA_DIR,'update-state.json')
+                state_tmp=state_path+'.tmp'
+                with open(state_tmp,'w',encoding='utf-8') as state_file:
+                    json.dump(update_state,state_file,ensure_ascii=False,indent=2)
+                os.replace(state_tmp,state_path)
+                return self._json({'prepared':True,'version':release['version'],'prepared_at':update_state['prepared_at']})
             except update_manager.UpdateError:
                 return self._json({'error':'La préparation de la mise à jour a échoué. La version active n’a pas été modifiée.'},502)
             except (OSError,TypeError,ValueError):
