@@ -93,3 +93,9 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **CI run #609** : le test de sauvegarde a révélé que le mock navigateur ne définissait pas `window.scrollTo`. Correction du mock dans `tests/test_v25_schedule_navigation.js`. Le navigateur réel Firefox a passé le job dans les runs #608 et #609.
 - Les installations de test Linux/macOS et la vérification syntaxique JS/Python ont passé les étapes correspondantes dans ces runs ; la suite JavaScript complète a interrompu les tests Python à cause des assertions de test ci-dessus.
 - **Statut** : pas encore de suite CI entièrement verte sur le dernier commit ; attendre le run suivant avant de qualifier les correctifs de validés.
+
+#### 15/11/2026 — Ajustement du test de parité EDT
+
+- **CI run #610** : les tests ont validé les correctifs précédents jusqu'à `test_v25_student_schedule.js`, qui mockait les anciens wrappers `studentScheduleWeek/Day/Month`. Le rendu élève utilise maintenant volontairement les renderers communs `scheduleWeek/Day/Month` ; le test a été adapté pour fournir ces fonctions communes.
+- Le job Firefox réel du run #610 est encore en cours au moment de cette entrée ; les étapes installateur, bash et syntaxe JS ont réussi.
+- Aucun résultat CI n'est considéré comme vert tant que les trois jobs ne sont pas terminés.
