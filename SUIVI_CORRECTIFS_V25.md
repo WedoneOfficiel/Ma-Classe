@@ -207,3 +207,11 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Vérification complémentaire de la couleur matière globale : le filtre serveur de l'espace professeur ne transmettait pas `settings.subjectColors`, ce qui aurait laissé les comptes enseignants avec la palette par défaut.
 - Correction : ajout de `subjectColors` à la liste blanche de la projection professeur, avec test confirmant que la préférence est transmise sans exposer `schoolName` ni les paramètres privés. La projection élève avait déjà été corrigée et testée.
 - **Validation :** cette dernière correction professeur attend une nouvelle CI.
+
+
+#### 15/11/2026 — CI #661 : assertion de conservation des paramètres à actualiser
+
+- **CI run #661 :** tests de messagerie élève (`test_v25_student_scope.py`) réussis ; tests de messagerie professeur/pièces jointes (`test_v25_mailbox_upload_scope.py`) réussis. Un test `test_teacher_cannot_modify_global_settings` a échoué car son attendu exact ne contenait pas la nouvelle préférence `subjectColors` ajoutée au jeu de données de test.
+- Le comportement attendu reste que le professeur ne puisse pas modifier les paramètres globaux ; le test doit simplement vérifier que `subjectColors` existant est conservé, au même titre que `schoolName`.
+- Correction du seul attendu de test, sans changement serveur supplémentaire.
+- Firefox réel du run #661 était encore en cours au relevé ; la validation macOS n'était pas terminée. Nouvelle CI nécessaire après cette correction.
