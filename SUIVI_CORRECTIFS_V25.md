@@ -370,3 +370,11 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le premier essai du test a révélé que le professeur de test n'avait pas été créé par l'API canonique : les sauvegardes `/api/save` conservent volontairement la liste `users` côté serveur et ignoraient l'insertion directe du professeur dans le JSON client. Le test utilise désormais `/api/admin/teacher`, comme l'application réelle.
 - Le nouveau test Firefox passe dans le run #725 ; les tests Linux passent aussi. Validation macOS encore en cours au dernier relevé.
 - MAIL-01 passe à **Supposé résolu**. La confirmation utilisateur reste requise avant « Corrigé ».
+
+
+#### 15/11/2026 — DEV-01 : dépôt de devoir validé dans Firefox réel
+
+- Le test Firefox réel passe désormais sur le parcours complet : connexion d'un compte professeur, téléversement d'un vrai objet `File` vers `/api/upload` dans `submissions/<créneau>`, enregistrement du devoir et de sa pièce jointe dans la séance, connexion d'un compte élève, ouverture du devoir et lecture effective du contenu du fichier via son URL protégée.
+- Cela valide le flux de dépôt enseignant → sauvegarde serveur → projection élève → accès au fichier. Le test vérifie aussi l'absence d'erreurs JavaScript sur les pages utilisées.
+- Le run #729 passe sur Linux et Firefox réel ; validation macOS encore en cours au dernier relevé.
+- DEV-01 passe à **Supposé résolu**. L'utilisateur doit encore confirmer sur son installation avant le statut « Corrigé ».
