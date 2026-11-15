@@ -109,3 +109,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - `server.py` : ajout de `_evaluation_publication_due()` ; la projection serveur élève masque une note jusqu'à l'instant exact programmé. Les anciennes valeurs date seule restent compatibles ; une valeur date/heure invalide est masquée par défaut.
 - Tests ajoutés : heure programmée avant/après l'instant de référence, compatibilité date seule, timestamp invalide masqué, et droit d'un remplaçant ponctuel sur la matière enseignée. Assertions JS sur le formulaire de publication actif et la reconnaissance du remplacement.
 - **Validation :** les fichiers ont été commités sur `fix/v25-student-teacher-workflows`. Les tests automatisés et la CI de cette nouvelle tête de branche restent à exécuter ; aucun résultat vert n'est revendiqué à ce stade. Recette réelle avec deux comptes (enseignant et élève) encore nécessaire.
+
+
+#### 15/11/2026 — Correction après CI #615
+
+- Le job `tests` du run #615 a échoué dans `tests/test_v216_student_report.js` : le test extrait `studentReportIsPublished()` dans un contexte isolé où `evaluationModelPublished` n'est pas défini.
+- Correction : le helper de rapport reste autonome et compare directement les timestamps à l'heure courante, tout en conservant la compatibilité des dates seules.
+- Le job Firefox réel et la validation macOS du run #615 étaient encore en cours au moment du diagnostic ; le run complet n'est pas vert. Un nouveau run doit confirmer la correction.
