@@ -268,3 +268,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **Limite :** ce test valide le flux frontend et ses réactions aux réponses de téléversement simulées ; il ne remplace pas un essai d'envoi réel vers le serveur avec un compte élève.
 - DEV-01 passe donc de « Détecté » à « En cours de résolution ». Le registre compte désormais 16 bugs : 15 en cours, 1 détecté, 0 résolu.
 - Nouvelle CI requise pour exécuter ce test ajouté.
+
+
+#### 15/11/2026 — Test frontend des droits bulletin : correction du scénario et CI #683/#684
+
+- Ajout de `tests/test_v25_bulletin_permissions.js` pour exécuter réellement le helper frontend `canEditBulletinSubject()` sur trois cas : titulaire d'une période passée malgré un remplacement actuel, remplaçant ponctuel pendant la période, enseignant sans affectation à la classe.
+- **CI #683 :** échec de la suite JavaScript sur le troisième cas. Le faux compte de test était lui-même déclaré professeur principal et enseignant de la classe, avec la matière dans son profil ; le fallback de compatibilité lui accordait donc l'accès conformément à la configuration du test. Ce n'était pas une preuve d'un défaut applicatif.
+- Correction du fixture : le cas « enseignant non affecté » n'a désormais ni classe dans ses affectations, ni rôle de professeur principal, ni matière dans son profil.
+- **CI #684 :** suite JavaScript complète Linux réussie avec le test corrigé ; régression EDT Firefox réel réussie. La validation macOS a passé l'installateur Apple Silicon, les vérifications JavaScript et la suite JavaScript ; l'exécution des tests Python macOS est encore en cours au moment de cette entrée.
+- La PR reste en brouillon. Le test automatisé ne remplace pas la recette du bulletin avec un vrai compte enseignant.
