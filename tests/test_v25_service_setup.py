@@ -33,10 +33,13 @@ assert 'httpd.server_close()' in server_source
 assert 'ProtectSystem=full' in installer
 assert 'ReadWritePaths=$ROOT/data' in installer
 assert 'maclasse-update-apply.service' in installer
+assert 'touch "$ROOT/data/update-manager.enabled"' in installer
 assert 'Appliquer-Mise-A-Jour-MaClasse-Linux.sh' in installer
 assert 'rm -f "$UNIT_FILE"' in uninstaller
 assert 'rm -rf' not in uninstaller
-assert 'data/' not in uninstaller
+assert 'rm -rf' not in uninstaller
+assert 'UPDATE_UNIT_FILE="$UNIT_DIR/maclasse-update-apply.service"' in uninstaller
+assert 'rm -f "$ROOT/data/update-manager.enabled"' in uninstaller
 apply_script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text()
 assert 'systemctl --user stop maclasse.service' in apply_script
 assert 'mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"' in apply_script
