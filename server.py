@@ -1748,7 +1748,7 @@ class Handler(SimpleHTTPRequestHandler):
                 with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
                     update_state=json.load(state_file)
                 version=str(update_state.get('version') or '').lstrip('vV')
-                if update_state.get('status')!='prepared' or not re.fullmatch(r'\\d+\\.\\d+\\.\\d+',version):
+                if update_state.get('status')!='prepared' or not re.fullmatch(r'\d+\.\d+\.\d+',version):
                     return self._json({'error':'Aucune mise à jour prête à installer.'},409)
                 versions_root=os.path.realpath(os.path.join(DATA_DIR,'program','versions'))
                 target=os.path.realpath(os.path.join(versions_root,'V'+version))
