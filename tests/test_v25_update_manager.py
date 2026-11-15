@@ -16,7 +16,7 @@ import update_manager as updater
 
 class ReleaseCheckerTests(unittest.TestCase):
     def setUp(self):
-        self.archive = self.make_zip({"MaClasse/server.py": "print('ok')", "MaClasse/VERSION.txt": "V25.1.0"})
+        self.archive = self.make_zip({"server.py": "print('ok')", "VERSION.txt": "V25.1.0", "requirements.txt": ""})
         self.manifest = {
             "schema_version": 1,
             "version": "25.1.0",
@@ -61,8 +61,9 @@ class ReleaseCheckerTests(unittest.TestCase):
             self.assertEqual(info["version"], "v25.1.0")
             with tempfile.TemporaryDirectory() as temp:
                 prepared = updater.prepare_release(info, temp)
-                self.assertEqual((prepared / "MaClasse" / "VERSION.txt").read_text(), "V25.1.0")
+                self.assertEqual((prepared / "VERSION.txt").read_text(), "V25.1.0")
                 self.assertTrue(prepared.is_relative_to(Path(temp)))
+                self.assertEqual(json.loads((prepared / "maclasse-prepared.json").read_text())["status"], "prepared")
 
     def test_no_update_when_same_or_newer_version_installed(self):
         with patch.object(updater, "_request", side_effect=self.fake_request):
