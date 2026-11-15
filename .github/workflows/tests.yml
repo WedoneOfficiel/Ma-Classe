@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feature/amel-01-update-manager]
   pull_request:
-    branches: [main]
+    branches: [main, fix/v25-student-teacher-workflows]
 
 permissions:
   contents: read
