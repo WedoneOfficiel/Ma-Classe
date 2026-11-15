@@ -36,6 +36,25 @@ WantedBy=default.target
 EOF
 chmod 600 "$UNIT_FILE"
 
+UPDATE_UNIT_FILE="$UNIT_DIR/maclasse-update-apply.service"
+cat > "$UPDATE_UNIT_FILE" <<EOF
+[Unit]
+Description=MaClasse — installation indépendante d'une mise à jour
+After=default.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=$ROOT
+ExecStart=/usr/bin/bash $ROOT/Appliquer-Mise-A-Jour-MaClasse-Linux.sh
+TimeoutStartSec=900
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=$ROOT/data
+EOF
+chmod 600 "$UPDATE_UNIT_FILE"
+
 # Le gestionnaire utilisateur doit rester actif après la fermeture de session et au redémarrage.
 LINGER="$(loginctl show-user "$USER_NAME" -p Linger --value 2>/dev/null || true)"
 if [[ "$LINGER" != "yes" ]]; then
@@ -46,6 +65,7 @@ if [[ "$LINGER" != "yes" ]]; then
   fi
 fi
 
+systemctl --user daemon-reload
 systemctl --user daemon-reload
 systemctl --user enable --now maclasse.service
 sleep 2
@@ -58,3 +78,4 @@ echo "Service MaClasse installé et actif pour $USER_NAME."
 echo "État : systemctl --user status maclasse.service"
 echo "Journaux : journalctl --user -u maclasse.service -f"
 echo "Arrêt : systemctl --user stop maclasse.service"
+echo "Le service d’application des mises à jour est installé mais ne démarre qu’à la demande de MaClasse."
