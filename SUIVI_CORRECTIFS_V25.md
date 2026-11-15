@@ -199,3 +199,11 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **CI run #657 :** le test `MailboxAndUploadScopeTests.test_mailbox_projection_only_includes_participant_messages_and_own_private_state` et deux tests d'accès aux pièces jointes échouaient encore avec `NameError: sid is not defined` dans `_teacher_visible_mailbox()`. La tentative précédente n'avait pas effectivement remplacé le bloc résiduel.
 - Correction : les deux fonctions de projection ont été réécrites intégralement par bornes de fonctions. `_teacher_visible_mailbox()` n'utilise désormais que l'identité professeur et son filtrage d'origine ; `_student_visible_mailbox()` applique séparément le filtrage élève et les pièces jointes de ses brouillons.
 - **État :** tête de branche relue après écriture ; une nouvelle CI doit confirmer que les tests professeur existants et les nouveaux tests élève passent ensemble.
+
+
+#### 15/11/2026 — CI #658 et projection des couleurs vers les professeurs
+
+- **CI run #658** sur la tête précédente : job `tests` réussi (tests JavaScript et Python) et job `Régression EDT — Firefox réel` réussi ; la validation macOS était encore en cours lors du relevé.
+- Vérification complémentaire de la couleur matière globale : le filtre serveur de l'espace professeur ne transmettait pas `settings.subjectColors`, ce qui aurait laissé les comptes enseignants avec la palette par défaut.
+- Correction : ajout de `subjectColors` à la liste blanche de la projection professeur, avec test confirmant que la préférence est transmise sans exposer `schoolName` ni les paramètres privés. La projection élève avait déjà été corrigée et testée.
+- **Validation :** cette dernière correction professeur attend une nouvelle CI.
