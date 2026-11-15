@@ -116,3 +116,11 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le job `tests` du run #615 a échoué dans `tests/test_v216_student_report.js` : le test extrait `studentReportIsPublished()` dans un contexte isolé où `evaluationModelPublished` n'est pas défini.
 - Correction : le helper de rapport reste autonome et compare directement les timestamps à l'heure courante, tout en conservant la compatibilité des dates seules.
 - Le job Firefox réel et la validation macOS du run #615 étaient encore en cours au moment du diagnostic ; le run complet n'est pas vert. Un nouveau run doit confirmer la correction.
+
+
+#### 15/11/2026 — Cause supplémentaire identifiée pour le refus des appréciations
+
+- En relisant le contrôle `canEditBulletinSubject()`, j'ai repéré une anomalie plus fondamentale : son expression de normalisation contenait des antislashs doublés et ne retirait donc pas correctement les accents. Une matière comme « Français » ou « Mathématiques » pouvait être comparée différemment de sa forme non accentuée, contrairement au helper serveur `_norm_text()`.
+- Correction : remplacement par la plage Unicode combinante correcte, identique dans son intention à la normalisation serveur. Ajout d'une assertion de régression dédiée.
+- Cette anomalie explique directement un refus injustifié possible même lorsque l'affectation EDT est correcte ; la correction de prise en compte des remplacements ponctuels reste également incluse.
+- Validation CI en cours sur les derniers commits ; ne pas déclarer la correction résolue avant la suite verte et une recette réelle.
