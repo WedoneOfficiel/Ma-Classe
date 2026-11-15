@@ -124,3 +124,9 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Correction : remplacement par la plage Unicode combinante correcte, identique dans son intention à la normalisation serveur. Ajout d'une assertion de régression dédiée.
 - Cette anomalie explique directement un refus injustifié possible même lorsque l'affectation EDT est correcte ; la correction de prise en compte des remplacements ponctuels reste également incluse.
 - Validation CI en cours sur les derniers commits ; ne pas déclarer la correction résolue avant la suite verte et une recette réelle.
+
+
+#### 15/11/2026 — État CI après ajout du correctif de normalisation Unicode
+
+- Les runs #617 et #618 ont terminé leurs jobs `tests` et `Régression EDT — Firefox réel` avec succès. Leur validation macOS était encore en cours lors du dernier relevé.
+- Le correctif Unicode de `canEditBulletinSubject()` et son assertion de régression ont été ajoutés après le lancement de ces runs ; ils ne sont donc pas encore couverts par ces résultats. Une exécution sur la tête la plus récente reste nécessaire avant validation.
