@@ -42,9 +42,9 @@ Dernière mise à jour : 15 novembre 2026
 
 ## État global
 
-- Bugs suivis : **15**
+- Bugs suivis : **16**
 - Résolus : **0**
-- En cours de résolution : **10**
+- En cours de résolution : **11**
 - Détectés : **5**
 - Demande d'amélioration séparée : **1**
 
