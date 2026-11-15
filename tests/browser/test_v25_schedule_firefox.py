@@ -202,6 +202,12 @@ def main() -> None:
                   });
                   const result = await response.json();
                   if (!response.ok) throw new Error('Student login failed: '+JSON.stringify(result));
+                  const changed = await fetch('/api/auth/change-password', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({currentPassword:password,newPassword:'Student-Test-Password-2026!'})
+                  });
+                  if (!changed.ok) throw new Error('Student password change failed: '+await changed.text());
                   await load();
                   page='studentSchedule';
                   appSpace='student';
