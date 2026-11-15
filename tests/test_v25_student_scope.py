@@ -58,6 +58,14 @@ class StudentScopeTests(unittest.TestCase):
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
 
+    def test_student_mail_attachments_are_confined_to_own_mail_folders(self):
+        own='mail-v2/student:s1/attachment.txt'
+        draft='mail-v2-drafts/student:s1/draft.txt'
+        other='mail-v2/student:s2/private.txt'
+        self.assertTrue(server._student_can_access_upload(self.user,own,write=True))
+        self.assertTrue(server._student_can_access_upload(self.user,draft,write=True))
+        self.assertFalse(server._student_can_access_upload(self.user,other,write=True))
+
     def test_student_mailbox_projection_is_private_and_hides_other_bcc_recipients(self):
         self.data['mailboxV2']={
             'schemaVersion':2,
