@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 
 OWNER = "WedoneOfficiel"
 REPOSITORY = "Ma-Classe"
@@ -26,6 +27,7 @@ USER_AGENT = "MaClasse-Updater/1"
 MAX_MANIFEST_BYTES = 256 * 1024
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 1024 * 1024 * 1024
+ALLOWED_DOWNLOAD_HOSTS = {"api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"}
 VERSION_RE = re.compile(r"^V?(\d+)\.(\d+)\.(\d+)$")
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 
@@ -35,16 +37,18 @@ class UpdateError(Exception):
 
 
 def _request(url: str, limit: int) -> bytes:
-    if not url.startswith("https://"):
-        raise UpdateError("Une ressource de mise à jour doit utiliser HTTPS.")
+    parsed = urlsplit(url)
+    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_DOWNLOAD_HOSTS:
+        raise UpdateError("La ressource de mise à jour doit provenir de GitHub en HTTPS.")
     request = urllib.request.Request(
         url,
         headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"},
     )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
-            if not response.geturl().startswith("https://"):
-                raise UpdateError("Redirection non sécurisée refusée.")
+            final = urlsplit(response.geturl())
+            if final.scheme != "https" or final.hostname not in ALLOWED_DOWNLOAD_HOSTS:
+                raise UpdateError("Redirection hors des serveurs GitHub refusée.")
             data = response.read(limit + 1)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise UpdateError(f"Impossible de contacter le serveur des versions : {exc}") from exc
@@ -54,7 +58,10 @@ def _request(url: str, limit: int) -> bytes:
 
 
 def _version_tuple(value: str) -> tuple[int, int, int]:
-    match = VERSION_RE.fullmatch(str(value or ""))
+    value = str(value or "")
+    if len(value) > 32:
+        raise UpdateError("Numéro de version trop long.")
+    match = VERSION_RE.fullmatch(value)
     if not match:
         raise UpdateError("Numéro de version invalide.")
     return tuple(int(part) for part in match.groups())
@@ -68,6 +75,8 @@ def check_latest_release(current_version: str) -> dict:
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise UpdateError("Réponse GitHub invalide.") from exc
 
+    if not isinstance(release, dict):
+        raise UpdateError("Réponse de publication invalide.")
     if release.get("draft") or release.get("prerelease"):
         raise UpdateError("La version proposée n'est pas une publication stable.")
     tag = release.get("tag_name", "")
@@ -91,11 +100,11 @@ def check_latest_release(current_version: str) -> dict:
                 "archive_asset", "sha256", "release_notes"}
     if not isinstance(manifest, dict) or not required.issubset(manifest):
         raise UpdateError("Le manifeste ne contient pas tous les champs requis.")
-    if manifest["schema_version"] != 1 or manifest["tag_name"] != tag:
+    if type(manifest["schema_version"]) is not int or manifest["schema_version"] != 1 or manifest["tag_name"] != tag:
         raise UpdateError("Version de manifeste ou tag incohérent.")
     if _version_tuple(manifest["version"]) != published:
         raise UpdateError("La version du manifeste ne correspond pas à la release.")
-    if not isinstance(manifest["min_data_schema"], int) or manifest["min_data_schema"] < 1:
+    if type(manifest["min_data_schema"]) is not int or manifest["min_data_schema"] < 1:
         raise UpdateError("Version minimale du schéma de données invalide.")
     if not isinstance(manifest["release_notes"], str) or len(manifest["release_notes"]) > 20000:
         raise UpdateError("Notes de version invalides.")
