@@ -33,6 +33,7 @@ fail_and_restore() {
   local message="$1"
   echo "Échec de la mise à jour : $message" >&2
   systemctl --user stop maclasse.service >/dev/null 2>&1 || true
+  rm -f "$CURRENT_LINK.rollback"
   ln -s "$PREVIOUS_TARGET" "$CURRENT_LINK.rollback"
   mv -Tf "$CURRENT_LINK.rollback" "$CURRENT_LINK"
   systemctl --user start maclasse.service || true
@@ -110,9 +111,13 @@ LAN_IP="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltNam
 [[ -n "$LAN_IP" ]] || fail_and_restore "Adresse IP du certificat TLS introuvable."
 
 echo "Arrêt temporaire de MaClasse…"
-systemctl --user stop maclasse.service
-ln -s "$TARGET" "$CURRENT_LINK.next"
-mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"
+if ! systemctl --user stop maclasse.service; then
+  fail_and_restore "L’arrêt propre du serveur a échoué."
+fi
+rm -f "$CURRENT_LINK.next"
+if ! ln -s "$TARGET" "$CURRENT_LINK.next" || ! mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"; then
+  fail_and_restore "La bascule atomique vers la nouvelle version a échoué."
+fi
 echo "Redémarrage de MaClasse $VERSION_NUMBER…"
 if ! systemctl --user start maclasse.service; then
   fail_and_restore "Le service n'a pas redémarré."
