@@ -376,6 +376,30 @@ def _teacher_subject_keys(data,user,class_id=None,term_id=None):
     return {x for x in found if x}
 
 
+def _teacher_can_teach_subject_for_term(data,user,class_id,subject,term_id):
+    """Autorise l'appréciation si l'enseignant a enseigné cette matière pendant la période du bulletin."""
+    term=next((x for x in (data.get('settings',{}).get('terms',[]) or [])
+               if isinstance(x,dict) and str(x.get('id') or '')==str(term_id or '')),None)
+    if not term:
+        return _teacher_can_teach_subject(data,user,class_id,subject)
+    key=_norm_text(subject)
+    if not key:
+        return False
+    if key in _teacher_subject_keys(data,user,class_id,term_id):
+        return True
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    start=str(term.get('start') or '')
+    end=str(term.get('end') or '')
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or str(slot.get('classId') or '')!=str(class_id or '') or _norm_text(slot.get('subject'))!=key:
+            continue
+        for date,override in (slot.get('overrides') or {}).items():
+            if (not start or str(date)>=start) and (not end or str(date)<=end) and isinstance(override,dict):
+                if str(override.get('replacementTeacherId') or '')==tid and override.get('status')!='cancelled':
+                    return True
+    return False
+
+
 def _teacher_can_teach_subject(data,user,class_id,subject,on_date=None):
     """Vérifie une affectation habituelle, multiple, temporaire ou un remplacement ponctuel."""
     tid=str(user.get('id') or user.get('teacherId') or '')
@@ -1156,7 +1180,7 @@ def _merge_teacher_data(current,incoming,user):
                     new_subject_data=item.get('subjectData',{}) if isinstance(item.get('subjectData'),dict) else {}
                     filtered_subject_data={}
                     for subject,value in new_subject_data.items():
-                        if _teacher_can_teach_subject(current,user,item.get('classId'),subject):
+                        if _teacher_can_teach_subject_for_term(current,user,item.get('classId'),subject,item.get('termId')):
                             filtered_subject_data[subject]=value
                         elif subject in old_subject_data:
                             filtered_subject_data[subject]=old_subject_data[subject]
