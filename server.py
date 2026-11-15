@@ -717,6 +717,25 @@ def _merge_student_data(current,incoming,user):
     return merged
 
 
+def _evaluation_publication_due(value, now=None):
+    """Vrai si la date/heure de publication est atteinte ; les dates seules restent compatibles."""
+    raw=str(value or '').strip()
+    if not raw:
+        return True
+    current=now or datetime.datetime.now(datetime.timezone.utc)
+    if current.tzinfo is None:
+        current=current.astimezone()
+    if len(raw)<=10:
+        return raw[:10] <= current.date().isoformat()
+    try:
+        scheduled=datetime.datetime.fromisoformat(raw.replace('Z','+00:00'))
+        if scheduled.tzinfo is None:
+            scheduled=scheduled.astimezone()
+        return scheduled.astimezone(datetime.timezone.utc) <= current.astimezone(datetime.timezone.utc)
+    except (TypeError,ValueError,OverflowError):
+        return False
+
+
 def _student_visible_data(data,user):
     """Projection strictement limitée à l'élève authentifié ; aucune donnée de camarade."""
     sid=str(user.get('studentId') or '')
@@ -758,8 +777,7 @@ def _student_visible_data(data,user):
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
         # Une note programmée pour une publication ultérieure ne doit pas être
         # transmise au navigateur élève, même si published est déjà positionné.
-        publish_at=str(item.get('publishAt') or '')[:10]
-        if publish_at and publish_at>datetime.date.today().isoformat(): continue
+        if not _evaluation_publication_due(item.get('publishAt')): continue
         if item.get('group') and str(item.get('group'))!=str(student_record.get('group') or ''): continue
         copy=dict(item)
         copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '')==sid]
