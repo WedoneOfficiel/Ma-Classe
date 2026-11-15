@@ -13,9 +13,23 @@ function updateSettingsCard(){
  let html='<div class="card settingsCard"><div class="sectionhead"><h2>Mises à jour</h2><span class="pill">'+MC_VERSION+'</span></div><p class="muted">Recherche les nouvelles versions stables publiées officiellement pour MaClasse.</p><button class="btn primary" onclick="checkForUpdates()" '+(updateCheckBusy?'disabled':'')+'>'+(updateCheckBusy?'Vérification…':'Rechercher des mises à jour')+'</button>';
  if(updateCheckResult?.available){
   html+='<div class="notice '+(updateCheckResult.compatible?'':'warn')+'" style="margin-top:12px"><b>'+esc(updateCheckResult.version)+'</b><p>'+esc(updateCheckResult.release_notes||'Nouvelle version stable disponible.')+'</p><p>'+(updateCheckResult.compatible?'Compatible avec les données actuelles.':esc(updateCheckResult.compatibility_message||'Mise à jour incompatible.'))+'</p></div>';
+  if(updateCheckResult.compatible&&!updateCheckResult.prepared)html+='<button class="btn" style="margin-top:10px" onclick="prepareUpdate()">Télécharger et préparer</button>';
+  if(updateCheckResult.prepared)html+='<p class="hint">Version téléchargée et vérifiée. Elle est prête pour une installation ultérieure.</p>';
+
  }else if(updateCheckResult?.error){html+='<p class="hint">'+esc(updateCheckResult.error)+'</p>'}
  else if(updateCheckResult&&!updateCheckResult.available){html+='<p class="hint">Aucune nouvelle version stable disponible.</p>'}
  return html+'</div>';
+}
+async function prepareUpdate(){
+ if(!authCanManage())return toast('La préparation est réservée à la direction.');
+ if(!updateCheckResult?.available||!updateCheckResult.compatible||updateCheckBusy)return;
+ updateCheckBusy=true;render();
+ try{
+  const result=await api('/api/admin/updates/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  updateCheckResult={...updateCheckResult,prepared:!!result.prepared,preparedAt:result.prepared_at};
+  toast('Mise à jour téléchargée et vérifiée. MaClasse continue de fonctionner.');
+ }catch(error){toast(error.message||'Préparation impossible.')}
+ finally{updateCheckBusy=false;render()}
 }
 async function checkForUpdates(){
  if(!authCanManage())return toast('La recherche de mises à jour est réservée à la direction.');
