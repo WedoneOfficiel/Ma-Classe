@@ -237,3 +237,14 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **CI run #672**, sur la tête de branche vérifiée : les trois jobs sont terminés avec succès — suite complète JavaScript/Python, validation macOS (dont installateur Apple Silicon et tests Python), et test EDT dans Firefox réel.
 - **Limite importante :** la CI verte confirme les tests automatisés, pas encore la recette réelle avec comptes élève/professeur. Pour BUL-01, le message initial « Vous ne pouvez pas remplir cette case » n'a pas été retrouvé textuellement dans le frontend actuel ; le parcours complet doit encore être reproduit pour confirmer que le bon garde-fou a été corrigé.
 - La PR #9 reste ouverte en brouillon ; aucun merge ni déploiement.
+
+
+#### 15/11/2026 — Extension du registre après récupération de l'historique des signalements
+
+- Relecture des signalements antérieurs : la première version du registre ne contenait que les sept anomalies de la campagne du 15/11. Plusieurs problèmes distincts signalés le 13/11 et plusieurs défauts identifiés pendant l'audit devaient aussi être suivis.
+- Ajout des problèmes EDT de rafraîchissement en temps réel et de saut lors du changement de semaine/vue (EDT-04, EDT-05).
+- Ajout de l'erreur historique `ReferenceError: pat is not defined` dans l'EDT élève (JS-01), du problème d'ajout de pièce jointe à un devoir (DEV-01) et du module Séances/Leçons élève avec en-tête absent (LEC-01). Le lien causal entre l'erreur JS et l'échec d'upload reste non confirmé.
+- Ajout du problème distinct de visibilité des notes dans l'espace élève (EVAL-01), ainsi que des anomalies complémentaires identifiées pendant l'audit : conversion des notes sur 10 (EVAL-02), visibilité prématurée des notes non publiées/programmées (EVAL-03) et cohérence des droits de modification (EVAL-04).
+- La gestion des mises à jour du serveur est enregistrée séparément comme demande d'amélioration AMEL-01, et non comme bug confirmé. Le fonctionnement manuel par commandes doit être conservé.
+- Le registre comporte désormais **16 bugs** (11 en cours de résolution, 5 détectés) et **1 demande d'amélioration**. Aucun bug n'est marqué résolu sans recette.
+- **État du code historique :** la référence `pat` n'apparaît plus dans le chemin actuel de `studentEventCard()`, mais le scénario exact avec un vrai compte élève n'a pas encore été reproduit. Le bug reste donc en cours de résolution, pas déclaré résolu.
