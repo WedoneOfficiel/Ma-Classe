@@ -42,7 +42,7 @@ class TeacherAssignmentTests(unittest.TestCase):
                     "recurrence": "weekly", "day": today.weekday(),
                     "exceptions": [],
                     "overrides": {
-                        self.today: {"status": "changed", "replacementTeacherId": "t4"}
+                        self.today: {"status": "changed", "replacementTeacherId": "t4", "replacementOfTeacherId": "pp"}
                     },
                 },
             ],
@@ -85,6 +85,22 @@ class TeacherAssignmentTests(unittest.TestCase):
         user = {"id": "t4", "role": "teacher"}
         self.assertTrue(server._teacher_can_teach_subject(self.data, user, "c1", "Histoire", self.today))
         self.assertFalse(server._teacher_can_teach_subject(self.data, user, "c1", "Histoire", self.tomorrow))
+        self.assertFalse(server._teacher_can_teach_subject(self.data, {"id": "pp", "role": "teacher"}, "c1", "Histoire", self.today))
+        self.assertTrue(server._teacher_can_teach_subject(self.data, {"id": "pp", "role": "teacher"}, "c1", "Histoire", self.tomorrow))
+
+    def test_long_term_replacement_suspends_only_the_selected_co_teacher(self):
+        data = copy.deepcopy(self.data)
+        data["teacherAssignments"].append({
+            "id": "a3", "scheduleId": "slot1", "classId": "c1",
+            "subject": "Mathématiques", "teacherId": "t3",
+            "supersedesTeacherId": "t1",
+            "startDate": self.yesterday, "endDate": self.tomorrow,
+            "type": "replacement",
+        })
+        self.assertFalse(server._teacher_can_teach_subject(data, {"id": "t1"}, "c1", "Mathématiques", self.today))
+        self.assertTrue(server._teacher_can_teach_subject(data, {"id": "t2"}, "c1", "Mathématiques", self.today))
+        self.assertTrue(server._teacher_can_teach_subject(data, {"id": "t3"}, "c1", "Mathématiques", self.today))
+        self.assertTrue(server._teacher_can_teach_subject(data, {"id": "t1"}, "c1", "Mathématiques", "2028-01-01"))
 
     def test_expired_replacement_does_not_keep_access(self):
         user = {"id": "t5", "role": "teacher"}
