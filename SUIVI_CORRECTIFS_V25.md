@@ -171,3 +171,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Vérification complémentaire : la couleur matière globale est stockée dans `settings.subjectColors`. La projection serveur élève filtrait les paramètres et ne transmettait pas encore cette propriété ; les élèves auraient donc conservé la couleur par défaut malgré le choix du professeur.
 - Correction : ajout de `subjectColors` à la liste blanche des paramètres transmis à l'élève, sans exposer les autres paramètres privés. Test de projection ajouté.
 - **Validation :** ce dernier correctif serveur et son test attendent leur propre exécution CI. Le run #636 ne les couvre pas.
+
+
+#### 15/11/2026 — Échec CI #651 et correction de syntaxe messagerie
+
+- **CI run #651 : échec des trois jobs** (`tests`, Firefox réel et validation macOS). Le contrôle de syntaxe Python a identifié une `IndentationError` dans `server.py` ligne 593, introduite lors de l'ajout de la validation des pièces jointes des messages sortants élèves.
+- Correction : réalignement du bloc de validation du chemin et du contrôle des liens symboliques ; la validation continue à exiger un chemin dans le dossier mail propre de l'élève et un fichier existant.
+- **État :** correctif de syntaxe poussé ; nouvelle exécution CI indispensable avant de juger les tests de messagerie.
