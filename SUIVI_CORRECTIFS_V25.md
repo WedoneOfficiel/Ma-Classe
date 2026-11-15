@@ -6,7 +6,7 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 **Branche de travail :** `fix/v25-student-teacher-workflows`  
 **Base :** `main` au démarrage de la campagne (V25.0.22, commit de fusion précédent `8546a2be89c0bf463588abafa87003d433d62e57`).  
-**Statut global :** diagnostic en cours. Aucun correctif fonctionnel de cette campagne n'est encore déclaré réussi. Aucun changement sur l'installation locale ou les données de l'utilisateur.
+**Statut global :** CI complète réussie sur la tête `01be4cde` (run #663) : tests Linux, validation macOS et régression EDT Firefox réel. Les correctifs restent à soumettre à une recette fonctionnelle réelle multi-comptes avant fusion/déploiement. Aucun changement sur l'installation locale ou les données de l'utilisateur.
 
 ### Demandes utilisateur (formulation conservée)
 
@@ -215,3 +215,13 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le comportement attendu reste que le professeur ne puisse pas modifier les paramètres globaux ; le test doit simplement vérifier que `subjectColors` existant est conservé, au même titre que `schoolName`.
 - Correction du seul attendu de test, sans changement serveur supplémentaire.
 - Firefox réel du run #661 était encore en cours au relevé ; la validation macOS n'était pas terminée. Nouvelle CI nécessaire après cette correction.
+
+
+#### 15/11/2026 — CI complète réussie sur la tête de branche
+
+- **Commit :** `01be4cde1560e0fc5c3cce96bf9984069442c274`.
+- **GitHub Actions run #663 :** les trois jobs sont terminés avec succès : `tests`, `macos-validation` et `Régression EDT — Firefox réel`.
+- Le job `tests` a exécuté avec succès les suites JavaScript et Python complètes, la compilation/syntaxe Python, la syntaxe JavaScript, les lanceurs macOS et l'installateur Linux.
+- Le job macOS a exécuté avec succès l'installateur Apple Silicon, les vérifications JavaScript/Python et les suites de tests.
+- Le test Firefox réel de l'EDT a réussi.
+- **Conclusion :** la CI est entièrement verte sur cette tête. Cela valide les tests automatisés présents, pas encore la recette fonctionnelle réelle avec comptes direction/professeur/élève. Les parcours bulletins, messagerie et paramètres nécessitent toujours cette recette.
