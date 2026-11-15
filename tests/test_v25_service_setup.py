@@ -25,6 +25,10 @@ assert 'exec "$PYTHON" "$APP_ROOT/server.py"' in launcher
 assert 'ExecStart=/usr/bin/bash $ROOT/Lancer-MaClasse-Service-Linux.sh' in installer
 assert 'loginctl enable-linger "$USER_NAME"' in installer
 assert 'NoNewPrivileges=true' in installer
+assert 'TimeoutStopSec=120' in installer
+server_source = (ROOT / 'server.py').read_text()
+assert 'daemon_threads=False' in server_source
+assert 'httpd.server_close()' in server_source
 assert 'ProtectSystem=full' in installer
 assert 'ReadWritePaths=$ROOT/data' in installer
 assert 'maclasse-update-apply.service' in installer
