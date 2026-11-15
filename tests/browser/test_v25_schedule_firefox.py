@@ -98,14 +98,29 @@ def main() -> None:
                         attendanceMode:'hour', periodMode:'trimestres'
                       }];
                       data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:''}];
+                      data.users.push({id:'firefox-teacher',role:'teacher',username:'firefox-teacher',active:true,first:'Prof',last:'Test'});
+                      data.teachers = [{id:'firefox-teacher',first:'Prof',last:'Test',subjects:['Français']}];
+                      data.classes[0].teacherIds = ['firefox-teacher'];
                       data.schedule = [{
                         id:'firefox-existing-course', classId:'firefox-class',
                         day:4, time:'09:00', endTime:'10:00',
                         subject:'Français', recurrence:'weekly',
                         startDate:'2026-11-09', endDate:'',
-                        exceptions:[], overrides:{}, teacherId:'',
+                        exceptions:[], overrides:{}, teacherId:'firefox-teacher',
                         room:'', group:''
                       }];
+                      data.mailboxV2 = {
+                        schemaVersion:2,resetPending:false,
+                        messages:[{
+                          id:'firefox-student-message',threadId:'firefox-student-thread',
+                          sender:{key:'teacher:firefox-teacher',role:'teacher',id:'firefox-teacher',name:'Prof Test'},
+                          to:['student:firefox-student'],cc:[],bcc:[],
+                          subject:'Message de test élève',body:'La messagerie élève fonctionne.',
+                          sentAt:'2026-11-15T10:00:00Z',attachments:[]
+                        }],
+                        states:{'student:firefox-student':{'firefox-student-message':{folder:'inbox',read:false}}},
+                        folders:[],drafts:[]
+                      };
                       const saved = await fetch('/api/save', {
                         method:'POST',
                         headers:{'Content-Type':'application/json','If-Match':revision},
@@ -218,6 +233,21 @@ def main() -> None:
                 }""", account)
                 if student_state.get("role") != "student" or student_state.get("studentId") != "firefox-student":
                     raise AssertionError("Student session not initialized: "+repr(student_state))
+                student_page.evaluate("""() => {
+                  page='studentMessages';
+                  appSpace='student';
+                  render();
+                }""")
+                mailbox = student_page.locator('.v2104App')
+                expect(mailbox).to_be_visible()
+                expect(mailbox.locator('.v2104Row')).to_contain_text("Message de test élève")
+                student_page.evaluate("""() => {
+                  page='studentSchedule';
+                  appSpace='student';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                }""")
                 student_calendar = student_page.locator('.scheduleCalendarSurface')
                 expect(student_calendar).to_contain_text("Français")
                 # A teacher-side write must be picked up by the student's 5-second sync.
