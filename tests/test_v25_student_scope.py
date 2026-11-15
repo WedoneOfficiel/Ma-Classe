@@ -56,6 +56,18 @@ class StudentScopeTests(unittest.TestCase):
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
 
+    def test_student_projection_hides_future_scheduled_evaluation_until_publish_time(self):
+        now=datetime.datetime.now(datetime.timezone.utc)
+        self.data['evaluations']=[
+            {'id':'future','classId':'c1','published':True,'publishAt':(now+datetime.timedelta(hours=1)).isoformat(),
+             'grades':[{'studentId':'s1','value':18}]},
+            {'id':'due','classId':'c1','published':True,'publishAt':(now-datetime.timedelta(minutes=1)).isoformat(),
+             'grades':[{'studentId':'s1','value':14}]}
+        ]
+        view=server._student_visible_data(self.data,self.user)
+        self.assertEqual([x['id'] for x in view['evaluations']],['due'])
+        self.assertEqual(view['evaluations'][0]['grades'],[{'studentId':'s1','value':14}])
+
     def test_scheduled_evaluation_publication_uses_exact_datetime(self):
         now=datetime.datetime(2026,11,15,12,0,tzinfo=datetime.timezone.utc)
         self.assertFalse(server._evaluation_publication_due('2026-11-15T12:01:00Z',now))
