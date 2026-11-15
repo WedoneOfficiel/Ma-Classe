@@ -39,7 +39,7 @@ Dernière mise à jour : 15 novembre 2026
 
 | Identifiant | Demande | Description | État |
 |---|---|---|---|
-| AMEL-01 | Gestion des mises à jour du serveur | Améliorer le parcours de mise à jour du serveur MaClasse, tout en conservant le fonctionnement manuel par commandes demandé par l'utilisateur. Ce point est une demande d'amélioration, pas un bug confirmé. | À planifier |
+| AMEL-01 | Gestion des mises à jour du serveur | Améliorer le parcours de mise à jour du serveur MaClasse, tout en conservant le fonctionnement manuel par commandes demandé par l'utilisateur. Le diagnostic confirme l'absence de programmation, de notification globale et de redémarrage supervisé. Première sécurisation appliquée : les sauvegardes pré-mise à jour macOS/Linux excluent désormais `data/tls` afin de ne pas dupliquer les clés privées TLS. La préparation, la planification, l'interface administrateur et le redémarrage supervisé restent à implémenter. Ce point est une demande d'amélioration, pas un bug confirmé. | En cours de résolution |
 
 ## État global
 
