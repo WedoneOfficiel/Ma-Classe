@@ -516,7 +516,8 @@ def _student_visible_mailbox(mailbox, user, data):
         if sender_key==me:
             visible.append(_mailbox_message_safe_attachments(message,(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')))
         elif sender.get('role')=='teacher' and str(sender.get('id') or '') in teachers and sender_key==_mail_user_key('teacher',sender.get('id')) and me in recipients:
-            safe=_mailbox_message_safe_attachments(message,(f'mail-v2/teacher:{sender.get(\"id\")}/',f'mail-v2-drafts/teacher:{sender.get(\"id\")}/'))
+            teacher_id=str(sender.get('id') or '')
+            safe=_mailbox_message_safe_attachments(message,(f'mail-v2/teacher:{teacher_id}/',f'mail-v2-drafts/teacher:{teacher_id}/'))
             safe['bcc']=[]
             visible.append(safe)
     states=mailbox.get('states') if isinstance(mailbox.get('states'),dict) else {}
@@ -583,8 +584,12 @@ def _student_merge_mailbox(current, incoming, user, data):
                     valid=False
                     break
                 try:
+                    lexical=os.path.join(UPLOADS,*rel.split('/'))
+                    if os.path.islink(lexical):
+                        valid=False
+                        break
                     path=_safe_upload_path(rel)
-                    if os.path.islink(path) or not os.path.isfile(path):
+                    if not os.path.isfile(path):
                         valid=False
                         break
                 except (ValueError,OSError):
