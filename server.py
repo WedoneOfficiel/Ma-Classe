@@ -22,9 +22,8 @@ DATA_FILE=os.path.join(DATA_DIR,'maclasse.json')
 UPLOADS=os.path.join(DATA_DIR,'uploads')
 
 def _update_apply_service_installed():
-    config_root=os.environ.get('XDG_CONFIG_HOME') or os.path.join(os.path.expanduser('~'),'.config')
-    unit=os.path.join(config_root,'systemd','user','maclasse-update-apply.service')
-    return sys.platform.startswith('linux') and os.environ.get('MACLASSE_SUPERVISED')=='systemd' and os.path.isfile(unit)
+    marker=os.path.join(DATA_DIR,'update-manager.enabled')
+    return sys.platform.startswith('linux') and os.environ.get('MACLASSE_SUPERVISED')=='systemd' and os.path.isfile(marker)
 os.makedirs(UPLOADS,exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE,'w',encoding='utf-8') as f: json.dump({},f,ensure_ascii=False)
