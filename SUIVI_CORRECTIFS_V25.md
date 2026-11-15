@@ -306,3 +306,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Tests : ajout de `tests/test_v25_homework_attachment_upload.js` couvrant succès, refus serveur, absence de doublon et conservation des fichiers dans le brouillon. `tests/test_v25_student_submission_upload.js` couvre le parcours de dépôt élève. `tests/test_v25_student_submissions.py` couvre l'intégration serveur dépôt → sauvegarde du brouillon → envoi → lecture du fichier et refus d'un dossier appartenant à un autre élève.
 - CI run #698 : tests Linux (JS et Python) réussis ; Firefox réel et validation macOS encore en cours au dernier relevé.
 - État DEV-01 : En cours de résolution. La recette avec comptes réels reste nécessaire ; ne pas considérer le correctif comme confirmé.
+
+
+#### 15/11/2026 — EVAL-01 / EVAL-02 / EVAL-03 : réévaluation après audit croisé
+
+- EVAL-01 : le modèle central alimente le relevé élève ; le test V21.17 vérifie la présence des notes publiées, et le test serveur vérifie qu'un enseignant affecté peut publier une note et que l'élève reçoit uniquement sa propre note. Les notes non publiées sont exclues.
+- EVAL-02 : les moyennes pondérées, les moyennes par évaluation, le carnet de notes et les statistiques de classe utilisent le barème réel (`maxScore`) pour ramener les résultats sur 20. Le test de modèle vérifie explicitement 8/10 = 16/20 et couvre aussi les coefficients.
+- EVAL-03 : le filtrage est fait dans la projection serveur élève avec comparaison à l'instant exact (`_evaluation_publication_due`) ; le modèle frontend filtre aussi les brouillons et les dates de publication. Les tests couvrent publication future, date seule et heure exacte.
+- Évaluation technique : les trois correctifs disposent de tests ciblés frontend/backend et les parcours principaux sont cohérents dans le code. Ils passent donc à **Supposé résolu**, jamais à « Corrigé » sans confirmation explicite de l'utilisateur.
+- CI : run #698 — Linux (tous les tests JS/Python) et Firefox réel réussis ; validation macOS encore en cours au dernier relevé.
