@@ -93,6 +93,28 @@ class TeacherAssignmentTests(unittest.TestCase):
         self.assertEqual([x["id"] for x in view["students"]], ["s1"])
         self.assertTrue(any(x["id"] == "a1" for x in view["teacherAssignments"]))
 
+    def test_teacher_cannot_self_assign_or_assign_a_substitute(self):
+        data = self.data
+        data["classes"][0]["teacherIds"] = ["t1"]
+        user = {"id": "t1", "role": "teacher"}
+        view = server._teacher_visible_data(data, user)
+        view["schedule"][0]["teacherId"] = "t1"
+        view["schedule"][0]["teacherIds"] = ["t1"]
+        view["schedule"][0].setdefault("overrides", {})[self.tomorrow] = {
+            "status": "changed", "replacementTeacherId": "t3"
+        }
+        view["teacherAssignments"] = [{
+            "id": "forged", "scheduleId": "slot1", "classId": "c1",
+            "subject": "Sciences", "teacherId": "t1",
+            "startDate": self.today, "endDate": self.tomorrow,
+            "type": "replacement",
+        }]
+        merged = server._merge_teacher_data(data, view, user)
+        saved = next(x for x in merged["schedule"] if x["id"] == "slot1")
+        self.assertEqual(saved["teacherId"], "t1")  # t1 was already co-teacher? see below
+        self.assertNotEqual(saved["overrides"][self.tomorrow].get("replacementTeacherId"), "t3")
+        self.assertFalse(any(x.get("id") == "forged" for x in merged.get("teacherAssignments", [])))
+
     def test_legacy_profile_subject_is_only_a_fallback_without_explicit_assignment(self):
         user = {"id": "t6", "role": "teacher"}
         self.assertTrue(server._teacher_can_teach_subject(self.data, user, "c1", "Legacy subject", self.today))
