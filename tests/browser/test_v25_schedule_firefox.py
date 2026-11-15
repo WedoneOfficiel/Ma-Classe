@@ -146,7 +146,9 @@ def main() -> None:
 
                 page.locator(".scheduleViewSwitch").get_by_role("button", name="Mois").click()
                 expect(page.locator(".scheduleMonthView")).to_be_visible()
-                expect(page.locator(".scheduleMonthCount")).to_contain_text("cours")
+                month_counts = page.locator(".scheduleMonthCount")
+                expect(month_counts).to_have_count(3)
+                expect(month_counts.first).to_contain_text("cours")
 
                 page.locator(".scheduleViewSwitch").get_by_role("button", name="Semaine").click()
                 expect(existing).to_be_visible()
