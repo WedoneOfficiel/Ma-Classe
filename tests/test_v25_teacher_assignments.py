@@ -103,7 +103,7 @@ class TeacherAssignmentTests(unittest.TestCase):
         data["schedule"][0]["teacherId"] = "t2"
         data["schedule"][0]["teacherIds"] = []
         user = {"id": "t1", "role": "teacher"}
-        view = server._teacher_visible_data(data, user)
+        view = copy.deepcopy(server._teacher_visible_data(data, user))
         view["schedule"][0]["teacherId"] = "t1"
         view["schedule"][0]["teacherIds"] = ["t1"]
         view["schedule"][0].setdefault("overrides", {})[self.tomorrow] = {
