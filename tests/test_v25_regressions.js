@@ -13,7 +13,7 @@ assert(src.includes('function saveStudentAccount(e)'), 'direction must be able t
 assert(src.includes("/api/admin/student-account"), 'student credentials must be created and hashed server-side');
 assert(src.includes("upload(file,'submissions/'+sid)"), 'student homework uploads must use the student-specific submission folder');
 assert(src.includes("scheduleView==='week'?scheduleWeek(ds,occ,true):scheduleView==='day'?scheduleDay(sel,occ,true):scheduleMonth(sel,occ)"), 'student timetable must reuse the shared calendar renderers in read-only mode');
-assert(src.includes("s.overrides?.[today]?.replacementTeacherId"), 'bulletin permissions must recognize a teacher assigned as a one-off substitute');
+assert(src.includes("Object.entries(s.overrides||{})"), 'bulletin permissions must inspect one-off replacements inside the bulletin period');
 assert(src.includes(String.raw`normalize('NFD').replace(/[\u0300-\u036f]/g,'')`), 'bulletin subject comparison must normalize accented French subject names like the server');
 assert(src.includes('name="publicationMode"') && src.includes('name="publishAtLocal"'), 'the active evaluation form must offer draft, immediate, and scheduled publication with a local date/time');
 assert(src.includes("scheduled.toISOString()"), 'scheduled publication must be stored as an absolute timestamp');
