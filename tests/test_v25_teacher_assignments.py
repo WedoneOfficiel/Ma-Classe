@@ -102,6 +102,8 @@ class TeacherAssignmentTests(unittest.TestCase):
         self.assertTrue(server._teacher_can_teach_subject(data, {"id": "t2"}, "c1", "Mathématiques", self.today))
         self.assertTrue(server._teacher_can_teach_subject(data, {"id": "t3"}, "c1", "Mathématiques", self.today))
         self.assertTrue(server._teacher_can_teach_subject(data, {"id": "t1"}, "c1", "Mathématiques", "2028-01-01"))
+        view = server._teacher_visible_data(data, {"id": "t1", "role": "teacher"})
+        self.assertTrue(any(a.get("id") == "a3" for a in view["teacherAssignments"]))
 
     def test_expired_replacement_does_not_keep_access(self):
         user = {"id": "t5", "role": "teacher"}
