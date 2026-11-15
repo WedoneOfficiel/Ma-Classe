@@ -599,7 +599,7 @@ def _teacher_visible_data(data,user):
     else: out['teachers']=[]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
-    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and str(x.get('teacherId') or '')==tids]
+    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('teacherId') or '')==tids or str(x.get('supersedesTeacherId') or '')==tids)]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
     for item in data.get('evaluations',[]) or []:
