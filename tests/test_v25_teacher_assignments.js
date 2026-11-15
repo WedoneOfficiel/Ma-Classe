@@ -14,5 +14,5 @@ assert(py.includes('def _teacher_can_teach_subject'),'server validates teacher s
 assert(py.includes('def _teacher_assignment_active'),'temporary assignments have bounded dates');
 assert(py.includes('def _teacher_schedule_assignment_suspended'),'server suspends the replaced teacher during the replacement period');
 assert(py.includes('def _teacher_can_edit_evaluation(data,user,evaluation)'),'evaluation writes are scoped to assigned subjects, with a narrow legacy fallback');
-assert(py.includes("if _teacher_can_teach_subject(current,user,item.get('classId'),subject)"),'bulletin subject writes are scoped to assigned subjects');
+assert(py.includes("if _teacher_can_teach_subject_for_term(current,user,item.get('classId'),subject,item.get('termId'))"),'bulletin subject writes are scoped to subjects taught during the bulletin term');
 console.log('OK — affectations EDT, remplacements et droits bulletins/évaluations.');
