@@ -53,7 +53,7 @@ jobs:
               "release_notes": f"Version stable MaClasse {os.environ['RELEASE_TAG']}. Consultez les notes de publication GitHub."
           }
           Path("dist/maclasse-update.json").write_text(
-              json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n",
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8"
           )
           PY
