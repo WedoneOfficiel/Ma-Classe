@@ -315,3 +315,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - EVAL-03 : le filtrage est fait dans la projection serveur élève avec comparaison à l'instant exact (`_evaluation_publication_due`) ; le modèle frontend filtre aussi les brouillons et les dates de publication. Les tests couvrent publication future, date seule et heure exacte.
 - Évaluation technique : les trois correctifs disposent de tests ciblés frontend/backend et les parcours principaux sont cohérents dans le code. Ils passent donc à **Supposé résolu**, jamais à « Corrigé » sans confirmation explicite de l'utilisateur.
 - CI : run #698 — Linux (tous les tests JS/Python) et Firefox réel réussis ; validation macOS encore en cours au dernier relevé.
+
+
+#### 15/11/2026 — EVAL-04 : passage à « Supposé résolu »
+
+- Après l'audit du flux V217 actif, les contrôles sont présents à l'ouverture, à l'édition de configuration, à l'enregistrement, sur les notes, commentaires, critères, compétences et suppressions. Le serveur conserve les anciennes données si un enseignant tente de retirer ou de falsifier une évaluation d'une matière qu'il n'enseigne pas.
+- Les tests backend de fusion des données et les tests frontend ciblés passent dans les runs #690 à #693. La protection du parcours actif a également été ajoutée au test source dédié ; run #696 a passé les tests JS/Python Linux.
+- Conclusion technique : **Supposé résolu**, sous réserve de recette avec un enseignant multi-matières et un remplaçant. Ce statut n'est pas « Corrigé » et ne sera changé qu'après confirmation explicite de l'utilisateur.
