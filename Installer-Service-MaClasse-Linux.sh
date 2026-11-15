@@ -66,7 +66,6 @@ if [[ "$LINGER" != "yes" ]]; then
 fi
 
 systemctl --user daemon-reload
-systemctl --user daemon-reload
 systemctl --user enable --now maclasse.service
 sleep 2
 if ! systemctl --user is-active --quiet maclasse.service; then
