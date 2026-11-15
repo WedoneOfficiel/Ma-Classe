@@ -446,12 +446,19 @@ def _teacher_visible_mailbox(mailbox, user, data):
     states=mailbox.get('states') if isinstance(mailbox.get('states'),dict) else {}
     folders=mailbox.get('folders') if isinstance(mailbox.get('folders'),list) else []
     drafts=mailbox.get('drafts') if isinstance(mailbox.get('drafts'),list) else []
+    safe_drafts=[]
+    for draft in drafts:
+        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me: continue
+        item=_mailbox_message_safe_attachments(draft,(f'mail-v2-drafts/student:{sid}/',))
+        for field in ('to','cc','bcc'):
+            item[field]=[x for x in item.get(field,[]) or [] if isinstance(x,str) and x.startswith('teacher:') and x.split(':',1)[1] in teachers]
+        safe_drafts.append(item)
     return {
         'schemaVersion':mailbox.get('schemaVersion',2),
         'messages':visible,
         'states':{me:states.get(me,{})} if isinstance(states.get(me,{}),dict) else {me:{}},
         'folders':[x for x in folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me],
-        'drafts':[x for x in drafts if isinstance(x,dict) and str(x.get('owner') or '')==me],
+        'drafts':safe_drafts,
         'resetPending':bool(mailbox.get('resetPending',False)),
     }
 
