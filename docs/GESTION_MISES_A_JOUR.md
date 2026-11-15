@@ -72,6 +72,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 ### Phase A — socle de publication et de supervision
 - Définir le format du manifeste et le processus de publication GitHub Release.
 - [x] Ajouter le premier superviseur Linux systemd utilisateur et ses scripts d'installation/désinstallation (validation CI et recette Fedora encore nécessaires).
+- Le socle Linux est expérimental : après initialisation locale et création du compte direction, l'installation se lance avec `bash Installer-Service-MaClasse-Linux.sh`. L'arrêt se fait avec `systemctl --user stop maclasse.service` ; les journaux sont consultables avec `journalctl --user -u maclasse.service -f`.
+- L'installateur active le maintien du gestionnaire utilisateur au démarrage via `loginctl enable-linger` (demande sudo si nécessaire). Il ne supprime ni le programme ni les données lors de la désinstallation.
 - Garder le mode de lancement manuel utilisable comme secours.
 - Ajouter tests d'installation, de démarrage, d'arrêt, de redémarrage et de permissions.
 
