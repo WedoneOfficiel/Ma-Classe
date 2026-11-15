@@ -70,7 +70,7 @@ class StudentScopeTests(unittest.TestCase):
         self.data['mailboxV2']={
             'schemaVersion':2,
             'messages':[
-                {'id':'teacher-to-s1','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'bcc':['student:s2'],'subject':'Pour Alice'},
+                {'id':'teacher-to-s1','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'bcc':['student:s2'],'subject':'Pour Alice','attachments':[{'name':'ok.txt','url':'/data/uploads/mail-v2/teacher:t1/ok.txt'},{'name':'bad.txt','url':'/data/uploads/mail-v2/teacher:t2/bad.txt'}]},
                 {'id':'teacher-to-s2','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s2'],'subject':'Pour Bob'},
                 {'id':'student-sent','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'subject':'Question'},
                 {'id':'unrelated-teacher','sender':{'key':'teacher:t2','role':'teacher','id':'t2'},'to':['student:s1'],'subject':'Hors périmètre'}
@@ -85,9 +85,36 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual({x['id'] for x in mailbox['messages']},{'teacher-to-s1','student-sent'})
         incoming=next(x for x in mailbox['messages'] if x['id']=='teacher-to-s1')
         self.assertEqual(incoming['bcc'],[])
+        self.assertEqual([x['name'] for x in incoming['attachments']],['ok.txt'])
         self.assertEqual(set(mailbox['states']),{'student:s1'})
         self.assertEqual([x['id'] for x in mailbox['folders']],['own-folder'])
         self.assertEqual([x['id'] for x in mailbox['drafts']],['own-draft'])
+
+    def test_student_can_read_only_attachments_referenced_by_its_mailbox(self):
+        teacher_dir=os.path.join(server.UPLOADS,'mail-v2','teacher:t1')
+        os.makedirs(teacher_dir)
+        with open(os.path.join(teacher_dir,'piece.txt'),'w',encoding='utf-8') as f: f.write('document')
+        self.data['mailboxV2']={'schemaVersion':2,'messages':[{
+            'id':'to-s1','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},
+            'to':['student:s1'],'attachments':[{'name':'piece.txt','url':'/data/uploads/mail-v2/teacher:t1/piece.txt'}]
+        }],'states':{},'folders':[],'drafts':[],'resetPending':False}
+        with open(server.DATA_FILE,'w',encoding='utf-8') as f: json.dump(self.data,f)
+        self.assertTrue(server._student_can_access_upload(self.user,'mail-v2/teacher:t1/piece.txt',write=False))
+        self.assertFalse(server._student_can_access_upload(self.user,'mail-v2/teacher:t2/private.txt',write=False))
+
+    def test_student_outgoing_mail_attachment_must_be_in_own_mail_folder(self):
+        mail_dir=os.path.join(server.UPLOADS,'mail-v2','student:s1')
+        os.makedirs(mail_dir)
+        with open(os.path.join(mail_dir,'piece.txt'),'w',encoding='utf-8') as f: f.write('document')
+        self.data['mailboxV2']={'schemaVersion':2,'messages':[],'states':{},'folders':[],'drafts':[],'resetPending':False}
+        incoming=server._student_visible_data(self.data,self.user)
+        incoming['mailboxV2']['messages']=[
+            {'id':'valid-file','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'attachments':[{'name':'piece.txt','url':'/data/uploads/mail-v2/student:s1/piece.txt'}]},
+            {'id':'foreign-file','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'attachments':[{'name':'private.txt','url':'/data/uploads/mail-v2/student:s2/private.txt'}]}
+        ]
+        merged=server._merge_student_data(self.data,incoming,self.user)
+        self.assertIn('valid-file',[x['id'] for x in merged['mailboxV2']['messages']])
+        self.assertNotIn('foreign-file',[x['id'] for x in merged['mailboxV2']['messages']])
 
     def test_student_mailbox_merge_accepts_only_own_messages_to_accessible_teachers(self):
         original={'id':'incoming','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'subject':'Original','body':'Immuable'}
