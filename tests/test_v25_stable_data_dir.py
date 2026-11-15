@@ -39,7 +39,7 @@ def run():
     temp = Path(tempfile.mkdtemp(prefix="maclasse-stable-data-"))
     app = temp / "program"
     data = temp / "persistent-data"
-    shutil.copytree(SOURCE, app)
+    shutil.copytree(SOURCE, app, ignore=shutil.ignore_patterns('data', '.git', '.venv', '__pycache__'))
     env = os.environ.copy()
     env.update({"MACLASSE_HOST": "127.0.0.1", "MACLASSE_PORT": str(port),
                 "MACLASSE_DATA_DIR": str(data)})
