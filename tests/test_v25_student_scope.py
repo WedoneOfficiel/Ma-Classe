@@ -58,6 +58,52 @@ class StudentScopeTests(unittest.TestCase):
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
 
+    def test_student_mailbox_projection_is_private_and_hides_other_bcc_recipients(self):
+        self.data['mailboxV2']={
+            'schemaVersion':2,
+            'messages':[
+                {'id':'teacher-to-s1','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'bcc':['student:s2'],'subject':'Pour Alice'},
+                {'id':'teacher-to-s2','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s2'],'subject':'Pour Bob'},
+                {'id':'student-sent','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'subject':'Question'},
+                {'id':'unrelated-teacher','sender':{'key':'teacher:t2','role':'teacher','id':'t2'},'to':['student:s1'],'subject':'Hors périmètre'}
+            ],
+            'states':{'student:s1':{'teacher-to-s1':{'read':False}},'student:s2':{'teacher-to-s2':{'read':False}},'teacher:t1':{'x':{}}},
+            'folders':[{'id':'own-folder','owner':'student:s1'},{'id':'other-folder','owner':'student:s2'}],
+            'drafts':[{'id':'own-draft','owner':'student:s1'},{'id':'other-draft','owner':'student:s2'}],
+            'resetPending':False
+        }
+        view=server._student_visible_data(self.data,self.user)
+        mailbox=view['mailboxV2']
+        self.assertEqual({x['id'] for x in mailbox['messages']},{'teacher-to-s1','student-sent'})
+        incoming=next(x for x in mailbox['messages'] if x['id']=='teacher-to-s1')
+        self.assertEqual(incoming['bcc'],[])
+        self.assertEqual(set(mailbox['states']),{'student:s1'})
+        self.assertEqual([x['id'] for x in mailbox['folders']],['own-folder'])
+        self.assertEqual([x['id'] for x in mailbox['drafts']],['own-draft'])
+
+    def test_student_mailbox_merge_accepts_only_own_messages_to_accessible_teachers(self):
+        original={'id':'incoming','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'subject':'Original','body':'Immuable'}
+        self.data['mailboxV2']={'schemaVersion':2,'messages':[original],'states':{'student:s1':{},'student:s2':{'keep':'private'}},'drafts':[],'folders':[],'resetPending':False}
+        incoming=server._student_visible_data(self.data,self.user)
+        incoming['mailboxV2']['messages'][0]['body']='Tentative de falsification'
+        incoming['mailboxV2']['messages'].extend([
+            {'id':'valid-outgoing','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'subject':'Question','body':'Bonjour'},
+            {'id':'forged-peer','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['student:s2'],'subject':'Falsifié'},
+            {'id':'forged-teacher','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'subject':'Usurpation'}
+        ])
+        incoming['mailboxV2']['states']={'student:s1':{'incoming':{'read':True}},'student:s2':{'incoming':{'read':True}}}
+        incoming['mailboxV2']['drafts']=[{'id':'own','owner':'student:s1'},{'id':'other','owner':'student:s2'}]
+        merged=server._merge_student_data(self.data,incoming,self.user)
+        mailbox=merged['mailboxV2']
+        by_id={x['id']:x for x in mailbox['messages']}
+        self.assertEqual(by_id['incoming']['body'],'Immuable')
+        self.assertIn('valid-outgoing',by_id)
+        self.assertNotIn('forged-peer',by_id)
+        self.assertNotIn('forged-teacher',by_id)
+        self.assertEqual(mailbox['states']['student:s1'],{'incoming':{'read':True}})
+        self.assertEqual(mailbox['states']['student:s2'],{'keep':'private'})
+        self.assertEqual([x['id'] for x in mailbox['drafts']],['own'])
+
     def test_student_projection_hides_future_scheduled_evaluation_until_publish_time(self):
         now=datetime.datetime.now(datetime.timezone.utc)
         self.data['evaluations']=[
