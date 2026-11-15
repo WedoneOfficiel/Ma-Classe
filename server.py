@@ -775,6 +775,8 @@ def _student_can_access_upload(user,relative,write=False):
         student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
         if not student_record: return False
         if write:
+            mail_prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
+            if any(rel.startswith(prefix) for prefix in mail_prefixes): return True
             prefix=f'submissions/{sid}/'
             if not rel.startswith(prefix): return False
             return any(isinstance(sub,dict) and str(sub.get('studentId') or '')==sid and sub.get('status')=='draft' and any(isinstance(f,dict) and (str(f.get('name') or '')==rel or str(f.get('url') or '')=='/data/uploads/'+rel) for f in (sub.get('files') or [])) for sub in data.get('submissions',[]) or [])
@@ -849,6 +851,7 @@ def _merge_student_data(current,incoming,user):
         if previous.get('status')!='draft':
             new_own.setdefault(ident,dict(previous))
     merged['submissions']=[x for x in old if str(x.get('studentId') or '')!=sid]+list(new_own.values())
+    merged['mailboxV2']=_student_merge_mailbox(current,incoming,user,current)
     return merged
 
 
@@ -933,7 +936,7 @@ def _student_visible_data(data,user):
     out['cloudItems']=[]
     out['notifications']=[x for x in data.get('notifications',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid]
     out['mailFolders']=[]
-    out['mailboxV2']={}
+    out['mailboxV2']=_student_visible_mailbox(data.get('mailboxV2',{}),user,data)
     out['auditLog']=[]
     return out
 
