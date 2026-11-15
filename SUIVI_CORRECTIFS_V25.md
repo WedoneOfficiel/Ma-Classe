@@ -130,3 +130,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 - Les runs #617 et #618 ont terminé leurs jobs `tests` et `Régression EDT — Firefox réel` avec succès. Leur validation macOS était encore en cours lors du dernier relevé.
 - Le correctif Unicode de `canEditBulletinSubject()` et son assertion de régression ont été ajoutés après le lancement de ces runs ; ils ne sont donc pas encore couverts par ces résultats. Une exécution sur la tête la plus récente reste nécessaire avant validation.
+
+
+#### 15/11/2026 — Renforcement de la recette de publication programmée
+
+- Le statut affiché dans la saisie bascule maintenant de « Publication programmée » à « Publiée » une fois l'heure atteinte.
+- Ajout d'un test d'intégration de la projection élève : une évaluation programmée une heure dans le futur reste absente, tandis qu'une évaluation dont l'heure est passée est transmise avec uniquement la note de l'élève concerné.
+- Ce test complète le test unitaire du helper de date/heure. Résultats CI sur ces derniers commits encore attendus.
