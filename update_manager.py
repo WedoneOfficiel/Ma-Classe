@@ -154,7 +154,18 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
     raw = _request(release["archive_url"], MAX_ARCHIVE_BYTES)
     if hashlib.sha256(raw).hexdigest() != release["sha256"]:
         raise UpdateError("L'empreinte de l'archive ne correspond pas au manifeste.")
-    target = Path(tempfile.mkdtemp(prefix="prepared-", dir=staging_root))
+    version_parts = _version_tuple(release.get("version", ""))
+    target = staging_root / ("V" + ".".join(str(part) for part in version_parts))
+    if target.exists():
+        metadata_path = target / "maclasse-prepared.json"
+        try:
+            existing = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            raise UpdateError("Un dossier existe déjà pour cette version, mais sa préparation est incomplète.")
+        if existing.get("sha256") == release["sha256"] and existing.get("status") == "prepared":
+            return target
+        raise UpdateError("Une préparation différente existe déjà pour cette version.")
+    target.mkdir(mode=0o700)
     total = 0
     try:
         with zipfile.ZipFile(__import__("io").BytesIO(raw)) as archive:
