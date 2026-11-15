@@ -83,7 +83,7 @@ def main() -> None:
                 expect(page.locator("#nav")).not_to_be_empty()
 
                 # Seed one recurring course through the real authenticated API.
-                await page.evaluate(
+                page.evaluate(
                     """async () => {
                       const response = await fetch('/api/data', {cache:'no-store'});
                       if (!response.ok) throw new Error('GET /api/data: '+response.status);
@@ -137,7 +137,7 @@ def main() -> None:
                 expect(existing).to_be_visible()
 
                 # Create a second course through the actual modal and form.
-                await page.evaluate("openSchedule()")
+                page.evaluate("openSchedule()")
                 form = page.locator("#modalback form")
                 expect(form).to_be_visible()
                 form.locator('[name="day"]').select_option("2")
