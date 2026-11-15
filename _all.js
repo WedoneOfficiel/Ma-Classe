@@ -391,8 +391,9 @@ function duplicateSchedule(id){const s=db.schedule.find(x=>x.id===id);if(!s)retu
 function openScheduleDraft(s){closeModal();window._scheduleDraft=JSON.parse(JSON.stringify(s));openSchedule()}
 function refreshSchedulePage(){
  if(page!=='schedule'){render();return}
+ if(typeof document==='undefined'||typeof document.getElementById!=='function'){render();return}
  const main=document.getElementById('main'),current=main?.querySelector('.schedulePage');
- if(typeof document==='undefined'||typeof document.getElementById!=='function'||!main||!current){render();return}
+ if(!main||!current){render();return}
  const holder=document.createElement('div');holder.innerHTML=schedule();
  const next=holder.querySelector('.schedulePage');
  if(!next){render();return}
