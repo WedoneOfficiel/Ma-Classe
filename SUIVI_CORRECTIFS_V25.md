@@ -259,3 +259,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
   - **JS-01** : le test interdit l'interpolation `${pat}` non définie et le chemin actuel `studentEventCard()` n'utilise plus cette variable ; le scénario historique reste à reproduire sur le compte élève.
 - Le registre a été ajusté en conséquence : **16 bugs**, dont **14 en cours de résolution** et **2 détectés**. **DEV-01** (upload de pièce jointe à un devoir) et **EVAL-04** (cohérence des droits de modification des évaluations) restent au stade détecté faute de preuve suffisante d'un correctif dédié.
 - La suite de tests complète du commit applicatif #672 est verte. Les exécutions déclenchées par les commits documentaires sont distinctes et doivent être suivies sans confondre leur état avec la validation applicative.
+
+
+#### 15/11/2026 — Test ciblé de l'ajout de pièces jointes aux devoirs
+
+- Le signalement historique **DEV-01** était encore au stade détecté : le message `ReferenceError: pat is not defined` apparaissait aussi lors de l'ajout d'une pièce jointe, mais l'échec du téléversement n'avait pas été reproduit.
+- Ajout de `tests/test_v25_student_submission_upload.js`, qui exécute le gestionnaire d'ajout dans un contexte simulé et vérifie deux scénarios : téléversement réussi avec création/enregistrement du brouillon, et échec du téléversement avec affichage de l'erreur sans création d'un brouillon vide.
+- **Limite :** ce test valide le flux frontend et ses réactions aux réponses de téléversement simulées ; il ne remplace pas un essai d'envoi réel vers le serveur avec un compte élève.
+- DEV-01 passe donc de « Détecté » à « En cours de résolution ». Le registre compte désormais 16 bugs : 15 en cours, 1 détecté, 0 résolu.
+- Nouvelle CI requise pour exécuter ce test ajouté.
