@@ -521,6 +521,16 @@ Le recalcul serveur des bulletins PDF a été renforcé après ajout d'un test d
 La déconnexion attend la sauvegarde en attente. En complément, le navigateur affiche maintenant son avertissement natif si l'utilisateur tente de fermer ou recharger l'onglet alors qu'une sauvegarde est en attente ou en échec. Cela réduit le risque de perte en cas de fermeture brutale ; il faut toujours attendre l'état « Enregistré » avant de quitter.
 
 
+## V25.0.22 — affectations pédagogiques et droits enseignants
+
+- L’emploi du temps devient la référence des matières enseignées : le profil professeur ne demande plus une seconde déclaration des matières.
+- Un créneau peut être affecté à plusieurs enseignants, pour les matières assurées en équipe ou en co-intervention.
+- Ajout d’affectations temporaires administrables depuis le créneau EDT : remplacement longue durée ou intervention complémentaire, avec dates de début et de fin.
+- Les exceptions de cours peuvent désigner un professeur remplaçant lié à un compte MaClasse ; cette autorisation ne vaut que pour la date concernée.
+- Les droits de saisie des évaluations et des appréciations de bulletin sont contrôlés côté serveur à partir des affectations. Le professeur principal conserve ses droits distincts de validation, publication et appréciation générale.
+- Les affectations temporaires expirent sans effacer les notes ni les appréciations déjà enregistrées. Les anciens profils restent compatibles pendant la transition.
+- Tests dédiés aux affectations multiples, remplacements temporaires, remplacements ponctuels et droits expirés.
+
 ## V25.0.21 — correction de la disparition des cours dans l’EDT
 
 - Le filtre de classe utilise maintenant un identifiant HTML distinct de sa variable d’état. Firefox exposait auparavant le champ via `window.scheduleClassFilter` ; lors d’un nouveau rendu, le code prenait l’élément HTML pour la valeur du filtre et masquait tous les cours, sans supprimer les données.
