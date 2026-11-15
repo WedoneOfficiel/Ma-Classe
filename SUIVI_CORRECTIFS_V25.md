@@ -192,3 +192,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **CI run #655 :** les tests Python ont de nouveau échoué sur le même `NameError` dans `_teacher_visible_mailbox()`. La première tentative de déplacement du filtre avait laissé le bloc au mauvais endroit ; la vérification du contenu exact du fichier a montré que la projection professeur contenait toujours les variables de l'élève.
 - Correction plus sûre : remplacement complet, par bornes de fonctions, de `_teacher_visible_mailbox()` et `_student_visible_mailbox()`. La projection professeur retrouve son comportement initial ; le filtrage strict des brouillons et de leurs pièces jointes est désormais exclusivement dans la projection élève.
 - **État :** correction poussée et relue dans les deux fonctions ; nouvelle CI nécessaire. Aucun résultat vert n'est revendiqué pour la messagerie.
+
+
+#### 15/11/2026 — CI #657 et remplacement complet des projections de messagerie
+
+- **CI run #657 :** le test `MailboxAndUploadScopeTests.test_mailbox_projection_only_includes_participant_messages_and_own_private_state` et deux tests d'accès aux pièces jointes échouaient encore avec `NameError: sid is not defined` dans `_teacher_visible_mailbox()`. La tentative précédente n'avait pas effectivement remplacé le bloc résiduel.
+- Correction : les deux fonctions de projection ont été réécrites intégralement par bornes de fonctions. `_teacher_visible_mailbox()` n'utilise désormais que l'identité professeur et son filtrage d'origine ; `_student_visible_mailbox()` applique séparément le filtrage élève et les pièces jointes de ses brouillons.
+- **État :** tête de branche relue après écriture ; une nouvelle CI doit confirmer que les tests professeur existants et les nouveaux tests élève passent ensemble.
