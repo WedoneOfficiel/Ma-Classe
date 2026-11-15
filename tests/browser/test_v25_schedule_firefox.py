@@ -97,6 +97,7 @@ def main() -> None:
                         levels:['6e'], teacherIds:[], groups:[],
                         attendanceMode:'hour', periodMode:'trimestres'
                       }];
+                      data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:''}];
                       data.schedule = [{
                         id:'firefox-existing-course', classId:'firefox-class',
                         day:4, time:'09:00', endTime:'10:00',
@@ -175,6 +176,62 @@ def main() -> None:
                 )
                 expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
                 expect(page.locator('[data-schedule-id]').filter(has_text="Histoire")).to_be_visible()
+
+                # Open the same timetable as a real student account in a separate
+                # browser context, then change the timetable from the administrator.
+                account = page.evaluate("""async () => {
+                  const response = await fetch('/api/admin/student-account', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({studentId:'firefox-student',username:'firefox-student'})
+                  });
+                  const result = await response.json();
+                  if (!response.ok) throw new Error('Student account creation failed: '+JSON.stringify(result));
+                  return result.user.temporaryPassword;
+                }""")
+                student_context = browser.new_context()
+                student_login = student_context.request.post(
+                    url + "/api/auth/login",
+                    data={"username":"firefox-student","password":account},
+                    headers={"Origin":url.rstrip("/")}
+                )
+                if not student_login.ok:
+                    raise AssertionError("Student login failed: "+student_login.text())
+                student_page = student_context.new_page()
+                student_page_errors: list[str] = []
+                student_page.on("pageerror", lambda error: student_page_errors.append(str(error)))
+                student_page.goto(url, wait_until="networkidle")
+                student_page.evaluate("""() => {
+                  page='studentSchedule';
+                  appSpace='student';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                }""")
+                student_calendar = student_page.locator('.scheduleCalendarSurface')
+                expect(student_calendar).to_contain_text("Français")
+                # A teacher-side write must be picked up by the student's 5-second sync.
+                page.evaluate("""async () => {
+                  const response = await fetch('/api/data', {cache:'no-store'});
+                  const revision = response.headers.get('X-MaClasse-Revision');
+                  const data = await response.json();
+                  data.schedule.push({
+                    id:'firefox-live-student-course',classId:'firefox-class',
+                    day:4,time:'13:00',endTime:'14:00',subject:'Sciences',
+                    recurrence:'weekly',startDate:'2026-11-09',endDate:'',
+                    exceptions:[],overrides:{},teacherId:''
+                  });
+                  const saved = await fetch('/api/save', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','If-Match':revision},
+                    body:JSON.stringify(data)
+                  });
+                  if (!saved.ok) throw new Error('Teacher timetable update failed: '+saved.status+' '+await saved.text());
+                }""")
+                expect(student_calendar).to_contain_text("Sciences", timeout=15_000)
+                if student_page_errors:
+                    raise AssertionError("Student Firefox page errors: "+" | ".join(student_page_errors))
+                student_context.close()
 
                 # Force an unrelated server-side revision so the real-time refresh
                 # runs while the timetable is open; this must not erase its courses.
