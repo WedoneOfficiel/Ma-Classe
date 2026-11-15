@@ -1713,7 +1713,7 @@ class Handler(SimpleHTTPRequestHandler):
                 current_schema=int(data.get('schemaVersion',0) or 0)
                 if release.get('min_data_schema',1)>current_schema:
                     return self._json({'error':'Cette version est incompatible avec la structure actuelle des données.'},409)
-                staging=os.path.join(DATA_DIR,'update-staging')
+                staging=os.path.join(DATA_DIR,'program','versions')
                 prepared=update_manager.prepare_release(release,staging)
                 update_manager.prepare_runtime(prepared)
                 return self._json({'prepared':True,'version':release['version'],'prepared_at':int(time.time())})
