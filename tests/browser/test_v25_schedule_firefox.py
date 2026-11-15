@@ -157,7 +157,7 @@ def main() -> None:
                 # Exercise the actual Today action once more after a persisted write.
                 page.locator("button.scheduleToday").click()
                 expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
-                expect(page.locator('[data-schedule-id]').filter(has=page.get_by_text("Histoire"))).to_be_visible()
+                expect(page.locator('[data-schedule-id]').filter(has_text="Histoire")).to_be_visible()
 
                 if page_errors:
                     raise AssertionError("Firefox page errors: " + " | ".join(page_errors))
