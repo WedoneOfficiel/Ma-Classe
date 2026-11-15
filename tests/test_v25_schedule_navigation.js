@@ -257,6 +257,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.api=async()=>JSON.parse(JSON.stringify(context.persistedSchedule));
   context.normalize=()=>{};
   context.closeModal=()=>{};
+  context.refreshSchedulePage=()=>context.render();
   context.toast=message=>{context.lastToast=message};
   context.render=()=>{context.renderCount++};
   context.db={schedule:[],classes:[{id:'class-1',name:'Classe 1'}],teachers:[],settings:{rooms:[]}};
