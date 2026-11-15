@@ -190,24 +190,28 @@ def main() -> None:
                   return result.user.temporaryPassword;
                 }""")
                 student_context = browser.new_context()
-                student_login = student_context.request.post(
-                    url + "/api/auth/login",
-                    data={"username":"firefox-student","password":account},
-                    headers={"Origin":url.rstrip("/")}
-                )
-                if not student_login.ok:
-                    raise AssertionError("Student login failed: "+student_login.text())
                 student_page = student_context.new_page()
                 student_page_errors: list[str] = []
                 student_page.on("pageerror", lambda error: student_page_errors.append(str(error)))
                 student_page.goto(url, wait_until="networkidle")
-                student_page.evaluate("""() => {
+                student_state = student_page.evaluate("""async (password) => {
+                  const response = await fetch('/api/auth/login', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({username:'firefox-student',password})
+                  });
+                  const result = await response.json();
+                  if (!response.ok) throw new Error('Student login failed: '+JSON.stringify(result));
+                  await load();
                   page='studentSchedule';
                   appSpace='student';
                   selectedWeek=scheduleLocalDate('2026-11-09');
                   scheduleView='week';
                   render();
-                }""")
+                  return {role:authUser?.role,studentId:authUser?.studentId,page};
+                }""", account)
+                if student_state.get("role") != "student" or student_state.get("studentId") != "firefox-student":
+                    raise AssertionError("Student session not initialized: "+repr(student_state))
                 student_calendar = student_page.locator('.scheduleCalendarSurface')
                 expect(student_calendar).to_contain_text("Français")
                 # A teacher-side write must be picked up by the student's 5-second sync.
