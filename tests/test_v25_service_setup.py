@@ -8,6 +8,7 @@ SCRIPTS = (
     "Lancer-MaClasse-Service-Linux.sh",
     "Installer-Service-MaClasse-Linux.sh",
     "Desinstaller-Service-MaClasse-Linux.sh",
+    "Appliquer-Mise-A-Jour-MaClasse-Linux.sh",
 )
 for name in SCRIPTS:
     result = subprocess.run(["bash", "-n", str(ROOT / name)], capture_output=True, text=True)
