@@ -1631,6 +1631,13 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path=urlparse(self.path).path
         if not self._require_local_origin(): return
+        if path=='/api/health':
+            try:
+                database=_load_database()
+                if not isinstance(database,dict): raise ValueError('Base invalide')
+                return self._json({'ok':True,'version':APP_VERSION,'database':'ok'})
+            except Exception:
+                return self._json({'ok':False,'version':APP_VERSION,'database':'error'},503)
         if path=='/api/auth/setup-status':
             data=_load_database()
             users=data.get('users') if isinstance(data.get('users'),list) else []
