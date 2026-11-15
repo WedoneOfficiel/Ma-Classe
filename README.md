@@ -9,12 +9,12 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.17 (alpha)  
+**Version de travail :** V25.0.22 (alpha)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
-Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.17** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.22** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
 Le fichier `data/maclasse.json` est local et exclu de Git. Une installation neuve démarre sans aucun compte : l'assistant de première configuration crée uniquement le compte direction. Aucun mot de passe ou compte enseignant universel n'existe.
 
