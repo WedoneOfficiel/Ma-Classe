@@ -20,6 +20,11 @@ BACKUP_INTERVAL_SECONDS=6*60*60
 DATA_DIR=os.path.abspath(os.environ.get('MACLASSE_DATA_DIR') or os.path.join(ROOT,'data'))
 DATA_FILE=os.path.join(DATA_DIR,'maclasse.json')
 UPLOADS=os.path.join(DATA_DIR,'uploads')
+
+def _update_apply_service_installed():
+    config_root=os.environ.get('XDG_CONFIG_HOME') or os.path.join(os.path.expanduser('~'),'.config')
+    unit=os.path.join(config_root,'systemd','user','maclasse-update-apply.service')
+    return sys.platform.startswith('linux') and os.path.isfile(unit)
 os.makedirs(UPLOADS,exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE,'w',encoding='utf-8') as f: json.dump({},f,ensure_ascii=False)
@@ -1680,6 +1685,7 @@ class Handler(SimpleHTTPRequestHandler):
                 current_schema=int(data.get('schemaVersion',0) or 0)
                 if result.get('available'):
                     result['compatible']=result.get('min_data_schema',1)<=current_schema
+                    result['install_supported']=_update_apply_service_installed()
                     if not result['compatible']:
                         result['compatibility_message']='Cette version exige une structure de données plus récente. La mise à jour est bloquée.'
                     try:
@@ -1690,6 +1696,7 @@ class Handler(SimpleHTTPRequestHandler):
                         result['prepared']=False
                 else:
                     result['compatible']=True
+                    result['install_supported']=_update_apply_service_installed()
                     result['prepared']=False
                 return self._json(result)
             except update_manager.UpdateError:
@@ -1736,6 +1743,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/admin/updates/prepare':
             user=self._require_auth(roles=('admin',))
             if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire de mises à jour Linux doit être installé avant de préparer une version.'},501)
             try:
                 release=update_manager.check_latest_release(APP_VERSION)
                 if not release.get('available'):
@@ -1761,6 +1769,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/admin/updates/install':
             user=self._require_auth(roles=('admin',))
             if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire indépendant Linux n’est pas installé sur ce serveur.'},501)
             try:
                 with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
                     update_state=json.load(state_file)
