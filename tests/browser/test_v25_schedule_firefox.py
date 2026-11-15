@@ -98,29 +98,14 @@ def main() -> None:
                         attendanceMode:'hour', periodMode:'trimestres'
                       }];
                       data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:''}];
-                      data.users.push({id:'firefox-teacher',role:'teacher',username:'firefox-teacher',active:true,first:'Prof',last:'Test'});
-                      data.teachers = [{id:'firefox-teacher',first:'Prof',last:'Test',subjects:['Français']}];
-                      data.classes[0].teacherIds = ['firefox-teacher'];
                       data.schedule = [{
                         id:'firefox-existing-course', classId:'firefox-class',
                         day:4, time:'09:00', endTime:'10:00',
                         subject:'Français', recurrence:'weekly',
                         startDate:'2026-11-09', endDate:'',
-                        exceptions:[], overrides:{}, teacherId:'firefox-teacher',
+                        exceptions:[], overrides:{}, teacherId:'',
                         room:'', group:''
                       }];
-                      data.mailboxV2 = {
-                        schemaVersion:2,resetPending:false,
-                        messages:[{
-                          id:'firefox-student-message',threadId:'firefox-student-thread',
-                          sender:{key:'teacher:firefox-teacher',role:'teacher',id:'firefox-teacher',name:'Prof Test'},
-                          to:['student:firefox-student'],cc:[],bcc:[],
-                          subject:'Message de test élève',body:'La messagerie élève fonctionne.',
-                          sentAt:'2026-11-15T10:00:00Z',attachments:[]
-                        }],
-                        states:{'student:firefox-student':{'firefox-student-message':{folder:'inbox',read:false}}},
-                        folders:[],drafts:[]
-                      };
                       const saved = await fetch('/api/save', {
                         method:'POST',
                         headers:{'Content-Type':'application/json','If-Match':revision},
@@ -194,6 +179,43 @@ def main() -> None:
 
                 # Open the same timetable as a real student account in a separate
                 # browser context, then change the timetable from the administrator.
+                teacher_id = page.evaluate("""async () => {
+                  const created = await fetch('/api/admin/teacher', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                      username:'firefox-teacher',first:'Prof',last:'Test',
+                      subjects:['Français'],classIds:['firefox-class'],ppIds:[],
+                      password:'Teacher-Temporary-Password-2026!'
+                    })
+                  });
+                  const teacherResult = await created.json();
+                  if (!created.ok) throw new Error('Teacher creation failed: '+JSON.stringify(teacherResult));
+                  const id = teacherResult.user.teacherId;
+                  const response = await fetch('/api/data', {cache:'no-store'});
+                  const revision = response.headers.get('X-MaClasse-Revision');
+                  const data = await response.json();
+                  data.schedule.find(x=>x.id==='firefox-existing-course').teacherId=id;
+                  data.mailboxV2 = {
+                    schemaVersion:2,resetPending:false,
+                    messages:[{
+                      id:'firefox-student-message',threadId:'firefox-student-thread',
+                      sender:{key:'teacher:'+id,role:'teacher',id,name:'Prof Test'},
+                      to:['student:firefox-student'],cc:[],bcc:[],
+                      subject:'Message de test élève',body:'La messagerie élève fonctionne.',
+                      sentAt:'2026-11-15T10:00:00Z',attachments:[]
+                    }],
+                    states:{['student:firefox-student']:{'firefox-student-message':{folder:'inbox',read:false}}},
+                    folders:[],drafts:[]
+                  };
+                  const saved = await fetch('/api/save', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','If-Match':revision},
+                    body:JSON.stringify(data)
+                  });
+                  if (!saved.ok) throw new Error('Teacher-linked mailbox seed failed: '+saved.status+' '+await saved.text());
+                  return id;
+                }""")
                 account = page.evaluate("""async () => {
                   const response = await fetch('/api/admin/student-account', {
                     method:'POST',
