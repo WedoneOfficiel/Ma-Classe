@@ -23,7 +23,7 @@ Les données métier et les fichiers téléversés ne doivent jamais être rempl
 
 ### 2. Séparation code / données
 
-- Le code actif et les versions préparées vivent dans des répertoires de programme distincts.
+- Le code actif et les versions préparées vivent dans `data/program/versions/`. Le lien `data/program/current` désigne la version active. Le serveur reçoit `MACLASSE_DATA_DIR` pour conserver base, pièces jointes et certificats hors des versions.
 - La base, les pièces jointes, les sauvegardes, les paramètres locaux et l'identité TLS restent dans le répertoire de données persistant.
 - Une mise à jour ne copie, ne supprime et ne remplace jamais ce répertoire.
 - Les migrations de données sont explicites, versionnées et exécutées après sauvegarde. Une migration non réversible bloque le retour automatique et doit être déclarée dans le manifeste.
@@ -65,7 +65,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - `VERSION.txt`, `server.py` et `_all.js` exposent un numéro de version, mais aucun contrôle de release n'est intégré.
 - Les scripts macOS et Linux font actuellement un `git fetch origin main` puis une avance rapide du clone local.
 - Le module `update_manager.py` interroge la dernière release stable, valide son manifeste, contrôle que les téléchargements proviennent de GitHub en HTTPS, vérifie l'empreinte SHA-256 et extrait l'archive sans liens symboliques ni chemins traversants dans un répertoire temporaire isolé. Il n'installe pas encore le code.
-- La direction peut lancer cette recherche dans Paramètres puis télécharger/préparer une version compatible. Le serveur conserve un marqueur `maclasse-prepared.json` dans le dossier de préparation. Le serveur actif n'est pas interrompu.
+- La direction peut lancer cette recherche dans Paramètres puis télécharger/préparer une version compatible. Chaque version préparée possède son propre `.venv` et un marqueur `maclasse-prepared.json`. Le serveur actif n'est pas interrompu.
 - La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
 - Les scripts ne gèrent ni la programmation, ni les notifications, ni l'arrêt/redémarrage supervisé, ni le contrôle de santé après redémarrage.
 - Le lanceur actuel exécute `server.py` en processus enfant et attend ce processus ; ce modèle ne suffit pas pour un auto-remplacement robuste.
