@@ -26,7 +26,7 @@ USER_AGENT = "MaClasse-Updater/1"
 MAX_MANIFEST_BYTES = 256 * 1024
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 1024 * 1024 * 1024
-VERSION_RE = re.compile(r"^V?(\\d+)\\.(\\d+)\\.(\\d+)$")
+VERSION_RE = re.compile(r"^V?(\d+)\.(\d+)\.(\d+)$")
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 
 
@@ -43,6 +43,8 @@ def _request(url: str, limit: int) -> bytes:
     )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
+            if not response.geturl().startswith("https://"):
+                raise UpdateError("Redirection non sécurisée refusée.")
             data = response.read(limit + 1)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise UpdateError(f"Impossible de contacter le serveur des versions : {exc}") from exc
@@ -98,7 +100,7 @@ def check_latest_release(current_version: str) -> dict:
     if not isinstance(manifest["release_notes"], str) or len(manifest["release_notes"]) > 20000:
         raise UpdateError("Notes de version invalides.")
     archive_name = manifest["archive_asset"]
-    if not isinstance(archive_name, str) or not re.fullmatch(r"[A-Za-z0-9._-]+\\.zip", archive_name):
+    if not isinstance(archive_name, str) or not re.fullmatch(r"[A-Za-z0-9._-]+\.zip", archive_name):
         raise UpdateError("Nom d'archive invalide.")
     if not isinstance(manifest["sha256"], str) or not SHA256_RE.fullmatch(manifest["sha256"]):
         raise UpdateError("Empreinte SHA-256 invalide.")
@@ -125,7 +127,7 @@ def check_latest_release(current_version: str) -> dict:
 
 def _safe_member_path(name: str) -> PurePosixPath:
     path = PurePosixPath(name)
-    if path.is_absolute() or not name or "\\\\" in name or any(part in ("", ".", "..") for part in path.parts):
+    if path.is_absolute() or not name or "\\" in name or any(part in ("", ".", "..") for part in path.parts):
         raise UpdateError("L'archive contient un chemin dangereux.")
     if path.parts and re.match(r"^[A-Za-z]:", path.parts[0]):
         raise UpdateError("L'archive contient un chemin Windows interdit.")
