@@ -82,6 +82,7 @@ TARGET="$VERSIONS_ROOT/V$VERSION_NUMBER"
 EXPECTED_VERSION="$VERSION_NUMBER"
 grep -Fq "APP_VERSION='$EXPECTED_VERSION'" "$TARGET/server.py" || { echo "Version du serveur incohérente."; exit 1; }
 grep -Fq "const MC_VERSION='V$EXPECTED_VERSION'" "$TARGET/_all.js" || { echo "Version de l'interface incohérente."; exit 1; }
+grep -Fxq "V$EXPECTED_VERSION" "$TARGET/VERSION.txt" || { echo "VERSION.txt ne correspond pas au code téléchargé."; exit 1; }
 TARGET_REAL="$(realpath "$TARGET")"
 VERSIONS_REAL="$(realpath "$VERSIONS_ROOT")"
 [[ "$TARGET_REAL" == "$VERSIONS_REAL/"* ]] || { echo "Chemin de version hors du stockage autorisé."; exit 1; }
