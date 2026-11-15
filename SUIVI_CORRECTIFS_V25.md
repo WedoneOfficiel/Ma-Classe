@@ -345,3 +345,11 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Ces sept anomalies passent à **Supposé résolu** sur la base du code et des tests. L'utilisateur doit encore confirmer les parcours réels ; aucun statut « Corrigé » n'est attribué.
 - EDT-01 reste en cours (parité visuelle complète à confirmer), EDT-04 reste en cours (actualisation réellement multi-comptes à confirmer), DEV-01 reste en cours (recette pièces jointes avec vrais comptes), MAIL-01 reste en cours (recette messagerie élève/professeur).
 - CI run #714 : tests Linux JS/Python et Firefox réel réussis ; validation macOS encore en cours au dernier relevé.
+
+
+#### 15/11/2026 — EDT-04 : test Firefox réel élève/professeur ajouté
+
+- Le test navigateur Firefox existant ne vérifiait que la synchronisation d'une session direction. Il a été étendu : création d'un accès élève temporaire dans l'application isolée, ouverture d'une seconde session Firefox, affichage de l'EDT élève, modification de l'EDT depuis la session direction, puis attente de la mise à jour dans l'espace élève via la synchronisation périodique.
+- Le test vérifie que l'élève voit d'abord le cours existant puis le nouveau cours ajouté côté professeur, sans recharger manuellement la page.
+- EDT-04 reste **En cours de résolution** jusqu'à réussite du nouveau test navigateur et confirmation utilisateur.
+- CI run #714 : succès complet sur Linux, Firefox réel et macOS. Run #716 : Linux et Firefox réussis ; macOS encore en cours au dernier relevé. Run #717 : exécution du nouveau test élève/professeur en cours.
