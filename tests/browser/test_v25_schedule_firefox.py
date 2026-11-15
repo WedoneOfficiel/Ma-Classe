@@ -154,6 +154,26 @@ def main() -> None:
                 expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
                 expect(page.locator('[data-schedule-id]').filter(has_text="Histoire")).to_be_visible()
 
+                # Force an unrelated server-side revision so the real-time refresh
+                # runs while the timetable is open; this must not erase its courses.
+                page.evaluate("""async () => {
+                  const response = await fetch('/api/data', {cache:'no-store'});
+                  const revision = response.headers.get('X-MaClasse-Revision');
+                  const data = await response.json();
+                  data.notifications = [...(data.notifications || []), {
+                    id:'firefox-unrelated-update', type:'test', date:'2026-11-15'
+                  }];
+                  const saved = await fetch('/api/save', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','If-Match':revision},
+                    body:JSON.stringify(data)
+                  });
+                  if (!saved.ok) throw new Error('Unrelated revision update failed: '+saved.status);
+                }""")
+                page.wait_for_timeout(5500)
+                expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
+                expect(page.locator('[data-schedule-id]').filter(has_text="Histoire")).to_be_visible()
+
                 # Exercise the actual Today action once more after a persisted write.
                 page.locator("button.scheduleToday").click()
                 expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
