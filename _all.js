@@ -392,7 +392,7 @@ function openScheduleDraft(s){closeModal();window._scheduleDraft=JSON.parse(JSON
 function refreshSchedulePage(){
  if(page!=='schedule'){render();return}
  const main=document.getElementById('main'),current=main?.querySelector('.schedulePage');
- if(!main||!current){render();return}
+ if(typeof document==='undefined'||typeof document.getElementById!=='function'||!main||!current){render();return}
  const holder=document.createElement('div');holder.innerHTML=schedule();
  const next=holder.querySelector('.schedulePage');
  if(!next){render();return}
