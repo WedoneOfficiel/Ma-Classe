@@ -861,7 +861,7 @@ def _merge_teacher_data(current,incoming,user):
                 if previous:
                     fields={
                         'students':('classId','role','username','passwordHash','mustChangePassword','active'),
-                        'schedule':('classId',),
+                        'schedule':('classId','subject','teacherId','teacherIds'),
                         'lessons':('classId',),
                         'attendance':('classId',),
                         'attachments':('classId','studentId','lessonId'),
@@ -872,6 +872,30 @@ def _merge_teacher_data(current,incoming,user):
                     for field in fields:
                         if field in previous: item[field]=previous[field]
                         else: item.pop(field,None)
+            if key=='schedule':
+                if previous:
+                    old_overrides=previous.get('overrides') if isinstance(previous.get('overrides'),dict) else {}
+                    new_overrides=item.get('overrides') if isinstance(item.get('overrides'),dict) else {}
+                    safe_overrides={}
+                    for date,value in new_overrides.items():
+                        if not isinstance(value,dict): continue
+                        safe_value=dict(value)
+                        if date in old_overrides and isinstance(old_overrides[date],dict) and 'replacementTeacherId' in old_overrides[date]:
+                            safe_value['replacementTeacherId']=old_overrides[date]['replacementTeacherId']
+                        else:
+                            safe_value.pop('replacementTeacherId',None)
+                        safe_overrides[date]=safe_value
+                    item['overrides']=safe_overrides
+                else:
+                    # Un professeur peut créer son propre cours dans une classe accessible,
+                    # mais ne peut pas s'affecter un collègue ni lui attribuer un remplaçant.
+                    item['teacherId']=tid
+                    item['teacherIds']=[tid]
+                    safe_overrides={}
+                    for date,value in (item.get('overrides') or {}).items():
+                        if isinstance(value,dict):
+                            safe_value=dict(value); safe_value.pop('replacementTeacherId',None); safe_overrides[date]=safe_value
+                    item['overrides']=safe_overrides
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
                 lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
