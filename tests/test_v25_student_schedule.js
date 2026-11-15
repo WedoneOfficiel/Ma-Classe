@@ -18,7 +18,7 @@ assert(source.includes('db.schedule.filter(x=>subjectColorKey(x.subject)===subje
 assert(source.includes('La couleur est commune à une matière dans tout l’établissement'), 'Le gestionnaire doit expliquer la portée globale de la couleur.');
 
 const colorStart = source.indexOf('const SUBJECT_COLORS=');
-const colorEnd = source.indexOf('\\nfunction eventCard', colorStart);
+const colorEnd = source.indexOf('\nfunction eventCard', colorStart);
 assert(colorStart >= 0 && colorEnd > colorStart);
 const colorContext = { db: { settings: { subjectColors: { francais: '#123456' } } } };
 vm.createContext(colorContext);
