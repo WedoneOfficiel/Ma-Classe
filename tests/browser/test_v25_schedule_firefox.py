@@ -272,8 +272,6 @@ def main() -> None:
                     raise AssertionError("Teacher homework attachment was not uploaded: "+repr(uploaded_homework))
                 if teacher_page_errors:
                     raise AssertionError("Teacher Firefox page errors: "+" | ".join(teacher_page_errors))
-                teacher_context.close()
-
                 account = page.evaluate("""async () => {
                   const response = await fetch('/api/admin/student-account', {
                     method:'POST',
@@ -411,6 +409,7 @@ def main() -> None:
                     raise AssertionError("Student timetable unexpectedly exposes teacher edit controls")
                 if student_page_errors:
                     raise AssertionError("Student Firefox page errors: "+" | ".join(student_page_errors))
+                teacher_context.close()
                 student_context.close()
 
                 # Force an unrelated server-side revision so the real-time refresh
