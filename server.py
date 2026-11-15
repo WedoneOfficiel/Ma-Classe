@@ -456,6 +456,141 @@ def _teacher_visible_mailbox(mailbox, user, data):
     }
 
 
+
+def _student_accessible_teacher_ids(data, student_record):
+    """Enseignants joignables par l'élève via sa classe, son EDT ou ses séances."""
+    class_id=str(student_record.get('classId') or '')
+    group=str(student_record.get('group') or '')
+    class_record=next((x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),{})
+    ids={str(x) for x in class_record.get('teacherIds',[]) or [] if x}
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or str(slot.get('classId') or '')!=class_id:
+            continue
+        if slot.get('group') and str(slot.get('group'))!=group:
+            continue
+        ids.update(str(x) for x in ([slot.get('teacherId')]+(slot.get('teacherIds') or [])) if x)
+    for lesson in data.get('lessons',[]) or []:
+        if not isinstance(lesson,dict) or str(lesson.get('classId') or '')!=class_id:
+            continue
+        if lesson.get('group') and str(lesson.get('group'))!=group:
+            continue
+        if lesson.get('teacherId'): ids.add(str(lesson.get('teacherId')))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if isinstance(assignment,dict) and str(assignment.get('classId') or '')==class_id and assignment.get('teacherId') and _teacher_assignment_active(assignment):
+            ids.add(str(assignment.get('teacherId')))
+    valid={str(x.get('id')) for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher'}
+    return ids & valid
+
+
+def _student_visible_mailbox(mailbox, user, data):
+    """Projection de la boîte élève : messages propres et messages des enseignants autorisés."""
+    if not isinstance(mailbox,dict): return {}
+    sid=str(user.get('studentId') or user.get('id') or '')
+    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
+    if not student_record: return {}
+    me=_mail_user_key('student',sid)
+    teachers=_student_accessible_teacher_ids(data,student_record)
+    messages=mailbox.get('messages') if isinstance(mailbox.get('messages'),list) else []
+    visible=[]
+    for message in messages:
+        if not isinstance(message,dict): continue
+        sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
+        sender_key=str(sender.get('key') or '')
+        recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
+        if me in (message.get('hiddenFor') or []): continue
+        if sender_key==me:
+            visible.append(message)
+        elif sender.get('role')=='teacher' and str(sender.get('id') or '') in teachers and sender_key==_mail_user_key('teacher',sender.get('id')) and me in recipients:
+            safe=dict(message)
+            safe['bcc']=[]
+            visible.append(safe)
+    states=mailbox.get('states') if isinstance(mailbox.get('states'),dict) else {}
+    folders=mailbox.get('folders') if isinstance(mailbox.get('folders'),list) else []
+    drafts=mailbox.get('drafts') if isinstance(mailbox.get('drafts'),list) else []
+    return {
+        'schemaVersion':mailbox.get('schemaVersion',2),
+        'messages':visible,
+        'states':{me:states.get(me,{})} if isinstance(states.get(me,{}),dict) else {me:{}},
+        'folders':[x for x in folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me],
+        'drafts':[x for x in drafts if isinstance(x,dict) and str(x.get('owner') or '')==me],
+        'resetPending':bool(mailbox.get('resetPending',False)),
+    }
+
+
+def _student_merge_mailbox(current, incoming, user, data):
+    """Fusionne uniquement la boîte de l'élève ; les messages reçus et envoyés sont immuables."""
+    old=current.get('mailboxV2') if isinstance(current.get('mailboxV2'),dict) else {}
+    new=incoming.get('mailboxV2') if isinstance(incoming.get('mailboxV2'),dict) else {}
+    sid=str(user.get('studentId') or user.get('id') or '')
+    me=_mail_user_key('student',sid)
+    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
+    if not student_record: return old
+    teachers=_student_accessible_teacher_ids(data,student_record)
+    old_messages=old.get('messages') if isinstance(old.get('messages'),list) else []
+    new_messages=new.get('messages') if isinstance(new.get('messages'),list) else []
+    old_by_id={str(x.get('id')):x for x in old_messages if isinstance(x,dict) and x.get('id')}
+    new_by_id={str(x.get('id')):x for x in new_messages if isinstance(x,dict) and x.get('id')}
+    result_messages=[]
+    for ident, original in old_by_id.items():
+        item=dict(original)
+        sender=(original.get('sender') or {}).get('key') if isinstance(original.get('sender'),dict) else ''
+        recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (original.get(field) or []) if isinstance(x,str)]
+        if (sender==me or me in recipients) and ident in new_by_id:
+            hidden=list(original.get('hiddenFor') or [])
+            updated_hidden=new_by_id[ident].get('hiddenFor') or []
+            if me in updated_hidden and me not in hidden: hidden.append(me)
+            if me not in updated_hidden: hidden=[x for x in hidden if x!=me]
+            item['hiddenFor']=hidden
+        result_messages.append(item)
+    for ident,message in new_by_id.items():
+        if ident in old_by_id: continue
+        sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
+        if sender.get('role')!='student' or str(sender.get('id') or '')!=sid or sender.get('key')!=me:
+            continue
+        recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
+        if not recipients: continue
+        valid=True
+        for recipient in recipients:
+            role,sep,recipient_id=recipient.partition(':')
+            if not sep or role!='teacher' or recipient_id not in teachers:
+                valid=False
+                break
+        if not valid: continue
+        for attachment in message.get('attachments') or []:
+            if not isinstance(attachment,dict): continue
+            url=str(attachment.get('url') or '').replace(chr(92),'/')
+            if '/data/uploads/' in url:
+                rel=url.split('/data/uploads/',1)[1]
+                prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
+                if not rel.startswith(prefixes):
+                    valid=False
+                    break
+                try:
+                    path=_safe_upload_path(rel)
+                    if os.path.islink(path) or not os.path.isfile(path):
+                        valid=False
+                        break
+                except (ValueError,OSError):
+                    valid=False
+                    break
+        if valid:
+            item=dict(message)
+            item['hiddenFor']=[]
+            result_messages.append(item)
+    old_states=old.get('states') if isinstance(old.get('states'),dict) else {}
+    new_states=new.get('states') if isinstance(new.get('states'),dict) else {}
+    states=dict(old_states)
+    states[me]=new_states.get(me,{}) if isinstance(new_states.get(me,{}),dict) else {}
+    old_drafts=old.get('drafts') if isinstance(old.get('drafts'),list) else []
+    new_drafts=new.get('drafts') if isinstance(new.get('drafts'),list) else []
+    drafts=[x for x in old_drafts if isinstance(x,dict) and str(x.get('owner') or '')!=me]
+    drafts.extend(x for x in new_drafts if isinstance(x,dict) and str(x.get('owner') or '')==me)
+    old_folders=old.get('folders') if isinstance(old.get('folders'),list) else []
+    new_folders=new.get('folders') if isinstance(new.get('folders'),list) else []
+    folders=[x for x in old_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')!=me]
+    folders.extend(x for x in new_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me)
+    return {'schemaVersion':2,'messages':result_messages,'states':states,'drafts':drafts,'folders':folders,'resetPending':bool(old.get('resetPending',False) and new.get('resetPending',False))}
+
 def _teacher_merge_mailbox(current, incoming, user, data):
     """Fusionne uniquement la boîte personnelle du professeur; les messages envoyés sont immuables."""
     old=current.get('mailboxV2') if isinstance(current.get('mailboxV2'),dict) else {}
