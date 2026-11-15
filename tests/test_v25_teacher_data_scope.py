@@ -1,4 +1,4 @@
-import copy, os, sys, unittest
+import copy, json, os, sys, tempfile, unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server
 
@@ -34,6 +34,27 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual([x['id'] for x in view['submissions']],['sub1'])
         self.assertEqual(view['users'],[self.data['users'][0]])
         self.assertEqual(view['auditLog'],[])
+
+    def test_teacher_can_read_only_attachments_referenced_by_received_student_mail(self):
+        old_data,old_uploads=server.DATA_FILE,server.UPLOADS
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                server.DATA_FILE=os.path.join(tmp,'data.json')
+                server.UPLOADS=os.path.join(tmp,'uploads')
+                os.makedirs(os.path.join(server.UPLOADS,'mail-v2','student:s1'))
+                path=os.path.join(server.UPLOADS,'mail-v2','student:s1','piece.txt')
+                with open(path,'w',encoding='utf-8') as f: f.write('document')
+                data=copy.deepcopy(self.data)
+                data['mailboxV2']={'schemaVersion':2,'messages':[{
+                    'id':'student-mail','sender':{'key':'student:s1','role':'student','id':'s1'},
+                    'to':['teacher:t1'],'subject':'Question','attachments':[{'name':'piece.txt','url':'/data/uploads/mail-v2/student:s1/piece.txt'}]
+                }],'states':{},'folders':[],'drafts':[],'resetPending':False}
+                with open(server.DATA_FILE,'w',encoding='utf-8') as f: json.dump(data,f)
+                self.assertTrue(server._teacher_can_access_upload(self.user,'mail-v2/student:s1/piece.txt',write=False))
+                self.assertFalse(server._teacher_can_access_upload(self.user,'mail-v2/student:s1/piece.txt',write=True))
+                self.assertFalse(server._teacher_can_access_upload(self.user,'mail-v2/student:s2/private.txt',write=False))
+            finally:
+                server.DATA_FILE,server.UPLOADS=old_data,old_uploads
 
     def test_server_refuses_non_loopback_bind_addresses(self):
         for host in ('0.0.0.0','192.168.1.20','::'):
