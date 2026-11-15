@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl
+import update_manager
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -1645,6 +1646,24 @@ class Handler(SimpleHTTPRequestHandler):
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
             allowed_roles=('admin','teacher','student') if path=='/api/data' or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
+        if path=='/api/admin/updates/check':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            try:
+                result=update_manager.check_latest_release(APP_VERSION)
+                data=_load_database()
+                current_schema=int(data.get('schemaVersion',0) or 0)
+                if result.get('available'):
+                    result['compatible']=result.get('min_data_schema',1)<=current_schema
+                    if not result['compatible']:
+                        result['compatibility_message']='Cette version exige une structure de données plus récente. La mise à jour est bloquée.'
+                else:
+                    result['compatible']=True
+                return self._json(result)
+            except update_manager.UpdateError:
+                return self._json({'error':'Impossible de vérifier les mises à jour officielles pour le moment.'},502)
+            except (TypeError,ValueError):
+                return self._json({'error':'La version ou la structure de données installée est invalide.'},500)
         if path.startswith('/data/uploads/'):
             try: rel=unquote(path[len('/data/uploads/'):],encoding='utf-8',errors='strict')
             except UnicodeDecodeError: return self.send_error(404)
