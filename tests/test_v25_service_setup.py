@@ -23,6 +23,7 @@ assert 'export MACLASSE_TLS_CERT="$DATA_ROOT/tls/server.crt"' in launcher
 assert 'export MACLASSE_TLS_KEY="$DATA_ROOT/tls/server.key"' in launcher
 assert 'exec "$PYTHON" "$APP_ROOT/server.py"' in launcher
 assert 'ExecStart=/usr/bin/bash $ROOT/Lancer-MaClasse-Service-Linux.sh' in installer
+assert 'Environment=MACLASSE_SUPERVISED=systemd' in installer
 assert 'loginctl enable-linger "$USER_NAME"' in installer
 assert 'NoNewPrivileges=true' in installer
 assert 'TimeoutStopSec=120' in installer
@@ -40,4 +41,6 @@ apply_script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text()
 assert 'systemctl --user stop maclasse.service' in apply_script
 assert 'mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"' in apply_script
 assert 'rollback_failed' in apply_script
+assert 'VERSION.txt' in apply_script
+assert 'maclasse-runtime-ready.json' in apply_script
 print("OK — supervision Linux : scripts valides, service isolé et désinstallation sans suppression des données.")
