@@ -322,3 +322,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Après l'audit du flux V217 actif, les contrôles sont présents à l'ouverture, à l'édition de configuration, à l'enregistrement, sur les notes, commentaires, critères, compétences et suppressions. Le serveur conserve les anciennes données si un enseignant tente de retirer ou de falsifier une évaluation d'une matière qu'il n'enseigne pas.
 - Les tests backend de fusion des données et les tests frontend ciblés passent dans les runs #690 à #693. La protection du parcours actif a également été ajoutée au test source dédié ; run #696 a passé les tests JS/Python Linux.
 - Conclusion technique : **Supposé résolu**, sous réserve de recette avec un enseignant multi-matières et un remplaçant. Ce statut n'est pas « Corrigé » et ne sera changé qu'après confirmation explicite de l'utilisateur.
+
+
+#### 15/11/2026 — JS-01 : référence `pat` dans l'EDT élève
+
+- Vérification de `_all.js` : aucune occurrence de l'identifiant `pat` ne subsiste. Le wrapper `studentEventCard(o,d)` délègue directement à `eventCard(o,d,true)`.
+- Renforcement de `tests/test_v25_student_schedule.js` : en plus de vérifier l'absence de l'interpolation fautive, le test exécute le wrapper dans un contexte isolé et confirme le mode élève.
+- Conclusion technique : **Supposé résolu**. La recette dans l'EDT avec un vrai compte élève reste nécessaire avant que l'utilisateur puisse confirmer « Corrigé ».
