@@ -225,3 +225,15 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le job macOS a exécuté avec succès l'installateur Apple Silicon, les vérifications JavaScript/Python et les suites de tests.
 - Le test Firefox réel de l'EDT a réussi.
 - **Conclusion :** la CI est entièrement verte sur cette tête. Cela valide les tests automatisés présents, pas encore la recette fonctionnelle réelle avec comptes direction/professeur/élève. Les parcours bulletins, messagerie et paramètres nécessitent toujours cette recette.
+
+
+#### 15/11/2026 — Registre des bugs structuré et correctifs bulletins sur période
+
+- Création de **`REGISTRE_BUGS_V25.md`**, registre synthétique distinct du présent journal technique.
+- Le tableau contient les colonnes demandées : **Identifiant**, **Bug**, **Description simple du bug**, **Description détaillée**, **État**.
+- Les sept anomalies initiales sont reprises avec des identifiants stables : EDT-01, EDT-02, EDT-03, SEC-01, ELEVE-01, MAIL-01 et BUL-01.
+- Les états sont volontairement prudents : les sept bugs sont « En cours de résolution ». Aucun n'est déclaré « Résolu » tant que les recettes fonctionnelles nécessaires ne sont pas terminées.
+- **BUL-01 — correctif supplémentaire :** le contrôle des droits tient maintenant compte des affectations et remplacements sur la période du bulletin. Un remplacement actuel ne doit pas retirer rétroactivement à un enseignant le droit de compléter une période antérieure. Un test de régression dédié a été ajouté.
+- **CI run #672**, sur la tête de branche vérifiée : les trois jobs sont terminés avec succès — suite complète JavaScript/Python, validation macOS (dont installateur Apple Silicon et tests Python), et test EDT dans Firefox réel.
+- **Limite importante :** la CI verte confirme les tests automatisés, pas encore la recette réelle avec comptes élève/professeur. Pour BUL-01, le message initial « Vous ne pouvez pas remplir cette case » n'a pas été retrouvé textuellement dans le frontend actuel ; le parcours complet doit encore être reproduit pour confirmer que le bon garde-fou a été corrigé.
+- La PR #9 reste ouverte en brouillon ; aucun merge ni déploiement.
