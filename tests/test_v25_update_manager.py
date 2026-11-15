@@ -102,6 +102,37 @@ class ReleaseCheckerTests(unittest.TestCase):
                     updater.prepare_release(info, temp)
                 self.assertEqual(list(Path(temp).iterdir()), [])
 
+    def test_prepares_isolated_runtime_and_reuses_matching_requirements(self):
+        with tempfile.TemporaryDirectory() as temp:
+            program = Path(temp)
+            (program / "requirements.txt").write_text("", encoding="utf-8")
+            (program / "server.py").write_text("print('ok')", encoding="utf-8")
+            (program / "_all.js").write_text("const ok=true;", encoding="utf-8")
+            calls = []
+            def fake_run(command, **kwargs):
+                calls.append(command)
+                if command[1:3] == ["-m", "venv"]:
+                    python = Path(command[-1]) / "bin" / "python"
+                    python.parent.mkdir(parents=True, exist_ok=True)
+                    python.write_text("", encoding="utf-8")
+                return None
+            with patch.object(updater.subprocess, "run", side_effect=fake_run), patch.object(updater.shutil, "which", return_value=None):
+                python = updater.prepare_runtime(program)
+                self.assertTrue(python.is_file())
+                self.assertEqual(len(calls), 3)
+                updater.prepare_runtime(program)
+                self.assertEqual(len(calls), 3)
+
+    def test_runtime_failure_removes_partial_virtual_environment(self):
+        with tempfile.TemporaryDirectory() as temp:
+            program = Path(temp)
+            (program / "requirements.txt").write_text("", encoding="utf-8")
+            with patch.object(updater.subprocess, "run", side_effect=updater.subprocess.CalledProcessError(1, ["python"])):
+                with self.assertRaises(updater.UpdateError):
+                    updater.prepare_runtime(program)
+            self.assertFalse((program / ".venv").exists())
+            self.assertFalse((program / "maclasse-runtime-ready.json").exists())
+
     def test_rejects_http_asset_url(self):
         with self.assertRaises(updater.UpdateError):
             updater._request("http://example.test/archive", 100)
