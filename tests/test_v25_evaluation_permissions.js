@@ -4,6 +4,13 @@ const start=source.lastIndexOf('function canEditEvaluation(');
 const end=source.indexOf('\nfunction syncTeacherClassLinks(',start);
 assert(start>=0&&end>start,'evaluation permission helper must exist');
 const helper=source.slice(start,end);
+const activeOpen=source.slice(source.indexOf('window.v217DeepOpenEvaluation=function'),source.indexOf('function v217DeepMeta(',source.indexOf('window.v217DeepOpenEvaluation=function')));
+assert.ok(activeOpen.includes('!canEditEvaluation(e)'),'active evaluation opening must enforce subject permissions');
+const activeSave=source.slice(source.indexOf('window.v217DeepSaveMeta=function'),source.indexOf('function v217CriteriaLevelOptions(',source.indexOf('window.v217DeepSaveMeta=function')));
+assert.ok(activeSave.includes('!canEditEvaluation({classId:o.classId,subject:o.subject,date:o.date})'),'active evaluation save must enforce subject permissions');
+assert.ok(activeSave.includes('!canEditEvaluation(current)'),'active evaluation edit must verify the original record');
+const activeGrade=source.split(/\\r?\\n/).find(line=>line.includes('window.v217DeepSetGrade=function'));
+assert.ok(activeGrade&&activeGrade.includes('!canEditEvaluation(evaluation)'),'active grade entry must enforce subject permissions');
 function contextFor({schedule=[],teacherAssignments=[],profileSubjects=['Maths'],classTeacherIds=['teacher-1']}={}){
  const context={
   authUser:{id:'teacher-1',role:'teacher'},
