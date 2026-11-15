@@ -295,17 +295,93 @@ def _student_account_users(data):
     return result
 
 
+def _teacher_assignment_active(item, on_date=None):
+    """Une affectation datée n'accorde des droits que pendant sa période."""
+    on_date=str(on_date or datetime.date.today().isoformat())
+    start=str(item.get('startDate') or '')
+    end=str(item.get('endDate') or '')
+    return (not start or start<=on_date) and (not end or on_date<=end)
+
+
 def _teacher_class_ids(data,user):
-    """Les classes référencent directement l'identifiant du compte professeur canonique."""
+    """Classes accessibles via responsabilité de classe ou affectation pédagogique active."""
     tid=str(user.get('id') or user.get('teacherId') or '')
-    return {str(c.get('id')) for c in data.get('classes',[]) or [] if isinstance(c,dict) and tid in {str(x) for x in c.get('teacherIds',[]) or []}}
+    ids={str(c.get('id')) for c in data.get('classes',[]) or [] if isinstance(c,dict) and tid in {str(x) for x in c.get('teacherIds',[]) or []}}
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or not slot.get('classId') or not _teacher_assignment_active(slot): continue
+        teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+        if tid in teachers: ids.add(str(slot.get('classId')))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if isinstance(assignment,dict) and str(assignment.get('teacherId') or '')==tid and assignment.get('classId') and _teacher_assignment_active(assignment):
+            ids.add(str(assignment.get('classId')))
+    # Un remplacement ponctuel ouvre l'accès à la classe uniquement le jour concerné.
+    today=datetime.date.today().isoformat()
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or not slot.get('classId'): continue
+        override=(slot.get('overrides') or {}).get(today,{})
+        if str(override.get('replacementTeacherId') or '')==tid and override.get('status')!='cancelled':
+            ids.add(str(slot.get('classId')))
+    return ids
 
 
-def _teacher_subject_keys(data,user):
-    ident=str(user.get('id') or user.get('teacherId') or '')
-    account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),{})
-    subjects=account.get('subjects') if isinstance(account.get('subjects'),list) else []
-    return {str(x).strip().casefold() for x in subjects if str(x).strip()}
+def _teacher_subject_keys(data,user,class_id=None,term_id=None):
+    """Matières déduites des cours et affectations; profil utilisé seulement en compatibilité."""
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    class_id=str(class_id or '')
+    term=next((x for x in (data.get('settings',{}).get('terms',[]) or []) if isinstance(x,dict) and str(x.get('id'))==str(term_id)),None) if term_id else None
+    start=str(term.get('start') or '') if term else datetime.date.today().isoformat()
+    end=str(term.get('end') or '') if term else datetime.date.today().isoformat()
+    found=set()
+    has_explicit=False
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or not slot.get('subject'): continue
+        if class_id and str(slot.get('classId') or '')!=class_id: continue
+        teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+        if tid not in teachers: continue
+        has_explicit=True
+        slot_start=str(slot.get('startDate') or '')
+        slot_end=str(slot.get('endDate') or '')
+        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start):
+            found.add(_norm_text(slot.get('subject')))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if not isinstance(assignment,dict) or str(assignment.get('teacherId') or '')!=tid or not assignment.get('subject'): continue
+        if class_id and str(assignment.get('classId') or '')!=class_id: continue
+        has_explicit=True
+        a_start=str(assignment.get('startDate') or '')
+        a_end=str(assignment.get('endDate') or '')
+        if (not end or not a_start or a_start<=end) and (not start or not a_end or a_end>=start):
+            found.add(_norm_text(assignment.get('subject')))
+    if not has_explicit:
+        account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tid and x.get('role')=='teacher'),{})
+        found.update(_norm_text(x) for x in (account.get('subjects') or []) if str(x).strip())
+    return {x for x in found if x}
+
+
+def _teacher_can_teach_subject(data,user,class_id,subject,on_date=None):
+    """Vérifie une affectation habituelle, multiple, temporaire ou un remplacement ponctuel."""
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    class_id=str(class_id or '')
+    key=_norm_text(subject)
+    if not tid or not class_id or not key: return False
+    date=str(on_date or datetime.date.today().isoformat())
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or str(slot.get('classId') or '')!=class_id or _norm_text(slot.get('subject'))!=key: continue
+        if date in (slot.get('exceptions') or []): continue
+        override=(slot.get('overrides') or {}).get(date,{})
+        if override.get('status')=='cancelled': continue
+        if str(override.get('replacementTeacherId') or '')==tid: return True
+        teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+        if tid in teachers and _teacher_assignment_active(slot,date): return True
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if isinstance(assignment,dict) and str(assignment.get('teacherId') or '')==tid and str(assignment.get('classId') or '')==class_id and _norm_text(assignment.get('subject'))==key and _teacher_assignment_active(assignment,date):
+            return True
+    # Compatibilité transitoire : les anciennes fiches conservent leurs droits tant
+    # qu'aucune affectation explicite n'a été créée pour cette classe et cet enseignant.
+    has_explicit=any(isinstance(s,dict) and str(s.get('classId') or '')==class_id and (str(s.get('teacherId') or '')==tid or tid in {str(v) for v in s.get('teacherIds',[]) or []}) for s in data.get('schedule',[]) or []) or any(isinstance(a,dict) and str(a.get('classId') or '')==class_id and str(a.get('teacherId') or '')==tid for a in data.get('teacherAssignments',[]) or [])
+    if not has_explicit:
+        account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tid and x.get('role')=='teacher'),{})
+        return any(_norm_text(x)==key for x in (account.get('subjects') or []))
+    return False
 
 
 # Isolation des données scolaires : une session professeur ne reçoit et ne remplace
@@ -493,6 +569,7 @@ def _teacher_visible_data(data,user):
     else: out['teachers']=[]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
+    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('teacherId') or '')==tids or str(x.get('classId') or '') in class_ids)]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
     for item in data.get('evaluations',[]) or []:
@@ -812,6 +889,9 @@ def _merge_teacher_data(current,incoming,user):
                 item['classId']=lesson_class
             if key=='evaluations':
                 evaluation_class=str(item.get('classId') or '')
+                if not _teacher_can_teach_subject(current,user,evaluation_class,item.get('subject'),item.get('date')):
+                    if previous: safe_new.append(dict(previous))
+                    continue
                 item['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '') in student_ids and any(isinstance(st,dict) and str(st.get('id'))==str(g.get('studentId')) and str(st.get('classId') or '')==evaluation_class for st in current.get('students',[]) or [])]
             if key=='attendance':
                 attendance_class=str(item.get('classId') or '')
@@ -822,15 +902,17 @@ def _merge_teacher_data(current,incoming,user):
                 if previous and previous.get('published') is True:
                     continue
                 else:
-                    allowed_subjects=_teacher_subject_keys(current,user)
                     old_subject_data=previous.get('subjectData',{}) if previous and isinstance(previous.get('subjectData'),dict) else {}
                     new_subject_data=item.get('subjectData',{}) if isinstance(item.get('subjectData'),dict) else {}
                     filtered_subject_data={}
                     for subject,value in new_subject_data.items():
-                        if str(subject).strip().casefold() in allowed_subjects: filtered_subject_data[subject]=value
-                        elif subject in old_subject_data: filtered_subject_data[subject]=old_subject_data[subject]
+                        if _teacher_can_teach_subject(current,user,item.get('classId'),subject):
+                            filtered_subject_data[subject]=value
+                        elif subject in old_subject_data:
+                            filtered_subject_data[subject]=old_subject_data[subject]
                     for subject,value in old_subject_data.items():
-                        if str(subject).strip().casefold() not in allowed_subjects: filtered_subject_data.setdefault(subject,value)
+                        if not _teacher_can_teach_subject(current,user,item.get('classId'),subject):
+                            filtered_subject_data.setdefault(subject,value)
                     item['subjectData']=filtered_subject_data
                     if not is_principal:
                         for field in ('validated','validatedAt','published','publishedAt','overall','overallUpdatedAt'):
