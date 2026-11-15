@@ -163,3 +163,11 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le helper de rafraîchissement lui-même conserve un fallback sans DOM ; le problème observé était donc un helper absent du contexte de test isolé, et non un défaut de la sauvegarde serveur.
 - Correction : le test de sauvegarde fournit maintenant un stub `refreshSchedulePage()` ; le comportement du helper réel reste vérifié séparément par les assertions dédiées de `test_v25_student_schedule.js`.
 - **État :** correction du test poussée ; nouvelle CI nécessaire. Aucun correctif de production supplémentaire n'a été fait dans cette étape.
+
+
+#### 15/11/2026 — CI partielle et projection de la couleur dans l’espace élève
+
+- **CI run #636** sur la tête précédente : job `tests` réussi (tous les tests JavaScript et Python) et job `Régression EDT — Firefox réel` réussi. Le job `macos-validation` était encore en cours lors de cette mise à jour.
+- Vérification complémentaire : la couleur matière globale est stockée dans `settings.subjectColors`. La projection serveur élève filtrait les paramètres et ne transmettait pas encore cette propriété ; les élèves auraient donc conservé la couleur par défaut malgré le choix du professeur.
+- Correction : ajout de `subjectColors` à la liste blanche des paramètres transmis à l'élève, sans exposer les autres paramètres privés. Test de projection ajouté.
+- **Validation :** ce dernier correctif serveur et son test attendent leur propre exécution CI. Le run #636 ne les couvre pas.
