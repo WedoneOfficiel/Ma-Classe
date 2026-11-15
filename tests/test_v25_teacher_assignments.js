@@ -9,6 +9,6 @@ assert(js.includes('function canEditBulletinSubject'),'bulletin editing has a ce
 assert(js.includes('Les matières et les classes enseignées sont déduites'),'teacher profile no longer asks for duplicate subject declarations');
 assert(py.includes('def _teacher_can_teach_subject'),'server validates teacher subject permissions');
 assert(py.includes('def _teacher_assignment_active'),'temporary assignments have bounded dates');
-assert(py.includes("if not _teacher_can_teach_subject(current,user,evaluation_class,item.get('subject'),item.get('date'))"),'evaluation writes are scoped to assigned subjects');
+assert(py.includes('def _teacher_can_edit_evaluation(data,user,evaluation)'),'evaluation writes are scoped to assigned subjects, with a narrow legacy fallback');
 assert(py.includes("if _teacher_can_teach_subject(current,user,item.get('classId'),subject)"),'bulletin subject writes are scoped to assigned subjects');
 console.log('OK — affectations EDT, remplacements et droits bulletins/évaluations.');
