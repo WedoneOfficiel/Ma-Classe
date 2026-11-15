@@ -47,7 +47,7 @@ jobs:
               "schema_version": 1,
               "version": os.environ["RELEASE_VERSION"],
               "tag_name": os.environ["RELEASE_TAG"],
-              "min_data_schema": 1,
+              "min_data_schema": 25011,
               "archive_asset": archive.name,
               "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
               "release_notes": f"Version stable MaClasse {os.environ['RELEASE_TAG']}. Consultez les notes de publication GitHub."
