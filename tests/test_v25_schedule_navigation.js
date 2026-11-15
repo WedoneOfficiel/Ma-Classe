@@ -104,7 +104,7 @@ assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", con
 const scheduleStart = source.indexOf('function schedule(){');
 const scheduleEnd = source.indexOf('function scheduleWeek(', scheduleStart);
 assert(scheduleStart >= 0 && scheduleEnd > scheduleStart, 'Le rendu du planning doit être présent.');
-context.window = {};
+context.window = {scrollY:0,scrollTo(){}};
 context.studentSettings = () => '<div id="student-settings"></div>';
 context.shell = () => '';
 context.esc = value => String(value ?? '');
