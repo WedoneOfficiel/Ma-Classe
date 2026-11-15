@@ -109,7 +109,7 @@ if [[ -f "$DATA_ROOT/maclasse.json" ]]; then
   cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_ROOT/maclasse-avant-maj-$STAMP.json"
 fi
 write_state "installing"
-LAN_IP="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltName | grep -oE 'IP Address:[0-9.]+' | head -n1 | cut -d: -f2)"
+LAN_IP="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | grep -oE 'IP Address:[0-9.]+' | head -n1 | cut -d: -f2 || true)"
 [[ -n "$LAN_IP" ]] || fail_and_restore "Adresse IP du certificat TLS introuvable."
 
 echo "Arrêt temporaire de MaClasse…"
