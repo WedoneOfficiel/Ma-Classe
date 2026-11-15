@@ -312,7 +312,8 @@ def _teacher_schedule_assignment_suspended(data,slot,teacher_id,on_date=None):
     override=(slot.get('overrides') or {}).get(date,{})
     if isinstance(override,dict) and override.get('status')!='cancelled':
         replacement=str(override.get('replacementTeacherId') or '')
-        if replacement and replacement!=tid and tid in teachers: return True
+        replaced=str(override.get('replacementOfTeacherId') or '')
+        if replacement and replacement!=tid and tid in teachers and (not replaced or replaced==tid): return True
     class_id=str(slot.get('classId') or '')
     subject=_norm_text(slot.get('subject'))
     for assignment in data.get('teacherAssignments',[]) or []:
@@ -909,10 +910,12 @@ def _merge_teacher_data(current,incoming,user):
                     for date,value in new_overrides.items():
                         if not isinstance(value,dict): continue
                         safe_value=dict(value)
-                        if date in old_overrides and isinstance(old_overrides[date],dict) and 'replacementTeacherId' in old_overrides[date]:
-                            safe_value['replacementTeacherId']=old_overrides[date]['replacementTeacherId']
+                        if date in old_overrides and isinstance(old_overrides[date],dict):
+                            for protected in ('replacementTeacherId','replacementOfTeacherId'):
+                                if protected in old_overrides[date]: safe_value[protected]=old_overrides[date][protected]
+                                else: safe_value.pop(protected,None)
                         else:
-                            safe_value.pop('replacementTeacherId',None)
+                            safe_value.pop('replacementTeacherId',None); safe_value.pop('replacementOfTeacherId',None)
                         safe_overrides[date]=safe_value
                     item['overrides']=safe_overrides
                 else:
@@ -923,7 +926,7 @@ def _merge_teacher_data(current,incoming,user):
                     safe_overrides={}
                     for date,value in (item.get('overrides') or {}).items():
                         if isinstance(value,dict):
-                            safe_value=dict(value); safe_value.pop('replacementTeacherId',None); safe_overrides[date]=safe_value
+                            safe_value=dict(value); safe_value.pop('replacementTeacherId',None); safe_value.pop('replacementOfTeacherId',None); safe_overrides[date]=safe_value
                     item['overrides']=safe_overrides
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
