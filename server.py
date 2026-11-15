@@ -755,7 +755,7 @@ def _teacher_visible_data(data,user):
     out={key:data[key] for key in shared_keys if key in data}
     settings=data.get('settings')
     if isinstance(settings,dict):
-        shared_settings=('rooms','termMode','terms','competencyLevels','courseAppearanceMigrationV205')
+        shared_settings=('rooms','termMode','terms','competencyLevels','courseAppearanceMigrationV205','subjectColors')
         out['settings']={key:settings[key] for key in shared_settings if key in settings}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword','role','username','active')} for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
