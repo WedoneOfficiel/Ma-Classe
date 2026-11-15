@@ -5,15 +5,15 @@ const end=source.indexOf('\nfunction setBulletinComment(',start);
 assert(start>=0&&end>start,'term-aware bulletin permission helper must exist');
 const helper=source.slice(start,end);
 
-function contextFor({schedule=[],teacherAssignments=[]}={}){
+function contextFor({schedule=[],teacherAssignments=[],profileSubjects=['Mathématiques'],classTeacherIds=['teacher-1'],principalTeacherId='teacher-1'}={}){
   const period={id:'term-old',start:'2025-09-01',end:'2025-12-20'};
   const context={
     authUser:{role:'teacher'},
     db:{schedule,teacherAssignments},
-    currentTeacherProfile:()=>({id:'teacher-1',subjects:['Mathématiques']}),
+    currentTeacherProfile:()=>({id:'teacher-1',subjects:profileSubjects}),
     iso:()=> '2026-11-15',
     term:id=>id===period.id?period:null,
-    cls:()=>({teacherIds:['teacher-1'],principalTeacherId:'teacher-1'}),
+    cls:()=>({teacherIds:classTeacherIds,principalTeacherId}),
     teacherScheduleSuspended:(slot,tid,date)=>{
       const override=(slot.overrides||{})[date];
       if(override?.replacementTeacherId&&override.replacementTeacherId!==tid)return true;
@@ -39,7 +39,8 @@ assert.strictEqual(substitute.canEditBulletinSubject('class-1','Mathématiques',
   'a one-off replacement during the bulletin term must be allowed');
 
 const unrelated=contextFor({
-  schedule:[{id:'slot-3',classId:'class-1',subject:'Mathématiques',teacherId:'teacher-2'}]
+  schedule:[{id:'slot-3',classId:'class-1',subject:'Mathématiques',teacherId:'teacher-2'}],
+  profileSubjects:[],classTeacherIds:[],principalTeacherId:''
 });
 assert.strictEqual(unrelated.canEditBulletinSubject('class-1','Mathématiques','term-old'),false,
   'an unrelated teacher must not be allowed to edit the subject appreciation');
