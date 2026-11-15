@@ -26,8 +26,9 @@ API_LATEST = f"https://api.github.com/repos/{OWNER}/{REPOSITORY}/releases/latest
 MANIFEST_ASSET = "maclasse-update.json"
 USER_AGENT = "MaClasse-Updater/1"
 MAX_MANIFEST_BYTES = 256 * 1024
-MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
-MAX_EXTRACTED_BYTES = 1024 * 1024 * 1024
+MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
+MAX_EXTRACTED_BYTES = 512 * 1024 * 1024
+MAX_ARCHIVE_ENTRIES = 20000
 ALLOWED_DOWNLOAD_HOSTS = {"api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"}
 VERSION_RE = re.compile(r"^V?(\d+)\.(\d+)\.(\d+)$")
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
@@ -38,8 +39,10 @@ class UpdateError(Exception):
 
 
 def _request(url: str, limit: int) -> bytes:
+    if not isinstance(url, str):
+        raise UpdateError("URL de mise à jour invalide.")
     parsed = urlsplit(url)
-    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_DOWNLOAD_HOSTS:
+    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_DOWNLOAD_HOSTS or parsed.username or parsed.password or parsed.port not in (None, 443):
         raise UpdateError("La ressource de mise à jour doit provenir de GitHub en HTTPS.")
     request = urllib.request.Request(
         url,
@@ -155,7 +158,10 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
     total = 0
     try:
         with zipfile.ZipFile(__import__("io").BytesIO(raw)) as archive:
-            for info in archive.infolist():
+            entries = archive.infolist()
+            if len(entries) > MAX_ARCHIVE_ENTRIES:
+                raise UpdateError("L’archive contient trop de fichiers.")
+            for info in entries:
                 member = _safe_member_path(info.filename)
                 mode = (info.external_attr >> 16) & 0o170000
                 if mode == 0o120000:
@@ -178,9 +184,11 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
         if isinstance(exc, UpdateError):
             raise
         raise UpdateError(f"Archive ZIP invalide : {exc}") from exc
-    except Exception:
+    except Exception as exc:
         shutil.rmtree(target, ignore_errors=True)
-        raise
+        if isinstance(exc, UpdateError):
+            raise
+        raise UpdateError(f"Impossible de décompresser l’archive : {exc}") from exc
     try:
         metadata = {key: release.get(key) for key in ("version", "min_data_schema", "sha256")}
         metadata.update({"prepared_at": int(time.time()), "status": "prepared"})
