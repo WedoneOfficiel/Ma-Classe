@@ -24,6 +24,48 @@ UPLOADS=os.path.join(DATA_DIR,'uploads')
 def _update_apply_service_installed():
     marker=os.path.join(DATA_DIR,'update-manager.enabled')
     return sys.platform.startswith('linux') and os.environ.get('MACLASSE_SUPERVISED')=='systemd' and os.path.isfile(marker)
+
+def _update_timer_unit_path():
+    return os.path.join(os.path.expanduser('~'),'.config','systemd','user','maclasse-update-scheduled.timer')
+
+
+def _cancel_update_timer():
+    unit_path=_update_timer_unit_path()
+    subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
+                   check=False,capture_output=True,text=True,timeout=10)
+    if os.path.exists(unit_path):
+        os.unlink(unit_path)
+    subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
+                   check=True,capture_output=True,text=True,timeout=10)
+
+
+def _schedule_update_timer(timestamp):
+    unit_path=_update_timer_unit_path()
+    unit_dir=os.path.dirname(unit_path)
+    os.makedirs(unit_dir,exist_ok=True)
+    utc=datetime.datetime.fromtimestamp(timestamp,datetime.timezone.utc)
+    calendar=utc.strftime('%Y-%m-%d %H:%M:%S UTC')
+    subprocess.run(['/usr/bin/systemd-analyze','calendar',calendar],
+                   check=True,capture_output=True,text=True,timeout=10)
+    subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
+                   check=False,capture_output=True,text=True,timeout=10)
+    unit='[Unit]\\nDescription=MaClasse — maintenance programmée\\n\\n[Timer]\\nOnCalendar='+calendar+'\\nPersistent=false\\nUnit=maclasse-update-apply.service\\n\\n[Install]\\nWantedBy=timers.target\\n'
+    tmp=unit_path+'.tmp'
+    with open(tmp,'w',encoding='utf-8') as f:
+        f.write(unit)
+    os.chmod(tmp,0o600)
+    os.replace(tmp,unit_path)
+    try:
+        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
+                       check=True,capture_output=True,text=True,timeout=10)
+        subprocess.run(['/usr/bin/systemctl','--user','enable','--now','maclasse-update-scheduled.timer'],
+                       check=True,capture_output=True,text=True,timeout=10)
+    except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        try: os.unlink(unit_path)
+        except OSError: pass
+        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
+                       check=False,capture_output=True,text=True,timeout=10)
+        raise
 os.makedirs(UPLOADS,exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE,'w',encoding='utf-8') as f: json.dump({},f,ensure_ascii=False)
@@ -1659,6 +1701,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({'ok':True,'version':APP_VERSION,'database':'ok'})
             except Exception:
                 return self._json({'ok':False,'version':APP_VERSION,'database':'error'},503)
+        if path=='/api/update-maintenance':
+            try:
+                with open(os.path.join(DATA_DIR,'update-maintenance.json'),encoding='utf-8') as f:
+                    maintenance=json.load(f)
+                return self._json({'scheduled':maintenance.get('status')=='scheduled','maintenance':maintenance if maintenance.get('status')=='scheduled' else None})
+            except (OSError,ValueError,AttributeError):
+                return self._json({'scheduled':False,'maintenance':None})
         if path=='/api/auth/setup-status':
             data=_load_database()
             users=data.get('users') if isinstance(data.get('users'),list) else []
@@ -1673,7 +1722,7 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            allowed_roles=('admin','teacher','student') if path=='/api/data' or path.startswith('/data/uploads/') else ('admin','teacher')
+            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance') or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
         if path=='/api/admin/updates/check':
             user=self._require_auth(roles=('admin',))
@@ -1770,6 +1819,56 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({'error':'La préparation de la mise à jour a échoué. La version active n’a pas été modifiée.'},502)
             except (OSError,TypeError,ValueError):
                 return self._json({'error':'Impossible de préparer la mise à jour. La version active n’a pas été modifiée.'},500)
+        if path=='/api/admin/updates/schedule':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'La programmation nécessite le gestionnaire Linux supervisé.'},501)
+            try:
+                payload=json.loads(body.decode('utf-8'))
+                requested_version=str(payload.get('version') or '')
+                scheduled_value=str(payload.get('scheduled_at') or '')
+                timezone_name=str(payload.get('timezone') or 'Fuseau local')
+                scheduled_dt=datetime.datetime.fromisoformat(scheduled_value.replace('Z','+00:00'))
+                if scheduled_dt.tzinfo is None: return self._json({'error':'La date doit inclure un fuseau horaire.'},400)
+                scheduled_at=int(scheduled_dt.timestamp())
+                if scheduled_at<time.time()+300: return self._json({'error':'Choisis une date située au moins cinq minutes dans le futur.'},400)
+                if scheduled_at>time.time()+90*86400: return self._json({'error':'La programmation est limitée aux 90 prochains jours.'},400)
+                with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as f:
+                    update_state=json.load(f)
+                if update_state.get('status')!='prepared' or update_state.get('version')!=requested_version:
+                    return self._json({'error':'Cette version n’est plus prête à être installée. Relance la recherche.'},409)
+                maintenance={'status':'scheduled','version':requested_version,'scheduled_at':scheduled_at,'timezone':timezone_name,'scheduled_by':str(user.get('id') or ''),'created_at':int(time.time())}
+                maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
+                old_maintenance=None
+                try:
+                    with open(maintenance_path,encoding='utf-8') as f: old_maintenance=json.load(f)
+                except (OSError,ValueError): pass
+                _schedule_update_timer(scheduled_at)
+                tmp=maintenance_path+'.tmp'
+                with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
+                os.replace(tmp,maintenance_path)
+                return self._json({'scheduled':True,'maintenance':maintenance},201)
+            except (ValueError,TypeError,KeyError,json.JSONDecodeError):
+                return self._json({'error':'Date ou demande de programmation invalide.'},400)
+            except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                return self._json({'error':'Impossible de programmer la maintenance. La version active reste inchangée.'},503)
+        if path=='/api/admin/updates/cancel-schedule':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire Linux supervisé est absent.'},501)
+            try:
+                maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
+                with open(maintenance_path,encoding='utf-8') as f: maintenance=json.load(f)
+                if maintenance.get('status')!='scheduled': return self._json({'error':'Aucune maintenance programmée à annuler.'},409)
+                _cancel_update_timer()
+                maintenance['status']='cancelled'
+                maintenance['cancelled_at']=int(time.time())
+                tmp=maintenance_path+'.tmp'
+                with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
+                os.replace(tmp,maintenance_path)
+                return self._json({'cancelled':True})
+            except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                return self._json({'error':'Impossible d’annuler la maintenance programmée.'},503)
         if path=='/api/admin/updates/install':
             user=self._require_auth(roles=('admin',))
             if not user: return
