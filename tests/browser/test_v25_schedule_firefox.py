@@ -6,6 +6,7 @@ checkout's data/ directory or any developer installation.
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import socket
@@ -69,7 +70,9 @@ def main() -> None:
                 browser = playwright.firefox.launch()
                 page = browser.new_page()
                 page_errors: list[str] = []
+                browser_errors: list[str] = []
                 page.on("pageerror", lambda error: page_errors.append(str(error)))
+                page.on("console", lambda message: browser_errors.append(message.text) if message.type == "error" else None)
                 page.goto(url, wait_until="networkidle")
 
                 # Create a disposable administrator in the temporary app.
@@ -122,6 +125,23 @@ def main() -> None:
 
                 # Today, month, week navigation in both directions, then back.
                 page.locator("button.scheduleToday").click()
+                if not existing.is_visible():
+                    state = page.evaluate("""() => ({
+                      now: new Date().toString(),
+                      page, scheduleView,
+                      selectedWeek: selectedWeek.toString(),
+                      selectedIso: iso(selectedWeek),
+                      schedule: (db.schedule || []).map(x => ({
+                        id:x.id, day:x.day, startDate:x.startDate,
+                        endDate:x.endDate, recurrence:x.recurrence,
+                        exceptions:x.exceptions
+                      })),
+                      calendar: document.querySelector('.scheduleCalendarSurface')?.innerHTML.slice(0,3000) || null
+                    })""")
+                    raise AssertionError("Le cours disparaît après « Aujourd’hui » : "
+                                         + json.dumps(state, ensure_ascii=False)
+                                         + " | page errors=" + repr(page_errors)
+                                         + " | console errors=" + repr(browser_errors))
                 expect(existing).to_be_visible()
 
                 page.locator(".scheduleViewSwitch").get_by_role("button", name="Mois").click()
@@ -184,8 +204,6 @@ def main() -> None:
                 print("OK — Firefox réel : Aujourd’hui, mois, navigation semaine, création, sauvegarde et persistance EDT.")
 
         finally:
-            if browser:
-                browser.close()
             server.terminate()
             try:
                 server.wait(timeout=5)
