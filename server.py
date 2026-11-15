@@ -303,6 +303,24 @@ def _teacher_assignment_active(item, on_date=None):
     return (not start or start<=on_date) and (not end or on_date<=end)
 
 
+
+def _teacher_schedule_assignment_suspended(data,slot,teacher_id,on_date=None):
+    """Le titulaire perd temporairement les droits de matière quand il est remplacé."""
+    tid=str(teacher_id or '')
+    date=str(on_date or datetime.date.today().isoformat())
+    teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
+    override=(slot.get('overrides') or {}).get(date,{})
+    if isinstance(override,dict) and override.get('status')!='cancelled':
+        replacement=str(override.get('replacementTeacherId') or '')
+        if replacement and replacement!=tid and tid in teachers: return True
+    class_id=str(slot.get('classId') or '')
+    subject=_norm_text(slot.get('subject'))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if not isinstance(assignment,dict) or assignment.get('type')!='replacement': continue
+        if str(assignment.get('classId') or '')!=class_id or _norm_text(assignment.get('subject'))!=subject: continue
+        if str(assignment.get('supersedesTeacherId') or '')==tid and _teacher_assignment_active(assignment,date): return True
+    return False
+
 def _teacher_class_ids(data,user):
     """Classes accessibles via responsabilité de classe ou affectation pédagogique active."""
     tid=str(user.get('id') or user.get('teacherId') or '')
@@ -310,7 +328,7 @@ def _teacher_class_ids(data,user):
     for slot in data.get('schedule',[]) or []:
         if not isinstance(slot,dict) or not slot.get('classId') or not _teacher_assignment_active(slot): continue
         teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
-        if tid in teachers: ids.add(str(slot.get('classId')))
+        if tid in teachers and not _teacher_schedule_assignment_suspended(data,slot,tid): ids.add(str(slot.get('classId')))
     for assignment in data.get('teacherAssignments',[]) or []:
         if isinstance(assignment,dict) and str(assignment.get('teacherId') or '')==tid and assignment.get('classId') and _teacher_assignment_active(assignment):
             ids.add(str(assignment.get('classId')))
@@ -341,7 +359,7 @@ def _teacher_subject_keys(data,user,class_id=None,term_id=None):
         has_explicit=True
         slot_start=str(slot.get('startDate') or '')
         slot_end=str(slot.get('endDate') or '')
-        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start):
+        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start) and not _teacher_schedule_assignment_suspended(data,slot,tid):
             found.add(_norm_text(slot.get('subject')))
     for assignment in data.get('teacherAssignments',[]) or []:
         if not isinstance(assignment,dict) or str(assignment.get('teacherId') or '')!=tid or not assignment.get('subject'): continue
@@ -371,7 +389,7 @@ def _teacher_can_teach_subject(data,user,class_id,subject,on_date=None):
         if override.get('status')=='cancelled': continue
         if str(override.get('replacementTeacherId') or '')==tid: return True
         teachers={str(slot.get('teacherId') or '')}|{str(x) for x in slot.get('teacherIds',[]) or []}
-        if tid in teachers and _teacher_assignment_active(slot,date): return True
+        if tid in teachers and _teacher_assignment_active(slot,date) and not _teacher_schedule_assignment_suspended(data,slot,tid,date): return True
     for assignment in data.get('teacherAssignments',[]) or []:
         if isinstance(assignment,dict) and str(assignment.get('teacherId') or '')==tid and str(assignment.get('classId') or '')==class_id and _norm_text(assignment.get('subject'))==key and _teacher_assignment_active(assignment,date):
             return True
