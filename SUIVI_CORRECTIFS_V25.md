@@ -277,3 +277,14 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Correction du fixture : le cas « enseignant non affecté » n'a désormais ni classe dans ses affectations, ni rôle de professeur principal, ni matière dans son profil.
 - **CI #684 :** suite JavaScript complète Linux réussie avec le test corrigé ; régression EDT Firefox réel réussie. La validation macOS a passé l'installateur Apple Silicon, les vérifications JavaScript et la suite JavaScript ; l'exécution des tests Python macOS est encore en cours au moment de cette entrée.
 - La PR reste en brouillon. Le test automatisé ne remplace pas la recette du bulletin avec un vrai compte enseignant.
+
+
+#### 15/11/2026 — EVAL-04 : droits d'édition des évaluations
+
+- Cause confirmée : le périmètre d'une classe accessible était utilisé pour sélectionner les évaluations modifiables/supprimables. Cela ne suffisait pas à garantir que le professeur enseignait la matière concernée.
+- Serveur (server.py) : le périmètre modifiable des évaluations vérifie désormais _teacher_can_edit_evaluation. Une évaluation d'une matière non enseignée reste conservée même si le client tente de la supprimer ; une tentative de changer la matière d'une évaluation existante est rejetée et l'ancienne version est restaurée.
+- Interface (_all.js) : ajout de canEditEvaluation, avec prise en compte des affectations EDT, affectations explicites, dates, remplacements ponctuels et normalisation des accents. Garde-fous sur l'ouverture, la création/modification, les notes, commentaires, critères, compétences et suppressions.
+- Tests ajoutés : tests/test_v25_evaluation_permissions.js (contrôle frontend) et un test dans tests/test_v25_teacher_data_scope.py (refus de modifier/supprimer une matière non enseignée).
+- Régression de test rencontrée : le premier passage a révélé que tests/test_competencies_v20.js ne définissait pas authUser. Le contexte du test a été complété avec un rôle administrateur ; le contrôle applicatif n'a pas été affaibli.
+- CI : run #690 — tests Linux réussis et régression Firefox réussie ; validation macOS encore en cours au dernier contrôle. Run #691, sur le correctif complémentaire protégeant aussi les notes des critères, est en cours ; tests Linux passés, Firefox et macOS en cours.
+- Statut fonctionnel : correctif engagé et tests automatisés ciblés présents. Ne pas déclarer résolu avant recette avec un enseignant ayant accès à plusieurs matières et un enseignant remplaçant.
