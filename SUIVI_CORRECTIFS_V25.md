@@ -329,3 +329,5 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Vérification de `_all.js` : aucune occurrence de l'identifiant `pat` ne subsiste. Le wrapper `studentEventCard(o,d)` délègue directement à `eventCard(o,d,true)`.
 - Renforcement de `tests/test_v25_student_schedule.js` : en plus de vérifier l'absence de l'interpolation fautive, le test exécute le wrapper dans un contexte isolé et confirme le mode élève.
 - Conclusion technique : **Supposé résolu**. La recette dans l'EDT avec un vrai compte élève reste nécessaire avant que l'utilisateur puisse confirmer « Corrigé ».
+
+- Test serveur complémentaire ajouté dans `tests/test_v25_mailbox_upload_scope.py` : un enseignant peut déposer une pièce jointe dans `submissions/<créneau>` ; le fichier n'est lisible qu'après que la séance/devoir enregistré le référence. Cela couvre le trajet réel de permission du dépôt enseignant.
