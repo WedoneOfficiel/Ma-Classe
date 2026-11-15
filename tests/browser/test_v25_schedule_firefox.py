@@ -348,6 +348,7 @@ def main() -> None:
                     raise AssertionError("Student mailbox has no message row: "+json.dumps(mailbox_state,ensure_ascii=False))
                 expect(mailbox.locator('.v2104Row')).to_contain_text("Message de test élève")
                 student_page.evaluate("""() => {
+                  closeModal();
                   page='studentSchedule';
                   appSpace='student';
                   selectedWeek=scheduleLocalDate('2026-11-09');
