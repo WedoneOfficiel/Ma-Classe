@@ -9,7 +9,7 @@ ROOT="$(pwd -P)"
 [[ "$(id -u)" -ne 0 ]] || { echo "Lance cet installateur depuis le compte utilisateur MaClasse, sans sudo devant le script."; exit 1; }
 USER_NAME="$(id -un)"
 if [[ ! "$ROOT" =~ ^/[A-Za-z0-9_./-]+$ ]]; then echo "Déplace MaClasse dans un chemin simple (lettres, chiffres, /, ., _ ou -) pour systemd."; exit 1; fi
-UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+UNIT_DIR="$HOME/.config/systemd/user"
 UNIT_FILE="$UNIT_DIR/maclasse.service"
 mkdir -p "$UNIT_DIR"
 cat > "$UNIT_FILE" <<EOF
