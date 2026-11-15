@@ -185,3 +185,10 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - **CI run #653 :** le contrôle de syntaxe et les tests JavaScript ont progressé, mais les tests Python ont échoué dans `tests/test_v25_mailbox_upload_scope.py`. Une modification de filtrage des pièces jointes de brouillons avait été insérée dans `_teacher_visible_mailbox()` au lieu de `_student_visible_mailbox()` ; elle utilisait donc des variables (`sid`, `teachers`) inexistantes pour un compte professeur (`NameError`).
 - Correction : restauration du filtrage historique des brouillons dans la projection professeur et déplacement du filtrage strict (dossier propre à l'élève + destinataires enseignants autorisés) dans la projection élève.
 - **État :** correction poussée ; nouvelle CI nécessaire. Le job Firefox du run #653 a réussi, mais la suite complète n'est pas verte.
+
+
+#### 15/11/2026 — Correction ciblée après CI #655
+
+- **CI run #655 :** les tests Python ont de nouveau échoué sur le même `NameError` dans `_teacher_visible_mailbox()`. La première tentative de déplacement du filtre avait laissé le bloc au mauvais endroit ; la vérification du contenu exact du fichier a montré que la projection professeur contenait toujours les variables de l'élève.
+- Correction plus sûre : remplacement complet, par bornes de fonctions, de `_teacher_visible_mailbox()` et `_student_visible_mailbox()`. La projection professeur retrouve son comportement initial ; le filtrage strict des brouillons et de leurs pièces jointes est désormais exclusivement dans la projection élève.
+- **État :** correction poussée et relue dans les deux fonctions ; nouvelle CI nécessaire. Aucun résultat vert n'est revendiqué pour la messagerie.
