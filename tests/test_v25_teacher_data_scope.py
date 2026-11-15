@@ -17,6 +17,12 @@ class TeacherDataScopeTests(unittest.TestCase):
         }
         self.user={'id':'t1','role':'teacher'}
 
+    def test_one_off_substitute_can_edit_the_taught_subject_bulletin(self):
+        data=copy.deepcopy(self.data)
+        data['schedule']=[{'id':'slot1','classId':'c1','subject':'Maths','teacherId':'t2',
+                           'overrides':{'2026-11-15':{'replacementTeacherId':'t1'}}}]
+        self.assertTrue(server._teacher_can_teach_subject(data,self.user,'c1','Maths','2026-11-15'))
+
     def test_projection_only_exposes_assigned_class(self):
         view=server._teacher_visible_data(self.data,self.user)
         self.assertEqual([x['id'] for x in view['classes']],['c1'])
