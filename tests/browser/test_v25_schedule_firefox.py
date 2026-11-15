@@ -152,7 +152,7 @@ def main() -> None:
                     "Emploi du temps enregistré.", timeout=10_000
                 )
                 expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
-                expect(page.locator('[data-schedule-id]').filter(has=page.get_by_text("Histoire"))).to_be_visible()
+                expect(page.locator('[data-schedule-id]').filter(has_text="Histoire")).to_be_visible()
 
                 # Exercise the actual Today action once more after a persisted write.
                 page.locator("button.scheduleToday").click()
