@@ -574,7 +574,7 @@ function createBulletin(e){e.preventDefault();const o=Object.fromEntries(new For
 function canEditBulletinSubject(classId,subject){
  if(authUser?.role==='admin')return true;
  if(authUser?.role!=='teacher')return false;
- const tid=String(currentTeacherProfile()?.id||''),norm=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toLocaleLowerCase('fr'),key=norm(subject),today=iso(new Date());
+ const tid=String(currentTeacherProfile()?.id||''),norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLocaleLowerCase('fr'),key=norm(subject),today=iso(new Date());
  if(!tid||!key)return false;
  const slots=db.schedule.filter(s=>String(s.classId)===String(classId)&&norm(s.subject)===key&&([String(s.teacherId||''),...(s.teacherIds||[]).map(String)].includes(tid))&&!teacherScheduleSuspended(s,tid,today));
  const replacements=db.schedule.filter(s=>String(s.classId)===String(classId)&&norm(s.subject)===key&&s.overrides?.[today]?.status!=='cancelled'&&String(s.overrides?.[today]?.replacementTeacherId||'')===tid);
