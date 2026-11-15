@@ -216,6 +216,64 @@ def main() -> None:
                   if (!saved.ok) throw new Error('Teacher-linked mailbox seed failed: '+saved.status+' '+await saved.text());
                   return id;
                 }""")
+                teacher_context = browser.new_context()
+                teacher_page = teacher_context.new_page()
+                teacher_page_errors: list[str] = []
+                teacher_page.on("pageerror", lambda error: teacher_page_errors.append(str(error)))
+                teacher_page.goto(url, wait_until="networkidle")
+                teacher_state = teacher_page.evaluate("""async () => {
+                  const response = await fetch('/api/auth/login', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({username:'firefox-teacher',password:'Teacher-Temporary-Password-2026!'})
+                  });
+                  const result = await response.json();
+                  if (!response.ok) throw new Error('Teacher login failed: '+JSON.stringify(result));
+                  const changed = await fetch('/api/auth/change-password', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({currentPassword:'Teacher-Temporary-Password-2026!',newPassword:'Teacher-Test-Password-2026!'})
+                  });
+                  if (!changed.ok) throw new Error('Teacher password change failed: '+await changed.text());
+                  await load();
+                  return {role:authUser?.role,id:authUser?.id};
+                }""")
+                if teacher_state.get("role") != "teacher" or teacher_state.get("id") != teacher_id:
+                    raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
+                uploaded_homework = teacher_page.evaluate("""async () => {
+                  db=await api('/api/data');
+                  normalize();
+                  lessonDraft={
+                    sid:'firefox-existing-course',date:'2026-11-13',
+                    title:'Séance test',content:'',makeWork:true,workType:'normal',
+                    workTitle:'Devoir avec pièce jointe',workDue:'2026-11-20',
+                    workDueTime:'09:00',workContent:'Consigne de test',
+                    workSubmit:true,workEvalLink:false,files:[],workFiles:[]
+                  };
+                  const file=new File(['Fichier de devoir de test'],'devoir-test.txt',{type:'text/plain'});
+                  await uploadWorkFiles('firefox-existing-course','2026-11-13',[file]);
+                  const slot=db.schedule.find(x=>x.id==='firefox-existing-course');
+                  const lesson={
+                    id:'firefox-homework-lesson',scheduleId:slot.id,date:'2026-11-13',
+                    classId:slot.classId,subject:slot.subject,title:'Séance test',content:'',
+                    files:[],homework:{
+                      title:'Devoir avec pièce jointe',type:'normal',due:'2026-11-20',
+                      dueTime:'09:00',instructions:'Consigne de test',
+                      files:[...lessonDraft.workFiles],requiresSubmission:true,
+                      submissionFolder:{id:'firefox-homework-folder',name:'Rendus — Devoir avec pièce jointe'}
+                    }
+                  };
+                  db.lessons.push(lesson);
+                  save(true);
+                  await flushPendingSave();
+                  return lesson.homework.files[0];
+                }""")
+                if not uploaded_homework or not uploaded_homework.get("url"):
+                    raise AssertionError("Teacher homework attachment was not uploaded: "+repr(uploaded_homework))
+                if teacher_page_errors:
+                    raise AssertionError("Teacher Firefox page errors: "+" | ".join(teacher_page_errors))
+                teacher_context.close()
+
                 account = page.evaluate("""async () => {
                   const response = await fetch('/api/admin/student-account', {
                     method:'POST',
@@ -260,6 +318,21 @@ def main() -> None:
                   appSpace='student';
                   render();
                 }""")
+                # The student must see and be able to open the teacher's saved homework attachment.
+                student_page.evaluate("""async () => {
+                  db=await api('/api/data');
+                  normalize();
+                  openStudentWork('firefox-homework-lesson');
+                }""")
+                expect(student_page.locator('#modal')).to_contain_text("Pièces jointes du professeur")
+                attachment_link = student_page.locator('#modal a[href*="/data/uploads/submissions/"]')
+                expect(attachment_link).to_have_count(1)
+                attachment_url = attachment_link.get_attribute("href")
+                attachment_content = student_page.evaluate(
+                    "async url => await (await fetch(url)).text()", attachment_url
+                )
+                if attachment_content != "Fichier de devoir de test":
+                    raise AssertionError("Student cannot read teacher homework attachment: "+repr(attachment_content))
                 mailbox = student_page.locator('.v2104App')
                 expect(mailbox).to_be_visible()
                 mailbox_state = student_page.evaluate("""() => ({
