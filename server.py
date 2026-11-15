@@ -664,8 +664,9 @@ def _teacher_can_access_upload(user, relative, write=False):
         own_mail=(f'mail-v2/teacher:{tid}',f'mail-v2-drafts/teacher:{tid}')
         if rel in own_mail or any(rel.startswith(prefix+'/') for prefix in own_mail):
             return True
-        if rel.startswith(('mail-v2/','mail-v2-drafts/')): return False
-        if write: return rel.split('/',1)[0] in ('general','lessons','submissions','corrections')
+        if write:
+            if rel.startswith(('mail-v2/','mail-v2-drafts/')): return False
+            return rel.split('/',1)[0] in ('general','lessons','submissions','corrections')
         data=_load_database(); visible=_teacher_visible_data(data,user)
         mailbox=_teacher_visible_mailbox(data.get('mailboxV2',{}),user,data)
         needle='/data/uploads/'+rel
