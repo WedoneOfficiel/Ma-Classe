@@ -27,7 +27,7 @@ async function installUpdate(){
  confirmModal('Installer cette mise à jour maintenant ? MaClasse sera temporairement inaccessible pendant le redémarrage.','Installer la mise à jour',async()=>{
   updateCheckBusy=true;render();
   try{
-   await api('/api/admin/updates/install',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+   await api('/api/admin/updates/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:updateCheckResult.version})});
    updateCheckResult={...updateCheckResult,prepared:false,installing:true};
    toast('Installation lancée. MaClasse va redémarrer ; ne ferme pas le PC serveur.');
   }catch(error){toast(error.message||'Impossible de lancer l’installation.')}
@@ -39,8 +39,8 @@ async function prepareUpdate(){
  if(!updateCheckResult?.available||!updateCheckResult.compatible||!updateCheckResult.install_supported||updateCheckBusy)return;
  updateCheckBusy=true;render();
  try{
-  const result=await api('/api/admin/updates/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-  updateCheckResult={...updateCheckResult,prepared:!!result.prepared,preparedAt:result.prepared_at};
+  const result=await api('/api/admin/updates/prepare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:updateCheckResult.version})});
+  updateCheckResult={...updateCheckResult,version:result.version||updateCheckResult.version,prepared:!!result.prepared,preparedAt:result.prepared_at};
   toast('Mise à jour téléchargée et vérifiée. MaClasse continue de fonctionner.');
  }catch(error){toast(error.message||'Préparation impossible.')}
  finally{updateCheckBusy=false;render()}
