@@ -376,6 +376,39 @@ def main() -> None:
                   if (!saved.ok) throw new Error('Teacher timetable update failed: '+saved.status+' '+await saved.text());
                 }""")
                 expect(student_calendar).to_contain_text("Sciences", timeout=15_000)
+                teacher_page.evaluate("""() => {
+                  page='schedule';
+                  appSpace='teacher';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                }""")
+                teacher_calendar = teacher_page.locator('.scheduleCalendarSurface')
+                expect(teacher_calendar).to_contain_text("Sciences")
+                def layout_signature(target):
+                    return target.evaluate("""root => {
+                      const selectors=['.scheduleControlPanel','.scheduleCalendarSurface','.scheduleGrid','.scheduleDays','.daycol','.daycolHeader','.eventCard'];
+                      return Object.fromEntries(selectors.map(selector=>{
+                        const nodes=[...root.querySelectorAll(selector)];
+                        const styles=nodes[0]?getComputedStyle(nodes[0]):null;
+                        return [selector,{
+                          count:nodes.length,
+                          display:styles?.display||'',
+                          columnCount:styles?.gridTemplateColumns&&styles.gridTemplateColumns!=='none'?styles.gridTemplateColumns.split(' ').length:0,
+                          gap:styles?.gap||'',
+                          borderRadius:styles?.borderRadius||'',
+                          padding:styles?.padding||''
+                        }];
+                      }));
+                    }""")
+                teacher_layout=layout_signature(teacher_page.locator('body'))
+                student_layout=layout_signature(student_page.locator('body'))
+                for selector in teacher_layout:
+                    left,right=teacher_layout[selector],student_layout[selector]
+                    if left['count']!=right['count'] or left['display']!=right['display'] or left['columnCount']!=right['columnCount'] or left['gap']!=right['gap'] or left['borderRadius']!=right['borderRadius'] or left['padding']!=right['padding']:
+                        raise AssertionError("EDT teacher/student visual structure differs at "+selector+": "+repr((left,right)))
+                if student_page.locator('.schedulePage .eventEdit').count()!=0:
+                    raise AssertionError("Student timetable unexpectedly exposes teacher edit controls")
                 if student_page_errors:
                     raise AssertionError("Student Firefox page errors: "+" | ".join(student_page_errors))
                 student_context.close()
