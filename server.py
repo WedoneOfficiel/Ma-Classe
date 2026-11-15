@@ -360,8 +360,14 @@ def _teacher_subject_keys(data,user,class_id=None,term_id=None):
         has_explicit=True
         slot_start=str(slot.get('startDate') or '')
         slot_end=str(slot.get('endDate') or '')
-        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start) and not _teacher_schedule_assignment_suspended(data,slot,tid):
-            found.add(_norm_text(slot.get('subject')))
+        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start):
+            # Une suspension hors de la période du bulletin ne doit pas effacer un enseignement passé.
+            probe_start=max([x for x in (start,slot_start) if x] or [datetime.date.today().isoformat()])
+            probe_end=min([x for x in (end,slot_end) if x] or [datetime.date.today().isoformat()])
+            suspended_start=_teacher_schedule_assignment_suspended(data,slot,tid,probe_start)
+            suspended_end=_teacher_schedule_assignment_suspended(data,slot,tid,probe_end)
+            if not (suspended_start and suspended_end):
+                found.add(_norm_text(slot.get('subject')))
     for assignment in data.get('teacherAssignments',[]) or []:
         if not isinstance(assignment,dict) or str(assignment.get('teacherId') or '')!=tid or not assignment.get('subject'): continue
         if class_id and str(assignment.get('classId') or '')!=class_id: continue
