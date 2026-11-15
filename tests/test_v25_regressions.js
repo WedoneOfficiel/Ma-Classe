@@ -13,6 +13,9 @@ assert(src.includes('function saveStudentAccount(e)'), 'direction must be able t
 assert(src.includes("/api/admin/student-account"), 'student credentials must be created and hashed server-side');
 assert(src.includes("upload(file,'submissions/'+sid)"), 'student homework uploads must use the student-specific submission folder');
 assert(src.includes("scheduleView==='week'?scheduleWeek(ds,occ,true):scheduleView==='day'?scheduleDay(sel,occ,true):scheduleMonth(sel,occ)"), 'student timetable must reuse the shared calendar renderers in read-only mode');
+assert(src.includes("s.overrides?.[today]?.replacementTeacherId"), 'bulletin permissions must recognize a teacher assigned as a one-off substitute');
+assert(src.includes('name="publicationMode"') && src.includes('name="publishAtLocal"'), 'the active evaluation form must offer draft, immediate, and scheduled publication with a local date/time');
+assert(src.includes("scheduled.toISOString()"), 'scheduled publication must be stored as an absolute timestamp');
 assert(src.includes('La messagerie élève arrive dans une prochaine étape'), 'unreviewed student messaging must remain unavailable');
 assert(src.includes("for(const k of ['schedule','teacherAssignments','bulletins','attachments','conversations','teachers','subjects','cloudItems','mailFolders','users','notifications','auditLog','messages'])"),'all collections normalized defensively');
 assert(src.includes("cls(defaultClass)?.attendanceMode==='hour'"),'attendance mode must use the stored hour value');
