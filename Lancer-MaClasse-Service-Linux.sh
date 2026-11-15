@@ -1,11 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
+ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 [[ "$(uname -s)" == "Linux" ]] || { echo "Ce service est réservé à Linux."; exit 1; }
-[[ -x .venv/bin/python ]] || { echo "Environnement Python absent : lance Installer-MaClasse-Linux.sh."; exit 1; }
-for cmd in ip awk curl openssl; do command -v "$cmd" >/dev/null 2>&1 || { echo "Commande requise absente : $cmd"; exit 1; }; done
+command -v ip >/dev/null 2>&1 || { echo "Commande ip absente."; exit 1; }
+command -v awk >/dev/null 2>&1 || { echo "Commande awk absente."; exit 1; }
+command -v openssl >/dev/null 2>&1 || { echo "Commande openssl absente."; exit 1; }
 
-# Le mode réseau n'est activé qu'après initialisation locale et création d'un compte direction sécurisé.
+DATA_ROOT="$ROOT/data"
+PROGRAM_ROOT="$DATA_ROOT/program"
+VERSIONS_ROOT="$PROGRAM_ROOT/versions"
+APP_ROOT="$PROGRAM_ROOT/current"
+mkdir -p "$VERSIONS_ROOT"
+if [[ ! -e "$APP_ROOT" && ! -L "$APP_ROOT" ]]; then
+  ln -s "$ROOT" "$APP_ROOT"
+fi
+[[ -d "$APP_ROOT" ]] || { echo "La version active MaClasse est introuvable."; exit 1; }
+PYTHON="$APP_ROOT/.venv/bin/python"
+[[ -x "$PYTHON" ]] || { echo "Environnement Python absent pour la version active : lance Installer-MaClasse-Linux.sh."; exit 1; }
+
+# Le certificat et les données restent dans data/, hors du répertoire de programme versionné.
+cd "$ROOT"
 .venv/bin/python - <<'PY'
 import json, sys
 from pathlib import Path
@@ -24,13 +38,15 @@ IFACE="$(ip -4 route show default 2>/dev/null | awk 'NR==1 {for(i=1;i<=NF;i++) i
 [[ -n "$IFACE" ]] || { echo "Interface réseau par défaut introuvable."; exit 1; }
 LAN_IP="$(ip -4 -o addr show dev "$IFACE" scope global | awk 'NR==1 {split($4,a,"/"); print a[1]}')"
 [[ -n "$LAN_IP" ]] || { echo "Adresse IPv4 introuvable sur $IFACE."; exit 1; }
-.venv/bin/python -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert a.is_private and not a.is_loopback and not a.is_link_local' "$LAN_IP" || { echo "Adresse réseau refusée : $LAN_IP"; exit 1; }
+"$APP_ROOT/.venv/bin/python" -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert a.is_private and not a.is_loopback and not a.is_link_local' "$LAN_IP" || { echo "Adresse réseau refusée : $LAN_IP"; exit 1; }
 
 ./Configurer-MaClasse-Reseau.sh "$LAN_IP"
 export MACLASSE_LAN_MODE=1
 export MACLASSE_HOST="$LAN_IP"
 export MACLASSE_PORT=8765
-export MACLASSE_TLS_CERT="data/tls/server.crt"
-export MACLASSE_TLS_KEY="data/tls/server.key"
+export MACLASSE_DATA_DIR="$DATA_ROOT"
+export MACLASSE_TLS_CERT="$DATA_ROOT/tls/server.crt"
+export MACLASSE_TLS_KEY="$DATA_ROOT/tls/server.key"
+cd "$APP_ROOT"
 echo "MaClasse HTTPS démarre sur https://$LAN_IP:8765"
-exec .venv/bin/python server.py
+exec "$PYTHON" "$APP_ROOT/server.py"
