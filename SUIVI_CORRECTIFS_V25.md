@@ -297,3 +297,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Tests : le test JavaScript vérifie maintenant explicitement les garde-fous du flux V217, en plus des cas d'affectation matière, accents et remplacement.
 - CI : run #693 entièrement vert (tests, Firefox EDT et validation macOS). Run #696 : tests JavaScript et Python réussis ; validation macOS et Firefox en cours au dernier relevé.
 - EVAL-04 reste En cours de résolution jusqu'à la recette fonctionnelle multi-comptes.
+
+
+#### 15/11/2026 — DEV-01 : pièces jointes des devoirs
+
+- Distinction faite entre les deux parcours : dépôt d'une pièce jointe au devoir par le professeur (`uploadWorkFiles`) et dépôt du rendu par l'élève (`studentAddSubmissionFiles`). Le signalement `ReferenceError: pat is not defined` est enregistré, mais son lien causal avec l'échec du téléversement n'est pas démontré.
+- Côté professeur : `uploadWorkFiles` affiche maintenant le message serveur réel en cas d'échec, évite d'ajouter deux fois le même fichier au brouillon et donne un bilan si plusieurs fichiers ont des résultats différents. Le champ de sélection est réinitialisé après sélection pour permettre de choisir à nouveau le même fichier.
+- Tests : ajout de `tests/test_v25_homework_attachment_upload.js` couvrant succès, refus serveur, absence de doublon et conservation des fichiers dans le brouillon. `tests/test_v25_student_submission_upload.js` couvre le parcours de dépôt élève. `tests/test_v25_student_submissions.py` couvre l'intégration serveur dépôt → sauvegarde du brouillon → envoi → lecture du fichier et refus d'un dossier appartenant à un autre élève.
+- CI run #698 : tests Linux (JS et Python) réussis ; Firefox réel et validation macOS encore en cours au dernier relevé.
+- État DEV-01 : En cours de résolution. La recette avec comptes réels reste nécessaire ; ne pas considérer le correctif comme confirmé.
