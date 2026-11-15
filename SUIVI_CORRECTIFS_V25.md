@@ -288,3 +288,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Régression de test rencontrée : le premier passage a révélé que tests/test_competencies_v20.js ne définissait pas authUser. Le contexte du test a été complété avec un rôle administrateur ; le contrôle applicatif n'a pas été affaibli.
 - CI : run #690 — tests Linux réussis et régression Firefox réussie ; validation macOS encore en cours au dernier contrôle. Run #691, sur le correctif complémentaire protégeant aussi les notes des critères, est en cours ; tests Linux passés, Firefox et macOS en cours.
 - Statut fonctionnel : correctif engagé et tests automatisés ciblés présents. Ne pas déclarer résolu avant recette avec un enseignant ayant accès à plusieurs matières et un enseignant remplaçant.
+
+
+#### 15/11/2026 — EVAL-04 : contrôle du parcours d'évaluation actif
+
+- Audit complémentaire : le flux utilisé par l'écran moderne est piloté par v217DeepOpenEvaluation / v217DeepSaveMeta / v217DeepSetGrade ; les garde-fous des anciennes fonctions ne suffisaient donc pas.
+- Correctif : ajout des vérifications dans l'ouverture de l'évaluation, l'édition de sa configuration, l'enregistrement de la configuration et la saisie des notes du flux V217. Les handlers communs pour les critères, compétences, commentaires et suppressions sont également protégés.
+- Tests : le test JavaScript vérifie maintenant explicitement les garde-fous du flux V217, en plus des cas d'affectation matière, accents et remplacement.
+- CI : run #693 entièrement vert (tests, Firefox EDT et validation macOS). Run #696 : tests JavaScript et Python réussis ; validation macOS et Firefox en cours au dernier relevé.
+- EVAL-04 reste En cours de résolution jusqu'à la recette fonctionnelle multi-comptes.
