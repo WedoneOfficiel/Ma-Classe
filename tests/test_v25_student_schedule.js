@@ -8,6 +8,14 @@ assert(source.includes('function studentScheduleDay(d,occ){return scheduleDay(d,
 assert(source.includes('window.setInterval(refreshLiveScheduleData,5000)'));
 assert(source.includes('Le serveur n’a pas confirmé l’enregistrement'));
 assert(source.includes('Le serveur n’a pas confirmé l’envoi du travail'));
+
+assert(source.includes("${studentMode?'':`<button class=\"eventEdit\""), 'Le bouton de modification du créneau doit être absent du DOM élève.');
+assert(source.includes("${studentMode?'':'ondragover=\"allowScheduleDrop(event)\""), 'Les zones de dépôt doivent être désactivées dans l’EDT élève.');
+assert(source.includes('name="color" value="${esc(s.color||subjectColor(s.subject)[2])}"'), 'Le formulaire EDT doit proposer la couleur du cours.');
+assert(source.includes('c.color=o.color||old.color||subjectColor(c.subject)[2]'), 'La couleur choisie doit être conservée lors de la modification.');
+assert(source.includes('c.color=o.color||subjectColor(c.subject)[2]'), 'La couleur choisie doit être conservée lors de la création.');
+assert(source.includes('const scrollTop=window.scrollY;closeModal();render();window.scrollTo(0,scrollTop)'), 'La sauvegarde d’un créneau doit préserver la position de défilement.');
+
 const context = {
   activeStudent: () => 'student-1',
   student: id => ({id, first:'Alice', classId:'class-1'}),
