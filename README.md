@@ -525,7 +525,7 @@ La déconnexion attend la sauvegarde en attente. En complément, le navigateur a
 
 - L’emploi du temps devient la référence des matières enseignées : le profil professeur ne demande plus une seconde déclaration des matières.
 - Un créneau peut être affecté à plusieurs enseignants, pour les matières assurées en équipe ou en co-intervention.
-- Ajout d’affectations temporaires administrables depuis le créneau EDT : remplacement longue durée ou intervention complémentaire, avec dates de début et de fin.
+- Ajout d’affectations temporaires administrables depuis le créneau EDT : remplacement longue durée ou intervention complémentaire, avec dates de début et de fin. Lors d’un remplacement, on désigne le professeur remplacé : ses droits sur cette matière sont suspendus pendant la période, sans retirer ceux des éventuels co-enseignants.
 - Les exceptions de cours peuvent désigner un professeur remplaçant lié à un compte MaClasse ; cette autorisation ne vaut que pour la date concernée.
 - Les droits de saisie des évaluations et des appréciations de bulletin sont contrôlés côté serveur à partir des affectations. Le professeur principal conserve ses droits distincts de validation, publication et appréciation générale.
 - Les affectations temporaires expirent sans effacer les notes ni les appréciations déjà enregistrées. Les anciens profils restent compatibles pendant la transition.
