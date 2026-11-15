@@ -146,3 +146,12 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Lors d’une modification, les anciennes couleurs locales des créneaux de la matière sont supprimées afin qu’elles ne masquent pas la couleur commune. Les hachures restent propres aux créneaux/cours.
 - Test de régression ajouté : persistance de la couleur et résolution identique pour « Français » et « francais » avec espaces/casse différents.
 - **À valider :** exécution CI sur le nouveau commit, puis recette visuelle dans un compte de direction/professeur et un compte élève. Ce correctif n’est pas encore déclaré validé.
+
+
+#### 15/11/2026 — Suppression du rerendu complet après sauvegarde EDT
+
+- Diagnostic : `saveSchedule()` ne rechargeait pas le document HTML depuis le serveur, mais appelait `render()`, qui remplaçait intégralement le contenu de `#main`. Ce rerendu global expliquait l’impression de rechargement de page après chaque sauvegarde.
+- Correctif candidat : après confirmation serveur, le calendrier `.schedulePage` est reconstruit puis remplacé seul dans le DOM. L’en-tête, la navigation et le reste de la vue restent en place ; la position de défilement est conservée.
+- En cas d’échec, les données locales sont restaurées et le formulaire reste ouvert pour permettre de corriger ou de réessayer, au lieu de remplacer toute la page.
+- Test de régression ajouté sur le rafraîchissement ciblé et l’absence de rerendu complet.
+- **À valider :** CI du commit et test manuel de création/modification/suppression avec contrôle visuel de l’absence de flash/rechargement.
