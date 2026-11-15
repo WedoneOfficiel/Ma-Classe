@@ -223,6 +223,19 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   assert.strictEqual(context.db.schedule[0].id,'server-update','Une synchronisation sans modification locale doit appliquer la nouvelle version serveur.');
   assert.strictEqual(context.dataRevision,'rev2');
   assert.strictEqual(context.renderCount,1);
+  // Une navigation effectuée pendant une requête doit invalider cette réponse,
+  // même si la page reste « schedule » et qu'aucune sauvegarde n'est en cours.
+  context.liveSyncBusy=false;context.dataRevision='rev2';context.db={schedule:[{id:'local-after-navigation'}]};
+  let resolveNavigationFetch;
+  context.fetch=()=>new Promise(resolve=>{resolveNavigationFetch=resolve});
+  const navigationRefresh=vm.runInContext('refreshLiveScheduleData()',context);
+  context.scheduleView='month';context.selectedWeek=new Date(2026,11,1,12);
+  resolveNavigationFetch({ok:true,headers:{get:()=> 'rev3'},json:async()=>({schedule:[{id:'stale-server-copy'}]})});
+  await navigationRefresh;
+  assert.strictEqual(context.db.schedule[0].id,'local-after-navigation','Une réponse commencée avant un changement de vue ne doit pas remplacer l’EDT affiché.');
+  assert.strictEqual(context.dataRevision,'rev2','Une réponse invalidée par la navigation ne doit pas avancer la révision.');
+  assert.strictEqual(context.renderCount,1,'Une réponse invalidée ne doit pas déclencher de rendu parasite.');
+  context.scheduleView='week';context.selectedWeek=new Date(2026,10,9,12);
   const saveStart=source.indexOf('async function saveSchedule(e,id)');
   const saveEnd=source.indexOf('async function deleteSchedule(',saveStart);
   assert(saveStart>=0&&saveEnd>saveStart,'La sauvegarde du créneau doit être présente.');

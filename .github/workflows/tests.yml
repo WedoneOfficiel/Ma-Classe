@@ -96,3 +96,21 @@ jobs:
             python "$test"
             echo "::endgroup::"
           done
+
+  firefox-schedule-regression:
+    name: Régression EDT — Firefox réel
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installer Playwright
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps firefox
+      - name: Tester l’EDT dans Firefox
+        run: python tests/browser/test_v25_schedule_firefox.py
