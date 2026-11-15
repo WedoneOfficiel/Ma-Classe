@@ -756,6 +756,10 @@ def _student_visible_data(data,user):
     out['evaluations']=[]
     for item in data.get('evaluations',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
+        # Une note programmée pour une publication ultérieure ne doit pas être
+        # transmise au navigateur élève, même si published est déjà positionné.
+        publish_at=str(item.get('publishAt') or '')[:10]
+        if publish_at and publish_at>datetime.date.today().isoformat(): continue
         if item.get('group') and str(item.get('group'))!=str(student_record.get('group') or ''): continue
         copy=dict(item)
         copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '')==sid]
