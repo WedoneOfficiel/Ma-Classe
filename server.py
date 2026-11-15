@@ -1053,7 +1053,14 @@ def _merge_teacher_data(current,incoming,user):
             if key in ('evaluations','attendance','submissions'):
                 ident=str(x.get('id') or '')
                 previous=next((z for z in current.get(key,[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==ident),None)
-                return _teacher_record_class_id(previous or x,current,key) in allowed
+                record=previous or x
+                if _teacher_record_class_id(record,current,key) not in allowed:
+                    return False
+                # Une évaluation n'est modifiable/supprimable que si le professeur
+                # est habilité sur sa matière, pas simplement parce qu'il accède à la classe.
+                if key=='evaluations' and not _teacher_can_edit_evaluation(current,user,record):
+                    return False
+                return True
             return _teacher_record_class_id(scope_record,current,key) in allowed
         old_scope={str(x.get('id')):x for x in old if x.get('id') and in_scope(x)}
         new_scope={str(x.get('id')):x for x in new if x.get('id') and in_scope(x)}
