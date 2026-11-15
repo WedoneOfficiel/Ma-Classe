@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**Statut : conception validée ; socle de supervision Linux en cours, gestionnaire de mises à jour non encore implémenté.**  
+**Statut : socle de supervision Linux et première chaîne de détection/préparation implémentés ; installation et planification à développer.**  
 **Branche de travail :** `feature/amel-01-update-manager`  
 **Branche de départ :** `fix/v25-student-teacher-workflows` (PR #9 conservée intacte).
 
@@ -64,7 +64,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 - `VERSION.txt`, `server.py` et `_all.js` exposent un numéro de version, mais aucun contrôle de release n'est intégré.
 - Les scripts macOS et Linux font actuellement un `git fetch origin main` puis une avance rapide du clone local.
-- Un premier module `update_manager.py` sait interroger la dernière release stable, valider son manifeste, vérifier l'empreinte SHA-256 et extraire l'archive dans un répertoire temporaire isolé. Il ne l'installe pas encore.
+- Le module `update_manager.py` interroge la dernière release stable, valide son manifeste, contrôle que les téléchargements proviennent de GitHub en HTTPS, vérifie l'empreinte SHA-256 et extrait l'archive sans liens symboliques ni chemins traversants dans un répertoire temporaire isolé. Il n'installe pas encore le code.
+- La direction peut lancer cette recherche dans Paramètres puis télécharger/préparer une version compatible. Le serveur conserve un marqueur `maclasse-prepared.json` dans le dossier de préparation. Le serveur actif n'est pas interrompu.
 - La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
 - Les scripts ne gèrent ni la programmation, ni les notifications, ni l'arrêt/redémarrage supervisé, ni le contrôle de santé après redémarrage.
 - Le lanceur actuel exécute `server.py` en processus enfant et attend ce processus ; ce modèle ne suffit pas pour un auto-remplacement robuste.
@@ -79,10 +80,11 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - L'installateur active le maintien du gestionnaire utilisateur au démarrage via `loginctl enable-linger` (demande sudo si nécessaire). Il ne supprime ni le programme ni les données lors de la désinstallation.
 - Garder le mode de lancement manuel utilisable comme secours.
 - Ajouter tests d'installation, de démarrage, d'arrêt, de redémarrage et de permissions.
+- Les tests unitaires du vérificateur couvrent versions, releases instables, manifeste, empreinte, hôtes non approuvés et chemins ZIP dangereux ; exécution CI encore à confirmer.
 
 ### Phase B — gestionnaire et préparation
-- Ajouter le gestionnaire local indépendant.
-- Télécharger une release, vérifier son empreinte, l'extraire dans un répertoire de version isolé et effectuer les contrôles sans toucher à la version active.
+- [x] Ajouter le premier module de vérification des releases et la préparation d'archive isolée.
+- [x] Ajouter les routes serveur réservées à la direction pour vérifier et préparer une version.
 - Tester les archives invalides, versions incompatibles, interruptions réseau et échecs de préparation.
 
 ### Phase C — interface et planification
