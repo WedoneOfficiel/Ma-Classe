@@ -589,7 +589,7 @@ function canEditBulletinSubject(classId,subject,termId=null){
  const tid=String(currentTeacherProfile()?.id||''),norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLocaleLowerCase('fr'),key=norm(subject),today=iso(new Date()),period=termId?term(termId):null,start=period?.start||today,end=period?.end||today;
  if(!tid||!key)return false;
  const overlaps=a=>(!a.startDate||!end||a.startDate<=end)&&(!a.endDate||!start||a.endDate>=start);
- const slots=db.schedule.filter(s=>String(s.classId)===String(classId)&&norm(s.subject)===key&&([String(s.teacherId||''),...(s.teacherIds||[]).map(String)].includes(tid))&&overlaps(s)&&!teacherScheduleSuspended(s,tid,s.startDate&&s.startDate>start?s.startDate:start));
+ const slots=db.schedule.filter(s=>{if(String(s.classId)!==String(classId)||norm(s.subject)!==key||!([String(s.teacherId||''),...(s.teacherIds||[]).map(String)].includes(tid))||!overlaps(s))return false;const probeStart=s.startDate&&s.startDate>start?s.startDate:start,probeEnd=s.endDate&&s.endDate<end?s.endDate:end;return !(teacherScheduleSuspended(s,tid,probeStart)&&teacherScheduleSuspended(s,tid,probeEnd));});
  const replacements=db.schedule.some(s=>String(s.classId)===String(classId)&&norm(s.subject)===key&&Object.entries(s.overrides||{}).some(([date,ov])=>date>=start&&date<=end&&String(ov?.replacementTeacherId||'')===tid&&ov?.status!=='cancelled'));
  if(replacements)return true;
  const assignments=db.teacherAssignments.filter(a=>String(a.classId)===String(classId)&&String(a.teacherId)===tid&&norm(a.subject)===key&&overlaps(a));
