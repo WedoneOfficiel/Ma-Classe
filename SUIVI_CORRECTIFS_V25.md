@@ -353,3 +353,11 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le test vérifie que l'élève voit d'abord le cours existant puis le nouveau cours ajouté côté professeur, sans recharger manuellement la page.
 - EDT-04 reste **En cours de résolution** jusqu'à réussite du nouveau test navigateur et confirmation utilisateur.
 - CI run #714 : succès complet sur Linux, Firefox réel et macOS. Run #716 : Linux et Firefox réussis ; macOS encore en cours au dernier relevé. Run #717 : exécution du nouveau test élève/professeur en cours.
+
+
+#### 15/11/2026 — EDT-04 : test multi-comptes Firefox réussi
+
+- Le test Firefox réel passe après ajout du parcours de première connexion élève (mot de passe provisoire puis changement obligatoire du mot de passe). Le navigateur ouvre une session direction et une session élève séparées ; la direction ajoute un cours et l'EDT élève le récupère automatiquement via `refreshLiveScheduleData`, sans rechargement manuel.
+- Le premier essai a échoué parce que le compte élève de test était encore en état `mustChangePassword` ; le test a été complété pour suivre le parcours normal de première connexion. Le test révisé passe dans le run #720.
+- EDT-04 passe à **Supposé résolu**. La confirmation de l'utilisateur dans son installation reste requise avant « Corrigé ».
+- Run #720 : tests Linux réussis, Firefox réel réussi ; validation macOS encore en cours au dernier relevé. Runs #714 et #716 sont entièrement verts sur les trois jobs.
