@@ -14,6 +14,10 @@ if systemctl --user is-active --quiet maclasse-update-apply.service; then
   exit 1
 fi
 systemctl --user disable --now maclasse-update-scheduled.timer 2>/dev/null || true
+if systemctl --user is-active --quiet maclasse-update-apply.service; then
+  echo "Une mise à jour vient de démarrer. Attends sa fin avant de désinstaller le service."
+  exit 1
+fi
 rm -f "$TIMER_FILE"
 if [[ -f "$ROOT/data/update-maintenance.json" ]]; then
   /usr/bin/python3 - "$ROOT/data/update-maintenance.json" <<'PY'
