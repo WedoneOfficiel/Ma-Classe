@@ -14,10 +14,10 @@ Les données métier et les fichiers téléversés ne doivent jamais être rempl
 
 ### 1. Versions officielles
 
-- Les versions distribuées sont des **GitHub Releases stables**, identifiées par un tag immuable (`v25.x.y`).
+- Les versions distribuées sont des **GitHub Releases stables**, identifiées par un tag versionné (`v25.x.y`), qui ne doit jamais être déplacé après publication.
 - Le workflow `publish-release.yml` construit l'archive depuis les fichiers suivis par Git, vérifie la concordance tag/`VERSION.txt` et publie un manifeste avec SHA-256 et le schéma de données minimal. L'archive n'embarque donc pas les données locales non suivies par Git.
 - La branche `main` n'est jamais installée directement sur une instance en production.
-- Chaque publication fournit un manifeste versionné (version, tag, notes, version minimale du schéma de données, éventuelles migrations, empreinte SHA-256 de l'archive).
+- Chaque publication fournit un manifeste versionné (version, tag, notes, version minimale du schéma de données et empreinte SHA-256 de l'archive). Les migrations éventuelles devront être déclarées explicitement avant d'être activées.
 - L'archive est téléchargée depuis la release puis vérifiée avant d'être considérée comme installable. L'instance n'exécute jamais un script téléchargé depuis une URL arbitraire.
 - Les versions incompatibles avec la version de données installée sont refusées avant la maintenance.
 
