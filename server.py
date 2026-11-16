@@ -51,8 +51,9 @@ def _update_apply_service_active():
         result=subprocess.run(['/bin/launchctl','list','fr.maclasse.update'],
                               check=False,capture_output=True,text=True,timeout=10)
         if result.returncode!=0: return False
-        fields=(result.stdout or '').strip().split()
-        return bool(fields and fields[0] != '-')
+        # launchctl list may include a column header; only a numeric PID means running.
+        return any((line.split() and line.split()[0].isdigit())
+                   for line in (result.stdout or '').splitlines())
     result=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-apply.service'],
                           check=False,capture_output=True,text=True,timeout=10)
     if result.returncode==0: return True
