@@ -94,13 +94,16 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AUDIT-S4 | Le workflow pouvait publier une release sans attendre les tests de l'application | publish-release.yml se déclenchait sur un tag et vérifiait le numéro de version, mais ne dépendait pas du workflow de tests. Un tag accidentel sur un commit cassé aurait donc pu produire une release téléchargeable. | Le workflow de tests est désormais réutilisable via workflow_call ; la publication stable dépend explicitement de la réussite de toute la matrice Linux, macOS et Firefox. Un test vérifie le lien needs/validate et la présence des jobs macOS/Firefox. | Correctif poussé ; CI à confirmer |
 
+
+| AUDIT-U4 | Changement d'adresse DHCP du Mac non détecté pendant que le serveur reste lancé | Le lanceur macOS détecte l'adresse IPv4 et renouvelle le certificat au démarrage du LaunchAgent. Si le routeur attribue une nouvelle adresse pendant que le processus serveur reste actif, le serveur continue d'écouter l'ancienne adresse et son certificat ne correspond plus à la nouvelle. Le service ne redémarre pas automatiquement lors d'un changement DHCP. | Risque identifié, non corrigé. Pour la première mise en service, réserver une adresse DHCP au Mac dans le routeur et redémarrer le service après tout changement d'adresse. Une surveillance réseau/reprise automatique devra être conçue et testée séparément pour ne pas introduire de redémarrages concurrents avec le gestionnaire de mises à jour. | Détecté — à traiter |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires et sécurité relevées : **31** (30 correctifs en validation CI ; 1 risque de provenance à traiter avant release)
+- Anomalies complémentaires et sécurité relevées : **32** (30 correctifs en validation CI ; 2 risques détectés à traiter avant release/recette)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **30** anomalies complémentaires en validation CI ; **1** risque de provenance en attente de décision
+- En cours de résolution : **0** pour les 16 bugs historiques ; **30** anomalies complémentaires en validation CI ; **2** risques détectés en attente de traitement (signature de release et changement d'adresse DHCP macOS)
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
