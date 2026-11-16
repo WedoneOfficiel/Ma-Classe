@@ -234,7 +234,8 @@ class MacOSSupervisorTests(unittest.TestCase):
             )
             ca_result = subprocess.run([
                 "/usr/bin/openssl", "req", "-x509", "-new", "-sha256", "-days", "2",
-                "-key", str(ca_key), "-out", str(ca_cert), "-config", str(ca_config)
+                "-key", str(ca_key), "-out", str(ca_cert), "-config", str(ca_config),
+                "-extensions", "v3_ca", "-subj", "/CN=MaClasse updater test CA"
             ], capture_output=True, text=True, timeout=20)
             self.assertEqual(ca_result.returncode, 0, ca_result.stdout + "\\n" + ca_result.stderr)
             subprocess.run([
