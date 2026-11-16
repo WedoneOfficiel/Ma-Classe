@@ -120,16 +120,17 @@ BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
 write_state installing
 SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk 'NR==1 {print $1}' || true)"
 /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; exit 1; }
-if [[ "$SERVICE_PID" =~ ^[0-9]+$ ]]; then
-  STOPPED=0
-  for _ in {1..120}; do
-    if ! /bin/kill -0 "$SERVICE_PID" >/dev/null 2>&1; then STOPPED=1; break; fi
-    /bin/sleep 1
-  done
-  if [[ "$STOPPED" != "1" ]]; then
-    write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
-    exit 1
-  fi
+STOPPED=0
+for _ in {1..120}; do
+  ALIVE=0
+  if [[ "$SERVICE_PID" =~ ^[0-9]+$ ]] && /bin/kill -0 "$SERVICE_PID" >/dev/null 2>&1; then ALIVE=1; fi
+  if /usr/bin/pgrep -f '[p]ython.*server[.]py' >/dev/null 2>&1; then ALIVE=1; fi
+  if [[ "$ALIVE" == "0" ]]; then STOPPED=1; break; fi
+  /bin/sleep 1
+done
+if [[ "$STOPPED" != "1" ]]; then
+  write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
+  exit 1
 fi
 /bin/rm -f "$CURRENT.next"
 /bin/ln -s "versions/V$VERSION" "$CURRENT.next"
