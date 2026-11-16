@@ -86,8 +86,29 @@ PYLINK
     fi
   fi
   if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
-    if ! /bin/cp -p "$BACKUP_FILE" "$DATA/maclasse.json"; then
-      write_state rollback_failed "$message — restauration de la base impossible ; serveur laissé arrêté."
+    RESTORE_TMP="$DATA/maclasse.json.rollback.$"
+    /bin/rm -f "$RESTORE_TMP"
+    if ! /bin/cp -p "$BACKUP_FILE" "$RESTORE_TMP"; then
+      write_state rollback_failed "$message — copie temporaire de la base impossible ; serveur laissé arrêté."
+      write_maintenance_state failed
+      exit 1
+    fi
+    if ! "$ROOT/.venv/bin/python" - "$RESTORE_TMP" "$DATA/maclasse.json" <<'PYRESTORE'
+import os,sys
+source,destination=sys.argv[1],sys.argv[2]
+with open(source,"rb") as stream: os.fsync(stream.fileno())
+os.replace(source,destination)
+directory=os.open(os.path.dirname(destination),os.O_RDONLY)
+try:
+    os.fsync(directory)
+except OSError:
+    pass
+finally:
+    os.close(directory)
+PYRESTORE
+    then
+      /bin/rm -f "$RESTORE_TMP"
+      write_state rollback_failed "$message — restauration atomique de la base impossible ; serveur laissé arrêté."
       write_maintenance_state failed
       exit 1
     fi
