@@ -66,13 +66,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-U12 | Lanceurs macOS manuels pouvant démarrer une seconde instance après installation launchd | Les lanceurs local et réseau ne détectaient pas le service launchd et pouvaient démarrer un second processus partageant la même base de données. | Les deux lanceurs vérifient le service launchd avant tout démarrage, ouvrent l'URL HTTPS existante et refusent de créer un second serveur. Test statique et syntaxe shell ajoutés. | En cours de validation CI |
 
+| AMEL-U13 | Services systemd/launchd restant attachés au lanceur initial après une mise à jour | Le service pouvait continuer d'exécuter un lanceur de la racine initiale au lieu du lanceur versionné ; pointer simplement vers `current` faisait perdre la racine stable des données. | Les unités pointent maintenant vers le lanceur de `data/program/current` et transmettent explicitement `MACLASSE_ROOT` et `MACLASSE_DATA_DIR`. Les lanceurs résolvent la racine stable et exécutent le code de la version active. Tests des variables et des chemins ajoutés. | En cours de validation CI |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires du gestionnaire relevées : **14** (correctifs poussés, CI à valider)
+- Anomalies complémentaires du gestionnaire relevées : **15** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **14** anomalies AMEL complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **15** anomalies AMEL complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
