@@ -121,17 +121,19 @@ class ReleaseCheckerTests(unittest.TestCase):
             (program / "server.py").write_text("print('ok')", encoding="utf-8")
             (program / "_all.js").write_text("const ok=true;", encoding="utf-8")
             calls = []
-            with patch.object(updater.sys, "_base_executable", "/usr/bin/python3", create=True):
-                def fake_run(command, **kwargs):
+            def fake_run(command, **kwargs):
                 calls.append(command)
                 if command[1:3] == ["-m", "venv"]:
                     python = Path(command[-1]) / "bin" / "python"
                     python.parent.mkdir(parents=True, exist_ok=True)
                     python.write_text("", encoding="utf-8")
                 return None
-            with patch.object(updater.subprocess, "run", side_effect=fake_run), patch.object(updater.shutil, "which", return_value=None):
+            with patch.object(updater.sys, "_base_executable", "/usr/bin/python3", create=True), \
+                 patch.object(updater.subprocess, "run", side_effect=fake_run), \
+                 patch.object(updater.shutil, "which", return_value=None):
                 python = updater.prepare_runtime(program)
                 self.assertTrue(python.is_file())
+                self.assertEqual(calls[0][0], "/usr/bin/python3")
                 self.assertEqual(len(calls), 3)
                 updater.prepare_runtime(program)
                 self.assertEqual(len(calls), 3)
