@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+cd "$ROOT"
 DATA="$ROOT/data"
 PROGRAM_ROOT="$DATA/program"
 VERSIONS="$PROGRAM_ROOT/versions"
@@ -11,7 +12,7 @@ UPDATE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.update.plist"
 SERVICE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.server.plist"
 UID_NOW="$(id -u)"
 write_state() {
-  UPDATE_STATUS="$1" UPDATE_ERROR="${2:-}" STATE_FILE="$STATE" "$(/usr/bin/which python3)" - <<'PY'
+  UPDATE_STATUS="$1" UPDATE_ERROR="${2:-}" STATE_FILE="$STATE" "$ROOT/.venv/bin/python" - <<'PY'
 import json,os,time
 p=os.environ["STATE_FILE"]
 try:
@@ -40,7 +41,7 @@ fail_restore() {
   local message="$1"
   echo "Échec : $message" >&2
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
-  if [[ -n "${PREVIOUS_LINK:-}" && -e "$PREVIOUS_LINK" ]]; then
+  if [[ -n "${PREVIOUS_LINK:-}" && -e "${PREVIOUS_REAL:-}" ]]; then
     /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback"
     "$ROOT/.venv/bin/python" - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
 import os,sys
