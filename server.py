@@ -978,20 +978,14 @@ def _merge_student_data(current,incoming,user):
 
 
 def _evaluation_publication_due(value, now=None):
-    """Vrai si la date/heure de publication est atteinte ; les dates seules restent compatibles."""
+    """La publication est effective à la date du calendrier, sans attendre l'heure par défaut."""
     raw=str(value or '').strip()
     if not raw:
         return True
-    current=now or datetime.datetime.now(datetime.timezone.utc)
-    if current.tzinfo is None:
-        current=current.astimezone()
-    if len(raw)<=10:
-        return raw[:10] <= current.date().isoformat()
     try:
-        scheduled=datetime.datetime.fromisoformat(raw.replace('Z','+00:00'))
-        if scheduled.tzinfo is None:
-            scheduled=scheduled.astimezone()
-        return scheduled.astimezone(datetime.timezone.utc) <= current.astimezone(datetime.timezone.utc)
+        scheduled_date=datetime.date.fromisoformat(raw[:10])
+        current_date=(now.astimezone().date() if now and now.tzinfo else (now.date() if now else datetime.date.today()))
+        return scheduled_date <= current_date
     except (TypeError,ValueError,OverflowError):
         return False
 
