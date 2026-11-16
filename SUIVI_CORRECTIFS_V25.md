@@ -488,3 +488,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 22. **Fixture de test de messagerie V21.04 — helper manquant.** Après correction de la fixture compétences, la suite JS a atteint `test_v2104_mail_model.js`, qui évaluait le rendu réel `messages()` sans fournir `jsArg`. Le test échouait donc par `ReferenceError`, sans démontrer de défaut de la messagerie. Le helper déterministe est ajouté au sandbox (`3d88655`). La CI suivante doit vérifier si d'autres anciens sandboxes nécessitent la même mise à jour.
+
+
+23. **Assertion UI de messagerie V21.11 obsolète.** Le test attendait encore l'interpolation brute `${m.id}` dans le handler des favoris, alors que le code actuel utilise correctement `jsArg(m.id)`, `jsArg(role)` et `jsArg(sid)` pour éviter l'injection de code. Le test est adapté à cette sérialisation sûre (`f0e22dc`). La CI suivante doit confirmer le reste de la suite JavaScript.
