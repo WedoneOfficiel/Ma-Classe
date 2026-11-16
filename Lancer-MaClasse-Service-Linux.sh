@@ -15,8 +15,11 @@ if [[ ! -e "$APP_ROOT" && ! -L "$APP_ROOT" ]]; then
   ln -s ../.. "$APP_ROOT"
 fi
 [[ -d "$APP_ROOT" ]] || { echo "La version active MaClasse est introuvable."; exit 1; }
-APP_REAL="$(cd "$APP_ROOT" && pwd -P)"
+DATA_REAL="$(cd "$DATA_ROOT" && pwd -P)"
+PROGRAM_REAL="$(cd "$PROGRAM_ROOT" && pwd -P)"
 VERSIONS_REAL="$(cd "$VERSIONS_ROOT" && pwd -P)"
+[[ "$PROGRAM_REAL" == "$DATA_REAL/program" && "$VERSIONS_REAL" == "$PROGRAM_REAL/versions" ]] || { echo "Le dossier de versions MaClasse pointe hors du stockage autorisé."; exit 1; }
+APP_REAL="$(cd "$APP_ROOT" && pwd -P)"
 case "$APP_REAL" in "$ROOT"|"$VERSIONS_REAL"/*) ;; *) echo "La version active pointe hors du stockage MaClasse autorisé."; exit 1;; esac
 PYTHON="$APP_ROOT/.venv/bin/python"
 [[ -x "$PYTHON" ]] || { echo "Environnement Python absent pour la version active : lance Installer-MaClasse-Linux.sh."; exit 1; }
