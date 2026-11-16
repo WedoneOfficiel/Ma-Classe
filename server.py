@@ -50,7 +50,9 @@ def _update_apply_service_active():
     if sys.platform=='darwin':
         result=subprocess.run(['/bin/launchctl','list','fr.maclasse.update'],
                               check=False,capture_output=True,text=True,timeout=10)
-        if result.returncode!=0: return False
+        if result.returncode!=0:
+            if 'Could not find service' in (result.stderr or ''): return False
+            raise RuntimeError("Impossible de vérifier l'état de la tâche launchd.")
         # launchctl list may include a column header; only a numeric PID means running.
         return any((line.split() and line.split()[0].isdigit())
                    for line in (result.stdout or '').splitlines())
