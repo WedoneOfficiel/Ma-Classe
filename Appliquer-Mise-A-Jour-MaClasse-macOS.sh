@@ -42,19 +42,29 @@ fail_restore() {
   echo "Échec : $message" >&2
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
   if [[ -n "${PREVIOUS_LINK:-}" && -e "${PREVIOUS_REAL:-}" ]]; then
-    /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback"
-    "$ROOT/.venv/bin/python" - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
+    if ! /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback" ||
+       ! "$ROOT/.venv/bin/python" - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
 import os,sys
 os.replace(sys.argv[1],sys.argv[2])
 PYLINK
+    then
+      write_state rollback_failed "$message — impossible de réactiver le lien de la version précédente."
+      exit 1
+    fi
   fi
   if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
-    /bin/cp -p "$BACKUP_FILE" "$DATA/maclasse.json"
+    if ! /bin/cp -p "$BACKUP_FILE" "$DATA/maclasse.json"; then
+      write_state rollback_failed "$message — restauration de la base impossible ; serveur laissé arrêté."
+      exit 1
+    fi
   else
     write_state rollback_failed "$message — sauvegarde de base absente ; serveur laissé arrêté."
     exit 1
   fi
-  start_service
+  if ! start_service; then
+    write_state rollback_failed "$message — impossible de redémarrer la version précédente."
+    exit 1
+  fi
   for _ in {1..20}; do
     if health_ok "$PREVIOUS_VERSION"; then write_state failed "$message — version précédente restaurée."; exit 1; fi
     /bin/sleep 2
@@ -75,7 +85,13 @@ print(v,d["sha256"],d["status"])
 PY
 )
 TARGET="$VERSIONS/V$VERSION"
-[[ -d "$TARGET" && ! -L "$TARGET" && -x "$TARGET/.venv/bin/python" && -f "$TARGET/maclasse-runtime-ready.json" ]] || { echo "Version préparée incomplète." >&2; exit 1; }
+[[ -d "$TARGET" && ! -L "$TARGET" && -x "$TARGET/.venv/bin/python" && -f "$TARGET/maclasse-runtime-ready.json" && -f "$TARGET/server.py" && -f "$TARGET/_all.js" ]] || { echo "Version préparée incomplète." >&2; exit 1; }
+TARGET_REAL="$(cd "$TARGET" && pwd -P)"
+VERSIONS_REAL="$(cd "$VERSIONS" && pwd -P)"
+[[ "$TARGET_REAL" == "$VERSIONS_REAL/"* ]] || { echo "Dossier de version hors du stockage autorisé." >&2; exit 1; }
+grep -Fq "APP_VERSION='$VERSION'" "$TARGET/server.py" || { echo "Version du serveur incohérente." >&2; exit 1; }
+grep -Fq "const MC_VERSION='V$VERSION'" "$TARGET/_all.js" || { echo "Version de l'interface incohérente." >&2; exit 1; }
+grep -Fxq "V$VERSION" "$TARGET/VERSION.txt" || { echo "VERSION.txt incohérent." >&2; exit 1; }
 EXPECTED="$("$ROOT/.venv/bin/python" - "$TARGET/maclasse-prepared.json" <<'PY'
 import json,sys
 d=json.load(open(sys.argv[1],encoding="utf-8")); print(d.get("sha256",""))
