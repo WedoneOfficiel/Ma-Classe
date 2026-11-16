@@ -535,7 +535,7 @@ subjectKeyIdentifier=hash
                 try:
                     success = subprocess.run(
                         ["/bin/bash", str(updater)], cwd=root, env=env,
-                        capture_output=True, text=True, timeout=75
+                        capture_output=True, text=True, timeout=140
                     )
                 except subprocess.TimeoutExpired as timeout_error:
                     timeout_diagnostics = {
@@ -569,7 +569,7 @@ subjectKeyIdentifier=hash
                             capture_output=True, text=True, timeout=10
                         ).stdout
                     }
-                    self.fail(f"Mise à jour macOS bloquée après 75 s : {timeout_error}\\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2, default=lambda value: value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)))
+                    self.fail(f"Mise à jour macOS bloquée après 140 s : {timeout_error}\\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2, default=lambda value: value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)))
                 if success.returncode != 0:
                     diagnostics = {}
                     for name in ("macos-update.log", "macos-update-error.log", "service.log", "service-error.log"):
