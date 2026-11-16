@@ -68,10 +68,35 @@ start_service() {
   /bin/launchctl bootstrap "gui/$UID_NOW" "$SERVICE_PLIST" 2>/dev/null || true
   /bin/launchctl kickstart "gui/$UID_NOW/$SERVICE_LABEL"
 }
+stop_service_and_confirm() {
+  local service_pid probe alive loaded
+  service_pid="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
+  /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
+  for _ in {1..120}; do
+    alive=0
+    if [[ "$service_pid" =~ ^[0-9]+$ ]] && /bin/kill -0 "$service_pid" >/dev/null 2>&1; then alive=1; fi
+    if probe="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>&1)"; then
+      loaded=1
+    else
+      case "$probe" in
+        *"Could not find service"*) loaded=0 ;;
+        *) return 1 ;;
+      esac
+    fi
+    if [[ "$alive" == "0" && "$loaded" == "0" ]]; then return 0; fi
+    /bin/sleep 1
+  done
+  return 1
+}
 fail_restore() {
   local message="$1"
   echo "Échec : $message" >&2
-  /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
+  if ! stop_service_and_confirm; then
+    write_state rollback_failed "$message — arrêt du nouveau serveur non confirmé ; restauration de la base interdite pour protéger les données."
+    write_maintenance_state failed
+    echo "ATTENTION : le nouveau serveur semble toujours actif. Le code et la base ne seront pas restaurés tant que son arrêt n'est pas confirmé." >&2
+    exit 1
+  fi
   if [[ -n "${PREVIOUS_LINK:-}" && -e "${PREVIOUS_REAL:-}" ]]; then
     /bin/rm -f "$CURRENT.rollback"
     if ! /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback" ||
