@@ -84,6 +84,63 @@ class StudentGradePublicationTests(unittest.TestCase):
         )
         self.assertEqual(visible["evaluations"], [])
 
+    def test_bulletin_average_normalizes_each_evaluation_to_twenty(self):
+        database = {
+            "users": [], "students": [{"id": "s1", "classId": "c1"}],
+            "classes": [{"id": "c1", "name": "6e"}],
+            "settings": {"terms": []}, "schedule": [], "attendance": [],
+            "evaluations": [
+                {"id": "e10", "classId": "c1", "subject": "Maths", "date": "2026-11-10",
+                 "published": True, "maxScore": 10, "coefficient": 1,
+                 "grades": [{"studentId": "s1", "value": "8"}]},
+                {"id": "e20", "classId": "c1", "subject": "Maths", "date": "2026-11-11",
+                 "published": True, "maxScore": 20, "coefficient": 1,
+                 "grades": [{"studentId": "s1", "value": "18"}]},
+                {"id": "invalid", "classId": "c1", "subject": "Maths", "date": "2026-11-12",
+                 "published": True, "maxScore": 10, "coefficient": 1,
+                 "grades": [{"studentId": "s1", "value": "11"}]},
+            ],
+        }
+        bulletin = {"id": "b1", "classId": "c1", "studentId": "s1", "subjectData": {}}
+        result = server._bulletin_pdf_data(
+            database, bulletin, database["students"][0], database["classes"][0], None
+        )
+        self.assertEqual(result["average"], 17)
+        self.assertEqual(result["rows"][0]["studentAverage"], 17)
+
+    def test_bulletin_teacher_can_edit_only_subjects_assigned_during_that_term(self):
+        current = {
+            "users": [{"id": "t1", "role": "teacher"}],
+            "classes": [{"id": "c1", "teacherIds": ["t1"], "principalTeacherId": "other"}],
+            "students": [{"id": "s1", "classId": "c1"}],
+            "settings": {"terms": [{"id": "term1", "start": "2025-09-01", "end": "2025-12-31"}]},
+            "schedule": [],
+            "teacherAssignments": [{
+                "teacherId": "t1", "classId": "c1", "subject": "Maths",
+                "startDate": "2025-09-01", "endDate": "2025-12-31",
+            }],
+            "bulletins": [{
+                "id": "b1", "classId": "c1", "studentId": "s1", "termId": "term1",
+                "validated": False, "published": False,
+                "subjectData": {"Maths": {"comment": "Ancienne"}, "Histoire": {"comment": "À conserver"}},
+            }],
+            "evaluations": [], "lessons": [], "attendance": [], "attachments": [],
+            "submissions": [], "conversations": [], "cloudItems": [], "notifications": [],
+            "mailFolders": [],
+        }
+        import copy
+        incoming = copy.deepcopy(current)
+        incoming["bulletins"][0]["subjectData"] = {
+            "Maths": {"comment": "Nouvelle appréciation"},
+            "Histoire": {"comment": "Modification non autorisée"},
+        }
+        merged = server._merge_teacher_data(current, incoming, {"id": "t1", "role": "teacher"})
+        saved = next(x for x in merged["bulletins"] if x["id"] == "b1")
+        self.assertEqual(saved["subjectData"]["Maths"]["comment"], "Nouvelle appréciation")
+        self.assertEqual(saved["subjectData"]["Histoire"]["comment"], "À conserver")
+        self.assertIs(saved["published"], False)
+        self.assertIs(saved["validated"], False)
+
     def test_assigned_teacher_can_publish_and_only_valid_student_grades_are_saved(self):
         today = datetime.date.today().isoformat()
         current = {
