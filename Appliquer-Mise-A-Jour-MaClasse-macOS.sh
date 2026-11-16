@@ -299,7 +299,7 @@ versions=[]
 for path in root.iterdir():
     if path.is_symlink() or not path.is_dir():
         continue
-    match=re.fullmatch(r"V(\\d+)\\.(\\d+)\\.(\\d+)",path.name)
+    match=re.fullmatch(r"V(\d+)\.(\d+)\.(\d+)",path.name)
     if match:
         versions.append((tuple(map(int,match.groups())),path.resolve()))
 keep={active,previous}
