@@ -12,7 +12,7 @@ VERSIONS_ROOT="$PROGRAM_ROOT/versions"
 APP_ROOT="$PROGRAM_ROOT/current"
 mkdir -p "$VERSIONS_ROOT"
 if [[ ! -e "$APP_ROOT" && ! -L "$APP_ROOT" ]]; then
-  ln -s "$ROOT" "$APP_ROOT"
+  ln -s ../.. "$APP_ROOT"
 fi
 [[ -d "$APP_ROOT" ]] || { echo "La version active MaClasse est introuvable."; exit 1; }
 PYTHON="$APP_ROOT/.venv/bin/python"
