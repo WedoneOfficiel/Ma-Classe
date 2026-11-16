@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**Statut : chaînes Linux/systemd et macOS/launchd implémentées ; CI Linux, macOS Apple Silicon et Firefox complète verte sur le commit 7990ae5 (run #1477) ; recettes réelles Fedora et Mac utilisateur restantes. Aucune release stable n'est publiée.**  
+**Statut au 16/11/2026 : chaîne Linux implémentée et tests Linux verts ; régression Firefox réelle verte ; validation macOS encore bloquée par un scénario d'installation/mise à jour HTTPS de bout en bout à diagnostiquer. Un test de bootstrap launchd isolé passe. Migration initiale V25.0.19 non validée ; aucune release stable signée n'est publiée. Ne pas déployer.**  
 **Branche de travail :** `feature/amel-01-update-manager`  
 **Branche de départ :** `fix/v25-student-teacher-workflows` (PR #9 conservée intacte).
 
@@ -115,7 +115,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 ## Limites et migration initiale
 
-- Le mécanisme de mise à jour intégré n'existe pas dans les anciennes versions telles que V25.0.19. Le premier passage vers une version qui contient AMEL-01 est donc une migration distincte ; elle doit être répétée sur une copie de l'installation et accompagnée d'une sauvegarde externe avant toute consigne de mise à jour réelle.
+- Le mécanisme de mise à jour intégré n'existe pas dans les anciennes versions telles que V25.0.19. Le premier passage vers une version qui contient AMEL-01 est donc une migration distincte, actuellement non automatisée/non validée. Le registre `MIG-01` bloque toute consigne de migration : vérifier `schemaVersion`, les chemins de données et l'intégrité des uploads/certificats sur une copie représentative, avec sauvegarde externe et scénario de retour arrière.
 - Une fois le gestionnaire supervisé installé et une release stable publiée, les mises à jour normales sont pilotées depuis Paramètres > Mises à jour. Le terminal ne sert plus au téléchargement/à l'installation courante ; il reste nécessaire pour l'installation initiale du service, le dépannage ou une récupération.
 - Le script macOS historique refuse maintenant de faire un git merge si le marqueur du gestionnaire supervisé est présent, et refuse toute mise à jour initiale si un serveur MaClasse tourne encore.
 - Le SHA-256 publié avec le manifeste détecte les corruptions et incohérences d'archive, mais ne constitue pas une signature d'éditeur. Une attestation ou signature vérifiable, avec clé publique épinglée, reste bloquante avant une release stable destinée à des données scolaires réelles.
