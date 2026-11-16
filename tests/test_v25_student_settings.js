@@ -1,0 +1,11 @@
+const fs=require('fs'),assert=require('assert');
+const js=fs.readFileSync('_all.js','utf8');
+assert(js.includes('function studentSettings(){'),'Student settings page exists');
+assert(js.includes("['Mon compte',['studentSettings']]"),'Student navigation exposes its own settings');
+assert(js.includes("studentSettings:studentSettings"),'Student settings route is registered');
+assert(js.includes("studentSettings:['Mon compte','Paramètres'"),'Student settings has page metadata');
+const page=js.slice(js.indexOf('function studentSettings(){'),js.indexOf('function openConversation(',js.indexOf('function studentSettings(){')));
+assert(page.includes('openInitialPasswordModal()'),'Student can open the secure password change flow');
+assert(page.includes('getAppearanceTheme()'),'Student can see their local appearance preference');
+assert(page.includes('Les informations scolaires sont gérées par l’établissement'),'Student profile fields remain read-only');
+console.log('OK — paramètres élève : profil en lecture seule, mot de passe et apparence locale.');

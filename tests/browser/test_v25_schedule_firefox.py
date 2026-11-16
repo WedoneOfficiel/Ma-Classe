@@ -97,6 +97,7 @@ def main() -> None:
                         levels:['6e'], teacherIds:[], groups:[],
                         attendanceMode:'hour', periodMode:'trimestres'
                       }];
+                      data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:''}];
                       data.schedule = [{
                         id:'firefox-existing-course', classId:'firefox-class',
                         day:4, time:'09:00', endTime:'10:00',
@@ -175,6 +176,241 @@ def main() -> None:
                 )
                 expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
                 expect(page.locator('[data-schedule-id]').filter(has_text="Histoire")).to_be_visible()
+
+                # Open the same timetable as a real student account in a separate
+                # browser context, then change the timetable from the administrator.
+                teacher_id = page.evaluate("""async () => {
+                  const created = await fetch('/api/admin/teacher', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                      username:'firefox-teacher',first:'Prof',last:'Test',
+                      subjects:['Français'],classIds:['firefox-class'],ppIds:[],
+                      password:'Teacher-Temporary-Password-2026!'
+                    })
+                  });
+                  const teacherResult = await created.json();
+                  if (!created.ok) throw new Error('Teacher creation failed: '+JSON.stringify(teacherResult));
+                  const id = teacherResult.user.teacherId;
+                  const response = await fetch('/api/data', {cache:'no-store'});
+                  const revision = response.headers.get('X-MaClasse-Revision');
+                  const data = await response.json();
+                  data.schedule.find(x=>x.id==='firefox-existing-course').teacherId=id;
+                  data.mailboxV2 = {
+                    schemaVersion:2,resetPending:false,
+                    messages:[{
+                      id:'firefox-student-message',threadId:'firefox-student-thread',
+                      sender:{key:'teacher:'+id,role:'teacher',id,name:'Prof Test'},
+                      to:['student:firefox-student'],cc:[],bcc:[],
+                      subject:'Message de test élève',body:'La messagerie élève fonctionne.',
+                      sentAt:'2026-11-15T10:00:00Z',attachments:[]
+                    }],
+                    states:{['student:firefox-student']:{'firefox-student-message':{folder:'inbox',read:false}}},
+                    folders:[],drafts:[]
+                  };
+                  const saved = await fetch('/api/save', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','If-Match':revision},
+                    body:JSON.stringify(data)
+                  });
+                  if (!saved.ok) throw new Error('Teacher-linked mailbox seed failed: '+saved.status+' '+await saved.text());
+                  return id;
+                }""")
+                teacher_context = browser.new_context()
+                teacher_page = teacher_context.new_page()
+                teacher_page_errors: list[str] = []
+                teacher_page.on("pageerror", lambda error: teacher_page_errors.append(str(error)))
+                teacher_page.goto(url, wait_until="networkidle")
+                teacher_state = teacher_page.evaluate("""async () => {
+                  const response = await fetch('/api/auth/login', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({username:'firefox-teacher',password:'Teacher-Temporary-Password-2026!'})
+                  });
+                  const result = await response.json();
+                  if (!response.ok) throw new Error('Teacher login failed: '+JSON.stringify(result));
+                  const changed = await fetch('/api/auth/change-password', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({currentPassword:'Teacher-Temporary-Password-2026!',newPassword:'Teacher-Test-Password-2026!'})
+                  });
+                  if (!changed.ok) throw new Error('Teacher password change failed: '+await changed.text());
+                  await load();
+                  return {role:authUser?.role,id:authUser?.id};
+                }""")
+                if teacher_state.get("role") != "teacher" or teacher_state.get("id") != teacher_id:
+                    raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
+                uploaded_homework = teacher_page.evaluate("""async () => {
+                  db=await api('/api/data');
+                  normalize();
+                  lessonDraft={
+                    sid:'firefox-existing-course',date:'2026-11-13',
+                    title:'Séance test',content:'',makeWork:true,workType:'normal',
+                    workTitle:'Devoir avec pièce jointe',workDue:'2026-11-20',
+                    workDueTime:'09:00',workContent:'Consigne de test',
+                    workSubmit:true,workEvalLink:false,files:[],workFiles:[]
+                  };
+                  const file=new File(['Fichier de devoir de test'],'devoir-test.txt',{type:'text/plain'});
+                  await uploadWorkFiles('firefox-existing-course','2026-11-13',[file]);
+                  const slot=db.schedule.find(x=>x.id==='firefox-existing-course');
+                  const lesson={
+                    id:'firefox-homework-lesson',scheduleId:slot.id,date:'2026-11-13',
+                    classId:slot.classId,subject:slot.subject,title:'Séance test',content:'',
+                    files:[],homework:{
+                      title:'Devoir avec pièce jointe',type:'normal',due:'2026-11-20',
+                      dueTime:'09:00',instructions:'Consigne de test',
+                      files:[...lessonDraft.workFiles],requiresSubmission:true,
+                      submissionFolder:{id:'firefox-homework-folder',name:'Rendus — Devoir avec pièce jointe'}
+                    }
+                  };
+                  db.lessons.push(lesson);
+                  save(true);
+                  await flushPendingSave();
+                  return lesson.homework.files[0];
+                }""")
+                if not uploaded_homework or not uploaded_homework.get("url"):
+                    raise AssertionError("Teacher homework attachment was not uploaded: "+repr(uploaded_homework))
+                if teacher_page_errors:
+                    raise AssertionError("Teacher Firefox page errors: "+" | ".join(teacher_page_errors))
+                account = page.evaluate("""async () => {
+                  const response = await fetch('/api/admin/student-account', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({studentId:'firefox-student',username:'firefox-student'})
+                  });
+                  const result = await response.json();
+                  if (!response.ok) throw new Error('Student account creation failed: '+JSON.stringify(result));
+                  return result.user.temporaryPassword;
+                }""")
+                student_context = browser.new_context()
+                student_page = student_context.new_page()
+                student_page_errors: list[str] = []
+                student_page.on("pageerror", lambda error: student_page_errors.append(str(error)))
+                student_page.goto(url, wait_until="networkidle")
+                student_state = student_page.evaluate("""async (password) => {
+                  const response = await fetch('/api/auth/login', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({username:'firefox-student',password})
+                  });
+                  const result = await response.json();
+                  if (!response.ok) throw new Error('Student login failed: '+JSON.stringify(result));
+                  const changed = await fetch('/api/auth/change-password', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({currentPassword:password,newPassword:'Student-Test-Password-2026!'})
+                  });
+                  if (!changed.ok) throw new Error('Student password change failed: '+await changed.text());
+                  await load();
+                  page='studentSchedule';
+                  appSpace='student';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                  return {role:authUser?.role,studentId:authUser?.studentId,page};
+                }""", account)
+                if student_state.get("role") != "student" or student_state.get("studentId") != "firefox-student":
+                    raise AssertionError("Student session not initialized: "+repr(student_state))
+                student_page.evaluate("""() => {
+                  page='studentMessages';
+                  appSpace='student';
+                  render();
+                }""")
+                # The student must see and be able to open the teacher's saved homework attachment.
+                student_page.evaluate("""async () => {
+                  db=await api('/api/data');
+                  normalize();
+                  openStudentWork('firefox-homework-lesson');
+                }""")
+                expect(student_page.locator('#modal')).to_contain_text("Pièces jointes du professeur")
+                attachment_link = student_page.locator('#modal a[href*="/data/uploads/submissions/"]')
+                expect(attachment_link).to_have_count(1)
+                attachment_url = attachment_link.get_attribute("href")
+                attachment_content = student_page.evaluate(
+                    "async url => await (await fetch(url)).text()", attachment_url
+                )
+                if attachment_content != "Fichier de devoir de test":
+                    raise AssertionError("Student cannot read teacher homework attachment: "+repr(attachment_content))
+                mailbox = student_page.locator('.v2104App')
+                expect(mailbox).to_be_visible()
+                mailbox_state = student_page.evaluate("""() => ({
+                  user:authUser,
+                  page,
+                  studentCount:db.students?.length,
+                  classTeacherIds:db.classes?.[0]?.teacherIds,
+                  teachers:db.teachers?.map(t=>t.id),
+                  mailbox:db.mailboxV2,
+                  body:document.body.innerText.slice(0,1200)
+                })""")
+                if mailbox.locator('.v2104Row').count() == 0:
+                    raise AssertionError("Student mailbox has no message row: "+json.dumps(mailbox_state,ensure_ascii=False))
+                expect(mailbox.locator('.v2104Row')).to_contain_text("Message de test élève")
+                student_page.evaluate("""() => {
+                  closeModal();
+                  page='studentSchedule';
+                  appSpace='student';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                }""")
+                student_calendar = student_page.locator('.scheduleCalendarSurface')
+                expect(student_calendar).to_contain_text("Français")
+                # A teacher-side write must be picked up by the student's 5-second sync.
+                page.evaluate("""async () => {
+                  const response = await fetch('/api/data', {cache:'no-store'});
+                  const revision = response.headers.get('X-MaClasse-Revision');
+                  const data = await response.json();
+                  data.schedule.push({
+                    id:'firefox-live-student-course',classId:'firefox-class',
+                    day:4,time:'13:00',endTime:'14:00',subject:'Sciences',
+                    recurrence:'weekly',startDate:'2026-11-09',endDate:'',
+                    exceptions:[],overrides:{},teacherId:''
+                  });
+                  const saved = await fetch('/api/save', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','If-Match':revision},
+                    body:JSON.stringify(data)
+                  });
+                  if (!saved.ok) throw new Error('Teacher timetable update failed: '+saved.status+' '+await saved.text());
+                }""")
+                expect(student_calendar).to_contain_text("Sciences", timeout=15_000)
+                teacher_page.evaluate("""() => {
+                  page='schedule';
+                  appSpace='teacher';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                }""")
+                teacher_calendar = teacher_page.locator('.scheduleCalendarSurface')
+                expect(teacher_calendar).to_contain_text("Sciences")
+                def layout_signature(target):
+                    return target.evaluate("""root => {
+                      const selectors=['.scheduleControlPanel','.scheduleCalendarSurface','.scheduleGrid','.scheduleDays','.daycol','.daycolHeader','.eventCard'];
+                      return Object.fromEntries(selectors.map(selector=>{
+                        const nodes=[...root.querySelectorAll(selector)];
+                        const styles=nodes[0]?getComputedStyle(nodes[0]):null;
+                        return [selector,{
+                          count:nodes.length,
+                          display:styles?.display||'',
+                          columnCount:styles?.gridTemplateColumns&&styles.gridTemplateColumns!=='none'?styles.gridTemplateColumns.split(' ').length:0,
+                          gap:styles?.gap||'',
+                          borderRadius:styles?.borderRadius||'',
+                          padding:styles?.padding||''
+                        }];
+                      }));
+                    }""")
+                teacher_layout=layout_signature(teacher_page.locator('body'))
+                student_layout=layout_signature(student_page.locator('body'))
+                for selector in teacher_layout:
+                    left,right=teacher_layout[selector],student_layout[selector]
+                    if left['count']!=right['count'] or left['display']!=right['display'] or left['columnCount']!=right['columnCount'] or left['gap']!=right['gap'] or left['borderRadius']!=right['borderRadius'] or left['padding']!=right['padding']:
+                        raise AssertionError("EDT teacher/student visual structure differs at "+selector+": "+repr((left,right)))
+                if student_page.locator('.schedulePage .eventEdit').count()!=0:
+                    raise AssertionError("Student timetable unexpectedly exposes teacher edit controls")
+                if student_page_errors:
+                    raise AssertionError("Student Firefox page errors: "+" | ".join(student_page_errors))
+                teacher_context.close()
+                student_context.close()
 
                 # Force an unrelated server-side revision so the real-time refresh
                 # runs while the timetable is open; this must not erase its courses.

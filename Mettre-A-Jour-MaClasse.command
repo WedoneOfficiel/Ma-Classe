@@ -30,11 +30,14 @@ if [[ -n "$(git status --porcelain)" ]]; then fail "Des fichiers locaux ont ét�
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP="../MaClasse-sauvegarde-avant-maj-$STAMP"
 mkdir -p "$BACKUP"
-if [[ -d data ]]; then /usr/bin/ditto data "$BACKUP/data"; fi
+if [[ -d data ]]; then
+  mkdir -p "$BACKUP/data"
+  tar -C data --exclude=./tls -cf - . | tar -C "$BACKUP/data" -xf -
+fi
 PREVIOUS="$(git rev-parse HEAD)"
 PREVIOUS_VERSION="$(cat VERSION.txt)"
 printf "Version précédente : %s\nCommit précédent : %s\nDate : %s\n" "$PREVIOUS_VERSION" "$PREVIOUS" "$STAMP" > "$BACKUP/INFORMATIONS.txt"
-echo "Sauvegarde créée : $BACKUP (base, pièces jointes et fichiers de data/)."
+echo "Sauvegarde créée : $BACKUP (base, pièces jointes et fichiers de data/, hors certificats et clés TLS)."
 echo "Récupération de la version officielle…"
 git fetch origin main || fail "Impossible de récupérer la version officielle."
 git merge-base --is-ancestor "$PREVIOUS" origin/main || fail "La branche locale diverge de main. Aucune réinitialisation automatique n'est effectuée."

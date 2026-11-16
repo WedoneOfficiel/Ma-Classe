@@ -1,5 +1,6 @@
 """Tests de cloisonnement des comptes élèves et de leurs rendus."""
 import json
+import datetime
 import os
 import tempfile
 import unittest
@@ -30,7 +31,7 @@ class StudentScopeTests(unittest.TestCase):
             'bulletins':[{'id':'b1','studentId':'s1','classId':'c1','validated':True,'published':True},{'id':'b2','studentId':'s2','classId':'c1','validated':True,'published':True}],
             'submissions':[{'id':'old','studentId':'s1','lessonId':'l1b','classId':'c1','status':'submitted','corrected':True,'correctionComment':'Prof feedback'},{'id':'other','studentId':'s2','lessonId':'l1','classId':'c1','status':'submitted'}],
             'attachments':[],'conversations':[{'id':'private','participantIds':['s2']}],
-            'cloudItems':[{'id':'private','ownerId':'s2'}],'notifications':[],'settings':{'schoolName':'private','terms':[]}
+            'cloudItems':[{'id':'private','ownerId':'s2'}],'notifications':[],'settings':{'schoolName':'private','terms':[],'subjectColors':{'francais':'#123456'}}
         }
         with open(server.DATA_FILE,'w',encoding='utf-8') as f: json.dump(self.data,f)
 
@@ -41,6 +42,8 @@ class StudentScopeTests(unittest.TestCase):
 
     def test_projection_contains_only_own_student_data_and_published_results(self):
         view=server._student_visible_data(self.data,self.user)
+        self.assertEqual(view['settings']['subjectColors'],{'francais':'#123456'})
+        self.assertNotIn('schoolName',view['settings'])
         self.assertEqual([x['id'] for x in view['students']],['s1'])
         self.assertNotIn('notes',view['students'][0])
         self.assertEqual([x['id'] for x in view['classes']],['c1'])
@@ -54,6 +57,107 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual(view['cloudItems'],[])
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
+
+    def test_student_mail_attachments_are_confined_to_own_mail_folders(self):
+        own='mail-v2/student:s1/attachment.txt'
+        draft='mail-v2-drafts/student:s1/draft.txt'
+        other='mail-v2/student:s2/private.txt'
+        self.assertTrue(server._student_can_access_upload(self.user,own,write=True))
+        self.assertTrue(server._student_can_access_upload(self.user,draft,write=True))
+        self.assertFalse(server._student_can_access_upload(self.user,other,write=True))
+
+    def test_student_mailbox_projection_is_private_and_hides_other_bcc_recipients(self):
+        self.data['mailboxV2']={
+            'schemaVersion':2,
+            'messages':[
+                {'id':'teacher-to-s1','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'bcc':['student:s2'],'subject':'Pour Alice','attachments':[{'name':'ok.txt','url':'/data/uploads/mail-v2/teacher:t1/ok.txt'},{'name':'bad.txt','url':'/data/uploads/mail-v2/teacher:t2/bad.txt'}]},
+                {'id':'teacher-to-s2','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s2'],'subject':'Pour Bob'},
+                {'id':'student-sent','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'subject':'Question'},
+                {'id':'unrelated-teacher','sender':{'key':'teacher:t2','role':'teacher','id':'t2'},'to':['student:s1'],'subject':'Hors périmètre'}
+            ],
+            'states':{'student:s1':{'teacher-to-s1':{'read':False}},'student:s2':{'teacher-to-s2':{'read':False}},'teacher:t1':{'x':{}}},
+            'folders':[{'id':'own-folder','owner':'student:s1'},{'id':'other-folder','owner':'student:s2'}],
+            'drafts':[{'id':'own-draft','owner':'student:s1','attachments':[{'name':'draft.txt','url':'/data/uploads/mail-v2-drafts/student:s1/draft.txt'},{'name':'private.txt','url':'/data/uploads/mail-v2/teacher:t2/private.txt'}]},{'id':'other-draft','owner':'student:s2'}],
+            'resetPending':False
+        }
+        view=server._student_visible_data(self.data,self.user)
+        mailbox=view['mailboxV2']
+        self.assertEqual({x['id'] for x in mailbox['messages']},{'teacher-to-s1','student-sent'})
+        incoming=next(x for x in mailbox['messages'] if x['id']=='teacher-to-s1')
+        self.assertEqual(incoming['bcc'],[])
+        self.assertEqual([x['name'] for x in incoming['attachments']],['ok.txt'])
+        self.assertEqual(set(mailbox['states']),{'student:s1'})
+        self.assertEqual([x['id'] for x in mailbox['folders']],['own-folder'])
+        self.assertEqual([x['id'] for x in mailbox['drafts']],['own-draft'])
+        self.assertEqual([x['name'] for x in mailbox['drafts'][0]['attachments']],['draft.txt'])
+
+    def test_student_can_read_only_attachments_referenced_by_its_mailbox(self):
+        teacher_dir=os.path.join(server.UPLOADS,'mail-v2','teacher:t1')
+        os.makedirs(teacher_dir)
+        with open(os.path.join(teacher_dir,'piece.txt'),'w',encoding='utf-8') as f: f.write('document')
+        self.data['mailboxV2']={'schemaVersion':2,'messages':[{
+            'id':'to-s1','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},
+            'to':['student:s1'],'attachments':[{'name':'piece.txt','url':'/data/uploads/mail-v2/teacher:t1/piece.txt'}]
+        }],'states':{},'folders':[],'drafts':[],'resetPending':False}
+        with open(server.DATA_FILE,'w',encoding='utf-8') as f: json.dump(self.data,f)
+        self.assertTrue(server._student_can_access_upload(self.user,'mail-v2/teacher:t1/piece.txt',write=False))
+        self.assertFalse(server._student_can_access_upload(self.user,'mail-v2/teacher:t2/private.txt',write=False))
+
+    def test_student_outgoing_mail_attachment_must_be_in_own_mail_folder(self):
+        mail_dir=os.path.join(server.UPLOADS,'mail-v2','student:s1')
+        os.makedirs(mail_dir)
+        with open(os.path.join(mail_dir,'piece.txt'),'w',encoding='utf-8') as f: f.write('document')
+        self.data['mailboxV2']={'schemaVersion':2,'messages':[],'states':{},'folders':[],'drafts':[],'resetPending':False}
+        incoming=server._student_visible_data(self.data,self.user)
+        incoming['mailboxV2']['messages']=[
+            {'id':'valid-file','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'attachments':[{'name':'piece.txt','url':'/data/uploads/mail-v2/student:s1/piece.txt'}]},
+            {'id':'foreign-file','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'attachments':[{'name':'private.txt','url':'/data/uploads/mail-v2/student:s2/private.txt'}]}
+        ]
+        merged=server._merge_student_data(self.data,incoming,self.user)
+        self.assertIn('valid-file',[x['id'] for x in merged['mailboxV2']['messages']])
+        self.assertNotIn('foreign-file',[x['id'] for x in merged['mailboxV2']['messages']])
+
+    def test_student_mailbox_merge_accepts_only_own_messages_to_accessible_teachers(self):
+        original={'id':'incoming','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'subject':'Original','body':'Immuable'}
+        self.data['mailboxV2']={'schemaVersion':2,'messages':[original],'states':{'student:s1':{},'student:s2':{'keep':'private'}},'drafts':[],'folders':[],'resetPending':False}
+        incoming=server._student_visible_data(self.data,self.user)
+        incoming['mailboxV2']['messages'][0]['body']='Tentative de falsification'
+        incoming['mailboxV2']['messages'].extend([
+            {'id':'valid-outgoing','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['teacher:t1'],'subject':'Question','body':'Bonjour'},
+            {'id':'forged-peer','sender':{'key':'student:s1','role':'student','id':'s1'},'to':['student:s2'],'subject':'Falsifié'},
+            {'id':'forged-teacher','sender':{'key':'teacher:t1','role':'teacher','id':'t1'},'to':['student:s1'],'subject':'Usurpation'}
+        ])
+        incoming['mailboxV2']['states']={'student:s1':{'incoming':{'read':True}},'student:s2':{'incoming':{'read':True}}}
+        incoming['mailboxV2']['drafts']=[{'id':'own','owner':'student:s1'},{'id':'other','owner':'student:s2'}]
+        merged=server._merge_student_data(self.data,incoming,self.user)
+        mailbox=merged['mailboxV2']
+        by_id={x['id']:x for x in mailbox['messages']}
+        self.assertEqual(by_id['incoming']['body'],'Immuable')
+        self.assertIn('valid-outgoing',by_id)
+        self.assertNotIn('forged-peer',by_id)
+        self.assertNotIn('forged-teacher',by_id)
+        self.assertEqual(mailbox['states']['student:s1'],{'incoming':{'read':True}})
+        self.assertEqual(mailbox['states']['student:s2'],{'keep':'private'})
+        self.assertEqual([x['id'] for x in mailbox['drafts']],['own'])
+
+    def test_student_projection_hides_future_scheduled_evaluation_until_publish_time(self):
+        now=datetime.datetime.now(datetime.timezone.utc)
+        self.data['evaluations']=[
+            {'id':'future','classId':'c1','published':True,'publishAt':(now+datetime.timedelta(hours=1)).isoformat(),
+             'grades':[{'studentId':'s1','value':18}]},
+            {'id':'due','classId':'c1','published':True,'publishAt':(now-datetime.timedelta(minutes=1)).isoformat(),
+             'grades':[{'studentId':'s1','value':14}]}
+        ]
+        view=server._student_visible_data(self.data,self.user)
+        self.assertEqual([x['id'] for x in view['evaluations']],['due'])
+        self.assertEqual(view['evaluations'][0]['grades'],[{'studentId':'s1','value':14}])
+
+    def test_scheduled_evaluation_publication_uses_exact_datetime(self):
+        now=datetime.datetime(2026,11,15,12,0,tzinfo=datetime.timezone.utc)
+        self.assertFalse(server._evaluation_publication_due('2026-11-15T12:01:00Z',now))
+        self.assertTrue(server._evaluation_publication_due('2026-11-15T11:59:00Z',now))
+        self.assertTrue(server._evaluation_publication_due('2026-11-15',now))
+        self.assertFalse(server._evaluation_publication_due('not-a-date',now))
 
     def test_student_can_only_create_own_submission_and_cannot_change_profile_or_correction(self):
         upload_dir=os.path.join(server.UPLOADS,'submissions','s1')
@@ -77,6 +181,16 @@ class StudentScopeTests(unittest.TestCase):
         original=next(x for x in merged['submissions'] if x['id']=='old')
         self.assertEqual(original['correctionComment'],'Prof feedback')
         self.assertTrue(any(x['id']=='old' for x in merged['submissions']))
+
+    def test_student_cannot_modify_schedule_or_lesson_content(self):
+        incoming=server._student_visible_data(self.data,self.user)
+        incoming['schedule'][0]['subject']='Cours falsifié'
+        incoming['schedule'].append({'id':'forged-slot','classId':'c1','subject':'Cours ajouté'})
+        incoming['lessons'][0]['content']='Contenu falsifié'
+        incoming['lessons'].append({'id':'forged-lesson','classId':'c1','content':'Séance ajoutée'})
+        merged=server._merge_student_data(self.data,incoming,self.user)
+        self.assertEqual(merged['schedule'],self.data['schedule'])
+        self.assertEqual(merged['lessons'],self.data['lessons'])
 
     def test_student_file_access_is_limited_to_referenced_own_files(self):
         folder=os.path.join(server.UPLOADS,'submissions','s1')

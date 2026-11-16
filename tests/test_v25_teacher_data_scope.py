@@ -1,11 +1,11 @@
-import copy, os, sys, unittest
+import copy, json, os, sys, tempfile, unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server
 
 class TeacherDataScopeTests(unittest.TestCase):
     def setUp(self):
         self.data={
-            'settings':{'schoolName':'École test'},
+            'settings':{'schoolName':'École test','subjectColors':{'francais':'#123456'}},
             'classes':[{'id':'c1','name':'6A','principalTeacherId':'t2','teacherIds':['t1']},{'id':'c2','name':'6B','principalTeacherId':'t2','teacherIds':['t2']}],
             'users':[{'id':'t1','role':'teacher','first':'Prof','last':'A','subjects':['Maths']},{'id':'t2','role':'teacher','first':'Prof','last':'B','subjects':['Français']}],
             'students':[{'id':'s1','classId':'c1','first':'Alice'},{'id':'s2','classId':'c2','first':'Bob'}],
@@ -17,8 +17,31 @@ class TeacherDataScopeTests(unittest.TestCase):
         }
         self.user={'id':'t1','role':'teacher'}
 
+    def test_teacher_can_fill_bulletin_for_a_past_term_they_taught(self):
+        data=copy.deepcopy(self.data)
+        data['settings']['terms']=[{'id':'term-old','start':'2025-09-01','end':'2025-12-20'}]
+        data['teacherAssignments']=[{'id':'a1','classId':'c1','teacherId':'t1','subject':'Maths',
+                                     'startDate':'2025-09-01','endDate':'2025-12-20'}]
+        self.assertTrue(server._teacher_can_teach_subject_for_term(data,self.user,'c1','Maths','term-old'))
+        self.assertFalse(server._teacher_can_teach_subject(data,self.user,'c1','Maths'))
+
+    def test_current_replacement_does_not_block_a_past_term_bulletin(self):
+        data=copy.deepcopy(self.data)
+        data['settings']['terms']=[{'id':'term-old','start':'2025-09-01','end':'2025-12-20'}]
+        data['schedule']=[{'id':'slot1','classId':'c1','subject':'Maths','teacherId':'t1'}]
+        data['teacherAssignments']=[{'id':'replacement-now','classId':'c1','teacherId':'t2','supersedesTeacherId':'t1','subject':'Maths','type':'replacement','startDate':'2026-01-01','endDate':'2026-12-31'}]
+        self.assertTrue(server._teacher_can_teach_subject_for_term(data,self.user,'c1','Maths','term-old'))
+
+    def test_one_off_substitute_can_edit_the_taught_subject_bulletin(self):
+        data=copy.deepcopy(self.data)
+        data['schedule']=[{'id':'slot1','classId':'c1','subject':'Maths','teacherId':'t2',
+                           'overrides':{'2026-11-15':{'replacementTeacherId':'t1'}}}]
+        self.assertTrue(server._teacher_can_teach_subject(data,self.user,'c1','Maths','2026-11-15'))
+
     def test_projection_only_exposes_assigned_class(self):
         view=server._teacher_visible_data(self.data,self.user)
+        self.assertEqual(view['settings']['subjectColors'],{'francais':'#123456'})
+        self.assertNotIn('schoolName',view['settings'])
         self.assertEqual([x['id'] for x in view['classes']],['c1'])
         self.assertEqual([x['id'] for x in view['students']],['s1'])
         self.assertEqual([x['id'] for x in view['lessons']],['l1'])
@@ -28,6 +51,27 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual([x['id'] for x in view['submissions']],['sub1'])
         self.assertEqual(view['users'],[self.data['users'][0]])
         self.assertEqual(view['auditLog'],[])
+
+    def test_teacher_can_read_only_attachments_referenced_by_received_student_mail(self):
+        old_data,old_uploads=server.DATA_FILE,server.UPLOADS
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                server.DATA_FILE=os.path.join(tmp,'data.json')
+                server.UPLOADS=os.path.join(tmp,'uploads')
+                os.makedirs(os.path.join(server.UPLOADS,'mail-v2','student:s1'))
+                path=os.path.join(server.UPLOADS,'mail-v2','student:s1','piece.txt')
+                with open(path,'w',encoding='utf-8') as f: f.write('document')
+                data=copy.deepcopy(self.data)
+                data['mailboxV2']={'schemaVersion':2,'messages':[{
+                    'id':'student-mail','sender':{'key':'student:s1','role':'student','id':'s1'},
+                    'to':['teacher:t1'],'subject':'Question','attachments':[{'name':'piece.txt','url':'/data/uploads/mail-v2/student:s1/piece.txt'}]
+                }],'states':{},'folders':[],'drafts':[],'resetPending':False}
+                with open(server.DATA_FILE,'w',encoding='utf-8') as f: json.dump(data,f)
+                self.assertTrue(server._teacher_can_access_upload(self.user,'mail-v2/student:s1/piece.txt',write=False))
+                self.assertFalse(server._teacher_can_access_upload(self.user,'mail-v2/student:s1/piece.txt',write=True))
+                self.assertFalse(server._teacher_can_access_upload(self.user,'mail-v2/student:s2/private.txt',write=False))
+            finally:
+                server.DATA_FILE,server.UPLOADS=old_data,old_uploads
 
     def test_server_refuses_non_loopback_bind_addresses(self):
         for host in ('0.0.0.0','192.168.1.20','::'):
@@ -313,7 +357,7 @@ class TeacherDataScopeTests(unittest.TestCase):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
         merged=server._merge_teacher_data(self.data,view,self.user)
-        self.assertEqual(merged['settings'],{'schoolName':'École test'})
+        self.assertEqual(merged['settings'],{'schoolName':'École test','subjectColors':{'francais':'#123456'}})
 
 
     def test_projection_exposes_only_explicitly_shared_top_level_keys(self):
@@ -336,5 +380,26 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertNotIn('privateApiKey',view['settings'])
         self.assertNotIn('privateFutureCollection',view)
         self.assertNotIn('secretConfig',view)
+
+    def test_teacher_cannot_modify_or_delete_evaluation_of_another_subject_in_same_class(self):
+        data=copy.deepcopy(self.data)
+        data['schedule']=[
+            {'id':'maths','classId':'c1','subject':'Maths','teacherId':'t1'},
+            {'id':'french','classId':'c1','subject':'Français','teacherId':'t2'}
+        ]
+        data['evaluations']=[
+            {'id':'maths-eval','classId':'c1','subject':'Maths','date':'2026-11-10','title':'Calcul','grades':[{'studentId':'s1','value':12}]},
+            {'id':'french-eval','classId':'c1','subject':'Français','date':'2026-11-10','title':'Dictée','grades':[{'studentId':'s1','value':15}]}
+        ]
+        view=server._teacher_visible_data(data,self.user)
+        view['evaluations']=[x for x in view['evaluations'] if x['id']!='french-eval']
+        next(x for x in view['evaluations'] if x['id']=='maths-eval')['subject']='Français'
+        merged=server._merge_teacher_data(data,view,self.user)
+        by_id={x['id']:x for x in merged['evaluations']}
+        self.assertEqual(set(by_id),{'maths-eval','french-eval'})
+        self.assertEqual(by_id['maths-eval']['subject'],'Maths')
+        self.assertEqual(by_id['french-eval']['title'],'Dictée')
+        self.assertTrue(server._teacher_can_edit_evaluation(data,self.user,by_id['maths-eval']))
+        self.assertFalse(server._teacher_can_edit_evaluation(data,self.user,by_id['french-eval']))
 
 if __name__=='__main__': unittest.main()

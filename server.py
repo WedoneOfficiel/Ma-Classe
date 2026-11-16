@@ -360,8 +360,14 @@ def _teacher_subject_keys(data,user,class_id=None,term_id=None):
         has_explicit=True
         slot_start=str(slot.get('startDate') or '')
         slot_end=str(slot.get('endDate') or '')
-        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start) and not _teacher_schedule_assignment_suspended(data,slot,tid):
-            found.add(_norm_text(slot.get('subject')))
+        if (not end or not slot_start or slot_start<=end) and (not start or not slot_end or slot_end>=start):
+            # Une suspension hors de la période du bulletin ne doit pas effacer un enseignement passé.
+            probe_start=max([x for x in (start,slot_start) if x] or [datetime.date.today().isoformat()])
+            probe_end=min([x for x in (end,slot_end) if x] or [datetime.date.today().isoformat()])
+            suspended_start=_teacher_schedule_assignment_suspended(data,slot,tid,probe_start)
+            suspended_end=_teacher_schedule_assignment_suspended(data,slot,tid,probe_end)
+            if not (suspended_start and suspended_end):
+                found.add(_norm_text(slot.get('subject')))
     for assignment in data.get('teacherAssignments',[]) or []:
         if not isinstance(assignment,dict) or str(assignment.get('teacherId') or '')!=tid or not assignment.get('subject'): continue
         if class_id and str(assignment.get('classId') or '')!=class_id: continue
@@ -374,6 +380,30 @@ def _teacher_subject_keys(data,user,class_id=None,term_id=None):
         account=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==tid and x.get('role')=='teacher'),{})
         found.update(_norm_text(x) for x in (account.get('subjects') or []) if str(x).strip())
     return {x for x in found if x}
+
+
+def _teacher_can_teach_subject_for_term(data,user,class_id,subject,term_id):
+    """Autorise l'appréciation si l'enseignant a enseigné cette matière pendant la période du bulletin."""
+    term=next((x for x in (data.get('settings',{}).get('terms',[]) or [])
+               if isinstance(x,dict) and str(x.get('id') or '')==str(term_id or '')),None)
+    if not term:
+        return _teacher_can_teach_subject(data,user,class_id,subject)
+    key=_norm_text(subject)
+    if not key:
+        return False
+    if key in _teacher_subject_keys(data,user,class_id,term_id):
+        return True
+    tid=str(user.get('id') or user.get('teacherId') or '')
+    start=str(term.get('start') or '')
+    end=str(term.get('end') or '')
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or str(slot.get('classId') or '')!=str(class_id or '') or _norm_text(slot.get('subject'))!=key:
+            continue
+        for date,override in (slot.get('overrides') or {}).items():
+            if (not start or str(date)>=start) and (not end or str(date)<=end) and isinstance(override,dict):
+                if str(override.get('replacementTeacherId') or '')==tid and override.get('status')!='cancelled':
+                    return True
+    return False
 
 
 def _teacher_can_teach_subject(data,user,class_id,subject,on_date=None):
@@ -439,7 +469,6 @@ def _teacher_visible_mailbox(mailbox, user, data):
             if sender==me:
                 visible.append(message)
             else:
-                # Un destinataire ne doit jamais connaître les autres destinataires BCC.
                 safe_message=dict(message)
                 safe_message['bcc']=[]
                 visible.append(safe_message)
@@ -455,6 +484,175 @@ def _teacher_visible_mailbox(mailbox, user, data):
         'resetPending':bool(mailbox.get('resetPending',False)),
     }
 
+
+def _student_accessible_teacher_ids(data, student_record):
+    """Enseignants joignables par l'élève via sa classe, son EDT ou ses séances."""
+    class_id=str(student_record.get('classId') or '')
+    group=str(student_record.get('group') or '')
+    class_record=next((x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),{})
+    ids={str(x) for x in class_record.get('teacherIds',[]) or [] if x}
+    for slot in data.get('schedule',[]) or []:
+        if not isinstance(slot,dict) or str(slot.get('classId') or '')!=class_id:
+            continue
+        if slot.get('group') and str(slot.get('group'))!=group:
+            continue
+        ids.update(str(x) for x in ([slot.get('teacherId')]+(slot.get('teacherIds') or [])) if x)
+    for lesson in data.get('lessons',[]) or []:
+        if not isinstance(lesson,dict) or str(lesson.get('classId') or '')!=class_id:
+            continue
+        if lesson.get('group') and str(lesson.get('group'))!=group:
+            continue
+        if lesson.get('teacherId'): ids.add(str(lesson.get('teacherId')))
+    for assignment in data.get('teacherAssignments',[]) or []:
+        if isinstance(assignment,dict) and str(assignment.get('classId') or '')==class_id and assignment.get('teacherId') and _teacher_assignment_active(assignment):
+            ids.add(str(assignment.get('teacherId')))
+    valid={str(x.get('id')) for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher'}
+    return ids & valid
+
+
+
+def _mailbox_message_safe_attachments(message, prefixes):
+    """Ne conserve que les pièces jointes situées dans les dossiers explicitement autorisés."""
+    item=dict(message)
+    safe=[]
+    for attachment in item.get('attachments') or []:
+        if not isinstance(attachment,dict): continue
+        url=str(attachment.get('url') or '').replace(chr(92),'/')
+        if '/data/uploads/' not in url: continue
+        rel=url.split('/data/uploads/',1)[1]
+        if any(rel.startswith(prefix) for prefix in prefixes):
+            safe.append(attachment)
+    item['attachments']=safe
+    return item
+
+def _student_visible_mailbox(mailbox, user, data):
+    """Projection de la boîte élève : messages propres et messages des enseignants autorisés."""
+    if not isinstance(mailbox,dict): return {}
+    sid=str(user.get('studentId') or user.get('id') or '')
+    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
+    if not student_record: return {}
+    me=_mail_user_key('student',sid)
+    teachers=_student_accessible_teacher_ids(data,student_record)
+    messages=mailbox.get('messages') if isinstance(mailbox.get('messages'),list) else []
+    visible=[]
+    for message in messages:
+        if not isinstance(message,dict): continue
+        sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
+        sender_key=str(sender.get('key') or '')
+        recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
+        if me in (message.get('hiddenFor') or []): continue
+        if sender_key==me:
+            visible.append(_mailbox_message_safe_attachments(message,(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')))
+        elif sender.get('role')=='teacher' and str(sender.get('id') or '') in teachers and sender_key==_mail_user_key('teacher',sender.get('id')) and me in recipients:
+            teacher_id=str(sender.get('id') or '')
+            safe=_mailbox_message_safe_attachments(message,(f'mail-v2/teacher:{teacher_id}/',f'mail-v2-drafts/teacher:{teacher_id}/'))
+            safe['bcc']=[]
+            visible.append(safe)
+    states=mailbox.get('states') if isinstance(mailbox.get('states'),dict) else {}
+    folders=mailbox.get('folders') if isinstance(mailbox.get('folders'),list) else []
+    drafts=mailbox.get('drafts') if isinstance(mailbox.get('drafts'),list) else []
+    safe_drafts=[]
+    for draft in drafts:
+        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me: continue
+        item=_mailbox_message_safe_attachments(draft,(f'mail-v2-drafts/student:{sid}/',))
+        for field in ('to','cc','bcc'):
+            item[field]=[x for x in item.get(field,[]) or [] if isinstance(x,str) and x.startswith('teacher:') and x.split(':',1)[1] in teachers]
+        safe_drafts.append(item)
+    return {
+        'schemaVersion':mailbox.get('schemaVersion',2),
+        'messages':visible,
+        'states':{me:states.get(me,{})} if isinstance(states.get(me,{}),dict) else {me:{}},
+        'folders':[x for x in folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me],
+        'drafts':safe_drafts,
+        'resetPending':bool(mailbox.get('resetPending',False)),
+    }
+
+
+def _student_merge_mailbox(current, incoming, user, data):
+    """Fusionne uniquement la boîte de l'élève ; les messages reçus et envoyés sont immuables."""
+    old=current.get('mailboxV2') if isinstance(current.get('mailboxV2'),dict) else {}
+    new=incoming.get('mailboxV2') if isinstance(incoming.get('mailboxV2'),dict) else {}
+    sid=str(user.get('studentId') or user.get('id') or '')
+    me=_mail_user_key('student',sid)
+    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
+    if not student_record: return old
+    teachers=_student_accessible_teacher_ids(data,student_record)
+    old_messages=old.get('messages') if isinstance(old.get('messages'),list) else []
+    new_messages=new.get('messages') if isinstance(new.get('messages'),list) else []
+    old_by_id={str(x.get('id')):x for x in old_messages if isinstance(x,dict) and x.get('id')}
+    new_by_id={str(x.get('id')):x for x in new_messages if isinstance(x,dict) and x.get('id')}
+    result_messages=[]
+    for ident, original in old_by_id.items():
+        item=dict(original)
+        sender=(original.get('sender') or {}).get('key') if isinstance(original.get('sender'),dict) else ''
+        recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (original.get(field) or []) if isinstance(x,str)]
+        if (sender==me or me in recipients) and ident in new_by_id:
+            hidden=list(original.get('hiddenFor') or [])
+            updated_hidden=new_by_id[ident].get('hiddenFor') or []
+            if me in updated_hidden and me not in hidden: hidden.append(me)
+            if me not in updated_hidden: hidden=[x for x in hidden if x!=me]
+            item['hiddenFor']=hidden
+        result_messages.append(item)
+    for ident,message in new_by_id.items():
+        if ident in old_by_id: continue
+        sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
+        if sender.get('role')!='student' or str(sender.get('id') or '')!=sid or sender.get('key')!=me:
+            continue
+        recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
+        if not recipients: continue
+        valid=True
+        for recipient in recipients:
+            role,sep,recipient_id=recipient.partition(':')
+            if not sep or role!='teacher' or recipient_id not in teachers:
+                valid=False
+                break
+        if not valid: continue
+        for attachment in message.get('attachments') or []:
+            if not isinstance(attachment,dict): continue
+            url=str(attachment.get('url') or '').replace(chr(92),'/')
+            if '/data/uploads/' not in url:
+                valid=False
+                break
+            rel=url.split('/data/uploads/',1)[1]
+            prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
+            if not rel.startswith(prefixes):
+                valid=False
+                break
+            try:
+                lexical=os.path.join(UPLOADS,*rel.split('/'))
+                if os.path.islink(lexical):
+                    valid=False
+                    break
+                path=_safe_upload_path(rel)
+                if not os.path.isfile(path):
+                    valid=False
+                    break
+            except (ValueError,OSError):
+                valid=False
+                break
+        if valid:
+            item=dict(message)
+            item['hiddenFor']=[]
+            result_messages.append(item)
+    old_states=old.get('states') if isinstance(old.get('states'),dict) else {}
+    new_states=new.get('states') if isinstance(new.get('states'),dict) else {}
+    states=dict(old_states)
+    states[me]=new_states.get(me,{}) if isinstance(new_states.get(me,{}),dict) else {}
+    old_drafts=old.get('drafts') if isinstance(old.get('drafts'),list) else []
+    new_drafts=new.get('drafts') if isinstance(new.get('drafts'),list) else []
+    drafts=[x for x in old_drafts if isinstance(x,dict) and str(x.get('owner') or '')!=me]
+    for draft in new_drafts:
+        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me: continue
+        item=dict(draft)
+        item['attachments']=_mailbox_message_safe_attachments(item,(f'mail-v2-drafts/student:{sid}/',))
+        for field in ('to','cc','bcc'):
+            item[field]=[x for x in item.get(field,[]) or [] if isinstance(x,str) and x.startswith('teacher:') and x.split(':',1)[1] in teachers]
+        drafts.append(item)
+    old_folders=old.get('folders') if isinstance(old.get('folders'),list) else []
+    new_folders=new.get('folders') if isinstance(new.get('folders'),list) else []
+    folders=[x for x in old_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')!=me]
+    folders.extend(x for x in new_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me)
+    return {'schemaVersion':2,'messages':result_messages,'states':states,'drafts':drafts,'folders':folders,'resetPending':bool(old.get('resetPending',False) and new.get('resetPending',False))}
 
 def _teacher_merge_mailbox(current, incoming, user, data):
     """Fusionne uniquement la boîte personnelle du professeur; les messages envoyés sont immuables."""
@@ -529,8 +727,9 @@ def _teacher_can_access_upload(user, relative, write=False):
         own_mail=(f'mail-v2/teacher:{tid}',f'mail-v2-drafts/teacher:{tid}')
         if rel in own_mail or any(rel.startswith(prefix+'/') for prefix in own_mail):
             return True
-        if rel.startswith(('mail-v2/','mail-v2-drafts/')): return False
-        if write: return rel.split('/',1)[0] in ('general','lessons','submissions','corrections')
+        if write:
+            if rel.startswith(('mail-v2/','mail-v2-drafts/')): return False
+            return rel.split('/',1)[0] in ('general','lessons','submissions','corrections')
         data=_load_database(); visible=_teacher_visible_data(data,user)
         mailbox=_teacher_visible_mailbox(data.get('mailboxV2',{}),user,data)
         needle='/data/uploads/'+rel
@@ -586,7 +785,7 @@ def _teacher_visible_data(data,user):
     out={key:data[key] for key in shared_keys if key in data}
     settings=data.get('settings')
     if isinstance(settings,dict):
-        shared_settings=('rooms','termMode','terms','competencyLevels','courseAppearanceMigrationV205')
+        shared_settings=('rooms','termMode','terms','competencyLevels','courseAppearanceMigrationV205','subjectColors')
         out['settings']={key:settings[key] for key in shared_settings if key in settings}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword','role','username','active')} for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
@@ -640,6 +839,8 @@ def _student_can_access_upload(user,relative,write=False):
         student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
         if not student_record: return False
         if write:
+            mail_prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
+            if any(rel.startswith(prefix) for prefix in mail_prefixes): return True
             prefix=f'submissions/{sid}/'
             if not rel.startswith(prefix): return False
             return any(isinstance(sub,dict) and str(sub.get('studentId') or '')==sid and sub.get('status')=='draft' and any(isinstance(f,dict) and (str(f.get('name') or '')==rel or str(f.get('url') or '')=='/data/uploads/'+rel) for f in (sub.get('files') or [])) for sub in data.get('submissions',[]) or [])
@@ -714,7 +915,27 @@ def _merge_student_data(current,incoming,user):
         if previous.get('status')!='draft':
             new_own.setdefault(ident,dict(previous))
     merged['submissions']=[x for x in old if str(x.get('studentId') or '')!=sid]+list(new_own.values())
+    merged['mailboxV2']=_student_merge_mailbox(current,incoming,user,current)
     return merged
+
+
+def _evaluation_publication_due(value, now=None):
+    """Vrai si la date/heure de publication est atteinte ; les dates seules restent compatibles."""
+    raw=str(value or '').strip()
+    if not raw:
+        return True
+    current=now or datetime.datetime.now(datetime.timezone.utc)
+    if current.tzinfo is None:
+        current=current.astimezone()
+    if len(raw)<=10:
+        return raw[:10] <= current.date().isoformat()
+    try:
+        scheduled=datetime.datetime.fromisoformat(raw.replace('Z','+00:00'))
+        if scheduled.tzinfo is None:
+            scheduled=scheduled.astimezone()
+        return scheduled.astimezone(datetime.timezone.utc) <= current.astimezone(datetime.timezone.utc)
+    except (TypeError,ValueError,OverflowError):
+        return False
 
 
 def _student_visible_data(data,user):
@@ -730,7 +951,7 @@ def _student_visible_data(data,user):
         if key in data: out[key]=data[key]
     settings=data.get('settings')
     if isinstance(settings,dict):
-        out['settings']={k:settings[k] for k in ('rooms','termMode','terms','competencyLevels') if k in settings}
+        out['settings']={k:settings[k] for k in ('rooms','termMode','terms','competencyLevels','subjectColors') if k in settings}
     class_record=next((x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),None)
     class_fields=('id','name','level','group','groups','room','attendanceMode','periodMode')
     out['classes']=[{k:v for k,v in class_record.items() if k in class_fields}] if class_record else []
@@ -758,8 +979,7 @@ def _student_visible_data(data,user):
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
         # Une note programmée pour une publication ultérieure ne doit pas être
         # transmise au navigateur élève, même si published est déjà positionné.
-        publish_at=str(item.get('publishAt') or '')[:10]
-        if publish_at and publish_at>datetime.date.today().isoformat(): continue
+        if not _evaluation_publication_due(item.get('publishAt')): continue
         if item.get('group') and str(item.get('group'))!=str(student_record.get('group') or ''): continue
         copy=dict(item)
         copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '')==sid]
@@ -780,7 +1000,7 @@ def _student_visible_data(data,user):
     out['cloudItems']=[]
     out['notifications']=[x for x in data.get('notifications',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid]
     out['mailFolders']=[]
-    out['mailboxV2']={}
+    out['mailboxV2']=_student_visible_mailbox(data.get('mailboxV2',{}),user,data)
     out['auditLog']=[]
     return out
 
@@ -833,7 +1053,14 @@ def _merge_teacher_data(current,incoming,user):
             if key in ('evaluations','attendance','submissions'):
                 ident=str(x.get('id') or '')
                 previous=next((z for z in current.get(key,[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==ident),None)
-                return _teacher_record_class_id(previous or x,current,key) in allowed
+                record=previous or x
+                if _teacher_record_class_id(record,current,key) not in allowed:
+                    return False
+                # Une évaluation n'est modifiable/supprimable que si le professeur
+                # est habilité sur sa matière, pas simplement parce qu'il accède à la classe.
+                if key=='evaluations' and not _teacher_can_edit_evaluation(current,user,record):
+                    return False
+                return True
             return _teacher_record_class_id(scope_record,current,key) in allowed
         old_scope={str(x.get('id')):x for x in old if x.get('id') and in_scope(x)}
         new_scope={str(x.get('id')):x for x in new if x.get('id') and in_scope(x)}
@@ -966,7 +1193,7 @@ def _merge_teacher_data(current,incoming,user):
                     new_subject_data=item.get('subjectData',{}) if isinstance(item.get('subjectData'),dict) else {}
                     filtered_subject_data={}
                     for subject,value in new_subject_data.items():
-                        if _teacher_can_teach_subject(current,user,item.get('classId'),subject):
+                        if _teacher_can_teach_subject_for_term(current,user,item.get('classId'),subject,item.get('termId')):
                             filtered_subject_data[subject]=value
                         elif subject in old_subject_data:
                             filtered_subject_data[subject]=old_subject_data[subject]

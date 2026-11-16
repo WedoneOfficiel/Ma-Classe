@@ -12,7 +12,11 @@ assert(src.includes('function openAuthStudent()'), 'students must have an indivi
 assert(src.includes('function saveStudentAccount(e)'), 'direction must be able to create individual student accounts');
 assert(src.includes("/api/admin/student-account"), 'student credentials must be created and hashed server-side');
 assert(src.includes("upload(file,'submissions/'+sid)"), 'student homework uploads must use the student-specific submission folder');
-assert(src.includes("scheduleView==='week'?studentScheduleWeek(ds,occ):scheduleView==='day'?studentScheduleDay(sel,occ):studentScheduleMonth(sel,occ)"), 'student timetable must use read-only student event cards');
+assert(src.includes("scheduleView==='week'?scheduleWeek(ds,occ,true):scheduleView==='day'?scheduleDay(sel,occ,true):scheduleMonth(sel,occ)"), 'student timetable must reuse the shared calendar renderers in read-only mode');
+assert(src.includes("Object.entries(s.overrides||{})"), 'bulletin permissions must inspect one-off replacements inside the bulletin period');
+assert(src.includes(String.raw`normalize('NFD').replace(/[\u0300-\u036f]/g,'')`), 'bulletin subject comparison must normalize accented French subject names like the server');
+assert(src.includes('name="publicationMode"') && src.includes('name="publishAtLocal"'), 'the active evaluation form must offer draft, immediate, and scheduled publication with a local date/time');
+assert(src.includes("scheduled.toISOString()"), 'scheduled publication must be stored as an absolute timestamp');
 assert(src.includes('La messagerie élève arrive dans une prochaine étape'), 'unreviewed student messaging must remain unavailable');
 assert(src.includes("for(const k of ['schedule','teacherAssignments','bulletins','attachments','conversations','teachers','subjects','cloudItems','mailFolders','users','notifications','auditLog','messages'])"),'all collections normalized defensively');
 assert(src.includes("cls(defaultClass)?.attendanceMode==='hour'"),'attendance mode must use the stored hour value');

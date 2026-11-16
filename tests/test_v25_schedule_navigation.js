@@ -104,7 +104,8 @@ assert.strictEqual(vm.runInContext("dayOcc(new Date(2026,10,13,12)).length", con
 const scheduleStart = source.indexOf('function schedule(){');
 const scheduleEnd = source.indexOf('function scheduleWeek(', scheduleStart);
 assert(scheduleStart >= 0 && scheduleEnd > scheduleStart, 'Le rendu du planning doit être présent.');
-context.window = {};
+context.window = {scrollY:0,scrollTo(){}};
+context.studentSettings = () => '<div id="student-settings"></div>';
 context.shell = () => '';
 context.esc = value => String(value ?? '');
 context.subjectColor = () => ['#fff','#ddd','#000'];
@@ -247,6 +248,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.FormData=FakeFormData;
   context.uid=()=> 'created-slot';
   context.subjectColor=()=>['#fff','#ddd','#000'];
+  context.subjectColorKey=value=>String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().replace(/\\s+/g,' ').toLowerCase();
   context.time=value=>String(value||'').slice(0,5);
   context.addHour=value=>'10:00';
   context.save=()=>{};
@@ -255,6 +257,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.api=async()=>JSON.parse(JSON.stringify(context.persistedSchedule));
   context.normalize=()=>{};
   context.closeModal=()=>{};
+  context.refreshSchedulePage=()=>context.render();
   context.toast=message=>{context.lastToast=message};
   context.render=()=>{context.renderCount++};
   context.db={schedule:[],classes:[{id:'class-1',name:'Classe 1'}],teachers:[],settings:{rooms:[]}};
