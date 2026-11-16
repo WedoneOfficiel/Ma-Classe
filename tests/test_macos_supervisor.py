@@ -647,7 +647,7 @@ active_calls = []
 def active_run(args, **kwargs):
     active_calls.append(args)
     if args[:2] == ["/bin/launchctl", "print"]:
-        return subprocess.CompletedProcess(args, 0, "state = running\\npid = 4321\\n", "")
+        return subprocess.CompletedProcess(args, 0, "state = running\npid = 4321\n", "")
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = active_run
 try:
