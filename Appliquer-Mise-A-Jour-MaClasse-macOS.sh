@@ -288,6 +288,31 @@ done
 [[ "$healthy" == "1" ]] || fail_restore "Le contrôle de santé n'a pas confirmé la nouvelle version."
 write_state installed
 write_maintenance_state completed
+# Keep the three newest releases, plus the active and immediate rollback versions.
+if ! "$ROOT/.venv/bin/python" - "$VERSIONS" "$TARGET_REAL" "$PREVIOUS_REAL" <<'PY'
+import re, shutil, sys
+from pathlib import Path
+root=Path(sys.argv[1]).resolve()
+active=Path(sys.argv[2]).resolve()
+previous=Path(sys.argv[3]).resolve()
+versions=[]
+for path in root.iterdir():
+    if path.is_symlink() or not path.is_dir():
+        continue
+    match=re.fullmatch(r"V(\\d+)\\.(\\d+)\\.(\\d+)",path.name)
+    if match:
+        versions.append((tuple(map(int,match.groups())),path.resolve()))
+keep={active,previous}
+keep.update(path for _,path in sorted(versions,reverse=True)[:3])
+for _,path in versions:
+    if path in keep:
+        continue
+    if path.parent==root and path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+PY
+then
+  echo "Avertissement : nettoyage des anciennes versions ignoré ; la mise à jour reste installée."
+fi
 if [[ -f "$DATA/update-maintenance.json" ]]; then
   "$ROOT/.venv/bin/python" - "$DATA/update-maintenance.json" <<'PY'
 import json,os,sys,time
