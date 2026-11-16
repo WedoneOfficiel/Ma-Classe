@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
-ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+if [[ -n "${MACLASSE_ROOT:-}" ]]; then
+  ROOT="$MACLASSE_ROOT"
+elif [[ -d "$SCRIPT_DIR/data" ]]; then
+  ROOT="$SCRIPT_DIR"
+else
+  ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd -P)"
+fi
+ROOT="$(cd "$ROOT" && pwd -P)"
 cd "$ROOT"
-DATA="$ROOT/data"
+DATA="${MACLASSE_DATA_DIR:-$ROOT/data}"
+DATA="$(cd "$DATA" && pwd -P)"
 PROGRAM_ROOT="$DATA/program"
 VERSIONS="$PROGRAM_ROOT/versions"
 CURRENT="$PROGRAM_ROOT/current"
