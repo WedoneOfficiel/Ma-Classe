@@ -40,6 +40,10 @@ class UpdateError(Exception):
     """An update release is invalid, unavailable, or unsafe."""
 
 
+class NoReleaseAvailable(UpdateError):
+    """The repository has not published a stable release yet."""
+
+
 def _request(url: str, limit: int) -> bytes:
     if not isinstance(url, str):
         raise UpdateError("URL de mise à jour invalide.")
@@ -56,6 +60,10 @@ def _request(url: str, limit: int) -> bytes:
             if final.scheme != "https" or final.hostname not in ALLOWED_DOWNLOAD_HOSTS:
                 raise UpdateError("Redirection hors des serveurs GitHub refusée.")
             data = response.read(limit + 1)
+    except urllib.error.HTTPError as exc:
+        if url == API_LATEST and exc.code == 404:
+            raise NoReleaseAvailable("Aucune release stable publiée pour le moment.") from exc
+        raise UpdateError(f"Impossible de contacter le serveur des versions : {exc}") from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise UpdateError(f"Impossible de contacter le serveur des versions : {exc}") from exc
     if len(data) > limit:
@@ -77,7 +85,11 @@ def check_latest_release(current_version: str) -> dict:
     """Return validated stable release metadata; never trusts a draft/prerelease."""
     current = _version_tuple(current_version)
     try:
-        release = json.loads(_request(API_LATEST, MAX_MANIFEST_BYTES).decode("utf-8"))
+        raw_release = _request(API_LATEST, MAX_MANIFEST_BYTES)
+    except NoReleaseAvailable:
+        return {"available": False, "current_version": current_version, "version": None}
+    try:
+        release = json.loads(raw_release.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise UpdateError("Réponse GitHub invalide.") from exc
 
