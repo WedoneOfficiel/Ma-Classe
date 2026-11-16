@@ -91,6 +91,8 @@ server.sys.platform = "darwin"
 calls = []
 def fake_run(args, **kwargs):
     calls.append(args)
+    if args[:2] == ["/bin/launchctl", "print"]:
+        return subprocess.CompletedProcess(args, 1, "", "Could not find service")
     if args[:3] == ["/bin/launchctl", "list", "fr.maclasse.update"]:
         return subprocess.CompletedProcess(args, 1, "", "")
     return subprocess.CompletedProcess(args, 0, "", "")
@@ -112,6 +114,14 @@ assert "StartCalendarInterval" not in immediate
 assert any(call[:2] == ["/bin/launchctl", "kickstart"] for call in calls)
 """
         subprocess.run(["python", "-c", code, str(ROOT)], check=True, cwd=ROOT)
+
+    def test_database_backup_happens_after_launchd_service_shutdown(self):
+        script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
+        stop = script.index('launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL"')
+        backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
+        self.assertLess(stop, backup)
+        self.assertLess(script.index('if [[ "$STOPPED" != "1" ]]'), backup)
+        self.assertIn("write_maintenance_state completed", script)
 
     def test_installer_checks_health_and_has_rollback_path(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
