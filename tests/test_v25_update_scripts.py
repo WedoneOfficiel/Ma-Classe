@@ -7,6 +7,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class UpdateScriptSafetyTests(unittest.TestCase):
+
+    def test_stable_release_workflow_is_gated_by_the_full_test_matrix(self):
+        tests = (ROOT / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+        release = (ROOT / ".github" / "workflows" / "publish-release.yml").read_text(encoding="utf-8")
+        self.assertIn("workflow_call:", tests)
+        self.assertIn("uses: ./.github/workflows/tests.yml", release)
+        self.assertIn("needs: validate", release)
+        self.assertIn("macos-validation:", tests)
+        self.assertIn("firefox-schedule-regression:", tests)
+
     def test_both_update_scripts_are_valid_shell(self):
         for name in ("Mettre-A-Jour-MaClasse.command", "Mettre-A-Jour-MaClasse-Linux.sh"):
             with self.subTest(script=name):
