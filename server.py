@@ -63,6 +63,8 @@ def _update_apply_service_active():
     raise RuntimeError("État du service de mise à jour impossible à vérifier.")
 
 def _cancel_update_timer():
+    if _update_apply_service_active():
+        raise RuntimeError("Une installation de mise à jour est déjà en cours ; annulation du timer refusée.")
     if sys.platform=='darwin':
         plist=_launchd_update_plist()
         domain=f'gui/{os.getuid()}/fr.maclasse.update'
