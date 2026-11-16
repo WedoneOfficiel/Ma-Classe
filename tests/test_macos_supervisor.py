@@ -93,8 +93,6 @@ def fake_run(args, **kwargs):
     calls.append(args)
     if args[:2] == ["/bin/launchctl", "print"]:
         return subprocess.CompletedProcess(args, 1, "", "Could not find service")
-    if args[:2] == ["/bin/launchctl", "print"]:
-        return subprocess.CompletedProcess(args, 1, "", "Could not find service")
     if args[:3] == ["/bin/launchctl", "list", "fr.maclasse.update"]:
         return subprocess.CompletedProcess(args, 1, "", "")
     return subprocess.CompletedProcess(args, 0, "", "")
