@@ -116,8 +116,8 @@ async function checkForUpdates(silent=false){
  try{
   updateCheckResult=await api('/api/admin/updates/check');
   if(!updateCheckResult.available){if(!silent)toast('MaClasse est déjà à jour.')}
-  else if(!updateCheckResult.compatible)toast('Une mise à jour existe, mais elle est incompatible avec la structure actuelle des données.');
-  else toast('Une nouvelle version stable est disponible dans Paramètres.');
+  else if(!silent&&!updateCheckResult.compatible)toast('Une mise à jour existe, mais elle est incompatible avec la structure actuelle des données.');
+  else if(!silent)toast('Une nouvelle version stable est disponible dans Paramètres.');
  }catch(error){updateCheckResult={error:error.message||'Vérification indisponible.'};if(!silent)toast(updateCheckResult.error)}
  finally{updateCheckBusy=false;render()}
 }
