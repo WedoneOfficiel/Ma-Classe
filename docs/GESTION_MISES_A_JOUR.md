@@ -120,6 +120,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Le script macOS historique refuse maintenant de faire un git merge si le marqueur du gestionnaire supervisé est présent, et refuse toute mise à jour initiale si un serveur MaClasse tourne encore.
 - Le SHA-256 publié avec le manifeste détecte les corruptions et incohérences d'archive, mais ne constitue pas une signature d'éditeur. Une attestation ou signature vérifiable, avec clé publique épinglée, reste bloquante avant une release stable destinée à des données scolaires réelles.
 - La chaîne macOS utilise un LaunchAgent de session utilisateur : MaClasse démarre à l'ouverture de session et ne doit pas être considérée comme un service disponible après déconnexion de cet utilisateur.
+- Le serveur macOS ne surveille pas encore les changements d'adresse DHCP à chaud. Réserver une adresse IP au Mac dans le routeur ; après un changement d'adresse, redémarrer le LaunchAgent pour renouveler le certificat et réécouter sur la nouvelle IP.
 
 ## Critères d'acceptation
 
