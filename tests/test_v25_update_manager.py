@@ -76,6 +76,12 @@ class ReleaseCheckerTests(unittest.TestCase):
             self.assertFalse(updater.check_latest_release("25.1.0")["available"])
             self.assertFalse(updater.check_latest_release("25.2.0")["available"])
 
+    def test_rejects_leading_zero_semver_components(self):
+        with self.assertRaises(updater.UpdateError):
+            updater._version_tuple("v025.1.0")
+        with self.assertRaises(updater.UpdateError):
+            updater._version_tuple("25.01.0")
+
     def test_rejects_invalid_tag(self):
         self.release["tag_name"] = "latest"
         with patch.object(updater, "_request", side_effect=self.fake_request):
