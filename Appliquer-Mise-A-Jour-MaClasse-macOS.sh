@@ -62,7 +62,7 @@ health_ok() {
   local expected="$1" host
   host="$(/usr/bin/openssl x509 -in "$DATA/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -oE 'IP Address:[0-9.]+' | /usr/bin/head -n1 | /usr/bin/cut -d: -f2 || true)"
   [[ -n "$host" ]] || return 1
-  /usr/bin/curl --silent --fail --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" "https://$host:8765/api/health" 2>/dev/null | EXPECTED_VERSION="$expected" "$ROOT/.venv/bin/python" -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
+  /usr/bin/curl --noproxy '*' --silent --fail --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" "https://$host:8765/api/health" 2>/dev/null | EXPECTED_VERSION="$expected" "$ROOT/.venv/bin/python" -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
 }
 start_service() {
   /bin/launchctl bootstrap "gui/$UID_NOW" "$SERVICE_PLIST" 2>/dev/null || true
