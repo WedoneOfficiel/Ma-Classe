@@ -503,3 +503,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 27. **Renforcement de la recette macOS launchd.** Les tests précédents validaient la génération du plist et simulaient `launchctl` ; ils ne vérifiaient pas que le gestionnaire launchd du runner macOS acceptait réellement le bootstrap. Un test d'intégration isolé crée un HOME temporaire, installe un agent avec un lanceur factice, vérifie son démarrage effectif puis le décharge et nettoie le processus (`e667b59`). Il est limité au runner macOS et ne touche pas à une installation réelle de l'utilisateur. Il doit encore passer en CI.
+
+
+28. **Sandbox du test EDT élève — helper manquant.** La suite a atteint le rendu de la page « Séances & leçons » et le test VM n'avait pas le helper `jsArg` désormais utilisé pour les dates dans les attributs. Ajout du sérialiseur au contexte du test (`60b7580`). Les vérifications précédentes du rendu élève et des fonctions de navigation avaient passé avant cette exception. CI à reconfirmer.
