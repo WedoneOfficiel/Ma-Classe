@@ -21,6 +21,14 @@ SERVICE_LABEL="fr.maclasse.server"
 UPDATE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.update.plist"
 SERVICE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.server.plist"
 UID_NOW="$(id -u)"
+SERVICE_DISABLED=0
+restore_service_enabled() {
+  if [[ "$SERVICE_DISABLED" == "1" ]]; then
+    /bin/launchctl enable "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
+    SERVICE_DISABLED=0
+  fi
+}
+trap restore_service_enabled EXIT
 exec 9>"$DATA/update-apply.lock"
 if ! "$ROOT/.venv/bin/python" -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2>/dev/null; then
   echo "Une autre mise à jour est en cours ou un serveur manuel utilise encore le verrou partagé ; arrête-le avant de continuer." >&2
@@ -65,6 +73,8 @@ health_ok() {
   /usr/bin/curl --noproxy '*' --silent --fail --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" "https://$host:8765/api/health" 2>/dev/null | EXPECTED_VERSION="$expected" "$ROOT/.venv/bin/python" -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
 }
 start_service() {
+  /bin/launchctl enable "gui/$UID_NOW/$SERVICE_LABEL"
+  SERVICE_DISABLED=0
   /bin/launchctl bootstrap "gui/$UID_NOW" "$SERVICE_PLIST" 2>/dev/null || true
   /bin/launchctl kickstart "gui/$UID_NOW/$SERVICE_LABEL"
 }
@@ -72,6 +82,11 @@ stop_service_and_confirm() {
   local service_pid probe alive loaded
   service_pid="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
   [[ "$service_pid" =~ ^[0-9]+$ ]] || return 1
+
+  # Désactiver d'abord KeepAlive : sinon launchd peut relancer le processus
+  # après SIGKILL pendant que bootout attend encore sa terminaison.
+  /bin/launchctl disable "gui/$UID_NOW/$SERVICE_LABEL" || return 1
+  SERVICE_DISABLED=1
 
   # bootout peut attendre indéfiniment server_close() si un client TLS inactif
   # conserve un thread de requête. Le lancer en arrière-plan permet de borner
