@@ -218,8 +218,12 @@ import os,sys
 backup,directory=sys.argv[1],sys.argv[2]
 with open(backup,"rb") as stream: os.fsync(stream.fileno())
 fd=os.open(directory,os.O_RDONLY)
-try: os.fsync(fd)
-finally: os.close(fd)
+try:
+    os.fsync(fd)
+except OSError:
+    pass
+finally:
+    os.close(fd)
 PYSYNC
 then
   /bin/rm -f "$BACKUP_FILE"
