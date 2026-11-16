@@ -482,3 +482,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Les correctifs de sérialisation du timer systemd et de la fixture JS ont été poussés après ce run. Il faut attendre une nouvelle CI complète sur le dernier commit avant de conclure.
 - Aucun artefact de release stable n'est publié à ce jour : l'installation depuis une vraie release, la vérification SHA-256 contre une release publiée et les mises à jour successives restent impossibles à valider de bout en bout.
 - Aucun test n'a été exécuté sur le Mac de l'utilisateur ni sur le PC Fedora cible ; aucune installation locale n'a été modifiée.
+
+
+21. **Fixture de test des compétences — format des arguments.** Après ajout du helper `jsArg`, le test évaluait bien la fonction mais attendait encore des arguments sérialisés avec apostrophes simples. Le sérialiseur produit volontairement des littéraux JSON entre guillemets doubles ; l'assertion était donc obsolète. Elle attend maintenant `setCompetencyRating("e1","s1"` (`0f88e86`). Ce n'est pas un défaut fonctionnel de l'application, mais un défaut du test. La nouvelle CI doit confirmer la suite complète.
