@@ -371,11 +371,13 @@ subjectKeyIdentifier=hash
                 service_log = (data / "service.log").read_text(encoding="utf-8", errors="replace") if (data / "service.log").exists() else ""
                 service_error = (data / "service-error.log").read_text(encoding="utf-8", errors="replace") if (data / "service-error.log").exists() else ""
                 runner_log = (data / "runner.log").read_text(encoding="utf-8", errors="replace") if (data / "runner.log").exists() else ""
+                process_info = subprocess.run(["/bin/ps", "-axo", "pid,ppid,stat,command"], capture_output=True, text=True, timeout=10).stdout
+                listener_info = subprocess.run(["/usr/sbin/lsof", "-nP", "-iTCP:8765", "-sTCP:LISTEN"], capture_output=True, text=True, timeout=10).stdout
                 raise AssertionError(
                     "Le serveur de test n'est pas sain pour " + version + " : " + repr(last_error)
                     + "\\nlaunchctl list:\\n" + launchd_list.stdout + launchd_list.stderr
                     + "\\nlaunchctl print:\\n" + launchd_print.stdout + launchd_print.stderr
-                    + "\\nstdout:\\n" + service_log + "\\nstderr:\\n" + service_error + "\\nrunner:\\n" + runner_log
+                    + "\\nstdout:\\n" + service_log + "\\nstderr:\\n" + service_error + "\\nrunner:\\n" + runner_log + "\\nlisteners:\\n" + listener_info + "\\nprocesses:\\n" + process_info[-8000:]
                 )
 
             try:
