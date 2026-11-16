@@ -494,3 +494,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 24. **Assertions UI du module Résultats élève V21.17 obsolètes.** Le test attendait les anciennes interpolations directes de chaînes dans les handlers du détail d'évaluation et du sélecteur de période. Le code actuel utilise `jsArg()` pour sérialiser les identifiants ; les deux assertions sont mises à jour pour vérifier cette protection (`46fcedd`). La CI suivante doit poursuivre la suite complète.
+
+
+25. **Assertion de navigation EDT obsolète.** Le test attendait encore l'interpolation directe `${iso(x)}` dans les handlers du calendrier mensuel et du mini-calendrier. Le code utilise maintenant `jsArg(iso(x))` pour sérialiser les dates dans les attributs HTML. Les assertions contrôlent cette version sûre (`1e53fc3`). Les tests de logique du calendrier eux-mêmes avaient passé jusqu'à cette assertion. CI à reconfirmer.
