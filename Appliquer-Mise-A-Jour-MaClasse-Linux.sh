@@ -171,4 +171,29 @@ if [[ "$healthy" != "1" ]]; then
 fi
 write_state "installed"
 write_maintenance_state "completed"
+# Garder les trois dernières versions et toujours le code actif + son prédécesseur.
+if ! /usr/bin/python3 - "$VERSIONS_ROOT" "$TARGET_REAL" "$PREVIOUS_TARGET" <<'PY'
+import re, shutil, sys
+from pathlib import Path
+root=Path(sys.argv[1]).resolve()
+active=Path(sys.argv[2]).resolve()
+previous=Path(sys.argv[3]).resolve()
+versions=[]
+for path in root.iterdir():
+    if path.is_symlink() or not path.is_dir():
+        continue
+    match=re.fullmatch(r"V(\d+)\.(\d+)\.(\d+)",path.name)
+    if match:
+        versions.append((tuple(map(int,match.groups())),path.resolve()))
+keep={active,previous}
+keep.update(path for _,path in sorted(versions,reverse=True)[:3])
+for _,path in versions:
+    if path in keep:
+        continue
+    if path.parent==root and path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+PY
+then
+  echo "Avertissement : nettoyage des anciennes versions ignoré ; la mise à jour reste installée."
+fi
 echo "Mise à jour MaClasse $VERSION_NUMBER installée et contrôlée avec succès."
