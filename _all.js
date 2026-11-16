@@ -61,9 +61,10 @@ function updateSettingsCard(){
  let html='<div class="card settingsCard"><div class="sectionhead"><h2>Mises à jour</h2><span class="pill">'+MC_VERSION+'</span></div><p class="muted">Recherche les nouvelles versions stables publiées officiellement pour MaClasse.</p><button class="btn primary" onclick="checkForUpdates()" '+(updateCheckBusy?'disabled':'')+'>'+(updateCheckBusy?'Vérification…':'Rechercher des mises à jour')+'</button>';
  if(updateCheckResult?.available){
   html+='<div class="notice '+(updateCheckResult.compatible?'':'warn')+'" style="margin-top:12px"><b>'+esc(updateCheckResult.version)+'</b><p>'+esc(updateCheckResult.release_notes||'Nouvelle version stable disponible.')+'</p><p>'+(updateCheckResult.compatible?'Compatible avec les données actuelles.':esc(updateCheckResult.compatibility_message||'Mise à jour incompatible.'))+'</p></div>';
-  if(updateCheckResult.compatible&&updateCheckResult.install_supported&&!updateCheckResult.prepared)html+='<button class="btn" style="margin-top:10px" onclick="prepareUpdate()">Télécharger et préparer</button>';
-  if(updateCheckResult.compatible&&!updateCheckResult.install_supported)html+='<p class="hint">Le gestionnaire de mises à jour Linux doit être installé sur le serveur avant de pouvoir préparer et installer cette version depuis MaClasse.</p>';
-  if(updateCheckResult.prepared&&updateCheckResult.install_supported){
+  if(updateCheckResult.installing)html+='<p class="hint">Installation lancée. Le serveur est en cours de redémarrage ; cette page peut devenir temporairement inaccessible.</p>';
+  else if(updateCheckResult.compatible&&updateCheckResult.install_supported&&!updateCheckResult.prepared)html+='<button class="btn" style="margin-top:10px" onclick="prepareUpdate()">Télécharger et préparer</button>';
+  if(!updateCheckResult.installing&&updateCheckResult.compatible&&!updateCheckResult.install_supported)html+='<p class="hint">Le gestionnaire de mises à jour Linux doit être installé sur le serveur avant de pouvoir préparer et installer cette version depuis MaClasse.</p>';
+  if(!updateCheckResult.installing&&updateCheckResult.prepared&&updateCheckResult.install_supported){
    html+='<p class="hint">Version téléchargée, vérifiée et prête à installer. Tu peux l’installer immédiatement ou programmer la maintenance.</p>';
    if(scheduledNotice?.scheduled&&scheduledNotice.maintenance?.version===updateCheckResult.version){
     html+='<div class="notice" style="margin-top:10px">Installation programmée le <b>'+esc(formatMaintenanceDate(scheduledNotice.maintenance.scheduled_at))+'</b>.<button class="btn small danger" style="margin-top:8px" onclick="cancelScheduledUpdate()">Annuler la maintenance</button></div>';
