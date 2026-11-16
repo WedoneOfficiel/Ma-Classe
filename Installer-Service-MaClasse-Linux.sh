@@ -24,7 +24,7 @@ After=default.target
 Type=simple
 Environment=MACLASSE_SUPERVISED=systemd
 WorkingDirectory=$ROOT
-ExecStart=/usr/bin/bash $ROOT/Lancer-MaClasse-Service-Linux.sh
+ExecStart=/usr/bin/bash $ROOT/data/program/current/Lancer-MaClasse-Service-Linux.sh
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=120
