@@ -4,6 +4,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
+from html import escape as html_escape
+from html.parser import HTMLParser
 
 APP_VERSION='25.0.22'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
@@ -357,11 +359,114 @@ def _database_revision():
     return hashlib.sha256(raw).hexdigest()
 
 
+class _RichHTMLSanitizer(HTMLParser):
+    allowed={'b','strong','i','em','u','s','p','br','ul','ol','li','blockquote','div','span','a'}
+    blocked={'script','style','iframe','object','embed','svg','math','template'}
+    void={'br'}
+    font_sizes={'1':'0.75em','2':'0.875em','3':'1em','4':'1.125em','5':'1.5em','6':'2em','7':'2.5em'}
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts=[]
+        self.stack=[]
+        self.skip_depth=0
+    def _span_style(self,style):
+        rules={}
+        for part in str(style or '').split(';'):
+            if ':' not in part: continue
+            key,value=part.split(':',1)
+            rules[key.strip().lower()]=value.strip()
+        safe=[]
+        for key in ('color','background-color'):
+            value=rules.get(key,'')
+            if re.fullmatch(r'#[0-9a-fA-F]{3,8}',value) or re.fullmatch(r'rgba?\([\d.%\s,]+\)',value):
+                safe.append(f'{key}:{value}')
+        size=rules.get('font-size','')
+        if re.fullmatch(r'(?:0\.(?:75|875)|1(?:\.125|\.5)?|2(?:\.5)?)(?:em)',size) or re.fullmatch(r'(?:[8-9]|[1-4][0-9])px',size):
+            safe.append(f'font-size:{size}')
+        return ';'.join(safe)
+    def handle_starttag(self,tag,attrs):
+        tag=tag.lower()
+        if self.skip_depth:
+            if tag in self.blocked: self.skip_depth+=1
+            return
+        if tag in self.blocked:
+            self.skip_depth=1
+            return
+        attr=dict(attrs)
+        emitted=tag
+        safe_attrs=[]
+        if tag=='font':
+            emitted='span'
+            size=self.font_sizes.get(str(attr.get('size') or ''))
+            if size: safe_attrs.append(('style',f'font-size:{size}'))
+        elif tag not in self.allowed:
+            return
+        elif tag=='a':
+            href=str(attr.get('href') or '').strip()
+            if re.match(r'^https?://',href,re.I):
+                safe_attrs.extend([('href',href),('target','_blank'),('rel','noopener noreferrer')])
+        elif tag=='span':
+            style=self._span_style(attr.get('style'))
+            if style: safe_attrs.append(('style',style))
+        rendered=''.join(f' {name}="{html_escape(value,quote=True)}"' for name,value in safe_attrs)
+        self.parts.append(f'<{emitted}{rendered}>')
+        if emitted not in self.void: self.stack.append((tag,emitted))
+    def handle_endtag(self,tag):
+        tag=tag.lower()
+        if self.skip_depth:
+            if tag in self.blocked: self.skip_depth=max(0,self.skip_depth-1)
+            return
+        for index in range(len(self.stack)-1,-1,-1):
+            if self.stack[index][0]==tag:
+                while len(self.stack)>index:
+                    _,emitted=self.stack.pop()
+                    self.parts.append(f'</{emitted}>')
+                break
+    def handle_startendtag(self,tag,attrs):
+        self.handle_starttag(tag,attrs)
+        if tag.lower() not in self.void: self.handle_endtag(tag)
+    def handle_data(self,data):
+        if not self.skip_depth: self.parts.append(html_escape(data,quote=False))
+    def handle_comment(self,data):
+        return
+    def result(self):
+        while self.stack:
+            _,emitted=self.stack.pop()
+            self.parts.append(f'</{emitted}>')
+        return ''.join(self.parts)
+
+
+def _sanitize_rich_html(value):
+    raw=str(value or '')
+    if not raw: return ''
+    parser=_RichHTMLSanitizer()
+    try:
+        parser.feed(raw)
+        parser.close()
+        return parser.result()
+    except Exception:
+        return html_escape(raw,quote=False)
+
+
+def _sanitize_rich_data(data):
+    if not isinstance(data,dict): return data
+    for lesson in data.get('lessons',[]) or []:
+        if not isinstance(lesson,dict): continue
+        if 'content' in lesson: lesson['content']=_sanitize_rich_html(lesson.get('content'))
+        homework=lesson.get('homework')
+        if isinstance(homework,dict) and 'instructions' in homework:
+            homework['instructions']=_sanitize_rich_html(homework.get('instructions'))
+    for submission in data.get('submissions',[]) or []:
+        if isinstance(submission,dict) and 'correctionComment' in submission:
+            submission['correctionComment']=_sanitize_rich_html(submission.get('correctionComment'))
+    return data
+
+
 def _load_database():
     try:
         with DATA_LOCK:
             with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
-        return data if isinstance(data,dict) else {}
+        return _sanitize_rich_data(data) if isinstance(data,dict) else {}
     except Exception:
         return {}
 
@@ -2488,6 +2593,7 @@ class Handler(SimpleHTTPRequestHandler):
                         self._create_backup(force=False)
                 except (OSError, ValueError, TypeError) as e:
                     return self._json({'error': f'Sauvegarde de sécurité impossible : {e}'}, 500)
+                _sanitize_rich_data(data)
                 tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                 try:
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
