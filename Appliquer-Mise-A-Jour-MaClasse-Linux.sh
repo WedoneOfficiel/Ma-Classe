@@ -18,6 +18,7 @@ try:
     with open(path, encoding="utf-8") as f: state=json.load(f)
 except Exception:
     state={}
+if not isinstance(state,dict): state={}
 state.update({"status":os.environ["UPDATE_STATUS"],"updated_at":int(time.time())})
 if os.environ.get("UPDATE_ERROR"):
     state["last_error"]=os.environ["UPDATE_ERROR"]
@@ -36,6 +37,7 @@ import json, os, time
 path=os.environ["MAINTENANCE_FILE"]
 if not os.path.isfile(path): raise SystemExit(0)
 with open(path,encoding="utf-8") as f: state=json.load(f)
+if not isinstance(state,dict): raise SystemExit(0)
 if state.get("status") in ("scheduled","installing"):
     state["status"]=os.environ["MAINTENANCE_STATUS"]
     state["updated_at"]=int(time.time())
@@ -72,8 +74,11 @@ fail_and_restore() {
 
 health_ok() {
   local expected="$1"
+  local host
+  host="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | grep -oE 'IP Address:[0-9.]+' | head -n1 | cut -d: -f2 || true)"
+  [[ -n "$host" ]] || return 1
   curl --silent --show-error --fail --connect-timeout 2 --max-time 4 \
-    --cacert "$DATA_ROOT/tls/ca.crt" "https://$LAN_IP:8765/api/health" 2>/dev/null |
+    --cacert "$DATA_ROOT/tls/ca.crt" "https://$host:8765/api/health" 2>/dev/null |
     EXPECTED_VERSION="$expected" /usr/bin/python3 -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
 }
 
@@ -130,9 +135,6 @@ fi
 systemctl --user disable --now maclasse-update-scheduled.timer >/dev/null 2>&1 || true
 write_state "installing"
 write_maintenance_state "installing"
-LAN_IP="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | grep -oE 'IP Address:[0-9.]+' | head -n1 | cut -d: -f2 || true)"
-[[ -n "$LAN_IP" ]] || fail_and_restore "Adresse IP du certificat TLS introuvable."
-
 echo "Arrêt temporaire de MaClasse…"
 if ! systemctl --user stop maclasse.service; then
   fail_and_restore "L’arrêt propre du serveur a échoué."
