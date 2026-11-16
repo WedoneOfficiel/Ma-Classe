@@ -4,7 +4,7 @@ assert(html.includes('MaClasse V21.22 — MaClasse 27 Liquid UI'),'visible versi
 assert(js.includes("const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];"),'EDT must expose 7 days');
 assert((js.match(/DAYS\.map/g)||[]).length>=2,'DAYS must drive schedule day selectors');
 assert(js.includes("function openAttendance(id=null,preset=null)"),'attendance quick preset missing');
-assert(js.includes("openAttendance(null,{classId:'${o.classId}',date:'${date}',slotId:'${sid}'})"),'schedule occurrence attendance action missing');
+assert(js.includes("openAttendance(null,{classId:${jsArg(o.classId)},date:${jsArg(date)},slotId:${jsArg(sid)}})"),'schedule occurrence attendance action must safely serialize untrusted identifiers');
 assert(js.includes('form onsubmit="performLogin(event)"') && js.includes('autocomplete="username" required autofocus'),'unified login should be keyboard-ready');
 assert(html.includes('.scheduleDays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0;width:100%}'),'7-column schedule styling missing');
 console.log('OK — V21.22 UX actions, attendance shortcuts and 7-day EDT.');
