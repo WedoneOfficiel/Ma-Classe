@@ -7,6 +7,10 @@ const start = source.indexOf("function eventCard(o,d,studentMode=false){");
 const end = source.indexOf("function startScheduleDrag", start);
 assert(start >= 0 && end > start, "eventCard function must exist");
 const eventCardSource = source.slice(start, end);
+assert(source.includes("const safeRichHtml=value=>"), "rich lesson content must have a client-side sanitizer");
+assert(source.includes("const content=safeRichHtml(l.content||'')"), "student lesson content must be sanitized");
+assert(source.includes("safeRichHtml(l.homework.instructions||'')"), "student homework instructions must be sanitized");
+assert(source.includes("safeRichHtml(sub.correctionComment||'')"), "teacher correction editor must be sanitized");
 
 const sandbox = {
   iso: () => "2026-11-16",
