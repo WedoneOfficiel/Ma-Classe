@@ -49,6 +49,10 @@ def run():
             server._schedule_update_timer(timestamp)
             assert timer.is_file()
             content = timer.read_text(encoding="utf-8")
+            assert content.splitlines()[0] == "[Unit]"
+            assert content.splitlines()[1].startswith("Description=MaClasse")
+            assert content.count("[Unit]") == 1 and content.count("[Timer]") == 1 and content.count("[Install]") == 1
+            assert "\\\\n" not in content, "timer file must contain real newlines, not literal backslash-n sequences"
             assert "[Timer]" in content
             assert "OnCalendar=" in content and " UTC" in content
             assert "AccuracySec=1s" in content
