@@ -58,13 +58,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 | AMEL-U7 | Lanceur macOS perdant la racine d'installation après la première mise à jour | Le script d'installation exécuté depuis `data/program/versions/Vx` pouvait prendre ce dossier de version pour la racine et chercher les données au mauvais endroit. | Passage explicite de `MACLASSE_ROOT` et `MACLASSE_DATA_DIR` par launchd et le lanceur ; résolution de secours depuis le chemin de version. Tests des deux plists et des chemins. | En cours de validation CI |
 | AMEL-U8 | Interface macOS annonçant à tort que le support n'existe pas | Même avec un premier service launchd développé, l'interface indiquait encore que le support macOS serait ajouté plus tard et ne donnait aucune procédure d'installation. | Message remplacé par les prérequis HTTPS et la commande d'installation du service macOS. Test UI ajouté. | En cours de validation CI |
 
+| AMEL-U9 | Annulation du timer systemd non confirmée | Le code supprimait le fichier timer même si `systemctl disable --now` avait échoué, sans vérifier qu'il était inactif et désactivé. | Vérification distincte de `is-active` et `is-enabled` avant suppression ; échec fermé si l'état reste actif ou impossible à vérifier. Test de régression qui conserve le fichier si le timer reste actif. | En cours de validation CI |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires du gestionnaire relevées : **10** (correctifs poussés, CI à valider)
+- Anomalies complémentaires du gestionnaire relevées : **11** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **10** anomalies AMEL complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **11** anomalies AMEL complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
