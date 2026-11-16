@@ -83,14 +83,14 @@ class UpdateScriptSafetyTests(unittest.TestCase):
             (root / ".git").mkdir(parents=True)
             python = root / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
-            python.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+            python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             python.chmod(0o755)
             marker = root / "data" / "update-manager.enabled"
             marker.parent.mkdir(parents=True)
             marker.write_text("enabled", encoding="utf-8")
             script = root / "Mettre-A-Jour-MaClasse.command"
             shutil.copy2(ROOT / "Mettre-A-Jour-MaClasse.command", script)
-            result = subprocess.run(["bash", str(script)], cwd=root, input="\\n",
+            result = subprocess.run(["bash", str(script)], cwd=root, input="\n",
                                     capture_output=True, text=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("gestionnaire de mises à jour supervisé", result.stdout)
@@ -104,18 +104,18 @@ class UpdateScriptSafetyTests(unittest.TestCase):
             (root / ".git").mkdir(parents=True)
             python = root / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
-            python.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+            python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             python.chmod(0o755)
             script = root / "Mettre-A-Jour-MaClasse.command"
             shutil.copy2(ROOT / "Mettre-A-Jour-MaClasse.command", script)
             fakebin = Path(tmp) / "bin"
             fakebin.mkdir()
             pgrep = fakebin / "pgrep"
-            pgrep.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+            pgrep.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             pgrep.chmod(0o755)
             env = os.environ.copy()
             env["PATH"] = str(fakebin) + os.pathsep + env.get("PATH", "")
-            result = subprocess.run(["bash", str(script)], cwd=root, env=env, input="\\n",
+            result = subprocess.run(["bash", str(script)], cwd=root, env=env, input="\n",
                                     capture_output=True, text=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("serveur MaClasse est encore actif", result.stdout)
