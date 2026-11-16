@@ -78,7 +78,9 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 cwd=program, env=env, capture_output=True, text=True, timeout=30
             )
             state = json.loads((data / "update-state.json").read_text(encoding="utf-8"))
-            database = json.loads((data / "maclasse.json").read_text(encoding="utf-8"))\n            backup_count = len(list((data / "backups").glob("maclasse-avant-maj-*.json")))\n            return result, current.resolve(), previous.resolve(), target.resolve(), state, database, backup_count
+            database = json.loads((data / "maclasse.json").read_text(encoding="utf-8"))
+            backup_count = len(list((data / "backups").glob("maclasse-avant-maj-*.json")))
+            return result, current.resolve(), previous.resolve(), target.resolve(), state, database, backup_count
 
     def test_success_switches_atomically_and_preserves_persistent_data(self):
         result, active, previous, target, state, database, backup_count = self.run_update()
