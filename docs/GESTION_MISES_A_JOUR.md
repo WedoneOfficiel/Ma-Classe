@@ -35,8 +35,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Un superviseur local indépendant contrôle le cycle de vie du serveur.
 - Sur Fedora/Linux, le service utilisateur **systemd** supervise MaClasse et son gestionnaire. L'installation configure le démarrage automatique et le maintien du service après déconnexion (linger).
 - Sur macOS, un agent **launchd** assure le même rôle.
-- Le serveur web communique avec le gestionnaire par un canal local non exposé au réseau (socket Unix ou mécanisme local équivalent), avec permissions limitées au compte qui exécute MaClasse.
-- Le gestionnaire n'accepte que des opérations prédéfinies : vérifier, préparer, programmer, annuler, installer. Aucune commande shell libre ne vient de l'interface web.
+- Le serveur web déclenche uniquement des unités systemd prédéfinies via des appels locaux fixes. Aucun endpoint réseau ne permet de lancer une commande shell libre.
+- Le service reste sans privilèges root et les unités limitent les écritures au dossier de données. Le superviseur et le serveur tournent sous le même compte système dédié à MaClasse.
 
 ### 4. Parcours de mise à jour
 
@@ -45,8 +45,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 3. La direction choisit **Installer maintenant** ou **Télécharger et programmer**.
 4. Le téléchargement et les contrôles se font avant l'interruption. Une préparation échouée ne touche pas au serveur actif.
 5. Pour une installation programmée, tous les rôles reçoivent une notification avec la date et l'heure locales exactes. La direction peut annuler ou modifier l'horaire.
-6. Au début de la maintenance, les nouvelles écritures sont brièvement bloquées ; le gestionnaire attend la fin des écritures déjà engagées (délai maximal borné), puis arrête le serveur proprement.
-7. Une sauvegarde cohérente de la base et des paramètres locaux est créée. Les fichiers téléversés restent dans leur emplacement persistant ; leur sauvegarde relève de la politique de sauvegarde existante, pas d'une recopie à chaque mise à jour.
+6. À l'heure prévue, le serveur cesse d'accepter de nouvelles connexions ; son arrêt gracieux attend la fin des requêtes déjà engagées. systemd borne l'attente à 120 secondes avant arrêt forcé.
+7. Une copie horodatée de la base JSON (qui contient aussi les paramètres) est créée avant l'arrêt. En cas d'échec, cette copie est restaurée avant de redémarrer l'ancienne version. Les fichiers téléversés restent dans leur emplacement persistant et ne sont pas recopiés pendant la mise à jour.
 8. Le gestionnaire active la version préparée et redémarre le serveur.
 9. Des contrôles de santé vérifient que le serveur répond, que la version attendue est active et que la base est lisible.
 10. Si le démarrage ou le contrôle échoue, le gestionnaire réactive la version précédente et redémarre. La sauvegarde reste disponible.
@@ -68,7 +68,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - La vérification des releases stables est lancée à la connexion de la direction puis répétée toutes les six heures ; la direction peut aussi la relancer manuellement depuis Paramètres. Une nouvelle version est signalée uniquement à la direction.
 - La direction peut télécharger/préparer une version compatible depuis Paramètres. Chaque version préparée possède son propre `.venv` et un marqueur `maclasse-prepared.json`. Le serveur actif n'est pas interrompu.
 - La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
-- Le premier script indépendant `Appliquer-Mise-A-Jour-MaClasse-Linux.sh` est ajouté : sauvegarde de `maclasse.json`, arrêt propre du service, bascule atomique du lien de version, redémarrage, contrôle de santé HTTPS et retour à la version précédente en cas d'échec. Il n'a pas encore été exécuté sur le PC Fedora cible.
+- Le moteur indépendant `Appliquer-Mise-A-Jour-MaClasse-Linux.sh` sauvegarde `maclasse.json`, attend la fin des requêtes engagées (limite systemd de 120 s), bascule atomiquement le lien de version, redémarre et contrôle la santé HTTPS. En cas d'échec, il restaure la base et le code précédents avant de relancer le service. Le moteur est appelé depuis la version active pour que ses correctifs restent à jour au fil des releases. Il n'a pas encore été exécuté sur le PC Fedora cible.
 - La base, les pièces jointes et les certificats sont désormais servis depuis `MACLASSE_DATA_DIR`, indépendamment du dossier de code versionné. Le serveur attend la fin des requêtes déjà engagées lors de l'arrêt supervisé.
 - La direction peut programmer une installation à une date/heure précise ou l'annuler. Un timer systemd ponctuel UTC déclenche le même moteur d'installation que l'action immédiate.
 - Une bannière de maintenance est exposée à tous les rôles authentifiés, avec date/heure locale et rappel d'enregistrer le travail. Elle est actualisée à la connexion puis périodiquement.
@@ -84,7 +84,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - L'installateur active le maintien du gestionnaire utilisateur au démarrage via `loginctl enable-linger` (demande sudo si nécessaire). Il ne supprime ni le programme ni les données lors de la désinstallation.
 - Garder le mode de lancement manuel utilisable comme secours.
 - Ajouter tests d'installation, de démarrage, d'arrêt, de redémarrage et de permissions.
-- Les tests unitaires du vérificateur couvrent versions, releases instables, manifeste, empreinte, hôtes non approuvés et chemins ZIP dangereux ; exécution CI encore à confirmer.
+- Les tests unitaires du vérificateur couvrent versions, releases instables, manifeste, empreinte, hôtes non approuvés et chemins ZIP dangereux ; le job Linux a réussi sur le commit précédent, la nouvelle suite d'intégration est en cours de CI.
 
 ### Phase B — gestionnaire et préparation
 - [x] Ajouter le premier module de vérification des releases et la préparation d'archive isolée.
@@ -100,8 +100,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 ### Phase D — installation atomique et reprise
 - [x] Ajouter la première chaîne Linux : environnement par version, sauvegarde de la base, arrêt propre avec attente des requêtes, bascule atomique, redémarrage, health-check HTTPS et rollback du code.
-- Ajouter des tests d'intégration qui simulent les échecs à chaque étape et vérifient le retour à la version précédente.
-- Les tests automatisés couvrent le format du timer, l'annulation, les accès par rôle et la bannière ; l'exécution réelle du cycle complet et les pannes simulées restent à valider.
+- [x] Ajouter un scénario d'intégration Linux simulant une installation réussie et un health-check défaillant ; vérifier la bascule, la restauration du code et de la base.
+- Les tests automatisés couvrent aussi le timer, l'annulation, les accès par rôle, la bannière et les scripts systemd. La CI du dernier commit et les pannes supplémentaires restent à valider.
 - Tester sur Fedora avec le matériel cible avant toute utilisation avec des données scolaires réelles.
 
 ### Phase E — macOS
