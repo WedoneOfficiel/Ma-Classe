@@ -6,6 +6,7 @@ assert(source.includes("function maintenanceBanner()"));
 assert(source.includes("api('/api/update-maintenance')"));
 assert(source.includes("function scheduleUpdate()"));
 assert(source.includes("function cancelScheduledUpdate()"));
+assert(source.includes("else if(!silent)toast('Une nouvelle version stable est disponible dans Paramètres.')"));
 assert(source.includes("Installer maintenant"));
 assert(source.includes("Les modifications non enregistrées pourraient être perdues."));
 assert(source.includes("authCanManage()"));
