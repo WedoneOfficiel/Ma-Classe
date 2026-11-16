@@ -129,6 +129,19 @@ assert scheduled.exists()
 """
         subprocess.run(["python", "-c", code, str(ROOT)], check=True, cwd=ROOT)
 
+    def test_launchd_activity_parser_ignores_header_and_idle_job(self):
+        code = r"""
+import subprocess, sys
+sys.path.insert(0, str(sys.argv[1]))
+import server
+server.sys.platform = "darwin"
+server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\\n- 0 fr.maclasse.update\\n", "")
+assert server._update_apply_service_active() is False
+server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\\n4321 0 fr.maclasse.update\\n", "")
+assert server._update_apply_service_active() is True
+"""
+        subprocess.run(["python", "-c", code, str(ROOT)], check=True, cwd=ROOT)
+
     def test_database_backup_happens_after_launchd_service_shutdown(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
         stop = script.index('launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL"')
