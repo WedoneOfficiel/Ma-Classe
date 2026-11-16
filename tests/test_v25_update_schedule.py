@@ -4,6 +4,7 @@ import tempfile
 import time
 from pathlib import Path
 from unittest.mock import patch
+from types import SimpleNamespace
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -24,10 +25,10 @@ def run():
             assert "AccuracySec=1s" in content
             assert "Persistent=false" in content
             assert "Unit=maclasse-update-apply.service" in content
-            assert command.call_count == 4
+            assert command.call_count == 5
             server._cancel_update_timer()
             assert not timer.exists()
-            assert command.call_count == 6
+            assert command.call_count == 7
     print("OK — timer systemd unique, UTC, précis, annulable et sans exécution shell arbitraire.")
 
 
