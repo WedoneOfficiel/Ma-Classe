@@ -765,7 +765,7 @@ def _student_merge_mailbox(current, incoming, user, data):
             item['hiddenFor']=hidden
         result_messages.append(item)
     for ident,message in new_by_id.items():
-        if ident in old_by_id: continue
+        if ident in old_by_id or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',ident): continue
         sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
         if sender.get('role')!='student' or str(sender.get('id') or '')!=sid or sender.get('key')!=me:
             continue
@@ -813,7 +813,7 @@ def _student_merge_mailbox(current, incoming, user, data):
     new_drafts=new.get('drafts') if isinstance(new.get('drafts'),list) else []
     drafts=[x for x in old_drafts if isinstance(x,dict) and str(x.get('owner') or '')!=me]
     for draft in new_drafts:
-        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me: continue
+        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(draft.get('id') or '')): continue
         item=dict(draft)
         item['attachments']=_mailbox_message_safe_attachments(item,(f'mail-v2-drafts/student:{sid}/',))
         for field in ('to','cc','bcc'):
@@ -822,7 +822,7 @@ def _student_merge_mailbox(current, incoming, user, data):
     old_folders=old.get('folders') if isinstance(old.get('folders'),list) else []
     new_folders=new.get('folders') if isinstance(new.get('folders'),list) else []
     folders=[x for x in old_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')!=me]
-    folders.extend(x for x in new_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me)
+    folders.extend(x for x in new_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me and (not x.get('id') or re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(x.get('id')))))
     return {'schemaVersion':2,'messages':result_messages,'states':states,'drafts':drafts,'folders':folders,'resetPending':bool(old.get('resetPending',False) and new.get('resetPending',False))}
 
 def _teacher_merge_mailbox(current, incoming, user, data):
@@ -876,7 +876,7 @@ def _teacher_merge_mailbox(current, incoming, user, data):
     old_drafts=old.get('drafts') if isinstance(old.get('drafts'),list) else []
     new_drafts=new.get('drafts') if isinstance(new.get('drafts'),list) else []
     drafts=[x for x in old_drafts if isinstance(x,dict) and str(x.get('owner') or '')!=me]
-    drafts.extend(x for x in new_drafts if isinstance(x,dict) and str(x.get('owner') or '')==me)
+    drafts.extend(x for x in new_drafts if isinstance(x,dict) and str(x.get('owner') or '')==me and re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(x.get('id') or '')))
     old_folders=old.get('folders') if isinstance(old.get('folders'),list) else []
     new_folders=new.get('folders') if isinstance(new.get('folders'),list) else []
     folders=[x for x in old_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')!=me]
@@ -1042,6 +1042,7 @@ def _merge_student_data(current,incoming,user):
     new_own={}
     for entry in incoming_rows:
         ident=str(entry.get('id') or '')
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',ident): continue
         previous=old_own.get(ident)
         lesson_id=str(previous.get('lessonId') if previous else entry.get('lessonId') or '')
         if not ident or str(entry.get('studentId') or '')!=sid or lesson_id not in allowed_lessons:
@@ -1383,6 +1384,9 @@ def _merge_teacher_data(current,incoming,user):
                             if previous and field in previous: item[field]=previous[field]
                             elif field in ('validated','published'): item[field]=False
                             else: item.pop(field,None)
+            if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(item.get('id') or '')):
+                if previous: safe_new.append(dict(previous))
+                continue
             safe_new.append(item)
         if key=='classes':
             # Remplacer les classes modifiées à leur position d'origine, supprimer
