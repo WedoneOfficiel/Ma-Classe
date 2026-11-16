@@ -67,6 +67,22 @@ def run():
                 raise AssertionError("systemd timer still active but cancellation was accepted")
             assert timer.exists(), "active timer unit must not be deleted"
 
+    calls = []
+    def active_apply(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=0)
+    with patch.object(server.sys, "platform", "linux"), \
+         patch.object(server.subprocess, "run", side_effect=active_apply):
+        try:
+            server._start_update_apply_service()
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("immediate systemd start was allowed while an updater was active")
+        assert len(calls) == 1
+        assert "is-active" in calls[0]
+        assert "start" not in calls[0]
+
     print("OK — timer systemd unique, UTC, précis, reprogrammable, annulable et sans exécution shell arbitraire.")
 
 
