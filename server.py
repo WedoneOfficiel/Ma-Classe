@@ -1746,6 +1746,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if result.get('available'):
                     result['compatible']=result.get('min_data_schema',1)<=current_schema
                     result['install_supported']=_update_apply_service_installed()
+                    result['install_platform']=sys.platform
                     if not result['compatible']:
                         result['compatibility_message']='Cette version exige une structure de données plus récente. La mise à jour est bloquée.'
                     try:
@@ -1757,6 +1758,7 @@ class Handler(SimpleHTTPRequestHandler):
                 else:
                     result['compatible']=True
                     result['install_supported']=_update_apply_service_installed()
+                    result['install_platform']=sys.platform
                     result['prepared']=False
                 return self._json(result)
             except update_manager.UpdateError:
