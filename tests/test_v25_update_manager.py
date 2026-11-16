@@ -62,7 +62,7 @@ class ReleaseCheckerTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as temp:
                 prepared = updater.prepare_release(info, temp)
                 self.assertEqual((prepared / "VERSION.txt").read_text(), "V25.1.0")
-                self.assertTrue(prepared.is_relative_to(Path(temp)))
+                self.assertTrue(prepared.is_relative_to(Path(temp).resolve()))
                 self.assertEqual(json.loads((prepared / "maclasse-prepared.json").read_text())["status"], "prepared")
 
     def test_no_update_when_same_or_newer_version_installed(self):
