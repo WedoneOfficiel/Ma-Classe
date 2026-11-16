@@ -271,7 +271,8 @@ subjectKeyIdentifier=hash
                 (program / "server.py").write_text(
                     "APP_VERSION='" + version + "'\n"
                     "HEALTHY=" + ("True" if healthy else "False") + "\n"
-                    "import json,os,ssl\n"
+                    "import faulthandler,json,os,ssl\n"
+                    "faulthandler.dump_traceback_later(3,repeat=True)\n"
                     "print('python-enter',flush=True)\n"
                     "from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n"
                     "class Handler(BaseHTTPRequestHandler):\n"
@@ -282,6 +283,7 @@ subjectKeyIdentifier=hash
                     "  self.send_header('Content-Length',str(len(body)))\n"
                     "  self.end_headers();self.wfile.write(body)\n"
                     " def log_message(self,*args): pass\n"
+                    "print('before-server',flush=True)\n"
                     "server=ThreadingHTTPServer(('127.0.0.1',8765),Handler)\n"
                     "print('socket-bound',flush=True)\n"
                     "context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)\n"
