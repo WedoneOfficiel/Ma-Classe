@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Safe, non-installing GitHub Release checker and updater archive preparer.
+"""GitHub Release validation and isolated updater archive/runtime preparation.
 
-This module deliberately does not stop/restart MaClasse or activate code.
-Installation is reserved for the independent supervisor, which is implemented
-in a later AMEL-01 phase.
+This module never activates code or stops the running server; the independent
+Linux systemd or macOS launchd supervisor performs installation and rollback.
 """
 from __future__ import annotations
 
