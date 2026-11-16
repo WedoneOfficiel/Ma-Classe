@@ -38,6 +38,7 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn("KeepAlive", installer)
         self.assertIn('MACLASSE_ROOT="$ROOT"', runner)
         self.assertIn('MACLASSE_DATA_DIR="$DATA"', runner)
+        self.assertIn('SCRIPT_DIR/../../../..', runner)
         self.assertIn('MACLASSE_SUPERVISED=launchd', runner)
         self.assertIn('MACLASSE_TLS_KEY="$KEY"', runner)
         self.assertIn("/sbin/route -n get default", runner)
@@ -83,6 +84,8 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertTrue(data["KeepAlive"])
         self.assertTrue(data["RunAtLoad"])
         self.assertEqual(data["ProgramArguments"][1], str(root / "data" / "program" / "current" / SCRIPTS[1]))
+        self.assertEqual(data["EnvironmentVariables"]["MACLASSE_ROOT"], str(root))
+        self.assertEqual(data["EnvironmentVariables"]["MACLASSE_DATA_DIR"], str(root / "data"))
         self.assertEqual(os.readlink(root / "data" / "program" / "current"), "../..")
         marker = root / "data" / "update-manager.enabled"
         self.assertTrue(marker.is_file())
