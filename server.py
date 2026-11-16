@@ -38,14 +38,11 @@ def _launchd_update_plist():
 
 def _update_apply_service_active():
     if sys.platform=='darwin':
-        result=subprocess.run(['/bin/launchctl','print',f'gui/{os.getuid()}/fr.maclasse.update'],
-                              check=False,capture_output=True,text=True,timeout=10)
-        if result.returncode==0: return True
-        # A loaded but idle agent is not necessarily running; inspect its state.
         result=subprocess.run(['/bin/launchctl','list','fr.maclasse.update'],
                               check=False,capture_output=True,text=True,timeout=10)
         if result.returncode!=0: return False
-        return True
+        fields=(result.stdout or '').strip().split()
+        return bool(fields and fields[0] != '-')
     result=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-apply.service'],
                           check=False,capture_output=True,text=True,timeout=10)
     if result.returncode==0: return True
@@ -70,6 +67,7 @@ def _schedule_update_timer(timestamp):
     if sys.platform=='darwin':
         if _update_apply_service_active(): raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
         plist=_launchd_update_plist()
+        _cancel_update_timer()
         os.makedirs(os.path.dirname(plist),exist_ok=True)
         dt=datetime.datetime.fromtimestamp(timestamp).astimezone()
         script=os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')
