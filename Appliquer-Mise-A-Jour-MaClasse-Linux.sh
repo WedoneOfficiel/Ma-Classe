@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+ROOT="${MACLASSE_ROOT:-$(cd "$(dirname "$0")" && pwd -P)}"
+ROOT="$(cd "$ROOT" && pwd -P)"
 DATA_ROOT="$ROOT/data"
 PROGRAM_ROOT="$DATA_ROOT/program"
 VERSIONS_ROOT="$PROGRAM_ROOT/versions"
