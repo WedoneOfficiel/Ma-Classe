@@ -71,16 +71,28 @@ fail_and_restore() {
     echo "ATTENTION : le serveur semble toujours actif ou son état est inconnu. Aucune bascule ni restauration de base n'est tentée pour éviter une corruption." >&2
     exit 1
   fi
+  if [[ -z "${PREVIOUS_LINK_TARGET:-}" || -z "${PREVIOUS_TARGET:-}" || ! -d "$PREVIOUS_TARGET" ]]; then
+    write_state "rollback_failed" "$message — version précédente absente ou invalide ; base non restaurée et serveur laissé arrêté."
+    write_maintenance_state "failed"
+    echo "ATTENTION : version précédente introuvable. Le serveur reste arrêté et la base n'est pas remplacée." >&2
+    exit 1
+  fi
   rm -f "$CURRENT_LINK.rollback"
-  ln -s "$PREVIOUS_LINK_TARGET" "$CURRENT_LINK.rollback"
-  mv -Tf "$CURRENT_LINK.rollback" "$CURRENT_LINK"
+  if ! ln -s "$PREVIOUS_LINK_TARGET" "$CURRENT_LINK.rollback" ||
+     ! mv -Tf "$CURRENT_LINK.rollback" "$CURRENT_LINK"; then
+    rm -f "$CURRENT_LINK.rollback"
+    write_state "rollback_failed" "$message — réactivation atomique de la version précédente impossible ; base non restaurée."
+    write_maintenance_state "failed"
+    echo "ATTENTION : impossible de réactiver le code précédent. Le serveur reste arrêté." >&2
+    exit 1
+  fi
   if [[ -z "${BACKUP_FILE:-}" || ! -f "$BACKUP_FILE" ]] || ! /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE"; then
     write_state "rollback_failed" "$message — sauvegarde de base absente ou invalide ; le serveur reste arrêté."
     write_maintenance_state "failed"
     echo "ATTENTION : sauvegarde de base absente ou invalide. Le serveur reste arrêté pour protéger les données." >&2
     exit 1
   fi
-  RESTORE_TMP="$DATA_ROOT/maclasse.json.rollback.$"
+  RESTORE_TMP="$DATA_ROOT/maclasse.json.rollback.$.tmp"
   rm -f "$RESTORE_TMP"
   if ! cp -a "$BACKUP_FILE" "$RESTORE_TMP"; then
     write_state "rollback_failed" "$message — copie temporaire de la base impossible."
@@ -214,7 +226,7 @@ if ! server_stopped; then
 fi
 # Sauvegarder APRÈS l'arrêt confirmé : aucune écriture concurrente ne peut être perdue au rollback.
 STAMP="$(date +%Y%m%d-%H%M%S)"
-BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP.json"
+BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP-$.json"
 if [[ ! -f "$DATA_ROOT/maclasse.json" || -L "$DATA_ROOT/maclasse.json" ]] || ! cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_FILE"; then
   abort_before_switch "Impossible de sauvegarder la base après l'arrêt du serveur."
 fi
