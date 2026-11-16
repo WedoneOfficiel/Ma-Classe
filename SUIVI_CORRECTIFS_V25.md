@@ -497,3 +497,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 25. **Assertion de navigation EDT obsolète.** Le test attendait encore l'interpolation directe `${iso(x)}` dans les handlers du calendrier mensuel et du mini-calendrier. Le code utilise maintenant `jsArg(iso(x))` pour sérialiser les dates dans les attributs HTML. Les assertions contrôlent cette version sûre (`1e53fc3`). Les tests de logique du calendrier eux-mêmes avaient passé jusqu'à cette assertion. CI à reconfirmer.
+
+
+26. **Sandbox du test de navigation EDT — helper manquant.** Après adaptation des assertions aux handlers de dates sérialisés, le test a exécuté le vrai rendu du calendrier mensuel mais son contexte VM ne fournissait pas `jsArg`. Le helper de sérialisation est ajouté au sandbox (`8c647a3`). Les assertions de logique de navigation et de récurrence avaient été franchies avant le rendu mensuel. CI à reconfirmer.
