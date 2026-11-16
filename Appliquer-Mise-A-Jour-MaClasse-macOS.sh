@@ -97,21 +97,26 @@ fail_restore() {
     echo "ATTENTION : le nouveau serveur semble toujours actif. Le code et la base ne seront pas restaurés tant que son arrêt n'est pas confirmé." >&2
     exit 1
   fi
-  if [[ -n "${PREVIOUS_LINK:-}" && -e "${PREVIOUS_REAL:-}" ]]; then
-    /bin/rm -f "$CURRENT.rollback"
-    if ! /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback" ||
-       ! "$ROOT/.venv/bin/python" - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
+  if [[ -z "${PREVIOUS_LINK:-}" || -z "${PREVIOUS_REAL:-}" || ! -d "$PREVIOUS_REAL" ]]; then
+    write_state rollback_failed "$message — version précédente absente ou invalide ; base non restaurée et serveur laissé arrêté."
+    write_maintenance_state failed
+    echo "ATTENTION : version précédente introuvable. Le serveur reste arrêté et la base n'est pas remplacée." >&2
+    exit 1
+  fi
+  /bin/rm -f "$CURRENT.rollback"
+  if ! /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback" ||
+     ! "$ROOT/.venv/bin/python" - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
 import os,sys
 os.replace(sys.argv[1],sys.argv[2])
 PYLINK
-    then
-      write_state rollback_failed "$message — impossible de réactiver le lien de la version précédente."
-      write_maintenance_state failed
-      exit 1
-    fi
+  then
+    /bin/rm -f "$CURRENT.rollback"
+    write_state rollback_failed "$message — impossible de réactiver le lien de la version précédente ; base non restaurée."
+    write_maintenance_state failed
+    exit 1
   fi
   if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
-    RESTORE_TMP="$DATA/maclasse.json.rollback.$"
+    RESTORE_TMP="$DATA/maclasse.json.rollback.$.tmp"
     /bin/rm -f "$RESTORE_TMP"
     if ! /bin/cp -p "$BACKUP_FILE" "$RESTORE_TMP"; then
       write_state rollback_failed "$message — copie temporaire de la base impossible ; serveur laissé arrêté."
@@ -216,7 +221,7 @@ if [[ "$STOPPED" != "1" ]]; then
 fi
 # Snapshot after confirmed stop: no concurrent writes can be lost on rollback.
 STAMP="$(/bin/date +%Y%m%d-%H%M%S)"
-BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
+BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP-$.json"
 if [[ ! -f "$DATA/maclasse.json" || -L "$DATA/maclasse.json" ]] || ! /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"; then
   if start_service; then
     write_state failed "Impossible de sauvegarder la base après l'arrêt ; ancienne version relancée."
