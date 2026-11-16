@@ -500,3 +500,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 26. **Sandbox du test de navigation EDT — helper manquant.** Après adaptation des assertions aux handlers de dates sérialisés, le test a exécuté le vrai rendu du calendrier mensuel mais son contexte VM ne fournissait pas `jsArg`. Le helper de sérialisation est ajouté au sandbox (`8c647a3`). Les assertions de logique de navigation et de récurrence avaient été franchies avant le rendu mensuel. CI à reconfirmer.
+
+
+27. **Renforcement de la recette macOS launchd.** Les tests précédents validaient la génération du plist et simulaient `launchctl` ; ils ne vérifiaient pas que le gestionnaire launchd du runner macOS acceptait réellement le bootstrap. Un test d'intégration isolé crée un HOME temporaire, installe un agent avec un lanceur factice, vérifie son démarrage effectif puis le décharge et nettoie le processus (`e667b59`). Il est limité au runner macOS et ne touche pas à une installation réelle de l'utilisateur. Il doit encore passer en CI.
