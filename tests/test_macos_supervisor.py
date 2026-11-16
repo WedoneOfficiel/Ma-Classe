@@ -271,10 +271,13 @@ subjectKeyIdentifier=hash
                 (program / "server.py").write_text(
                     "APP_VERSION='" + version + "'\n"
                     "HEALTHY=" + ("True" if healthy else "False") + "\n"
-                    "import faulthandler,json,os,ssl\n"
-                    "faulthandler.dump_traceback_later(3,repeat=True)\n"
-                    "print('python-enter',flush=True)\n"
+                    "import json,os,ssl,socketserver\n"
                     "from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n"
+                    "class TestHTTPServer(ThreadingHTTPServer):\n"
+                    " def server_bind(self):\n"
+                    "  socketserver.TCPServer.server_bind(self)\n"
+                    "  self.server_name=str(self.server_address[0])\n"
+                    "  self.server_port=int(self.server_address[1])\n"
                     "class Handler(BaseHTTPRequestHandler):\n"
                     " def do_GET(self):\n"
                     "  body=json.dumps({'ok':HEALTHY,'version':APP_VERSION,'database':'ok'}).encode()\n"
@@ -283,12 +286,11 @@ subjectKeyIdentifier=hash
                     "  self.send_header('Content-Length',str(len(body)))\n"
                     "  self.end_headers();self.wfile.write(body)\n"
                     " def log_message(self,*args): pass\n"
-                    "print('before-server',flush=True)\n"
-                    "server=ThreadingHTTPServer(('127.0.0.1',8765),Handler)\n"
-                    "print('socket-bound',flush=True)\n"
+                    "server=TestHTTPServer(('127.0.0.1',8765),Handler)\n"
+
                     "context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)\n"
                     "context.load_cert_chain(os.environ['MACLASSE_TLS_CERT'],os.environ['MACLASSE_TLS_KEY'])\n"
-                    "print('tls-ready',flush=True)\n"
+
                     "server.socket=context.wrap_socket(server.socket,server_side=True)\n"
                     "server.serve_forever()\n",
                     encoding="utf-8"
