@@ -95,6 +95,58 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn("bootstrap", calls)
         self.assertIn("kickstart", calls)
 
+
+    @unittest.skipUnless(__import__("sys").platform == "darwin", "launchd réel uniquement sur macOS.")
+    def test_real_launchd_bootstrap_starts_and_unloads_isolated_agent(self):
+        import os
+        import tempfile
+        import time
+        import shutil
+        uid = os.getuid()
+        label = "fr.maclasse.server"
+        domain = f"gui/{uid}/{label}"
+        existing = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True)
+        self.assertNotEqual(existing.returncode, 0, "Le runner possède déjà un agent MaClasse ; test refusé pour ne rien perturber.")
+        with tempfile.TemporaryDirectory(prefix="maclasse-launchd-live-") as temp:
+            tmp = Path(temp)
+            root = tmp / "MaClasse"
+            (root / ".venv" / "bin").mkdir(parents=True)
+            (root / "data" / "tls").mkdir(parents=True)
+            (root / ".venv" / "bin" / "python").symlink_to(__import__("sys").executable)
+            shutil.copy2(ROOT / "Installer-Service-MaClasse-macOS.sh", root / "Installer-Service-MaClasse-macOS.sh")
+            runner = root / "Lancer-MaClasse-Service-macOS.sh"
+            runner.write_text(
+                '#!/bin/bash\necho "$" > "$MACLASSE_DATA_DIR/launchd-live.pid"\nexec /bin/sleep 60\n',
+                encoding="utf-8",
+            )
+            runner.chmod(0o700)
+            for name in ("server.crt", "server.key", "ca.crt"):
+                (root / "data" / "tls" / name).write_text("test-only placeholder", encoding="utf-8")
+            env = os.environ.copy()
+            env["HOME"] = str(tmp / "home")
+            try:
+                result = subprocess.run(
+                    ["bash", str(root / "Installer-Service-MaClasse-macOS.sh")],
+                    cwd=root, env=env, capture_output=True, text=True, timeout=30,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + "\\n" + result.stderr)
+                marker_file = root / "data" / "launchd-live.pid"
+                deadline = time.time() + 10
+                while time.time() < deadline and not marker_file.exists():
+                    time.sleep(0.2)
+                self.assertTrue(marker_file.is_file(), "launchd n'a pas démarré le lanceur isolé.")
+                loaded = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True)
+                self.assertEqual(loaded.returncode, 0, loaded.stderr)
+                self.assertIn(label, loaded.stdout)
+            finally:
+                subprocess.run(["/bin/launchctl", "bootout", domain], capture_output=True, text=True, timeout=10)
+                pid_file = root / "data" / "launchd-live.pid"
+                if pid_file.exists():
+                    try:
+                        os.kill(int(pid_file.read_text(encoding="utf-8")), 15)
+                    except (OSError, ValueError):
+                        pass
+
     def test_launchd_schedule_and_immediate_job_plists(self):
         code = r"""
 import os, pathlib, plistlib, subprocess, sys, tempfile, time
