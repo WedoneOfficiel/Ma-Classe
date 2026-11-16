@@ -125,8 +125,10 @@ def _schedule_update_timer(timestamp):
             subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
                            check=True,capture_output=True,text=True,timeout=10)
         except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
-            try: os.unlink(plist)
-            except OSError: pass
+            try:
+                _cancel_update_timer()
+            except Exception as cleanup_error:
+                raise RuntimeError("La programmation launchd a échoué et le déchargement de secours n'a pas pu être confirmé.") from cleanup_error
             raise
         return
     unit_path=_update_timer_unit_path()
@@ -156,22 +158,29 @@ def _start_update_apply_service():
     if sys.platform=='darwin':
         _cancel_update_timer()
         plist=_launchd_update_plist()
-        if not os.path.isfile(plist):
-            import plistlib
-            os.makedirs(os.path.dirname(plist),exist_ok=True)
-            document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')],
-                      'WorkingDirectory':ROOT,'RunAtLoad':False,
-                       'EnvironmentVariables':{'MACLASSE_ROOT':os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR)),
-                                               'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
-                      'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
-                      'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
-            tmp=plist+'.tmp'
-            with open(tmp,'wb') as f: plistlib.dump(document,f,fmt=plistlib.FMT_XML,sort_keys=True)
-            os.chmod(tmp,0o600); os.replace(tmp,plist)
-            subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+        try:
+            if not os.path.isfile(plist):
+                import plistlib
+                os.makedirs(os.path.dirname(plist),exist_ok=True)
+                document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')],
+                          'WorkingDirectory':ROOT,'RunAtLoad':False,
+                          'EnvironmentVariables':{'MACLASSE_ROOT':os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR)),
+                                                  'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
+                          'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
+                          'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
+                tmp=plist+'.tmp'
+                with open(tmp,'wb') as f: plistlib.dump(document,f,fmt=plistlib.FMT_XML,sort_keys=True)
+                os.chmod(tmp,0o600); os.replace(tmp,plist)
+                subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+                               check=True,capture_output=True,text=True,timeout=10)
+            subprocess.run(['/bin/launchctl','kickstart',f'gui/{os.getuid()}/fr.maclasse.update'],
                            check=True,capture_output=True,text=True,timeout=10)
-        subprocess.run(['/bin/launchctl','kickstart',f'gui/{os.getuid()}/fr.maclasse.update'],
-                       check=True,capture_output=True,text=True,timeout=10)
+        except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            try:
+                _cancel_update_timer()
+            except Exception as cleanup_error:
+                raise RuntimeError("Le lancement launchd a échoué et le déchargement de secours n'a pas pu être confirmé.") from cleanup_error
+            raise
         return
     subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
                    check=True,capture_output=True,text=True,timeout=5)
