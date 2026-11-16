@@ -79,6 +79,16 @@ def _launchd_service_plist():
 def _launchd_update_plist():
     return os.path.join(os.path.expanduser('~'),'Library','LaunchAgents','fr.maclasse.update.plist')
 
+def _public_update_maintenance(maintenance):
+    """Expose only the maintenance fields needed by authenticated users."""
+    if not isinstance(maintenance,dict):
+        return {'scheduled':False,'in_progress':False,'maintenance':None}
+    status=maintenance.get('status')
+    if status not in ('scheduled','installing'):
+        return {'scheduled':False,'in_progress':False,'maintenance':None}
+    public={key:maintenance.get(key) for key in ('status','version','scheduled_at','timezone')}
+    return {'scheduled':status=='scheduled','in_progress':status=='installing','maintenance':public}
+
 def _update_apply_service_active():
     if sys.platform=='darwin':
         result=subprocess.run(['/bin/launchctl','list','fr.maclasse.update'],
@@ -2002,8 +2012,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 with open(os.path.join(DATA_DIR,'update-maintenance.json'),encoding='utf-8') as f:
                     maintenance=json.load(f)
-                public_maintenance={key:maintenance.get(key) for key in ('status','version','scheduled_at','timezone')} if isinstance(maintenance,dict) and maintenance.get('status')=='scheduled' else None
-                return self._json({'scheduled':public_maintenance is not None,'maintenance':public_maintenance})
+                return self._json(_public_update_maintenance(maintenance))
             except (OSError,ValueError,AttributeError):
                 return self._json({'scheduled':False,'maintenance':None})
         if path=='/api/auth/setup-status':
