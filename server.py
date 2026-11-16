@@ -23,31 +23,74 @@ UPLOADS=os.path.join(DATA_DIR,'uploads')
 
 def _update_apply_service_installed():
     marker=os.path.join(DATA_DIR,'update-manager.enabled')
-    return sys.platform.startswith('linux') and os.environ.get('MACLASSE_SUPERVISED')=='systemd' and os.path.isfile(marker)
+    if not os.path.isfile(marker): return False
+    if sys.platform.startswith('linux'):
+        return os.environ.get('MACLASSE_SUPERVISED')=='systemd'
+    if sys.platform=='darwin':
+        return os.environ.get('MACLASSE_SUPERVISED')=='launchd' and os.path.isfile(_launchd_service_plist())
+    return False
 
-def _update_timer_unit_path():
-    return os.path.join(os.path.expanduser('~'),'.config','systemd','user','maclasse-update-scheduled.timer')
+def _launchd_service_plist():
+    return os.path.join(os.path.expanduser('~'),'Library','LaunchAgents','fr.maclasse.server.plist')
 
+def _launchd_update_plist():
+    return os.path.join(os.path.expanduser('~'),'Library','LaunchAgents','fr.maclasse.update.plist')
 
 def _update_apply_service_active():
+    if sys.platform=='darwin':
+        result=subprocess.run(['/bin/launchctl','print',f'gui/{os.getuid()}/fr.maclasse.update'],
+                              check=False,capture_output=True,text=True,timeout=10)
+        if result.returncode==0: return True
+        # A loaded but idle agent is not necessarily running; inspect its state.
+        result=subprocess.run(['/bin/launchctl','list','fr.maclasse.update'],
+                              check=False,capture_output=True,text=True,timeout=10)
+        if result.returncode!=0: return False
+        return True
     result=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-apply.service'],
                           check=False,capture_output=True,text=True,timeout=10)
     if result.returncode==0: return True
     if result.returncode==3: return False
     raise RuntimeError("État du service de mise à jour impossible à vérifier.")
 
-
 def _cancel_update_timer():
+    if sys.platform=='darwin':
+        plist=_launchd_update_plist()
+        subprocess.run(['/bin/launchctl','bootout',f'gui/{os.getuid()}',plist],
+                       check=False,capture_output=True,text=True,timeout=10)
+        if os.path.exists(plist): os.unlink(plist)
+        return
     unit_path=_update_timer_unit_path()
     subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
                    check=False,capture_output=True,text=True,timeout=10)
-    if os.path.exists(unit_path):
-        os.unlink(unit_path)
+    if os.path.exists(unit_path): os.unlink(unit_path)
     subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
                    check=True,capture_output=True,text=True,timeout=10)
 
-
 def _schedule_update_timer(timestamp):
+    if sys.platform=='darwin':
+        if _update_apply_service_active(): raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
+        plist=_launchd_update_plist()
+        os.makedirs(os.path.dirname(plist),exist_ok=True)
+        dt=datetime.datetime.fromtimestamp(timestamp).astimezone()
+        script=os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')
+        if not os.path.isfile(script): raise RuntimeError("Le programme d'installation macOS est absent.")
+        values={'Year':dt.year,'Month':dt.month,'Day':dt.day,'Hour':dt.hour,'Minute':dt.minute}
+        import plistlib
+        document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',script],
+                  'WorkingDirectory':ROOT,'StartCalendarInterval':values,
+                  'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
+                  'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
+        tmp=plist+'.tmp'
+        with open(tmp,'wb') as f: plistlib.dump(document,f,fmt=plistlib.FMT_XML,sort_keys=True)
+        os.chmod(tmp,0o600); os.replace(tmp,plist)
+        try:
+            subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+                           check=True,capture_output=True,text=True,timeout=10)
+        except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            try: os.unlink(plist)
+            except OSError: pass
+            raise
+        return
     unit_path=_update_timer_unit_path()
     unit_dir=os.path.dirname(unit_path)
     os.makedirs(unit_dir,exist_ok=True)
@@ -57,25 +100,41 @@ def _schedule_update_timer(timestamp):
                    check=True,capture_output=True,text=True,timeout=10)
     subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
                    check=False,capture_output=True,text=True,timeout=10)
-    if _update_apply_service_active():
-        raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
-    unit='[Unit]\nDescription=MaClasse — maintenance programmée\n\n[Timer]\nOnCalendar='+calendar+'\nAccuracySec=1s\nPersistent=false\nUnit=maclasse-update-apply.service\n\n[Install]\nWantedBy=timers.target\n'
+    if _update_apply_service_active(): raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
+    unit='[Unit]\\nDescription=MaClasse — maintenance programmée\\n\\n[Timer]\\nOnCalendar='+calendar+'\\nAccuracySec=1s\\nPersistent=false\\nUnit=maclasse-update-apply.service\\n\\n[Install]\\nWantedBy=timers.target\\n'
     tmp=unit_path+'.tmp'
-    with open(tmp,'w',encoding='utf-8') as f:
-        f.write(unit)
-    os.chmod(tmp,0o600)
-    os.replace(tmp,unit_path)
+    with open(tmp,'w',encoding='utf-8') as f: f.write(unit)
+    os.chmod(tmp,0o600); os.replace(tmp,unit_path)
     try:
-        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
-                       check=True,capture_output=True,text=True,timeout=10)
-        subprocess.run(['/usr/bin/systemctl','--user','enable','--now','maclasse-update-scheduled.timer'],
-                       check=True,capture_output=True,text=True,timeout=10)
+        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],check=True,capture_output=True,text=True,timeout=10)
+        subprocess.run(['/usr/bin/systemctl','--user','enable','--now','maclasse-update-scheduled.timer'],check=True,capture_output=True,text=True,timeout=10)
     except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
         try: os.unlink(unit_path)
         except OSError: pass
-        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
-                       check=False,capture_output=True,text=True,timeout=10)
+        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],check=False,capture_output=True,text=True,timeout=10)
         raise
+
+def _start_update_apply_service():
+    if sys.platform=='darwin':
+        plist=_launchd_update_plist()
+        if not os.path.isfile(plist):
+            import plistlib
+            os.makedirs(os.path.dirname(plist),exist_ok=True)
+            document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')],
+                      'WorkingDirectory':ROOT,'RunAtLoad':True,
+                      'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
+                      'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
+            tmp=plist+'.tmp'
+            with open(tmp,'wb') as f: plistlib.dump(document,f,fmt=plistlib.FMT_XML,sort_keys=True)
+            os.chmod(tmp,0o600); os.replace(tmp,plist)
+            subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+                           check=True,capture_output=True,text=True,timeout=10)
+        subprocess.run(['/bin/launchctl','kickstart','-k',f'gui/{os.getuid()}/fr.maclasse.update'],
+                       check=True,capture_output=True,text=True,timeout=10)
+        return
+    subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
+                   check=True,capture_output=True,text=True,timeout=5)
+
 os.makedirs(UPLOADS,exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE,'w',encoding='utf-8') as f: json.dump({},f,ensure_ascii=False)
@@ -1927,8 +1986,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'error':'La version préparée ne correspond plus à son manifeste.'},409)
                 if not os.path.isfile(os.path.join(target,'.venv','bin','python')) or not os.path.isfile(os.path.join(target,'maclasse-runtime-ready.json')) or not os.path.isfile(os.path.join(target,'server.py')):
                     return self._json({'error':'La version préparée est incomplète.'},409)
-                subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
-                               check=True,capture_output=True,text=True,timeout=5)
+                _start_update_apply_service()
                 return self._json({'installing':True,'version':update_state.get('version')},202)
             except (OSError,ValueError,KeyError,AttributeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
