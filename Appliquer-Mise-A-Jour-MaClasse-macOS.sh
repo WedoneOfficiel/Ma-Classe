@@ -42,6 +42,7 @@ fail_restore() {
   echo "Échec : $message" >&2
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
   if [[ -n "${PREVIOUS_LINK:-}" && -e "${PREVIOUS_REAL:-}" ]]; then
+    /bin/rm -f "$CURRENT.rollback"
     if ! /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback" ||
        ! "$ROOT/.venv/bin/python" - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
 import os,sys
@@ -100,6 +101,7 @@ PY
 [[ "$EXPECTED" == "$SHA" ]] || { echo "Manifeste préparé incohérent." >&2; exit 1; }
 PREVIOUS_LINK="$(/usr/bin/readlink "$CURRENT")"
 PREVIOUS_REAL="$(cd "$(dirname "$CURRENT")" && cd "$(readlink "$CURRENT")" && pwd -P)"
+case "$PREVIOUS_REAL" in "$ROOT"|"$VERSIONS_REAL"/*) ;; *) echo "Version précédente hors du stockage autorisé." >&2; exit 1;; esac
 PREVIOUS_VERSION="$("$ROOT/.venv/bin/python" - "$PREVIOUS_REAL/VERSION.txt" <<'PY'
 import re,sys
 from pathlib import Path
@@ -129,6 +131,7 @@ if [[ "$SERVICE_PID" =~ ^[0-9]+$ ]]; then
     exit 1
   fi
 fi
+/bin/rm -f "$CURRENT.next"
 /bin/ln -s "versions/V$VERSION" "$CURRENT.next"
 "$ROOT/.venv/bin/python" - "$CURRENT.next" "$CURRENT" <<'PYLINK' || fail_restore "Bascule atomique impossible."
 import os,sys
