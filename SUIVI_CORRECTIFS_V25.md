@@ -534,3 +534,7 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 37. **CI #1459 — défaut de fixture de test, pas défaut d'application.** Le test test_v25_schedule_xss.js a d'abord échoué car l'objet de glisser-déposer n'était pas fourni au contexte VM, puis son assertion observait le mauvais sandbox. Les deux défauts du test ont été corrigés. Le run #1460 a ensuite passé tous les tests JavaScript et Python Linux ; sur macOS, les tests JavaScript et l'intégration launchd réelle ont également passé, tandis que les tests Python continuaient au dernier contrôle.
 
+
+
+38. **AUDIT-S4 — publication stable sans dépendance aux tests.** Le workflow publish-release.yml validait le tag et VERSION.txt, mais pouvait publier une release même si les tests de l'application échouaient. Le workflow tests.yml expose maintenant workflow_call et la publication dépend du job réutilisable validate, qui exécute la matrice Linux, macOS et Firefox. Test statique du lien de dépendance ajouté dans test_v25_update_scripts.py (commits 26e25cb, e862dbe, 7c3113d). À confirmer sur un vrai déclenchement par tag avant toute release.
+
