@@ -29,6 +29,14 @@ def _update_timer_unit_path():
     return os.path.join(os.path.expanduser('~'),'.config','systemd','user','maclasse-update-scheduled.timer')
 
 
+def _update_apply_service_active():
+    result=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-apply.service'],
+                          check=False,capture_output=True,text=True,timeout=10)
+    if result.returncode==0: return True
+    if result.returncode==3: return False
+    raise RuntimeError("État du service de mise à jour impossible à vérifier.")
+
+
 def _cancel_update_timer():
     unit_path=_update_timer_unit_path()
     subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
@@ -49,6 +57,8 @@ def _schedule_update_timer(timestamp):
                    check=True,capture_output=True,text=True,timeout=10)
     subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
                    check=False,capture_output=True,text=True,timeout=10)
+    if _update_apply_service_active():
+        raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
     unit='[Unit]\nDescription=MaClasse — maintenance programmée\n\n[Timer]\nOnCalendar='+calendar+'\nAccuracySec=1s\nPersistent=false\nUnit=maclasse-update-apply.service\n\n[Install]\nWantedBy=timers.target\n'
     tmp=unit_path+'.tmp'
     with open(tmp,'w',encoding='utf-8') as f:
@@ -1841,6 +1851,7 @@ class Handler(SimpleHTTPRequestHandler):
                     update_state=json.load(f)
                 if not isinstance(update_state,dict) or update_state.get('status')!='prepared' or update_state.get('version')!=requested_version:
                     return self._json({'error':'Cette version n’est plus prête à être installée. Relance la recherche.'},409)
+                if _update_apply_service_active(): return self._json({'error':'Une installation est déjà en cours.'},409)
                 maintenance={'status':'scheduled','version':requested_version,'scheduled_at':scheduled_at,'timezone':timezone_name,'scheduled_by':str(user.get('id') or ''),'created_at':int(time.time())}
                 maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
                 old_maintenance=None
@@ -1853,7 +1864,7 @@ class Handler(SimpleHTTPRequestHandler):
                 os.replace(tmp,maintenance_path)
                 try:
                     _schedule_update_timer(scheduled_at)
-                except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                except (OSError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                     if old_maintenance:
                         restore_tmp=maintenance_path+'.restore'
                         with open(restore_tmp,'w',encoding='utf-8') as f: json.dump(old_maintenance,f,ensure_ascii=False,indent=2)
@@ -1867,7 +1878,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({'scheduled':True,'maintenance':maintenance},201)
             except (ValueError,TypeError,KeyError,AttributeError,json.JSONDecodeError):
                 return self._json({'error':'Date ou demande de programmation invalide.'},400)
-            except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            except (OSError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Impossible de programmer la maintenance. La version active reste inchangée.'},503)
         if path=='/api/admin/updates/cancel-schedule':
             user=self._require_auth(roles=('admin',))
@@ -1877,7 +1888,9 @@ class Handler(SimpleHTTPRequestHandler):
                 maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
                 with open(maintenance_path,encoding='utf-8') as f: maintenance=json.load(f)
                 if not isinstance(maintenance,dict) or maintenance.get('status')!='scheduled': return self._json({'error':'Aucune maintenance programmée à annuler.'},409)
+                if _update_apply_service_active(): return self._json({'error':'La maintenance a déjà commencé et ne peut plus être annulée.'},409)
                 _cancel_update_timer()
+                if _update_apply_service_active(): return self._json({'error':'La maintenance vient de commencer et ne peut plus être annulée.'},409)
                 maintenance['status']='cancelled'
                 maintenance['cancelled_at']=int(time.time())
                 tmp=maintenance_path+'.tmp'
