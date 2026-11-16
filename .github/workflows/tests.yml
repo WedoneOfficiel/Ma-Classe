@@ -53,7 +53,7 @@ jobs:
           set -euo pipefail
           for test in tests/*.py; do
             echo "::group::$test"
-            python "$test"
+            python -c 'import subprocess,sys; subprocess.run([sys.executable, sys.argv[1]], check=True, timeout=90)' "$test"
             echo "::endgroup::"
           done
   macos-validation:
@@ -97,7 +97,7 @@ jobs:
           set -euo pipefail
           for test in tests/*.py; do
             echo "::group::$test"
-            python "$test"
+            python -c 'import subprocess,sys; subprocess.run([sys.executable, sys.argv[1]], check=True, timeout=90)' "$test"
             echo "::endgroup::"
           done
 
