@@ -1,3 +1,9 @@
+MaClasse V25.0.23 — correctifs applicatifs validés
+
+- Intègre les correctifs EDT, espace élève, droits et affectations enseignants, évaluations, bulletins, messagerie et pièces jointes.
+- Renforce la sauvegarde préalable de la mise à jour manuelle macOS/Linux sans recopier les certificats et clés TLS.
+- Tests automatisés Linux et macOS réussis et parcours EDT contrôlé dans Firefox réel sur la branche de correctifs avant publication.
+
 MaClasse V25.0.18 — stabilisation de l’EDT, de l’espace élève et de la maintenance
 
 - Correction du plantage de l’emploi du temps élève causé par une variable de motif non définie.
