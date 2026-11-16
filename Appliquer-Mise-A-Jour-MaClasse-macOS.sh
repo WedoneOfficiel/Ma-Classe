@@ -68,7 +68,6 @@ PYLINK
     then
       write_state rollback_failed "$message — impossible de réactiver le lien de la version précédente."
       write_maintenance_state failed
-      write_maintenance_state failed
       exit 1
     fi
   fi
@@ -76,28 +75,27 @@ PYLINK
     if ! /bin/cp -p "$BACKUP_FILE" "$DATA/maclasse.json"; then
       write_state rollback_failed "$message — restauration de la base impossible ; serveur laissé arrêté."
       write_maintenance_state failed
-      write_maintenance_state failed
       exit 1
     fi
   else
     write_state rollback_failed "$message — sauvegarde de base absente ; serveur laissé arrêté."
-    write_maintenance_state failed
     write_maintenance_state failed
     exit 1
   fi
   if ! start_service; then
     write_state rollback_failed "$message — impossible de redémarrer la version précédente."
     write_maintenance_state failed
-    write_maintenance_state failed
     exit 1
   fi
   for _ in {1..20}; do
-    if health_ok "$PREVIOUS_VERSION"; then write_state failed "$message — version précédente restaurée."; exit 1; fi
-    write_maintenance_state failed
+    if health_ok "$PREVIOUS_VERSION"; then
+      write_state failed "$message — version précédente restaurée."
+      write_maintenance_state failed
+      exit 1
+    fi
     /bin/sleep 2
   done
   write_state rollback_failed "$message — restauration appliquée mais contrôle de santé de l'ancienne version en échec."
-  write_maintenance_state failed
   write_maintenance_state failed
   exit 1
 }
@@ -153,7 +151,6 @@ for _ in {1..120}; do
 done
 if [[ "$STOPPED" != "1" ]]; then
   write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
-  write_maintenance_state failed
   write_maintenance_state failed
   exit 1
 fi
