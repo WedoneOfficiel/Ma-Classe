@@ -197,6 +197,8 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
             existing = json.loads(metadata_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             raise UpdateError("Un dossier existe déjà pour cette version, mais sa préparation est incomplète.")
+        if not isinstance(existing, dict):
+            raise UpdateError("Les métadonnées de la version préparée sont invalides.")
         if existing.get("sha256") == release["sha256"] and existing.get("status") == "prepared":
             return target
         raise UpdateError("Une préparation différente existe déjà pour cette version.")
@@ -257,8 +259,11 @@ def prepare_runtime(program_dir: str | Path) -> Path:
     ready_file = program_dir / "maclasse-runtime-ready.json"
     try:
         if ready_file.is_file() and python.is_file():
-            ready = json.loads(ready_file.read_text(encoding="utf-8"))
-            if ready.get("requirements_sha256") == requirements_hash:
+            try:
+                ready = json.loads(ready_file.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                ready = None
+            if isinstance(ready, dict) and ready.get("requirements_sha256") == requirements_hash:
                 return python
         shutil.rmtree(venv_dir, ignore_errors=True)
         ready_file.unlink(missing_ok=True)
