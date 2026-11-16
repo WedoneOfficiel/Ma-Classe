@@ -720,7 +720,7 @@ assert server._update_apply_service_active() is False
     def test_launchd_shutdown_is_bounded_and_confirms_process_exit_before_backup(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
         start = script.index("stop_service_and_confirm() {")
-        end = script.index("\\n}\\nfail_restore()", start) + 2
+        end = script.index("\n}\nfail_restore()", start) + 2
         function = script[start:end]
         self.assertIn("launchctl bootout", function)
         self.assertIn("for _ in {1..25}", function)
