@@ -52,6 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           for test in tests/*.py; do
+            if [[ "$test" == "tests/test_macos_supervisor.py" ]]; then continue; fi
             echo "::group::$test"
             python -c 'import subprocess,sys; subprocess.run([sys.executable, sys.argv[1]], check=True, timeout=90)' "$test"
             echo "::endgroup::"
@@ -91,6 +92,8 @@ jobs:
         run: |
           set -euo pipefail
           for test in tests/*.js; do node "$test"; done
+      - name: Tester launchd réel sur macOS
+        run: python -c 'import subprocess,sys; subprocess.run([sys.executable, sys.argv[1]], check=True, timeout=90)' tests/test_macos_supervisor.py
       - name: Exécuter tous les tests Python
         shell: bash
         run: |
