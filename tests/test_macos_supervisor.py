@@ -106,6 +106,8 @@ scheduled = pathlib.Path(server._launchd_update_plist())
 with scheduled.open("rb") as stream:
     data = plistlib.load(stream)
 assert data["Label"] == "fr.maclasse.update"
+assert data["EnvironmentVariables"]["MACLASSE_ROOT"] == str(tmp)
+assert data["EnvironmentVariables"]["MACLASSE_DATA_DIR"] == str(tmp / "data")
 assert data["StartCalendarInterval"]["Minute"] >= 0
 assert data["ProgramArguments"][0:2] == ["/bin/bash", str(root / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh")]
 server._cancel_update_timer()
@@ -114,6 +116,8 @@ server._start_update_apply_service()
 with scheduled.open("rb") as stream:
     immediate = plistlib.load(stream)
 assert immediate["RunAtLoad"] is False
+assert immediate["EnvironmentVariables"]["MACLASSE_ROOT"] == str(tmp)
+assert immediate["EnvironmentVariables"]["MACLASSE_DATA_DIR"] == str(tmp / "data")
 assert "StartCalendarInterval" not in immediate
 assert any(call[:2] == ["/bin/launchctl", "kickstart"] for call in calls)
 
@@ -157,6 +161,8 @@ assert server._update_apply_service_active() is True
     def test_installer_checks_health_and_has_rollback_path(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
         self.assertIn("health_ok", script)
+        self.assertIn('MACLASSE_ROOT:-', script)
+        self.assertIn('MACLASSE_DATA_DIR:-', script)
         self.assertIn("fail_restore", script)
         self.assertIn("os.replace(sys.argv[1],sys.argv[2])", script)
         self.assertIn("maclasse-avant-maj-", script)
