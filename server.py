@@ -978,19 +978,25 @@ def _merge_student_data(current,incoming,user):
 
 
 def _evaluation_publication_due(value, now=None):
-    """La publication est effective à la date du calendrier, sans attendre l'heure par défaut."""
+    """Vrai si la date/heure de publication est atteinte ; les dates seules restent compatibles."""
     raw=str(value or '').strip()
     if not raw:
         return True
+    current=now or datetime.datetime.now(datetime.timezone.utc)
+    if current.tzinfo is None:
+        current=current.astimezone()
+    if len(raw)<=10:
+        return raw[:10] <= current.date().isoformat()
     try:
-        scheduled_date=datetime.date.fromisoformat(raw[:10])
-        current_date=(now.astimezone().date() if now and now.tzinfo else (now.date() if now else datetime.date.today()))
-        return scheduled_date <= current_date
+        scheduled=datetime.datetime.fromisoformat(raw.replace('Z','+00:00'))
+        if scheduled.tzinfo is None:
+            scheduled=scheduled.astimezone()
+        return scheduled.astimezone(datetime.timezone.utc) <= current.astimezone(datetime.timezone.utc)
     except (TypeError,ValueError,OverflowError):
         return False
 
 
-def _student_visible_data(data,user):
+def _student_visible_data(data,user,now=None):
     """Projection strictement limitée à l'élève authentifié ; aucune donnée de camarade."""
     sid=str(user.get('studentId') or '')
     student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
@@ -1031,7 +1037,7 @@ def _student_visible_data(data,user):
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
         # Une note programmée pour une publication ultérieure ne doit pas être
         # transmise au navigateur élève, même si published est déjà positionné.
-        if not _evaluation_publication_due(item.get('publishAt')): continue
+        if not _evaluation_publication_due(item.get('publishAt'),now=now): continue
         if item.get('group') and str(item.get('group'))!=str(student_record.get('group') or ''): continue
         copy=dict(item)
         copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '')==sid]
