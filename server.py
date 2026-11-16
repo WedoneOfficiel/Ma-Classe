@@ -2042,7 +2042,10 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'error':'La version préparée ne correspond plus à son manifeste.'},409)
                 if not os.path.isfile(os.path.join(target,'.venv','bin','python')) or not os.path.isfile(os.path.join(target,'maclasse-runtime-ready.json')) or not os.path.isfile(os.path.join(target,'server.py')):
                     return self._json({'error':'La version préparée est incomplète.'},409)
-                _start_update_apply_service()
+                try:
+                    _start_update_apply_service()
+                except RuntimeError as error:
+                    return self._json({'error':str(error)},409)
                 return self._json({'installing':True,'version':update_state.get('version')},202)
             except (OSError,ValueError,KeyError,AttributeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
