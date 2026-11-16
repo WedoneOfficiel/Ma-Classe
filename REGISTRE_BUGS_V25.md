@@ -71,6 +71,7 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 | AUDIT-S1 | Corps POST lu avant authentification | `do_POST` lisait jusqu'à 100 Mo avant de vérifier la session et les droits, y compris pour des requêtes non authentifiées. | Risque de déni de service mémoire par connexions LAN non authentifiées. Authentification et autorisation déplacées avant la lecture du corps ; limites par opération (1 Mo authentification, 10 Mo JSON standard, 20 Mo sauvegarde de données, 50 Mo téléversement, 100 Mo restauration ZIP). Tests de non-lecture avant authentification et des limites ajoutés. | En cours de validation CI |
 | AMEL-U15 | Rollback pouvant continuer sans version précédente vérifiable | En cas de panne disque ou de suppression externe du dossier de la version précédente, le rollback pouvait poursuivre vers la restauration de la base sans avoir réussi à réactiver un code valide. | Les installateurs Linux/macOS vérifient maintenant l'existence du dossier précédent et l'échec de la bascule du lien ; ils s'arrêtent en `rollback_failed`, sans restaurer la base ni relancer le serveur si le code précédent ne peut pas être réactivé. Assertions de régression dédiées ajoutées. | En cours de validation CI |
 | AMEL-U16 | Faux positif d'installation du gestionnaire Linux | La présence du marqueur `update-manager.enabled` et de l'environnement `systemd` suffisait à annoncer le support, même si l'unité systemd d'application avait été supprimée ou n'était plus chargée. | L'API pouvait proposer la préparation/installation alors que `systemctl start` échouerait ensuite. Le serveur vérifie maintenant `LoadState=loaded` pour `maclasse-update-apply.service` avant d'annoncer le support ; test avec unité absente et unité chargée. | En cours de validation CI |
+| AMEL-U17 | Processus serveur manuel ignoré pendant une mise à jour supervisée | Les scripts d'application arrêtaient le service systemd/launchd, mais ne vérifiaient pas qu'un second processus `server.py` lancé manuellement n'était pas encore actif. | Un second processus aurait pu continuer à écrire dans la même base pendant la sauvegarde ou la bascule. Les scripts Linux/macOS comparent désormais les PID `server.py` au PID supervisé et refusent la mise à jour si un autre serveur est actif ; l'installateur systemd refuse aussi les doublons. Test d'intégration Linux avec processus manuel simulé et assertions macOS ajoutés. | En cours de validation CI |
 
 | AMEL-S3 | XSS stockée possible via identifiants et motifs de créneaux | Les identifiants de planning pouvaient être interpolés sans sérialisation dans des gestionnaires HTML inline ; le motif visuel était injecté directement dans une propriété CSS. Un professeur pouvait potentiellement viser les vues des élèves. | Les identifiants sont sérialisés comme chaînes JavaScript puis échappés pour l'attribut HTML ; les motifs sont limités à `none`, `hatch`, `cross`. Le serveur refuse les identifiants non sûrs sur les nouveaux enregistrements enseignant/élève et les messages/drafts de messagerie. Tests XSS navigateur/JS et tests de persistance serveur ajoutés. | En cours de validation CI |
 
@@ -79,10 +80,10 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires et sécurité relevées : **21** (correctifs poussés, CI à valider)
+- Anomalies complémentaires et sécurité relevées : **22** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **21** anomalies complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **22** anomalies complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
