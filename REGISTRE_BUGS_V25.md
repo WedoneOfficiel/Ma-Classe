@@ -64,13 +64,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-U11 | Démarrage immédiat pouvant interrompre une maintenance déjà lancée | Un clic concurrent pouvait décharger le job launchd programmé alors que son script d'installation avait déjà commencé ; le contrôle Linux ne bloquait pas non plus explicitement ce chemin dans le service de démarrage. | Vérification de l'état actif avant et dans le lanceur ; l'annulation d'un timer refuse désormais de décharger un updater actif. Tests Linux/macOS dédiés. | En cours de validation CI |
 
+| AMEL-U12 | Lanceurs macOS manuels pouvant démarrer une seconde instance après installation launchd | Les lanceurs local et réseau ne détectaient pas le service launchd et pouvaient démarrer un second processus partageant la même base de données. | Les deux lanceurs vérifient le service launchd avant tout démarrage, ouvrent l'URL HTTPS existante et refusent de créer un second serveur. Test statique et syntaxe shell ajoutés. | En cours de validation CI |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires du gestionnaire relevées : **13** (correctifs poussés, CI à valider)
+- Anomalies complémentaires du gestionnaire relevées : **14** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **13** anomalies AMEL complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **14** anomalies AMEL complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
