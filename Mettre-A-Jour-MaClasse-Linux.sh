@@ -13,6 +13,11 @@ if [[ -f "$DATA_ROOT/update-manager.enabled" ]]; then
     echo "Une installation MaClasse est déjà en cours."
     exit 1
   fi
+  command -v pgrep >/dev/null 2>&1 || { echo "pgrep est requis pour vérifier qu'aucun serveur manuel ne tourne."; exit 1; }
+  SERVICE_PID="$(systemctl --user show --property=MainPID --value maclasse.service 2>/dev/null || echo 0)"
+  while IFS= read -r pid; do
+    [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { echo "Un serveur MaClasse manuel non supervisé est actif (PID $pid) ; arrêt requis avant la mise à jour." >&2; exit 1; }
+  done < <(pgrep -f '[p]ython.*server\.py' || true)
   set +e
   "$APP_ROOT/.venv/bin/python" - "$ROOT" <<'PY'
 import json, os, sys, time
