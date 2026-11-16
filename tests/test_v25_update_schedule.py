@@ -21,7 +21,8 @@ def run():
                 return SimpleNamespace(returncode=3)
             return SimpleNamespace(returncode=0)
 
-        with patch.object(server, "_update_timer_unit_path", return_value=str(timer)), \
+        with patch.object(server.sys, "platform", "linux"), \
+             patch.object(server, "_update_timer_unit_path", return_value=str(timer)), \
              patch.object(server.subprocess, "run", side_effect=fake_run) as command:
             server._schedule_update_timer(timestamp)
             assert timer.is_file()
