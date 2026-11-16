@@ -232,10 +232,11 @@ class MacOSSupervisorTests(unittest.TestCase):
                 "keyUsage=critical,keyCertSign,cRLSign\\nsubjectKeyIdentifier=hash\\n",
                 encoding="utf-8"
             )
-            subprocess.run([
+            ca_result = subprocess.run([
                 "/usr/bin/openssl", "req", "-x509", "-new", "-sha256", "-days", "2",
                 "-key", str(ca_key), "-out", str(ca_cert), "-config", str(ca_config)
-            ], check=True, capture_output=True, timeout=20)
+            ], capture_output=True, text=True, timeout=20)
+            self.assertEqual(ca_result.returncode, 0, ca_result.stdout + "\\n" + ca_result.stderr)
             subprocess.run([
                 "/usr/bin/openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
                 "-keyout", str(server_key), "-out", str(server_csr),
