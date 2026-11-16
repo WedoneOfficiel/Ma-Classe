@@ -2557,6 +2557,10 @@ if __name__=='__main__':
             print(f'ERREUR DE CERTIFICAT TLS : {error}')
             raise SystemExit(2)
     httpd=MaClasseHTTPServer((HOST,PORT),Handler)
+    # Attendre les requêtes et écritures déjà engagées lors de server_close().
+    # systemd borne cet arrêt à TimeoutStopSec=120 avant arrêt forcé.
+    httpd.daemon_threads=False
+    httpd.block_on_close=True
     if context: httpd.socket=context.wrap_socket(httpd.socket,server_side=True)
     scheme='https' if context else 'http'
     mode='réseau privé HTTPS' if HOST not in ('127.0.0.1','localhost','::1') else ('local HTTPS' if context else 'local HTTP')
