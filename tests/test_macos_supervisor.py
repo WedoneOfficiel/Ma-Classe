@@ -404,6 +404,7 @@ subjectKeyIdentifier=hash
                     "  self.server_name=str(self.server_address[0])\n"
                     "  self.server_port=int(self.server_address[1])\n"
                     "class Handler(BaseHTTPRequestHandler):\n"
+                    " timeout=20\n"
                     " def do_GET(self):\n"
                     "  body=json.dumps({'ok':HEALTHY,'version':APP_VERSION,'database':'ok'}).encode()\n"
                     "  self.send_response(200 if HEALTHY else 503)\n"
