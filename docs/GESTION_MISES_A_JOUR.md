@@ -23,7 +23,7 @@ Les données métier et les fichiers téléversés ne doivent jamais être rempl
 
 ### 2. Séparation code / données
 
-- Le code actif et les versions préparées vivent dans `data/program/versions/`. Le lien `data/program/current` désigne la version active. Le serveur reçoit `MACLASSE_DATA_DIR` pour conserver base, pièces jointes et certificats hors des versions.
+- Le code actif et les versions préparées vivent dans `data/program/versions/`. Le lien relatif `data/program/current` désigne la version active, ce qui permet de déplacer/restaurer le dossier sans casser la cible. Le lanceur manuel Linux utilise lui aussi ce lien pour démarrer la bonne version. Le serveur reçoit `MACLASSE_DATA_DIR` pour conserver base, pièces jointes et certificats hors des versions.
 - La base, les pièces jointes, les sauvegardes, les paramètres locaux et l'identité TLS restent dans le répertoire de données persistant.
 - Une mise à jour ne copie, ne supprime et ne remplace jamais ce répertoire.
 - Les migrations de données sont explicites, versionnées et exécutées après sauvegarde. Une migration non réversible bloque le retour automatique et doit être déclarée dans le manifeste.
