@@ -23,6 +23,8 @@ After=default.target
 [Service]
 Type=simple
 Environment=MACLASSE_SUPERVISED=systemd
+Environment=MACLASSE_ROOT=$ROOT
+Environment=MACLASSE_DATA_DIR=$ROOT/data
 WorkingDirectory=$ROOT
 ExecStart=/usr/bin/bash $ROOT/data/program/current/Lancer-MaClasse-Service-Linux.sh
 Restart=on-failure
@@ -50,6 +52,7 @@ After=default.target
 Type=oneshot
 WorkingDirectory=$ROOT
 Environment=MACLASSE_ROOT=$ROOT
+Environment=MACLASSE_DATA_DIR=$ROOT/data
 ExecStart=/usr/bin/bash $ROOT/data/program/current/Appliquer-Mise-A-Jour-MaClasse-Linux.sh
 TimeoutStartSec=900
 UMask=0077
