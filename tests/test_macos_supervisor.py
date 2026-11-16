@@ -528,7 +528,26 @@ subjectKeyIdentifier=hash
                     ["/bin/bash", str(updater)], cwd=root, env=env,
                     capture_output=True, text=True, timeout=75
                 )
-                self.assertEqual(success.returncode, 0, success.stdout + "\n" + success.stderr)
+                if success.returncode != 0:
+                    diagnostics = {}
+                    for name in ("macos-update.log", "macos-update-error.log", "service.log", "service-error.log"):
+                        path = data / name
+                        diagnostics[name] = path.read_text(encoding="utf-8", errors="replace") if path.exists() else "<absent>"
+                    diagnostics["update_state"] = state_file.read_text(encoding="utf-8", errors="replace") if state_file.exists() else "<absent>"
+                    diagnostics["current_link"] = os.readlink(current) if current.is_symlink() else "<not a symlink>"
+                    diagnostics["launchd_service"] = subprocess.run(
+                        ["/bin/launchctl", "print", f"gui/{uid}/fr.maclasse.server"],
+                        capture_output=True, text=True, timeout=10
+                    ).stdout
+                    diagnostics["launchd_update"] = subprocess.run(
+                        ["/bin/launchctl", "print", f"gui/{uid}/fr.maclasse.update"],
+                        capture_output=True, text=True, timeout=10
+                    ).stdout
+                    diagnostics["processes"] = subprocess.run(
+                        ["/usr/bin/pgrep", "-alf", "server[.]py"],
+                        capture_output=True, text=True, timeout=10
+                    ).stdout
+                    self.fail(success.stdout + "\n" + success.stderr + "\n" + json.dumps(diagnostics, ensure_ascii=False, indent=2))
                 self.assertEqual((current.resolve()).name, "V25.0.23")
                 self.assertEqual(json.loads((data / "maclasse.json").read_text(encoding="utf-8")),
                                  {"preserve": "original"})
