@@ -2,6 +2,7 @@
 import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys, subprocess, signal
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
+import socketserver
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 from html import escape as html_escape
@@ -1862,6 +1863,14 @@ class MaClasseHTTPServer(ThreadingHTTPServer):
     # L'arrêt du service attend la fin des requêtes déjà engagées.
     daemon_threads=False
     block_on_close=True
+
+    def server_bind(self):
+        # HTTPServer.server_bind() performs socket.getfqdn(host), which can
+        # block on reverse DNS for private LAN addresses under launchd/systemd.
+        # The application does not need a public hostname; keep the bound IP.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name=str(self.server_address[0])
+        self.server_port=int(self.server_address[1])
 
 
 class Handler(SimpleHTTPRequestHandler):
