@@ -1852,8 +1852,12 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     _schedule_update_timer(scheduled_at)
                 except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
-                    if old_maintenance and old_maintenance.get('status')=='scheduled':
-                        _schedule_update_timer(old_maintenance.get('scheduled_at'))
+                    if old_maintenance:
+                        restore_tmp=maintenance_path+'.restore'
+                        with open(restore_tmp,'w',encoding='utf-8') as f: json.dump(old_maintenance,f,ensure_ascii=False,indent=2)
+                        os.replace(restore_tmp,maintenance_path)
+                        if old_maintenance.get('status')=='scheduled':
+                            _schedule_update_timer(old_maintenance.get('scheduled_at'))
                     else:
                         try: os.unlink(maintenance_path)
                         except OSError: pass
