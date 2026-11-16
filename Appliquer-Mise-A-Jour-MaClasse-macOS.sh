@@ -35,7 +35,7 @@ health_ok() {
 }
 start_service() {
   /bin/launchctl bootstrap "gui/$UID_NOW" "$SERVICE_PLIST" 2>/dev/null || true
-  /bin/launchctl kickstart -k "gui/$UID_NOW/$SERVICE_LABEL"
+  /bin/launchctl kickstart "gui/$UID_NOW/$SERVICE_LABEL"
 }
 fail_restore() {
   local message="$1"
