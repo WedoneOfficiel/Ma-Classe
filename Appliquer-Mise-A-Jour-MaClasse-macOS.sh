@@ -67,20 +67,24 @@ os.replace(sys.argv[1],sys.argv[2])
 PYLINK
     then
       write_state rollback_failed "$message — impossible de réactiver le lien de la version précédente."
+      write_maintenance_state failed
       exit 1
     fi
   fi
   if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
     if ! /bin/cp -p "$BACKUP_FILE" "$DATA/maclasse.json"; then
       write_state rollback_failed "$message — restauration de la base impossible ; serveur laissé arrêté."
+      write_maintenance_state failed
       exit 1
     fi
   else
     write_state rollback_failed "$message — sauvegarde de base absente ; serveur laissé arrêté."
+    write_maintenance_state failed
     exit 1
   fi
   if ! start_service; then
     write_state rollback_failed "$message — impossible de redémarrer la version précédente."
+    write_maintenance_state failed
     exit 1
   fi
   for _ in {1..20}; do
@@ -88,6 +92,7 @@ PYLINK
     /bin/sleep 2
   done
   write_state rollback_failed "$message — restauration appliquée mais contrôle de santé de l'ancienne version en échec."
+  write_maintenance_state failed
   exit 1
 }
 [[ "$(uname -s)" == "Darwin" ]] || { echo "Réservé à macOS." >&2; exit 1; }
@@ -132,7 +137,7 @@ BACKUP_DIR="$DATA/backups"
 mkdir -p "$BACKUP_DIR"
 write_state installing
 SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk 'NR==1 {print $1}' || true)"
-/bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; exit 1; }
+/bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; write_maintenance_state failed; exit 1; }
 STOPPED=0
 for _ in {1..120}; do
   ALIVE=0
