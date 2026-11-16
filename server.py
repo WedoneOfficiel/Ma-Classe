@@ -1566,6 +1566,7 @@ def _format_day_name(d):
 class MaClasseHTTPServer(ThreadingHTTPServer):
     # L'arrêt du service attend la fin des requêtes déjà engagées.
     daemon_threads=False
+    block_on_close=True
 
 
 class Handler(SimpleHTTPRequestHandler):
