@@ -509,3 +509,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 29. **Assertion du test systemd — échappement incorrect.** La première version du test renforcé cherchait un vrai caractère de nouvelle ligne (`\n` interprété par Python) au lieu de la séquence littérale barre oblique inversée + n. Le code de production avait bien produit des retours à la ligne ; c'est l'assertion qui échouait. L'assertion teste maintenant la séquence littérale avec le bon échappement (`40e0f2a`). Les 18 tests du gestionnaire de mises à jour et les 6 tests d'application/rollback avaient déjà passé avant cette assertion.
+
+
+30. **Bornage temporel du test launchd réel.** Les commandes de lecture `launchctl print` du nouveau test d'intégration sont maintenant limitées à 10 secondes, comme l'installation (30 s) et le déchargement (10 s). Cela évite qu'un runner macOS ne bloque indéfiniment si le domaine GUI ou launchd ne répond pas (`be66a47`). À valider sur le prochain run macOS.
