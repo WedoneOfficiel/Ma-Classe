@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
-ROOT="$(cd "$(dirname "$0")" && pwd -P)"
-DATA="$ROOT/data"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+if [[ -n "${MACLASSE_ROOT:-}" ]]; then
+  ROOT="$MACLASSE_ROOT"
+elif [[ -d "$SCRIPT_DIR/data" ]]; then
+  ROOT="$SCRIPT_DIR"
+else
+  ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd -P)"
+fi
+ROOT="$(cd "$ROOT" && pwd -P)"
+DATA="${MACLASSE_DATA_DIR:-$ROOT/data}"
+DATA="$(cd "$DATA" && pwd -P)"
 CURRENT="$DATA/program/current"
 [[ -L "$CURRENT" ]] || { echo "Version active absente : $CURRENT" >&2; exit 1; }
 PROGRAM="$(cd "$(dirname "$CURRENT")" && cd "$(readlink "$CURRENT")" && pwd -P)"
