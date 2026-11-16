@@ -128,7 +128,7 @@ def _start_update_apply_service():
             os.chmod(tmp,0o600); os.replace(tmp,plist)
             subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
                            check=True,capture_output=True,text=True,timeout=10)
-        subprocess.run(['/bin/launchctl','kickstart','-k',f'gui/{os.getuid()}/fr.maclasse.update'],
+        subprocess.run(['/bin/launchctl','kickstart',f'gui/{os.getuid()}/fr.maclasse.update'],
                        check=True,capture_output=True,text=True,timeout=10)
         return
     subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
