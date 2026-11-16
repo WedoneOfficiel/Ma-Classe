@@ -116,7 +116,7 @@ class MacOSSupervisorTests(unittest.TestCase):
             shutil.copy2(ROOT / "Installer-Service-MaClasse-macOS.sh", root / "Installer-Service-MaClasse-macOS.sh")
             runner = root / "Lancer-MaClasse-Service-macOS.sh"
             runner.write_text(
-                '#!/bin/bash\necho "$" > "$MACLASSE_DATA_DIR/launchd-live.pid"\nexec /bin/sleep 60\n',
+                '#!/bin/bash\nprintf "%s" "$BASHPID" > "$MACLASSE_DATA_DIR/launchd-live.pid"\nexec /bin/sleep 60\n',
                 encoding="utf-8",
             )
             runner.chmod(0o700)
