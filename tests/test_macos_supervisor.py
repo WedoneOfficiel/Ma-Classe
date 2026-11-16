@@ -342,13 +342,19 @@ subjectKeyIdentifier=hash
             })
             base_url = "https://127.0.0.1:8765/api/health"
             context = ssl.create_default_context(cafile=str(ca_cert))
+            opener = urllib.request.build_opener(
+                urllib.request.ProxyHandler({}),
+                urllib.request.HTTPSHandler(context=context)
+            )
+            env["NO_PROXY"] = "127.0.0.1,localhost"
+            env["no_proxy"] = "127.0.0.1,localhost"
 
             def wait_for_version(version, timeout=15):
                 deadline = time.time() + timeout
                 last_error = None
                 while time.time() < deadline:
                     try:
-                        with urllib.request.urlopen(base_url, context=context, timeout=2) as response:
+                        with opener.open(base_url, timeout=2) as response:
                             payload = json.loads(response.read().decode("utf-8"))
                         if payload.get("ok") is True and payload.get("version") == version and payload.get("database") == "ok":
                             return payload
