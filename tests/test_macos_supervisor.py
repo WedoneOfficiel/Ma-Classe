@@ -131,6 +131,13 @@ def active_run(args, **kwargs):
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = active_run
 try:
+    server._start_update_apply_service()
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("immediate launch was allowed while a scheduled updater was running")
+assert not any(call[:2] in (["/bin/launchctl", "bootout"], ["/bin/launchctl", "kickstart"]) for call in active_calls)
+try:
     server._cancel_update_timer()
 except RuntimeError:
     pass
