@@ -275,6 +275,30 @@ class MacOSSupervisorTests(unittest.TestCase):
                         pass
 
 
+
+    def test_macos_health_check_extracts_ip_san_portably(self):
+        with tempfile.TemporaryDirectory(prefix="maclasse-health-san-") as temp:
+            certificate = Path(temp) / "server.crt"
+            key = Path(temp) / "server.key"
+            subprocess.run([
+                "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                "-keyout", str(key), "-out", str(certificate), "-days", "1",
+                "-subj", "/CN=127.0.0.1",
+                "-addext", "subjectAltName=IP:127.0.0.1"
+            ], check=True, capture_output=True, timeout=30)
+            parser = (
+                "import ipaddress,ssl,sys\\n"
+                "certificate=ssl._ssl._test_decode_cert(sys.argv[1])\\n"
+                "for kind,value in certificate.get('subjectAltName',()):\\n"
+                " if kind=='IP Address':\\n"
+                "  print(ipaddress.ip_address(value)); break\\n"
+            )
+            result = subprocess.run(
+                [sys.executable, "-c", parser, str(certificate)],
+                check=True, capture_output=True, text=True, timeout=10
+            )
+            self.assertEqual(result.stdout.strip(), "127.0.0.1")
+
     def test_macos_updater_retains_active_previous_and_three_newest_versions(self):
         script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh").read_text(encoding="utf-8")
         start_marker = 'if ! "$ROOT/.venv/bin/python" - "$VERSIONS" "$TARGET_REAL" "$PREVIOUS_REAL" <<\'PY\'\n'
