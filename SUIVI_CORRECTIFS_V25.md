@@ -506,3 +506,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 28. **Sandbox du test EDT élève — helper manquant.** La suite a atteint le rendu de la page « Séances & leçons » et le test VM n'avait pas le helper `jsArg` désormais utilisé pour les dates dans les attributs. Ajout du sérialiseur au contexte du test (`60b7580`). Les vérifications précédentes du rendu élève et des fonctions de navigation avaient passé avant cette exception. CI à reconfirmer.
+
+
+29. **Assertion du test systemd — échappement incorrect.** La première version du test renforcé cherchait un vrai caractère de nouvelle ligne (`\n` interprété par Python) au lieu de la séquence littérale barre oblique inversée + n. Le code de production avait bien produit des retours à la ligne ; c'est l'assertion qui échouait. L'assertion teste maintenant la séquence littérale avec le bon échappement (`40e0f2a`). Les 18 tests du gestionnaire de mises à jour et les 6 tests d'application/rollback avaient déjà passé avant cette assertion.
