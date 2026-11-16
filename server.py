@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys, subprocess
+import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys, subprocess, signal
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -2593,6 +2593,11 @@ def _assert_server_host(host, allow_lan=False):
     return True
 
 
+def _stop_on_sigterm(signum, frame):
+    # launchd sends SIGTERM on bootout; route it through the same graceful close as Ctrl+C.
+    raise KeyboardInterrupt
+
+
 if __name__=='__main__':
     os.chdir(ROOT)
     try:
@@ -2623,6 +2628,7 @@ if __name__=='__main__':
     scheme='https' if context else 'http'
     mode='réseau privé HTTPS' if HOST not in ('127.0.0.1','localhost','::1') else ('local HTTPS' if context else 'local HTTP')
     print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{HOST}:{PORT}')
+    signal.signal(signal.SIGTERM,_stop_on_sigterm)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
