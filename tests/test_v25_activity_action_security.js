@@ -11,10 +11,10 @@ assert(source.includes("runActivityAction(${jsObjectArg(x.action)})"));
 assert(source.includes("runActivityAction(${jsObjectArg(n.action)})"));
 
 const eventHandlers = [...source.matchAll(/on[a-z]+="([^"]*)"/gi)].map(match => match[1]);
-assert(!eventHandlers.some(handler => /'\\$\\{[^}]+\\}'/.test(handler)),
+assert(!eventHandlers.some(handler => /'\$\{[^}]+\}'/.test(handler)),
   "inline event handlers must not interpolate untrusted values inside raw JavaScript strings");
-const unsafeDataAttributes = [...source.matchAll(/\\b(?:data-[\\w-]+|value|id|title|name|for|aria-[\\w-]+)="([^"]*\\$\\{[^}]+\\}[^"]*)"/g)]
-  .filter(match => !/\\$\\{(?:esc|jsArg|jsObjectArg)\\(/.test(match[1]));
+const unsafeDataAttributes = [...source.matchAll(/\b(?:data-[\w-]+|value|id|title|name|for|aria-[\w-]+)="([^"]*\$\{[^}]+\}[^"]*)"/g)]
+  .filter(match => !/\$\{(?:esc|jsArg|jsObjectArg)\(/.test(match[1]));
 assert.strictEqual(unsafeDataAttributes.length, 0, "dynamic HTML data/value attributes must be escaped");
 
 const start = source.indexOf("function runActivityAction(action){");
