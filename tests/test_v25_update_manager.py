@@ -298,9 +298,11 @@ class ReleaseCheckerTests(unittest.TestCase):
                         target_python.parent.mkdir(parents=True, exist_ok=True)
                         target_python.write_text("", encoding="utf-8")
                     return None
-                with patch.object(updater.sys, "_base_executable", "/usr/bin/python3", create=True), \\
-                     patch.object(updater.subprocess, "run", side_effect=fake_run), \\
-                     patch.object(updater.shutil, "which", return_value=None):
+                with (
+                    patch.object(updater.sys, "_base_executable", "/usr/bin/python3", create=True),
+                    patch.object(updater.subprocess, "run", side_effect=fake_run),
+                    patch.object(updater.shutil, "which", return_value=None),
+                ):
                     updater.prepare_runtime(program)
                 self.assertEqual(len(calls), 3)
                 ready = json.loads((program / "maclasse-runtime-ready.json").read_text(encoding="utf-8"))
