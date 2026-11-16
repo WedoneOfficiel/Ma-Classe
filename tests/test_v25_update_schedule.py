@@ -12,6 +12,31 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import server
 
 
+
+def test_public_maintenance_projection_keeps_installing_notice_and_hides_private_fields():
+    scheduled = server._public_update_maintenance({
+        "status": "scheduled", "version": "25.0.23", "scheduled_at": 1800000000,
+        "timezone": "Europe/Paris", "scheduled_by": "secret-admin-id", "created_at": 1
+    })
+    assert scheduled["scheduled"] is True
+    assert scheduled["in_progress"] is False
+    assert scheduled["maintenance"] == {
+        "status": "scheduled", "version": "25.0.23",
+        "scheduled_at": 1800000000, "timezone": "Europe/Paris"
+    }
+    installing = server._public_update_maintenance({
+        "status": "installing", "version": "25.0.23", "scheduled_at": 1800000000,
+        "timezone": "Europe/Paris", "scheduled_by": "secret-admin-id"
+    })
+    assert installing["scheduled"] is False
+    assert installing["in_progress"] is True
+    assert installing["maintenance"]["status"] == "installing"
+    assert "scheduled_by" not in installing["maintenance"]
+    for terminal in ("completed", "failed", "cancelled", "unknown"):
+        hidden = server._public_update_maintenance({"status": terminal, "version": "25.0.23"})
+        assert hidden == {"scheduled": False, "in_progress": False, "maintenance": None}
+    assert server._public_update_maintenance(None)["maintenance"] is None
+
 def test_linux_updater_support_requires_a_loaded_systemd_unit():
     with tempfile.TemporaryDirectory() as temp:
         data = Path(temp)
@@ -31,6 +56,7 @@ def test_linux_updater_support_requires_a_loaded_systemd_unit():
 
 
 def run():
+    test_public_maintenance_projection_keeps_installing_notice_and_hides_private_fields()
     test_linux_updater_support_requires_a_loaded_systemd_unit()
     with tempfile.TemporaryDirectory() as temp:
         timer = Path(temp) / "maclasse-update-scheduled.timer"
