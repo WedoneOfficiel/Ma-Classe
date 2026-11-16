@@ -24,5 +24,5 @@ db.evaluations[0].grades[0].competencyRatings['Comprendre un texte']='4';
 const html = ctx.gradeTable(db.evaluations[0]);
 assert.ok(html.includes('Comprendre un texte'));
 assert.ok(html.includes('Très bien maîtrisé'));
-assert.ok(html.includes("setCompetencyRating('e1','s1'"));
+assert.ok(html.includes('setCompetencyRating("e1","s1"'));
 console.log('OK — niveaux de compétence enregistrés, effaçables et affichés sans écraser les notes.');
