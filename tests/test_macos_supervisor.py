@@ -179,6 +179,212 @@ class MacOSSupervisorTests(unittest.TestCase):
             self.assertFalse(paths[3].exists())
             self.assertTrue(outside.is_dir(), "Le nettoyage ne doit jamais suivre un lien symbolique.")
 
+
+    @unittest.skipUnless(__import__("sys").platform == "darwin", "L'installation macOS réelle nécessite launchd.")
+    def test_macos_update_install_and_rollback_end_to_end_with_launchd_and_https(self):
+        import json
+        import os
+        import ssl
+        import tempfile
+        import time
+        import urllib.error
+        import urllib.request
+
+        uid = os.getuid()
+        label = "fr.maclasse.server"
+        domain = f"gui/{uid}/{label}"
+        existing = subprocess.run(
+            ["/bin/launchctl", "print", domain],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertNotEqual(existing.returncode, 0, "Un agent MaClasse existe déjà ; test refusé pour ne rien perturber.")
+
+        with tempfile.TemporaryDirectory(prefix="maclasse-update-e2e-") as temp:
+            tmp = Path(temp)
+            root = tmp / "MaClasse"
+            data = root / "data"
+            tls = data / "tls"
+            versions = data / "program" / "versions"
+            agents = tmp / "home" / "Library" / "LaunchAgents"
+            for directory in (root / ".venv" / "bin", tls, versions, agents):
+                directory.mkdir(parents=True, exist_ok=True)
+            (root / ".venv" / "bin" / "python").symlink_to(sys.executable)
+
+            ca_key = tls / "ca.key"
+            ca_cert = tls / "ca.crt"
+            server_key = tls / "server.key"
+            server_csr = tls / "server.csr"
+            server_cert = tls / "server.crt"
+            extensions = tls / "server.ext"
+            subprocess.run(["/usr/bin/openssl", "genrsa", "-out", str(ca_key), "2048"],
+                           check=True, capture_output=True, timeout=20)
+            subprocess.run([
+                "/usr/bin/openssl", "req", "-x509", "-new", "-nodes",
+                "-key", str(ca_key), "-sha256", "-days", "2",
+                "-subj", "/CN=MaClasse updater test CA", "-out", str(ca_cert)
+            ], check=True, capture_output=True, timeout=20)
+            subprocess.run([
+                "/usr/bin/openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
+                "-keyout", str(server_key), "-out", str(server_csr),
+                "-subj", "/CN=127.0.0.1"
+            ], check=True, capture_output=True, timeout=20)
+            extensions.write_text(
+                "subjectAltName=IP:127.0.0.1\nextendedKeyUsage=serverAuth\nkeyUsage=digitalSignature,keyEncipherment\n",
+                encoding="utf-8"
+            )
+            subprocess.run([
+                "/usr/bin/openssl", "x509", "-req", "-in", str(server_csr),
+                "-CA", str(ca_cert), "-CAkey", str(ca_key), "-CAcreateserial",
+                "-out", str(server_cert), "-days", "2", "-sha256", "-extfile", str(extensions)
+            ], check=True, capture_output=True, timeout=20)
+            ca_key.chmod(0o600)
+            server_key.chmod(0o600)
+
+            def make_version(version, sha, healthy=True, prepared=False):
+                program = versions / ("V" + version)
+                (program / ".venv" / "bin").mkdir(parents=True)
+                (program / ".venv" / "bin" / "python").symlink_to(sys.executable)
+                (program / "VERSION.txt").write_text("V" + version + "\n", encoding="utf-8")
+                (program / "_all.js").write_text("const MC_VERSION='V" + version + "';\n", encoding="utf-8")
+                (program / "server.py").write_text(
+                    "APP_VERSION='" + version + "'\n"
+                    "HEALTHY=" + ("True" if healthy else "False") + "\n"
+                    "import json,os,ssl\n"
+                    "from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n"
+                    "class Handler(BaseHTTPRequestHandler):\n"
+                    " def do_GET(self):\n"
+                    "  body=json.dumps({'ok':HEALTHY,'version':APP_VERSION,'database':'ok'}).encode()\n"
+                    "  self.send_response(200 if HEALTHY else 503)\n"
+                    "  self.send_header('Content-Type','application/json')\n"
+                    "  self.send_header('Content-Length',str(len(body)))\n"
+                    "  self.end_headers();self.wfile.write(body)\n"
+                    " def log_message(self,*args): pass\n"
+                    "server=ThreadingHTTPServer(('127.0.0.1',8765),Handler)\n"
+                    "context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)\n"
+                    "context.load_cert_chain(os.environ['MACLASSE_TLS_CERT'],os.environ['MACLASSE_TLS_KEY'])\n"
+                    "server.socket=context.wrap_socket(server.socket,server_side=True)\n"
+                    "server.serve_forever()\n",
+                    encoding="utf-8"
+                )
+                (program / "maclasse-runtime-ready.json").write_text("{}", encoding="utf-8")
+                if prepared:
+                    (program / "maclasse-prepared.json").write_text(
+                        json.dumps({"sha256": sha, "status": "prepared"}), encoding="utf-8"
+                    )
+                return program
+
+            make_version("25.0.22", "0" * 64)
+            good_sha = "a" * 64
+            make_version("25.0.23", good_sha, healthy=True, prepared=True)
+            bad_sha = "b" * 64
+            make_version("25.0.24", bad_sha, healthy=False, prepared=True)
+            current = data / "program" / "current"
+            current.symlink_to("versions/V25.0.22")
+            (data / "maclasse.json").write_text('{"preserve":"original"}', encoding="utf-8")
+            runner = root / "Lancer-MaClasse-Service-macOS.sh"
+            runner.write_text(
+                '#!/bin/bash\nset -euo pipefail\n'
+                'PROGRAM="$MACLASSE_DATA_DIR/program/current"\n'
+                'exec "$PROGRAM/.venv/bin/python" "$PROGRAM/server.py"\n',
+                encoding="utf-8"
+            )
+            runner.chmod(0o700)
+            service_plist = agents / (label + ".plist")
+            with service_plist.open("wb") as stream:
+                plistlib.dump({
+                    "Label": label,
+                    "ProgramArguments": ["/bin/bash", str(runner)],
+                    "WorkingDirectory": str(root),
+                    "EnvironmentVariables": {
+                        "MACLASSE_ROOT": str(root),
+                        "MACLASSE_DATA_DIR": str(data),
+                        "MACLASSE_TLS_CERT": str(server_cert),
+                        "MACLASSE_TLS_KEY": str(server_key)
+                    },
+                    "RunAtLoad": True,
+                    "KeepAlive": True,
+                    "StandardOutPath": str(data / "service.log"),
+                    "StandardErrorPath": str(data / "service-error.log")
+                }, stream, fmt=plistlib.FMT_XML)
+            service_plist.chmod(0o600)
+
+            env = os.environ.copy()
+            env.update({
+                "HOME": str(tmp / "home"),
+                "MACLASSE_ROOT": str(root),
+                "MACLASSE_DATA_DIR": str(data)
+            })
+            base_url = "https://127.0.0.1:8765/api/health"
+            context = ssl.create_default_context(cafile=str(ca_cert))
+
+            def wait_for_version(version, timeout=15):
+                deadline = time.time() + timeout
+                last_error = None
+                while time.time() < deadline:
+                    try:
+                        with urllib.request.urlopen(base_url, context=context, timeout=2) as response:
+                            payload = json.loads(response.read().decode("utf-8"))
+                        if payload.get("ok") is True and payload.get("version") == version and payload.get("database") == "ok":
+                            return payload
+                        last_error = payload
+                    except (OSError, urllib.error.URLError, urllib.error.HTTPError, ValueError) as error:
+                        last_error = error
+                    time.sleep(0.25)
+                raise AssertionError("Le serveur de test n'est pas sain pour " + version + " : " + repr(last_error))
+
+            try:
+                subprocess.run(["/bin/launchctl", "bootstrap", f"gui/{uid}", str(service_plist)],
+                               check=True, capture_output=True, text=True, timeout=15)
+                subprocess.run(["/bin/launchctl", "kickstart", domain],
+                               check=True, capture_output=True, text=True, timeout=15)
+                wait_for_version("25.0.22")
+
+                updater = ROOT / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh"
+                state_file = data / "update-state.json"
+                state_file.write_text(json.dumps({
+                    "status": "prepared", "version": "25.0.23", "sha256": good_sha
+                }), encoding="utf-8")
+                success = subprocess.run(
+                    ["/bin/bash", str(updater)], cwd=root, env=env,
+                    capture_output=True, text=True, timeout=75
+                )
+                self.assertEqual(success.returncode, 0, success.stdout + "\n" + success.stderr)
+                self.assertEqual((current.resolve()).name, "V25.0.23")
+                self.assertEqual(json.loads((data / "maclasse.json").read_text(encoding="utf-8")),
+                                 {"preserve": "original"})
+                self.assertEqual(json.loads(state_file.read_text(encoding="utf-8"))["status"], "installed")
+                self.assertTrue(list((data / "backups").glob("maclasse-avant-maj-*.json")))
+                wait_for_version("25.0.23")
+
+                # A bad next version must fail health validation, restore the previous
+                # symlink and database atomically, then restart the previous service.
+                (data / "maclasse.json").write_text('{"preserve":"before-rollback"}', encoding="utf-8")
+                state_file.write_text(json.dumps({
+                    "status": "prepared", "version": "25.0.24", "sha256": bad_sha
+                }), encoding="utf-8")
+                failed = subprocess.run(
+                    ["/bin/bash", str(updater)], cwd=root, env=env,
+                    capture_output=True, text=True, timeout=75
+                )
+                self.assertNotEqual(failed.returncode, 0, failed.stdout + "\n" + failed.stderr)
+                self.assertEqual(current.resolve().name, "V25.0.23")
+                self.assertEqual(json.loads((data / "maclasse.json").read_text(encoding="utf-8")),
+                                 {"preserve": "before-rollback"})
+                self.assertEqual(json.loads(state_file.read_text(encoding="utf-8"))["status"], "failed")
+                wait_for_version("25.0.23")
+            finally:
+                subprocess.run(["/bin/launchctl", "bootout", domain],
+                               capture_output=True, text=True, timeout=10)
+                listed = subprocess.run(["/bin/launchctl", "list", label],
+                                        capture_output=True, text=True, timeout=10)
+                for line in (listed.stdout or "").splitlines():
+                    fields = line.split()
+                    if fields and fields[0].isdigit():
+                        try:
+                            os.kill(int(fields[0]), 15)
+                        except OSError:
+                            pass
+
     def test_launchd_schedule_and_immediate_job_plists(self):
         code = r"""
 import os, pathlib, plistlib, subprocess, sys, tempfile, time
