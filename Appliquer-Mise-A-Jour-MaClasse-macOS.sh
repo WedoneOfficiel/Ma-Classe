@@ -116,7 +116,7 @@ PYLINK
     exit 1
   fi
   if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
-    RESTORE_TMP="$DATA/maclasse.json.rollback.${BASHPID}.tmp"
+    RESTORE_TMP="$DATA/maclasse.json.rollback.$RANDOM-$PPID.tmp"
     /bin/rm -f "$RESTORE_TMP"
     if ! /bin/cp -p "$BACKUP_FILE" "$RESTORE_TMP"; then
       write_state rollback_failed "$message — copie temporaire de la base impossible ; serveur laissé arrêté."
@@ -226,7 +226,7 @@ if [[ "$STOPPED" != "1" ]]; then
 fi
 # Snapshot after confirmed stop: no concurrent writes can be lost on rollback.
 STAMP="$(/bin/date +%Y%m%d-%H%M%S)"
-BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP-${BASHPID}.json"
+BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP-$RANDOM-$PPID.json"
 if [[ ! -f "$DATA/maclasse.json" || -L "$DATA/maclasse.json" ]] || ! /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"; then
   if start_service; then
     write_state failed "Impossible de sauvegarder la base après l'arrêt ; ancienne version relancée."
