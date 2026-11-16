@@ -18,6 +18,8 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         self.assertIn("update_manager.prepare_runtime(prepared)", source)
         self.assertIn("maclasse-update-apply.service", source)
         self.assertIn("Le serveur est actif mais le gestionnaire", source)
+        self.assertIn("pgrep -f '[p]ython.*server\\.py'", source)
+        self.assertIn("raise SystemExit(10)", source)
 
     def test_both_scripts_back_up_data_and_roll_back_failed_validation(self):
         for name in ("Mettre-A-Jour-MaClasse.command", "Mettre-A-Jour-MaClasse-Linux.sh"):
