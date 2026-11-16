@@ -52,6 +52,16 @@ fail_and_restore() {
   local message="$1"
   echo "Échec de la mise à jour : $message" >&2
   systemctl --user stop maclasse.service >/dev/null 2>&1 || true
+  set +e
+  systemctl --user is-active --quiet maclasse.service >/dev/null 2>&1
+  local service_state=$?
+  set -e
+  if [[ "$service_state" != "3" ]]; then
+    write_state "rollback_failed" "$message — impossible de confirmer l'arrêt du serveur ; aucune restauration de données n'a été tentée."
+    write_maintenance_state "failed"
+    echo "ATTENTION : le serveur semble toujours actif ou son état est inconnu. Aucune bascule ni restauration de base n'est tentée pour éviter une corruption." >&2
+    exit 1
+  fi
   rm -f "$CURRENT_LINK.rollback"
   ln -s "$PREVIOUS_LINK_TARGET" "$CURRENT_LINK.rollback"
   mv -Tf "$CURRENT_LINK.rollback" "$CURRENT_LINK"
