@@ -549,6 +549,11 @@ subjectKeyIdentifier=hash
                             ["/usr/bin/pgrep", "-alf", "server[.]py"],
                             capture_output=True, text=True, timeout=10
                         ).stdout,
+                        "updater_stdout": timeout_error.stdout,
+                        "updater_stderr": timeout_error.stderr,
+                        "service_stdout": (data / "service.log").read_text(encoding="utf-8", errors="replace") if (data / "service.log").exists() else "",
+                        "service_stderr": (data / "service-error.log").read_text(encoding="utf-8", errors="replace") if (data / "service-error.log").exists() else "",
+                        "runner_log": (data / "runner.log").read_text(encoding="utf-8", errors="replace") if (data / "runner.log").exists() else "",
                         "process_table": subprocess.run(
                             ["/bin/ps", "-axo", "pid,ppid,stat,command"],
                             capture_output=True, text=True, timeout=10
