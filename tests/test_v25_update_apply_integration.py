@@ -96,7 +96,8 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
         self.assertEqual(active, previous)
         self.assertEqual(state["status"], "failed")
         self.assertIn("version précédente restaurée", state["last_error"])
-        self.assertEqual(json.loads((data / "maclasse.json").read_text())["settings"]["school"], "Test")
+        self.assertEqual(database["settings"]["school"], "Test")
+        self.assertEqual(backup_count, 1)
 
 
 if __name__ == "__main__":
