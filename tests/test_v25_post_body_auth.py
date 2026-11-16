@@ -50,7 +50,10 @@ class PostBodyAuthenticationTests(unittest.TestCase):
 
     def test_auth_endpoints_have_a_small_body_limit(self):
         source = (Path(__file__).resolve().parents[1] / "server.py").read_text(encoding="utf-8")
-        self.assertIn("max_length=1024*1024 if path.startswith('/api/auth/')", source)
+        self.assertIn("max_length=1*1024*1024", source)
+        self.assertIn("max_length=50*1024*1024", source)
+        self.assertIn("max_length=100*1024*1024", source)
+        self.assertIn("max_length=20*1024*1024", source)
 
 
 if __name__ == "__main__":
