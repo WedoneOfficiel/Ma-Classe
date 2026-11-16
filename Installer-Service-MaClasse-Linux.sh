@@ -12,9 +12,11 @@ ROOT="$(pwd -P)"
 [[ "$(id -u)" -ne 0 ]] || { echo "Lance cet installateur depuis le compte utilisateur MaClasse, sans sudo devant le script."; exit 1; }
 USER_NAME="$(id -un)"
 SERVICE_PID="$(systemctl --user show --property=MainPID --value maclasse.service 2>/dev/null || echo 0)"
+if SERVER_PIDS="$(pgrep -f '[p]ython.*server[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
+[[ "$PGREP_STATUS" -le 1 ]] || { echo "Impossible de vérifier les processus Python ; installation refusée par sécurité." >&2; exit 1; }
 while IFS= read -r pid; do
   [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { echo "Un serveur MaClasse lancé manuellement est actif (PID $pid). Arrête-le avant d'installer le service." >&2; exit 1; }
-done < <(pgrep -f '[p]ython.*server[.]py' || true)
+done <<< "$SERVER_PIDS"
 if [[ ! "$ROOT" =~ ^/[A-Za-z0-9_./-]+$ ]]; then echo "Déplace MaClasse dans un chemin simple (lettres, chiffres, /, ., _ ou -) pour systemd."; exit 1; fi
 UNIT_DIR="$HOME/.config/systemd/user"
 UNIT_FILE="$UNIT_DIR/maclasse.service"
