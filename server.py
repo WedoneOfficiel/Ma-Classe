@@ -83,8 +83,20 @@ def _cancel_update_timer():
             os.unlink(plist)
         return
     unit_path=_update_timer_unit_path()
-    subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
-                   check=False,capture_output=True,text=True,timeout=10)
+    disable=subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
+                           check=False,capture_output=True,text=True,timeout=10)
+    active=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-scheduled.timer'],
+                          check=False,capture_output=True,text=True,timeout=10)
+    if active.returncode==0:
+        raise RuntimeError("Le timer systemd est toujours actif ; annulation non confirmée.")
+    if active.returncode not in (3,4):
+        raise RuntimeError("Impossible de vérifier l'état du timer systemd ; annulation non confirmée.")
+    enabled=subprocess.run(['/usr/bin/systemctl','--user','is-enabled','maclasse-update-scheduled.timer'],
+                           check=False,capture_output=True,text=True,timeout=10)
+    if enabled.returncode==0:
+        raise RuntimeError("Le timer systemd est toujours activé ; annulation non confirmée.")
+    if enabled.returncode not in (1,4):
+        raise RuntimeError("Impossible de vérifier l'activation du timer systemd ; annulation non confirmée.")
     if os.path.exists(unit_path): os.unlink(unit_path)
     subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
                    check=True,capture_output=True,text=True,timeout=10)
@@ -124,9 +136,8 @@ def _schedule_update_timer(timestamp):
     calendar=utc.strftime('%Y-%m-%d %H:%M:%S UTC')
     subprocess.run(['/usr/bin/systemd-analyze','calendar',calendar],
                    check=True,capture_output=True,text=True,timeout=10)
-    subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
-                   check=False,capture_output=True,text=True,timeout=10)
     if _update_apply_service_active(): raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
+    _cancel_update_timer()
     unit='[Unit]\\nDescription=MaClasse — maintenance programmée\\n\\n[Timer]\\nOnCalendar='+calendar+'\\nAccuracySec=1s\\nPersistent=false\\nUnit=maclasse-update-apply.service\\n\\n[Install]\\nWantedBy=timers.target\\n'
     tmp=unit_path+'.tmp'
     with open(tmp,'w',encoding='utf-8') as f: f.write(unit)
@@ -135,9 +146,10 @@ def _schedule_update_timer(timestamp):
         subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],check=True,capture_output=True,text=True,timeout=10)
         subprocess.run(['/usr/bin/systemctl','--user','enable','--now','maclasse-update-scheduled.timer'],check=True,capture_output=True,text=True,timeout=10)
     except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
-        try: os.unlink(unit_path)
-        except OSError: pass
-        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],check=False,capture_output=True,text=True,timeout=10)
+        try:
+            _cancel_update_timer()
+        except Exception as cleanup_error:
+            raise RuntimeError("La programmation a échoué et l'annulation de secours n'a pas pu être confirmée.") from cleanup_error
         raise
 
 def _start_update_apply_service():
