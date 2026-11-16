@@ -64,6 +64,52 @@ class UpdateScriptSafetyTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             self.assertNotIn("start --no-block maclasse-update-apply.service", log.read_text(encoding="utf-8"))
 
+
+    def test_macos_legacy_updater_refuses_to_mutate_a_supervised_installation(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "MaClasse"
+            (root / ".git").mkdir(parents=True)
+            python = root / ".venv" / "bin" / "python"
+            python.parent.mkdir(parents=True)
+            python.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+            python.chmod(0o755)
+            marker = root / "data" / "update-manager.enabled"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("enabled", encoding="utf-8")
+            script = root / "Mettre-A-Jour-MaClasse.command"
+            shutil.copy2(ROOT / "Mettre-A-Jour-MaClasse.command", script)
+            result = subprocess.run(["bash", str(script)], cwd=root, input="\\n",
+                                    capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("gestionnaire de mises à jour supervisé", result.stdout)
+            self.assertFalse((root / ".git" / "FETCH_HEAD").exists())
+
+    def test_macos_legacy_updater_refuses_to_run_while_server_is_active(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "MaClasse"
+            (root / ".git").mkdir(parents=True)
+            python = root / ".venv" / "bin" / "python"
+            python.parent.mkdir(parents=True)
+            python.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+            python.chmod(0o755)
+            script = root / "Mettre-A-Jour-MaClasse.command"
+            shutil.copy2(ROOT / "Mettre-A-Jour-MaClasse.command", script)
+            fakebin = Path(tmp) / "bin"
+            fakebin.mkdir()
+            pgrep = fakebin / "pgrep"
+            pgrep.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+            pgrep.chmod(0o755)
+            env = os.environ.copy()
+            env["PATH"] = str(fakebin) + os.pathsep + env.get("PATH", "")
+            result = subprocess.run(["bash", str(script)], cwd=root, env=env, input="\\n",
+                                    capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("serveur MaClasse est encore actif", result.stdout)
+
     def test_both_scripts_back_up_data_and_roll_back_failed_validation(self):
         for name in ("Mettre-A-Jour-MaClasse.command", "Mettre-A-Jour-MaClasse-Linux.sh"):
             with self.subTest(script=name):
