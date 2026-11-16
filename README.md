@@ -565,3 +565,74 @@ Le service `launchd` démarre MaClasse à l'ouverture de session et le relance a
 Journaux : `data/macos-service.log`, `data/macos-service-error.log`, `data/macos-update.log` et `data/macos-update-error.log`.
 
 Cette supervision est encore expérimentale : ne l'active pas sur une installation contenant des données scolaires réelles avant la validation complète des tests et une sauvegarde externe.
+
+## Procédure de publication d'une version stable
+
+Cette procédure est la référence à suivre pour chaque nouvelle version destinée au mécanisme de mise à jour intégré. Elle évite de publier une release sans archive ou manifeste utilisable par MaClasse.
+
+### 1. Préparer la version dans le code
+
+Avant de créer la release :
+
+1. Mettre à jour le numéro de version dans les trois emplacements qui doivent rester cohérents :
+   - `VERSION.txt` : `VXX.YY.ZZ` ;
+   - `server.py` : `APP_VERSION='XX.YY.ZZ'` ;
+   - `_all.js` : `MC_VERSION='VXX.YY.ZZ'`.
+2. Ajouter en tête du changelog les nouveautés, corrections et éventuelles limites connues.
+3. Vérifier les changements et lancer les tests adaptés.
+4. Pousser les commits validés sur la branche `main`.
+5. Attendre que le workflow CI de la branche se termine avec succès. Ne pas publier une version dont les tests échouent.
+
+### 2. Créer la release GitHub
+
+Ouvrir **Releases** dans le dépôt GitHub, puis cliquer sur **Draft a new release**.
+
+Renseigner les champs ainsi :
+
+- **Choose a tag** : créer le tag `vXX.YY.ZZ` (sans le préfixe `V`), en le faisant pointer sur `main`.
+- **Target** : `main`.
+- **Release title** : `MaClasse VXX.YY.ZZ`.
+- **Description** : utiliser le modèle ci-dessous et remplacer les éléments entre crochets par les changements réellement livrés. Ne pas annoncer une fonctionnalité ou une validation qui n'a pas été vérifiée.
+
+Modèle de description :
+
+```markdown
+## MaClasse VXX.YY.ZZ
+
+### Nouveautés et améliorations
+- [Nouveauté ou amélioration principale.]
+- [Autre changement important.]
+- [Corrections et améliorations de fiabilité.]
+
+### Validation
+Version vérifiée par les tests automatisés [environnements et tests réellement réussis].
+```
+
+Pour une version principalement corrective, adapter le titre de la section « Nouveautés et améliorations » en « Corrections et améliorations ». Garder une description courte, lisible et factuelle.
+
+Cliquer sur **Publish release** pour publier. La création du tag déclenche automatiquement le workflow **Publier une version stable MaClasse**.
+
+### 3. Vérifier la publication automatique
+
+Le workflow doit :
+- vérifier que le tag correspond exactement à `VERSION.txt`, `APP_VERSION` dans `server.py` et `MC_VERSION` dans `_all.js` ;
+- exécuter le workflow de tests ;
+- construire l'archive de mise à jour `maclasse-update.zip` ;
+- générer `maclasse-update.json`, qui contient notamment la version, le tag, le schéma de données minimal requis, les notes et le SHA-256 de l'archive ;
+- publier ou compléter la release avec ces deux fichiers.
+
+**Ne pas considérer la version comme distribuable tant que le workflow déclenché par le tag n'est pas terminé avec succès et que les deux assets ne sont pas présents dans la release.** Vérifier également que le manifeste annonce le bon numéro de version et que son nom d'archive correspond exactement à `maclasse-update.zip`.
+
+### 4. Après publication
+
+Une fois les contrôles terminés, l'utilisateur peut ouvrir MaClasse et lancer la recherche de mise à jour depuis la version installée. Ne jamais lui demander de supprimer le dossier `data/` ou de désinstaller l'application pour effectuer une mise à jour normale. En cas d'échec du workflow ou d'asset manquant, corriger la publication avant de lui demander de relancer la mise à jour.
+
+### Exemple — V25.0.23
+
+- Tag : `v25.0.23`
+- Cible : `main`
+- Titre : `MaClasse V25.0.23`
+- La description doit résumer le système de mise à jour supervisée AMEL-01, les améliorations macOS et les validations réellement réussies pour cette version.
+
+**Règle de continuité :** lors d'une prochaine session de développement ou de publication, lire cette section avant de créer ou modifier une release. Le format du titre, la structure de description et les contrôles de livraison ci-dessus constituent la procédure standard du projet.
+
