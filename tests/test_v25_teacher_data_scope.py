@@ -52,6 +52,19 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(view['users'],[self.data['users'][0]])
         self.assertEqual(view['auditLog'],[])
 
+    def test_teacher_cannot_persist_scriptable_schedule_or_lesson_ids(self):
+        data=copy.deepcopy(self.data)
+        data['schedule']=[{'id':'slot-safe','classId':'c1','subject':'Maths','pattern':'none'}]
+        view=server._teacher_visible_data(data,self.user)
+        view['schedule'][0]['pattern']='none;position:fixed;inset:0'
+        view['schedule'].append({'id':"x');alert(1);//",'classId':'c1','subject':'Histoire','pattern':'none'})
+        view['lessons'].append({'id':"lesson');alert(1);//",'classId':'c1','title':'Piégé'})
+        merged=server._merge_teacher_data(data,view,self.user)
+        schedule={x['id']:x for x in merged['schedule']}
+        self.assertEqual(schedule['slot-safe']['pattern'],'none')
+        self.assertNotIn("x');alert(1);//",schedule)
+        self.assertFalse(any(x.get('id')=="lesson');alert(1);//" for x in merged['lessons']))
+
     def test_teacher_can_read_only_attachments_referenced_by_received_student_mail(self):
         old_data,old_uploads=server.DATA_FILE,server.UPLOADS
         with tempfile.TemporaryDirectory() as tmp:
