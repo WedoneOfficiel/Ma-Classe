@@ -601,8 +601,6 @@ def fake_run(args, **kwargs):
     calls.append(args)
     if args[:2] == ["/bin/launchctl", "print"]:
         return subprocess.CompletedProcess(args, 1, "", "Could not find service")
-    if args[:2] == ["/bin/launchctl", "print"]:
-        return subprocess.CompletedProcess(args, 1, "", "Could not find service")
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = fake_run
 server._schedule_update_timer(time.time() + 3600)
@@ -630,7 +628,7 @@ active_calls = []
 def active_run(args, **kwargs):
     active_calls.append(args)
     if args[:2] == ["/bin/launchctl", "print"]:
-        return subprocess.CompletedProcess(args, 0, "4321 0 fr.maclasse.update", "")
+        return subprocess.CompletedProcess(args, 0, "state = running\\npid = 4321\\n", "")
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = active_run
 try:
