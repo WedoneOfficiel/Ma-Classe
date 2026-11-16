@@ -2027,9 +2027,21 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if not self._require_local_origin(): return
         path=urlparse(self.path).path
+        # Authenticate and authorize before reading attacker-controlled request
+        # bodies. Otherwise an unauthenticated LAN client could make each worker
+        # allocate/read up to 100 MiB before receiving a 401/403 response.
+        public_post_paths=('/api/auth/setup','/api/auth/login','/api/auth/logout')
+        if path=='/api/auth/change-password':
+            if not self._session_user():
+                return self._json({'error':'Connexion requise.'},401)
+        elif path not in public_post_paths:
+            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin',) if path.startswith('/api/admin/') or path=='/api/reset' else ('admin','teacher')
+            if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
-        if length<0 or length>100*1024*1024: return self._json({'error':'Requête trop volumineuse (100 Mo maximum).'},413)
+        max_length=1024*1024 if path.startswith('/api/auth/') else 100*1024*1024
+        if length<0 or length>max_length:
+            return self._json({'error':'Requête trop volumineuse (1 Mo maximum).' if max_length<100*1024*1024 else 'Requête trop volumineuse (100 Mo maximum).'},413)
         body=self.rfile.read(length)
         if path=='/api/admin/updates/prepare':
             user=self._require_auth(roles=('admin',))
