@@ -49,7 +49,9 @@ def run():
         timer = Path(temp) / "maclasse-update-scheduled.timer"
         timer.write_text("[Timer]", encoding="utf-8")
         def stuck_run(command, **kwargs):
-            if "is-active" in command:
+            if "is-active" in command and "maclasse-update-apply.service" in command:
+                return SimpleNamespace(returncode=3)
+            if "is-active" in command and "maclasse-update-scheduled.timer" in command:
                 return SimpleNamespace(returncode=0)
             if "is-enabled" in command:
                 return SimpleNamespace(returncode=0)
