@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**Statut : chaînes Linux/systemd et macOS/launchd implémentées ; CI complète en cours sur la tête de branche ; recettes réelles Fedora et Mac utilisateur restantes. Aucune release stable n'est publiée.**  
+**Statut : chaînes Linux/systemd et macOS/launchd implémentées ; CI Linux, macOS Apple Silicon et Firefox complète verte sur le commit 7990ae5 (run #1477) ; recettes réelles Fedora et Mac utilisateur restantes. Aucune release stable n'est publiée.**  
 **Branche de travail :** `feature/amel-01-update-manager`  
 **Branche de départ :** `fix/v25-student-teacher-workflows` (PR #9 conservée intacte).
 
@@ -119,6 +119,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Une fois le gestionnaire supervisé installé et une release stable publiée, les mises à jour normales sont pilotées depuis Paramètres > Mises à jour. Le terminal ne sert plus au téléchargement/à l'installation courante ; il reste nécessaire pour l'installation initiale du service, le dépannage ou une récupération.
 - Le script macOS historique refuse maintenant de faire un git merge si le marqueur du gestionnaire supervisé est présent, et refuse toute mise à jour initiale si un serveur MaClasse tourne encore.
 - Le SHA-256 publié avec le manifeste détecte les corruptions et incohérences d'archive, mais ne constitue pas une signature d'éditeur. Une attestation ou signature vérifiable, avec clé publique épinglée, reste bloquante avant une release stable destinée à des données scolaires réelles.
+- Le workflow de publication appelle maintenant le workflow de tests réutilisable et ne crée une release qu'après réussite des jobs Linux, macOS et Firefox. La CI de validation est verte sur le commit 7990ae5 ; le déclenchement réel du workflow par un tag stable reste à tester.
 - La chaîne macOS utilise un LaunchAgent de session utilisateur : MaClasse démarre à l'ouverture de session et ne doit pas être considérée comme un service disponible après déconnexion de cet utilisateur.
 - Le serveur macOS ne surveille pas encore les changements d'adresse DHCP à chaud. Réserver une adresse IP au Mac dans le routeur ; après un changement d'adresse, redémarrer le LaunchAgent pour renouveler le certificat et réécouter sur la nouvelle IP.
 
