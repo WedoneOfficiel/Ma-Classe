@@ -34,7 +34,9 @@ assert 'Environment=MACLASSE_DATA_DIR=$ROOT/data' in installer
 assert 'SCRIPT_DIR/../../../..' in launcher
 assert 'Environment=MACLASSE_SUPERVISED=systemd' in installer
 assert 'loginctl enable-linger "$USER_NAME"' in installer
-assert 'for dependency in systemd-analyze curl openssl realpath python3; do' in installer
+assert 'for dependency in systemd-analyze curl openssl realpath python3 pgrep; do' in installer
+assert "pgrep -f '[p]ython.*server[.]py'" in installer
+assert 'show --property=MainPID --value maclasse.service' in installer
 assert 'NoNewPrivileges=true' in installer
 assert 'TimeoutStopSec=120' in installer
 server_source = (ROOT / 'server.py').read_text(encoding='utf-8')
@@ -58,6 +60,8 @@ assert 'UPDATE_UNIT_FILE="$UNIT_DIR/maclasse-update-apply.service"' in uninstall
 assert 'rm -f "$ROOT/data/update-manager.enabled"' in uninstaller
 apply_script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text()
 assert 'systemctl --user stop maclasse.service' in apply_script
+assert "pgrep -f '[p]ython.*server[.]py'" in apply_script
+assert 'Un autre serveur MaClasse non supervisé est actif' in apply_script
 assert 'mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"' in apply_script
 assert 'ln -s "versions/V$VERSION_NUMBER" "$CURRENT_LINK.next"' in apply_script
 assert 'PREVIOUS_LINK_TARGET' in apply_script
