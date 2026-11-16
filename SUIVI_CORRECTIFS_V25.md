@@ -518,3 +518,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 32. **CI Python — durée individuelle bornée.** Le job macOS reste sur l'étape de tests Python alors que Linux a terminé. Pour identifier précisément un test qui bloquerait le runner et éviter une attente de 20 minutes sans diagnostic, chaque fichier Python est maintenant exécuté dans un sous-processus limité à 90 secondes sur Linux et macOS (`a5011f9`). Le nom du fichier est déjà affiché dans le groupe de logs ; un dépassement sera ainsi attribuable. CI à reconfirmer.
+
+
+33. **Risque de chaîne d'approvisionnement — signature de release absente.** Le SHA-256 de l'archive est vérifié contre le manifeste de la même release GitHub : cela protège contre la corruption et les incohérences, mais ne constitue pas une signature d'éditeur indépendante. Une compromission du compte ou du workflow de publication pourrait remplacer à la fois manifeste et archive. Le registre contient maintenant `AUDIT-S2` : ajouter une signature détachée ou une attestation vérifiable avec clé publique épinglée. Ce point exige une décision/configuration de clé de signature dans GitHub Actions ; il est bloquant avant toute release stable de production.
