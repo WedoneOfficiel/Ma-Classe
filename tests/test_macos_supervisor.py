@@ -187,6 +187,8 @@ assert server._update_apply_service_active() is True
 
     def test_database_backup_happens_after_launchd_service_shutdown(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
+        self.assertIn("fcntl.LOCK_EX | fcntl.LOCK_NB", script)
+        self.assertIn("update-apply.lock", script)
         stop = script.index('launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL"')
         backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
         self.assertLess(stop, backup)
