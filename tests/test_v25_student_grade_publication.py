@@ -60,9 +60,29 @@ class StudentGradePublicationTests(unittest.TestCase):
             }],
         }
         visible = server._student_visible_data(
-            data, {"id": "account-s1", "role": "student", "studentId": "s1"}
+            data, {"id": "account-s1", "role": "student", "studentId": "s1"},
+            now=datetime.datetime.fromisoformat(today + "T12:00:00+00:00")
         )
         self.assertEqual([e["id"] for e in visible["evaluations"]], ["today"])
+
+    def test_same_day_publication_time_is_not_exposed_before_its_time(self):
+        today = datetime.date.today().isoformat()
+        data = {
+            "users": [], "students": [{"id": "s1", "classId": "c1"}],
+            "classes": [{"id": "c1", "name": "6e"}], "settings": {"terms": []},
+            "schedule": [], "lessons": [], "attendance": [], "bulletins": [],
+            "attachments": [], "submissions": [], "notifications": [],
+            "evaluations": [{
+                "id": "later", "classId": "c1", "published": True,
+                "publishAt": today + "T08:00:00Z",
+                "grades": [{"studentId": "s1", "value": "12"}],
+            }],
+        }
+        visible = server._student_visible_data(
+            data, {"id": "account-s1", "role": "student", "studentId": "s1"},
+            now=datetime.datetime.fromisoformat(today + "T07:00:00+00:00")
+        )
+        self.assertEqual(visible["evaluations"], [])
 
     def test_assigned_teacher_can_publish_and_only_valid_student_grades_are_saved(self):
         today = datetime.date.today().isoformat()
