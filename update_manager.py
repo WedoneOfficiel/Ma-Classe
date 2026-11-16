@@ -262,7 +262,10 @@ def prepare_runtime(program_dir: str | Path) -> Path:
                 return python
         shutil.rmtree(venv_dir, ignore_errors=True)
         ready_file.unlink(missing_ok=True)
-        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)],
+        # Build from the base interpreter, never from the currently active version's venv.
+        # Otherwise the new venv could retain a symlink to an old version that is later pruned.
+        base_python = getattr(sys, "_base_executable", None) or sys.executable
+        subprocess.run([base_python, "-m", "venv", str(venv_dir)],
                        check=True, capture_output=True, text=True, timeout=120)
         if not python.is_file():
             raise UpdateError("La création de l'environnement Python isolé a échoué.")
