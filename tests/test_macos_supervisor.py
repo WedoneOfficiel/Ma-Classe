@@ -93,6 +93,8 @@ def fake_run(args, **kwargs):
     calls.append(args)
     if args[:2] == ["/bin/launchctl", "print"]:
         return subprocess.CompletedProcess(args, 1, "", "Could not find service")
+    if args[:2] == ["/bin/launchctl", "print"]:
+        return subprocess.CompletedProcess(args, 1, "", "Could not find service")
     if args[:3] == ["/bin/launchctl", "list", "fr.maclasse.update"]:
         return subprocess.CompletedProcess(args, 1, "", "")
     return subprocess.CompletedProcess(args, 0, "", "")
@@ -112,6 +114,20 @@ with scheduled.open("rb") as stream:
 assert immediate["RunAtLoad"] is False
 assert "StartCalendarInterval" not in immediate
 assert any(call[:2] == ["/bin/launchctl", "kickstart"] for call in calls)
+
+# A failed bootout must not be reported as a successful cancellation.
+def stuck_run(args, **kwargs):
+    if args[:2] == ["/bin/launchctl", "print"]:
+        return subprocess.CompletedProcess(args, 0, "loaded", "")
+    return subprocess.CompletedProcess(args, 0, "", "")
+server.subprocess.run = stuck_run
+try:
+    server._cancel_update_timer()
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("launchd still loaded the task but cancellation was accepted")
+assert scheduled.exists()
 """
         subprocess.run(["python", "-c", code, str(ROOT)], check=True, cwd=ROOT)
 
