@@ -24,6 +24,7 @@ if [[ "$CERT_HOST" != "$HOST" ]] || ! /usr/bin/openssl x509 -in "$CERT" -checken
   (cd "$ROOT" && PYTHON="$ROOT/.venv/bin/python" /bin/bash ./Configurer-MaClasse-Reseau.sh "$HOST")
 fi
 export MACLASSE_SUPERVISED=launchd
+export MACLASSE_ROOT="$ROOT"
 export MACLASSE_DATA_DIR="$DATA"
 export MACLASSE_LAN_MODE=1
 export MACLASSE_HOST="$HOST"
