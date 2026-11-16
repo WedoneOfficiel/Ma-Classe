@@ -141,6 +141,11 @@ class ReleaseCheckerTests(unittest.TestCase):
         with self.assertRaises(updater.UpdateError):
             updater._request("https://example.test/archive", 100)
 
+    def test_rejects_reserved_data_and_runtime_paths(self):
+        for name in ("data/maclasse.json", ".venv/bin/python", "maclasse-runtime-ready.json"):
+            with self.assertRaises(updater.UpdateError):
+                updater._safe_member_path(name)
+
     def test_rejects_windows_path_and_backslash(self):
         for name in ("C:/outside.txt", "folder\\\\..\\\\outside.txt"):
             with self.assertRaises(updater.UpdateError):
