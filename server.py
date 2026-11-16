@@ -55,9 +55,22 @@ def _update_apply_service_active():
 def _cancel_update_timer():
     if sys.platform=='darwin':
         plist=_launchd_update_plist()
-        subprocess.run(['/bin/launchctl','bootout',f'gui/{os.getuid()}',plist],
-                       check=False,capture_output=True,text=True,timeout=10)
-        if os.path.exists(plist): os.unlink(plist)
+        domain=f'gui/{os.getuid()}/fr.maclasse.update'
+        probe=subprocess.run(['/bin/launchctl','print',domain],
+                             check=False,capture_output=True,text=True,timeout=10)
+        if probe.returncode==0:
+            subprocess.run(['/bin/launchctl','bootout',f'gui/{os.getuid()}','fr.maclasse.update'],
+                           check=True,capture_output=True,text=True,timeout=10)
+            verify=subprocess.run(['/bin/launchctl','print',domain],
+                                  check=False,capture_output=True,text=True,timeout=10)
+            if verify.returncode==0:
+                raise RuntimeError("La tâche launchd de maintenance est toujours chargée ; annulation non confirmée.")
+            if 'Could not find service' not in (verify.stderr or ''):
+                raise RuntimeError("Impossible de vérifier l'arrêt de la tâche launchd ; annulation non confirmée.")
+        elif 'Could not find service' not in (probe.stderr or ''):
+            raise RuntimeError("Impossible de vérifier l'état de la tâche launchd ; annulation non confirmée.")
+        if os.path.exists(plist):
+            os.unlink(plist)
         return
     unit_path=_update_timer_unit_path()
     subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
@@ -1867,7 +1880,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/admin/updates/prepare':
             user=self._require_auth(roles=('admin',))
             if not user: return
-            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire de mises à jour Linux doit être installé avant de préparer une version.'},501)
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire de mises à jour supervisé doit être installé avant de préparer une version.'},501)
             try:
                 request_payload=json.loads(body.decode('utf-8'))
                 requested_version=str(request_payload.get('version') or '') if isinstance(request_payload,dict) else ''
@@ -1898,7 +1911,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/admin/updates/schedule':
             user=self._require_auth(roles=('admin',))
             if not user: return
-            if not _update_apply_service_installed(): return self._json({'error':'La programmation nécessite le gestionnaire Linux supervisé.'},501)
+            if not _update_apply_service_installed(): return self._json({'error':'La programmation nécessite le gestionnaire supervisé.'},501)
             try:
                 payload=json.loads(body.decode('utf-8'))
                 if not isinstance(payload,dict): return self._json({'error':'Demande de programmation invalide.'},400)
@@ -1947,7 +1960,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/admin/updates/cancel-schedule':
             user=self._require_auth(roles=('admin',))
             if not user: return
-            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire Linux supervisé est absent.'},501)
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire supervisé est absent.'},501)
             try:
                 maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
                 with open(maintenance_path,encoding='utf-8') as f: maintenance=json.load(f)
@@ -1966,7 +1979,7 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/api/admin/updates/install':
             user=self._require_auth(roles=('admin',))
             if not user: return
-            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire indépendant Linux n’est pas installé sur ce serveur.'},501)
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire indépendant n’est pas installé sur ce serveur.'},501)
             try:
                 request_payload=json.loads(body.decode('utf-8'))
                 requested_version=str(request_payload.get('version') or '') if isinstance(request_payload,dict) else ''
