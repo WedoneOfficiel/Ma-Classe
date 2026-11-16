@@ -28,7 +28,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 "version": version, "sha256": sha, "status": "prepared"
             }), encoding="utf-8")
 
-    def run_update(self, fail_version=None):
+    def run_update(self, fail_version=None, service_active_during_rollback=False):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             program = base / "program"
@@ -56,7 +56,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
             fakebin.mkdir()
             systemctl_log = base / "systemctl.log"
             stubs = {
-                "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\ncase "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; *"is-active --quiet maclasse.service"*) exit 3;; esac\nexit 0\n',
+                "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\ncase "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; *"is-active --quiet maclasse.service"*) if [ "$SERVICE_ACTIVE_DURING_ROLLBACK" = "1" ]; then exit 0; else exit 3; fi;; esac\nexit 0\n',
                 "openssl": '#!/bin/sh\necho "X509v3 Subject Alternative Name: IP Address:192.168.1.10"\n',
                 "curl": '#!/bin/sh\nversion="$(cat "$CURRENT_LINK/VERSION.txt" | sed "s/^V//")"\nif [ "$version" = "$FAIL_VERSION" ]; then printf \'{"settings":{"school":"damaged"}}\' > "$DATA_FILE"; echo \'{"ok":false,"version":"$version","database":"error"}\'; else printf \'{"ok":true,"version":"%s","database":"ok"}\' "$version"; fi\n',
                 "sleep": '#!/bin/sh\nexit 0\n',
@@ -73,6 +73,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 "CURRENT_LINK": str(current),
                 "SYSTEMCTL_LOG": str(systemctl_log),
                 "FAIL_VERSION": fail_version or "",
+                "SERVICE_ACTIVE_DURING_ROLLBACK": "1" if service_active_during_rollback else "0",
                 "DATA_FILE": str(data / "maclasse.json"),
             })
             result = subprocess.run(
@@ -95,6 +96,15 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
         self.assertEqual(backup_count, 1)
         self.assertFalse(old_version_exists)
         self.assertTrue(previous_version_exists)
+
+    def test_refuses_database_restore_if_server_cannot_be_stopped(self):
+        result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update(
+            fail_version="25.0.23", service_active_during_rollback=True
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(active, target)
+        self.assertEqual(state["status"], "rollback_failed")
+        self.assertEqual(database["settings"]["school"], "damaged")
 
     def test_failed_health_check_restores_previous_release(self):
         result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update(fail_version="25.0.23")
