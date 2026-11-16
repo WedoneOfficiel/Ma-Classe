@@ -135,7 +135,7 @@ class MacOSSupervisorTests(unittest.TestCase):
                 while time.time() < deadline and not marker_file.exists():
                     time.sleep(0.2)
                 self.assertTrue(marker_file.is_file(), "launchd n'a pas démarré le lanceur isolé.")
-                loaded = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True)
+                loaded = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True, timeout=10)
                 self.assertEqual(loaded.returncode, 0, loaded.stderr)
                 self.assertIn(label, loaded.stdout)
             finally:
