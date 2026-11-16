@@ -60,13 +60,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-U9 | Annulation du timer systemd non confirmée | Le code supprimait le fichier timer même si `systemctl disable --now` avait échoué, sans vérifier qu'il était inactif et désactivé. | Vérification distincte de `is-active` et `is-enabled` avant suppression ; échec fermé si l'état reste actif ou impossible à vérifier. Test de régression qui conserve le fichier si le timer reste actif. | En cours de validation CI |
 
+| AMEL-U10 | Restauration de la base non atomique en cas de rollback | Une interruption pendant la copie de sauvegarde vers `maclasse.json` pouvait laisser un fichier de base partiellement écrit. | La sauvegarde est copiée vers un fichier temporaire sur le même volume, synchronisée, puis remplacée atomiquement avec `os.replace` ; synchronisation du dossier après remplacement. Test d'intégration Linux et assertion dédiée macOS. | En cours de validation CI |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires du gestionnaire relevées : **11** (correctifs poussés, CI à valider)
+- Anomalies complémentaires du gestionnaire relevées : **12** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **11** anomalies AMEL complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **12** anomalies AMEL complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
