@@ -6,8 +6,9 @@ server = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(server)
 
 with tempfile.TemporaryDirectory() as tmp:
-    root = pathlib.Path(tmp)
-    data_dir = root / 'data'
+    root = pathlib.Path(tmp) / 'program'
+    root.mkdir()
+    data_dir = pathlib.Path(tmp) / 'persistent-data'
     uploads = data_dir / 'uploads'
     uploads.mkdir(parents=True)
     data_file = data_dir / 'maclasse.json'

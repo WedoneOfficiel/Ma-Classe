@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl
+import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys, subprocess, signal
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import update_manager
+import socketserver
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
+from html import escape as html_escape
+from html.parser import HTMLParser
 
 APP_VERSION='25.0.22'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
@@ -15,9 +20,225 @@ SESSION_TTL=12*60*60
 ROOT=os.path.dirname(os.path.abspath(__file__))
 BACKUP_RETENTION_DAYS=30
 BACKUP_INTERVAL_SECONDS=6*60*60
-DATA_DIR=os.path.join(ROOT,'data')
+DATA_DIR=os.path.abspath(os.environ.get('MACLASSE_DATA_DIR') or os.path.join(ROOT,'data'))
 DATA_FILE=os.path.join(DATA_DIR,'maclasse.json')
 UPLOADS=os.path.join(DATA_DIR,'uploads')
+
+_MANUAL_UPDATE_LOCK_FD=None
+
+def _acquire_manual_server_lock():
+    """Keep manual server processes from racing an atomic update/rollback."""
+    if os.environ.get('MACLASSE_SUPERVISED') in ('systemd','launchd'):
+        return None
+    try:
+        import fcntl
+    except ImportError:
+        return None
+    os.makedirs(DATA_DIR,exist_ok=True)
+    path=os.path.join(DATA_DIR,'update-apply.lock')
+    fd=os.open(path,os.O_CREAT|os.O_RDWR,0o600)
+    try:
+        os.fchmod(fd,0o600)
+        fcntl.flock(fd,fcntl.LOCK_SH|fcntl.LOCK_NB)
+    except BlockingIOError as error:
+        os.close(fd)
+        raise RuntimeError('Une mise à jour MaClasse est en cours ; le serveur manuel ne peut pas démarrer.') from error
+    except Exception:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _update_apply_service_installed():
+    marker=os.path.join(DATA_DIR,'update-manager.enabled')
+    if not os.path.isfile(marker): return False
+    if sys.platform.startswith('linux'):
+        if os.environ.get('MACLASSE_SUPERVISED')!='systemd': return False
+        try:
+            result=subprocess.run(['/usr/bin/systemctl','--user','show','--property=LoadState','--value','maclasse-update-apply.service'],
+                                  check=False,capture_output=True,text=True,timeout=5)
+            return result.returncode==0 and (result.stdout or '').strip()=='loaded'
+        except (OSError,subprocess.TimeoutExpired):
+            return False
+    if sys.platform=='darwin':
+        if os.environ.get('MACLASSE_SUPERVISED')!='launchd' or not os.path.isfile(_launchd_service_plist()):
+            return False
+        try:
+            result=subprocess.run(['/bin/launchctl','print',f'gui/{os.getuid()}/fr.maclasse.server'],
+                                  check=False,capture_output=True,text=True,timeout=5)
+            return result.returncode==0
+        except (OSError,subprocess.TimeoutExpired):
+            return False
+    return False
+
+def _update_timer_unit_path():
+    return os.path.join(os.path.expanduser('~'),'.config','systemd','user','maclasse-update-scheduled.timer')
+
+def _launchd_service_plist():
+    return os.path.join(os.path.expanduser('~'),'Library','LaunchAgents','fr.maclasse.server.plist')
+
+def _launchd_update_plist():
+    return os.path.join(os.path.expanduser('~'),'Library','LaunchAgents','fr.maclasse.update.plist')
+
+def _public_update_maintenance(maintenance):
+    """Expose only the maintenance fields needed by authenticated users."""
+    if not isinstance(maintenance,dict):
+        return {'scheduled':False,'in_progress':False,'maintenance':None}
+    status=maintenance.get('status')
+    if status not in ('scheduled','installing'):
+        return {'scheduled':False,'in_progress':False,'maintenance':None}
+    public={key:maintenance.get(key) for key in ('status','version','scheduled_at','timezone')}
+    return {'scheduled':status=='scheduled','in_progress':status=='installing','maintenance':public}
+
+def _update_apply_service_active():
+    if sys.platform=='darwin':
+        domain=f'gui/{os.getuid()}/fr.maclasse.update'
+        result=subprocess.run(['/bin/launchctl','print',domain],
+                              check=False,capture_output=True,text=True,timeout=10)
+        if result.returncode!=0:
+            message=(result.stdout or '')+' '+(result.stderr or '')
+            if 'Could not find service' in message: return False
+            raise RuntimeError("Impossible de vérifier l'état de la tâche launchd.")
+        # launchctl print exposes the live PID as "pid = N"; an idle loaded
+        # LaunchAgent has no positive PID and must not block cancellation.
+        for line in (result.stdout or '').splitlines():
+            fields=line.strip().split()
+            if len(fields)==3 and fields[0]=='pid' and fields[1]=='=' and fields[2].isdigit():
+                return int(fields[2])>0
+        return False
+    result=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-apply.service'],
+                          check=False,capture_output=True,text=True,timeout=10)
+    if result.returncode==0: return True
+    if result.returncode==3: return False
+    raise RuntimeError("État du service de mise à jour impossible à vérifier.")
+
+def _cancel_update_timer():
+    if _update_apply_service_active():
+        raise RuntimeError("Une installation de mise à jour est déjà en cours ; annulation du timer refusée.")
+    if sys.platform=='darwin':
+        plist=_launchd_update_plist()
+        domain=f'gui/{os.getuid()}/fr.maclasse.update'
+        probe=subprocess.run(['/bin/launchctl','print',domain],
+                             check=False,capture_output=True,text=True,timeout=10)
+        if probe.returncode==0:
+            subprocess.run(['/bin/launchctl','bootout',f'gui/{os.getuid()}','fr.maclasse.update'],
+                           check=True,capture_output=True,text=True,timeout=10)
+            verify=subprocess.run(['/bin/launchctl','print',domain],
+                                  check=False,capture_output=True,text=True,timeout=10)
+            if verify.returncode==0:
+                raise RuntimeError("La tâche launchd de maintenance est toujours chargée ; annulation non confirmée.")
+            if 'Could not find service' not in (verify.stderr or ''):
+                raise RuntimeError("Impossible de vérifier l'arrêt de la tâche launchd ; annulation non confirmée.")
+        elif 'Could not find service' not in (probe.stderr or ''):
+            raise RuntimeError("Impossible de vérifier l'état de la tâche launchd ; annulation non confirmée.")
+        if os.path.exists(plist):
+            os.unlink(plist)
+        return
+    unit_path=_update_timer_unit_path()
+    disable=subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
+                           check=False,capture_output=True,text=True,timeout=10)
+    active=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-scheduled.timer'],
+                          check=False,capture_output=True,text=True,timeout=10)
+    if active.returncode==0:
+        raise RuntimeError("Le timer systemd est toujours actif ; annulation non confirmée.")
+    if active.returncode not in (3,4):
+        raise RuntimeError("Impossible de vérifier l'état du timer systemd ; annulation non confirmée.")
+    enabled=subprocess.run(['/usr/bin/systemctl','--user','is-enabled','maclasse-update-scheduled.timer'],
+                           check=False,capture_output=True,text=True,timeout=10)
+    if enabled.returncode==0:
+        raise RuntimeError("Le timer systemd est toujours activé ; annulation non confirmée.")
+    if enabled.returncode not in (1,4):
+        raise RuntimeError("Impossible de vérifier l'activation du timer systemd ; annulation non confirmée.")
+    if os.path.exists(unit_path): os.unlink(unit_path)
+    subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],
+                   check=True,capture_output=True,text=True,timeout=10)
+
+def _schedule_update_timer(timestamp):
+    if sys.platform=='darwin':
+        if _update_apply_service_active(): raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
+        plist=_launchd_update_plist()
+        _cancel_update_timer()
+        os.makedirs(os.path.dirname(plist),exist_ok=True)
+        dt=datetime.datetime.fromtimestamp(timestamp).astimezone()
+        script=os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')
+        if not os.path.isfile(script): raise RuntimeError("Le programme d'installation macOS est absent.")
+        values={'Year':dt.year,'Month':dt.month,'Day':dt.day,'Hour':dt.hour,'Minute':dt.minute}
+        import plistlib
+        document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',script],
+                  'WorkingDirectory':ROOT,'StartCalendarInterval':values,
+                   'EnvironmentVariables':{'MACLASSE_ROOT':os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR)),
+                                           'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
+                  'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
+                  'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
+        tmp=plist+'.tmp'
+        with open(tmp,'wb') as f: plistlib.dump(document,f,fmt=plistlib.FMT_XML,sort_keys=True)
+        os.chmod(tmp,0o600); os.replace(tmp,plist)
+        try:
+            subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+                           check=True,capture_output=True,text=True,timeout=10)
+        except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            try:
+                _cancel_update_timer()
+            except Exception as cleanup_error:
+                raise RuntimeError("La programmation launchd a échoué et le déchargement de secours n'a pas pu être confirmé.") from cleanup_error
+            raise
+        return
+    unit_path=_update_timer_unit_path()
+    unit_dir=os.path.dirname(unit_path)
+    os.makedirs(unit_dir,exist_ok=True)
+    utc=datetime.datetime.fromtimestamp(timestamp,datetime.timezone.utc)
+    calendar=utc.strftime('%Y-%m-%d %H:%M:%S UTC')
+    subprocess.run(['/usr/bin/systemd-analyze','calendar',calendar],
+                   check=True,capture_output=True,text=True,timeout=10)
+    if _update_apply_service_active(): raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
+    _cancel_update_timer()
+    unit='[Unit]\nDescription=MaClasse — maintenance programmée\n\n[Timer]\nOnCalendar='+calendar+'\nAccuracySec=1s\nPersistent=false\nUnit=maclasse-update-apply.service\n\n[Install]\nWantedBy=timers.target\n'
+    tmp=unit_path+'.tmp'
+    with open(tmp,'w',encoding='utf-8') as f: f.write(unit)
+    os.chmod(tmp,0o600); os.replace(tmp,unit_path)
+    try:
+        subprocess.run(['/usr/bin/systemctl','--user','daemon-reload'],check=True,capture_output=True,text=True,timeout=10)
+        subprocess.run(['/usr/bin/systemctl','--user','enable','--now','maclasse-update-scheduled.timer'],check=True,capture_output=True,text=True,timeout=10)
+    except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        try:
+            _cancel_update_timer()
+        except Exception as cleanup_error:
+            raise RuntimeError("La programmation a échoué et l'annulation de secours n'a pas pu être confirmée.") from cleanup_error
+        raise
+
+def _start_update_apply_service():
+    if _update_apply_service_active():
+        raise RuntimeError("Une installation de mise à jour est déjà en cours.")
+    if sys.platform=='darwin':
+        _cancel_update_timer()
+        plist=_launchd_update_plist()
+        try:
+            if not os.path.isfile(plist):
+                import plistlib
+                os.makedirs(os.path.dirname(plist),exist_ok=True)
+                document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')],
+                          'WorkingDirectory':ROOT,'RunAtLoad':False,
+                          'EnvironmentVariables':{'MACLASSE_ROOT':os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR)),
+                                                  'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
+                          'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
+                          'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
+                tmp=plist+'.tmp'
+                with open(tmp,'wb') as f: plistlib.dump(document,f,fmt=plistlib.FMT_XML,sort_keys=True)
+                os.chmod(tmp,0o600); os.replace(tmp,plist)
+                subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+                               check=True,capture_output=True,text=True,timeout=10)
+            subprocess.run(['/bin/launchctl','kickstart',f'gui/{os.getuid()}/fr.maclasse.update'],
+                           check=True,capture_output=True,text=True,timeout=10)
+        except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            try:
+                _cancel_update_timer()
+            except Exception as cleanup_error:
+                raise RuntimeError("Le lancement launchd a échoué et le déchargement de secours n'a pas pu être confirmé.") from cleanup_error
+            raise
+        return
+    subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
+                   check=True,capture_output=True,text=True,timeout=5)
+
 os.makedirs(UPLOADS,exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE,'w',encoding='utf-8') as f: json.dump({},f,ensure_ascii=False)
@@ -186,11 +407,114 @@ def _database_revision():
     return hashlib.sha256(raw).hexdigest()
 
 
+class _RichHTMLSanitizer(HTMLParser):
+    allowed={'b','strong','i','em','u','s','p','br','ul','ol','li','blockquote','div','span','a'}
+    blocked={'script','style','iframe','object','embed','svg','math','template'}
+    void={'br'}
+    font_sizes={'1':'0.75em','2':'0.875em','3':'1em','4':'1.125em','5':'1.5em','6':'2em','7':'2.5em'}
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts=[]
+        self.stack=[]
+        self.skip_depth=0
+    def _span_style(self,style):
+        rules={}
+        for part in str(style or '').split(';'):
+            if ':' not in part: continue
+            key,value=part.split(':',1)
+            rules[key.strip().lower()]=value.strip()
+        safe=[]
+        for key in ('color','background-color'):
+            value=rules.get(key,'')
+            if re.fullmatch(r'#[0-9a-fA-F]{3,8}',value) or re.fullmatch(r'rgba?\([\d.%\s,]+\)',value):
+                safe.append(f'{key}:{value}')
+        size=rules.get('font-size','')
+        if re.fullmatch(r'(?:0\.(?:75|875)|1(?:\.125|\.5)?|2(?:\.5)?)(?:em)',size) or re.fullmatch(r'(?:[8-9]|[1-4][0-9])px',size):
+            safe.append(f'font-size:{size}')
+        return ';'.join(safe)
+    def handle_starttag(self,tag,attrs):
+        tag=tag.lower()
+        if self.skip_depth:
+            if tag in self.blocked: self.skip_depth+=1
+            return
+        if tag in self.blocked:
+            self.skip_depth=1
+            return
+        attr=dict(attrs)
+        emitted=tag
+        safe_attrs=[]
+        if tag=='font':
+            emitted='span'
+            size=self.font_sizes.get(str(attr.get('size') or ''))
+            if size: safe_attrs.append(('style',f'font-size:{size}'))
+        elif tag not in self.allowed:
+            return
+        elif tag=='a':
+            href=str(attr.get('href') or '').strip()
+            if re.match(r'^https?://',href,re.I):
+                safe_attrs.extend([('href',href),('target','_blank'),('rel','noopener noreferrer')])
+        elif tag=='span':
+            style=self._span_style(attr.get('style'))
+            if style: safe_attrs.append(('style',style))
+        rendered=''.join(f' {name}="{html_escape(value,quote=True)}"' for name,value in safe_attrs)
+        self.parts.append(f'<{emitted}{rendered}>')
+        if emitted not in self.void: self.stack.append((tag,emitted))
+    def handle_endtag(self,tag):
+        tag=tag.lower()
+        if self.skip_depth:
+            if tag in self.blocked: self.skip_depth=max(0,self.skip_depth-1)
+            return
+        for index in range(len(self.stack)-1,-1,-1):
+            if self.stack[index][0]==tag:
+                while len(self.stack)>index:
+                    _,emitted=self.stack.pop()
+                    self.parts.append(f'</{emitted}>')
+                break
+    def handle_startendtag(self,tag,attrs):
+        self.handle_starttag(tag,attrs)
+        if tag.lower() not in self.void: self.handle_endtag(tag)
+    def handle_data(self,data):
+        if not self.skip_depth: self.parts.append(html_escape(data,quote=False))
+    def handle_comment(self,data):
+        return
+    def result(self):
+        while self.stack:
+            _,emitted=self.stack.pop()
+            self.parts.append(f'</{emitted}>')
+        return ''.join(self.parts)
+
+
+def _sanitize_rich_html(value):
+    raw=str(value or '')
+    if not raw: return ''
+    parser=_RichHTMLSanitizer()
+    try:
+        parser.feed(raw)
+        parser.close()
+        return parser.result()
+    except Exception:
+        return html_escape(raw,quote=False)
+
+
+def _sanitize_rich_data(data):
+    if not isinstance(data,dict): return data
+    for lesson in data.get('lessons',[]) or []:
+        if not isinstance(lesson,dict): continue
+        if 'content' in lesson: lesson['content']=_sanitize_rich_html(lesson.get('content'))
+        homework=lesson.get('homework')
+        if isinstance(homework,dict) and 'instructions' in homework:
+            homework['instructions']=_sanitize_rich_html(homework.get('instructions'))
+    for submission in data.get('submissions',[]) or []:
+        if isinstance(submission,dict) and 'correctionComment' in submission:
+            submission['correctionComment']=_sanitize_rich_html(submission.get('correctionComment'))
+    return data
+
+
 def _load_database():
     try:
         with DATA_LOCK:
             with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
-        return data if isinstance(data,dict) else {}
+        return _sanitize_rich_data(data) if isinstance(data,dict) else {}
     except Exception:
         return {}
 
@@ -511,16 +835,31 @@ def _student_accessible_teacher_ids(data, student_record):
 
 
 
+def _mail_attachment_relative_path(url):
+    """Accepte uniquement une URL relative canonique vers un fichier uploadé."""
+    raw=str(url or '').strip()
+    if not raw or chr(92) in raw: return None
+    parsed=urlparse(raw)
+    if parsed.scheme or parsed.netloc or parsed.query or parsed.fragment: return None
+    prefix='/data/uploads/'
+    if not parsed.path.startswith(prefix): return None
+    try:
+        rel=unquote(parsed.path[len(prefix):],encoding='utf-8',errors='strict')
+    except (UnicodeDecodeError,ValueError):
+        return None
+    if not rel or chr(92) in rel or chr(0) in rel: return None
+    if any(part in ('','.','..') for part in rel.split('/')): return None
+    return rel
+
+
 def _mailbox_message_safe_attachments(message, prefixes):
-    """Ne conserve que les pièces jointes situées dans les dossiers explicitement autorisés."""
+    """Ne conserve que les pièces jointes relatives situées dans les dossiers autorisés."""
     item=dict(message)
     safe=[]
     for attachment in item.get('attachments') or []:
         if not isinstance(attachment,dict): continue
-        url=str(attachment.get('url') or '').replace(chr(92),'/')
-        if '/data/uploads/' not in url: continue
-        rel=url.split('/data/uploads/',1)[1]
-        if any(rel.startswith(prefix) for prefix in prefixes):
+        rel=_mail_attachment_relative_path(attachment.get('url'))
+        if rel is not None and any(rel.startswith(prefix) for prefix in prefixes):
             safe.append(attachment)
     item['attachments']=safe
     return item
@@ -594,7 +933,7 @@ def _student_merge_mailbox(current, incoming, user, data):
             item['hiddenFor']=hidden
         result_messages.append(item)
     for ident,message in new_by_id.items():
-        if ident in old_by_id: continue
+        if ident in old_by_id or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',ident): continue
         sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
         if sender.get('role')!='student' or str(sender.get('id') or '')!=sid or sender.get('key')!=me:
             continue
@@ -608,12 +947,13 @@ def _student_merge_mailbox(current, incoming, user, data):
                 break
         if not valid: continue
         for attachment in message.get('attachments') or []:
-            if not isinstance(attachment,dict): continue
-            url=str(attachment.get('url') or '').replace(chr(92),'/')
-            if '/data/uploads/' not in url:
+            if not isinstance(attachment,dict):
                 valid=False
                 break
-            rel=url.split('/data/uploads/',1)[1]
+            rel=_mail_attachment_relative_path(attachment.get('url'))
+            if rel is None:
+                valid=False
+                break
             prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
             if not rel.startswith(prefixes):
                 valid=False
@@ -642,7 +982,7 @@ def _student_merge_mailbox(current, incoming, user, data):
     new_drafts=new.get('drafts') if isinstance(new.get('drafts'),list) else []
     drafts=[x for x in old_drafts if isinstance(x,dict) and str(x.get('owner') or '')!=me]
     for draft in new_drafts:
-        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me: continue
+        if not isinstance(draft,dict) or str(draft.get('owner') or '')!=me or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(draft.get('id') or '')): continue
         item=dict(draft)
         item['attachments']=_mailbox_message_safe_attachments(item,(f'mail-v2-drafts/student:{sid}/',))
         for field in ('to','cc','bcc'):
@@ -651,7 +991,7 @@ def _student_merge_mailbox(current, incoming, user, data):
     old_folders=old.get('folders') if isinstance(old.get('folders'),list) else []
     new_folders=new.get('folders') if isinstance(new.get('folders'),list) else []
     folders=[x for x in old_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')!=me]
-    folders.extend(x for x in new_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me)
+    folders.extend(x for x in new_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')==me and (not x.get('id') or re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(x.get('id')))))
     return {'schemaVersion':2,'messages':result_messages,'states':states,'drafts':drafts,'folders':folders,'resetPending':bool(old.get('resetPending',False) and new.get('resetPending',False))}
 
 def _teacher_merge_mailbox(current, incoming, user, data):
@@ -681,7 +1021,7 @@ def _teacher_merge_mailbox(current, incoming, user, data):
     valid_teachers={str(x.get('id')) for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher'}
     valid_students={str(x.get('id')) for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in allowed_classes}
     for ident,message in new_by_id.items():
-        if ident in old_by_id: continue
+        if ident in old_by_id or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',ident): continue
         sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
         if sender.get('key')!=me or sender.get('role')!='teacher' or str(sender.get('id') or '')!=tid: continue
         recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
@@ -693,11 +1033,21 @@ def _teacher_merge_mailbox(current, incoming, user, data):
         if not valid: continue
         # Les pièces jointes de messagerie doivent rester dans le dossier de l'expéditeur.
         for attachment in message.get('attachments') or []:
-            if not isinstance(attachment,dict): continue
-            url=str(attachment.get('url') or '').replace('\\','/')
-            if '/data/uploads/' in url:
-                rel=url.split('/data/uploads/',1)[1]
-                if not rel.startswith(f'mail-v2/teacher:{tid}/'): valid=False; break
+            if not isinstance(attachment,dict):
+                valid=False
+                break
+            rel=_mail_attachment_relative_path(attachment.get('url'))
+            if rel is None or not rel.startswith(f'mail-v2/teacher:{tid}/'):
+                valid=False
+                break
+            try:
+                lexical=os.path.join(UPLOADS,*rel.split('/'))
+                if os.path.islink(lexical) or not os.path.isfile(_safe_upload_path(rel)):
+                    valid=False
+                    break
+            except (ValueError,OSError):
+                valid=False
+                break
         if valid: result_messages.append(message)
     old_states=old.get('states') if isinstance(old.get('states'),dict) else {}
     new_states=new.get('states') if isinstance(new.get('states'),dict) else {}
@@ -705,7 +1055,7 @@ def _teacher_merge_mailbox(current, incoming, user, data):
     old_drafts=old.get('drafts') if isinstance(old.get('drafts'),list) else []
     new_drafts=new.get('drafts') if isinstance(new.get('drafts'),list) else []
     drafts=[x for x in old_drafts if isinstance(x,dict) and str(x.get('owner') or '')!=me]
-    drafts.extend(x for x in new_drafts if isinstance(x,dict) and str(x.get('owner') or '')==me)
+    drafts.extend(x for x in new_drafts if isinstance(x,dict) and str(x.get('owner') or '')==me and re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(x.get('id') or '')))
     old_folders=old.get('folders') if isinstance(old.get('folders'),list) else []
     new_folders=new.get('folders') if isinstance(new.get('folders'),list) else []
     folders=[x for x in old_folders if isinstance(x,dict) and str(x.get('owner') or x.get('user') or '')!=me]
@@ -871,6 +1221,7 @@ def _merge_student_data(current,incoming,user):
     new_own={}
     for entry in incoming_rows:
         ident=str(entry.get('id') or '')
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',ident): continue
         previous=old_own.get(ident)
         lesson_id=str(previous.get('lessonId') if previous else entry.get('lessonId') or '')
         if not ident or str(entry.get('studentId') or '')!=sid or lesson_id not in allowed_lessons:
@@ -938,7 +1289,7 @@ def _evaluation_publication_due(value, now=None):
         return False
 
 
-def _student_visible_data(data,user):
+def _student_visible_data(data,user,now=None):
     """Projection strictement limitée à l'élève authentifié ; aucune donnée de camarade."""
     sid=str(user.get('studentId') or '')
     student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
@@ -979,7 +1330,7 @@ def _student_visible_data(data,user):
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or item.get('published') is not True: continue
         # Une note programmée pour une publication ultérieure ne doit pas être
         # transmise au navigateur élève, même si published est déjà positionné.
-        if not _evaluation_publication_due(item.get('publishAt')): continue
+        if not _evaluation_publication_due(item.get('publishAt'),now=now): continue
         if item.get('group') and str(item.get('group'))!=str(student_record.get('group') or ''): continue
         copy=dict(item)
         copy['grades']=[g for g in item.get('grades',[]) or [] if isinstance(g,dict) and str(g.get('studentId') or '')==sid]
@@ -1159,6 +1510,12 @@ def _merge_teacher_data(current,incoming,user):
                         if isinstance(value,dict):
                             safe_value=dict(value); safe_value.pop('replacementTeacherId',None); safe_value.pop('replacementOfTeacherId',None); safe_overrides[date]=safe_value
                     item['overrides']=safe_overrides
+                allowed_patterns=('none','hatch','cross')
+                if item.get('pattern') not in allowed_patterns:
+                    old_pattern=previous.get('pattern') if isinstance(previous,dict) else 'none'
+                    item['pattern']=old_pattern if old_pattern in allowed_patterns else 'none'
+                if not previous and not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(item.get('id') or '')):
+                    continue
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
                 lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
@@ -1206,6 +1563,9 @@ def _merge_teacher_data(current,incoming,user):
                             if previous and field in previous: item[field]=previous[field]
                             elif field in ('validated','published'): item[field]=False
                             else: item.pop(field,None)
+            if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(item.get('id') or '')):
+                if previous: safe_new.append(dict(previous))
+                continue
             safe_new.append(item)
         if key=='classes':
             # Remplacer les classes modifiées à leur position d'origine, supprimer
@@ -1505,7 +1865,25 @@ def _format_day_name(d):
 
 
 
+class MaClasseHTTPServer(ThreadingHTTPServer):
+    # L'arrêt du service attend la fin des requêtes déjà engagées.
+    daemon_threads=False
+    block_on_close=True
+
+    def server_bind(self):
+        # HTTPServer.server_bind() performs socket.getfqdn(host), which can
+        # block on reverse DNS for private LAN addresses under launchd/systemd.
+        # The application does not need a public hostname; keep the bound IP.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name=str(self.server_address[0])
+        self.server_port=int(self.server_address[1])
+
+
 class Handler(SimpleHTTPRequestHandler):
+    # Borne les connexions inactives pour qu'un client abandonné ne bloque pas
+    # indéfiniment l'arrêt gracieux du serveur pendant une mise à jour supervisée.
+    timeout=20
+
     def _session_user(self):
         raw=self.headers.get('Cookie','')
         token=''
@@ -1583,6 +1961,18 @@ class Handler(SimpleHTTPRequestHandler):
         if urlparse(getattr(self,'path','')).path.startswith('/data/uploads/'):
             self.send_header('Content-Security-Policy',"sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'")
         super().end_headers()
+    def translate_path(self,path):
+        parsed=urlparse(path).path
+        if parsed in ('/data/uploads','/data/uploads/'):
+            return UPLOADS
+        prefix='/data/uploads/'
+        if parsed.startswith(prefix):
+            try:
+                relative=unquote(parsed[len(prefix):],encoding='utf-8',errors='strict')
+                return _safe_upload_path(relative)
+            except (UnicodeDecodeError,ValueError):
+                return os.path.join(UPLOADS,'__invalid_upload_path__')
+        return super().translate_path(path)
     def _safe_static_path(self,path):
         if path in ('/','/index.html','/_all.js'):
             return True
@@ -1610,7 +2000,7 @@ class Handler(SimpleHTTPRequestHandler):
                 for base,_,files in os.walk(UPLOADS):
                     for filename in files:
                         full=os.path.join(base,filename)
-                        archive.write(full,os.path.relpath(full,ROOT))
+                        archive.write(full,os.path.join('data','uploads',os.path.relpath(full,UPLOADS)))
         cutoff=now-BACKUP_RETENTION_DAYS*86400
         for pattern in ('maclasse-*.json','maclasse-*.zip'):
             for stale in glob.glob(os.path.join(backup_dir,pattern)):
@@ -1629,6 +2019,21 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path=urlparse(self.path).path
         if not self._require_local_origin(): return
+        if path=='/api/health':
+            try:
+                database=_load_database()
+                if not isinstance(database,dict): raise ValueError('Base invalide')
+                return self._json({'ok':True,'version':APP_VERSION,'database':'ok'})
+            except Exception:
+                return self._json({'ok':False,'version':APP_VERSION,'database':'error'},503)
+        if path=='/api/update-maintenance':
+            if not self._require_auth(roles=('admin','teacher','student')): return
+            try:
+                with open(os.path.join(DATA_DIR,'update-maintenance.json'),encoding='utf-8') as f:
+                    maintenance=json.load(f)
+                return self._json(_public_update_maintenance(maintenance))
+            except (OSError,ValueError,AttributeError):
+                return self._json({'scheduled':False,'maintenance':None})
         if path=='/api/auth/setup-status':
             data=_load_database()
             users=data.get('users') if isinstance(data.get('users'),list) else []
@@ -1643,8 +2048,37 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            allowed_roles=('admin','teacher','student') if path=='/api/data' or path.startswith('/data/uploads/') else ('admin','teacher')
+            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance') or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
+        if path=='/api/admin/updates/check':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            try:
+                result=update_manager.check_latest_release(APP_VERSION)
+                data=_load_database()
+                current_schema=int(data.get('schemaVersion',0) or 0)
+                if result.get('available'):
+                    result['compatible']=result.get('min_data_schema',1)<=current_schema
+                    result['install_supported']=_update_apply_service_installed()
+                    result['install_platform']=sys.platform
+                    if not result['compatible']:
+                        result['compatibility_message']='Cette version exige une structure de données plus récente. La mise à jour est bloquée.'
+                    try:
+                        with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
+                            update_state=json.load(state_file)
+                        result['prepared']=bool(update_state.get('status')=='prepared' and update_state.get('version')==result.get('version') and update_state.get('sha256')==result.get('sha256'))
+                    except (OSError,ValueError,AttributeError):
+                        result['prepared']=False
+                else:
+                    result['compatible']=True
+                    result['install_supported']=_update_apply_service_installed()
+                    result['install_platform']=sys.platform
+                    result['prepared']=False
+                return self._json(result)
+            except update_manager.UpdateError:
+                return self._json({'error':'Impossible de vérifier les mises à jour officielles pour le moment.'},502)
+            except (TypeError,ValueError):
+                return self._json({'error':'La version ou la structure de données installée est invalide.'},500)
         if path.startswith('/data/uploads/'):
             try: rel=unquote(path[len('/data/uploads/'):],encoding='utf-8',errors='strict')
             except UnicodeDecodeError: return self.send_error(404)
@@ -1678,10 +2112,165 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if not self._require_local_origin(): return
         path=urlparse(self.path).path
+        # Authenticate and authorize before reading attacker-controlled request
+        # bodies. Otherwise an unauthenticated LAN client could make each worker
+        # allocate/read up to 100 MiB before receiving a 401/403 response.
+        public_post_paths=('/api/auth/setup','/api/auth/login','/api/auth/logout')
+        if path=='/api/auth/change-password':
+            if not self._session_user():
+                return self._json({'error':'Connexion requise.'},401)
+        elif path not in public_post_paths:
+            admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/user-status','/api/backup/restore','/api/reset')
+            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin',) if path in admin_only_paths else ('admin','teacher')
+            if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
-        if length<0 or length>100*1024*1024: return self._json({'error':'Requête trop volumineuse (100 Mo maximum).'},413)
+        if path.startswith('/api/auth/'):
+            max_length=1*1024*1024
+        elif path=='/api/upload':
+            max_length=50*1024*1024
+        elif path=='/api/backup/restore':
+            max_length=100*1024*1024
+        elif path in ('/api/data','/api/save'):
+            max_length=20*1024*1024
+        else:
+            max_length=10*1024*1024
+        if length<0 or length>max_length:
+            return self._json({'error':f'Requête trop volumineuse (maximum {max_length//(1024*1024)} Mo pour cette opération).'},413)
         body=self.rfile.read(length)
+        if path=='/api/admin/updates/prepare':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire de mises à jour supervisé doit être installé avant de préparer une version.'},501)
+            try:
+                request_payload=json.loads(body.decode('utf-8'))
+                requested_version=str(request_payload.get('version') or '') if isinstance(request_payload,dict) else ''
+                if not requested_version: return self._json({'error':'Version cible manquante. Relance la recherche de mises à jour.'},400)
+                release=update_manager.check_latest_release(APP_VERSION)
+                if not release.get('available'):
+                    return self._json({'error':'Aucune nouvelle version stable à préparer.'},409)
+                if release.get('version')!=requested_version:
+                    return self._json({'error':'La version disponible a changé. Relance la recherche avant de préparer.'},409)
+                data=_load_database()
+                current_schema=int(data.get('schemaVersion',0) or 0)
+                if release.get('min_data_schema',1)>current_schema:
+                    return self._json({'error':'Cette version est incompatible avec la structure actuelle des données.'},409)
+                staging=os.path.join(DATA_DIR,'program','versions')
+                prepared=update_manager.prepare_release(release,staging)
+                update_manager.prepare_runtime(prepared)
+                update_state={'status':'prepared','version':release['version'],'sha256':release['sha256'],'min_data_schema':release['min_data_schema'],'prepared_at':int(time.time())}
+                state_path=os.path.join(DATA_DIR,'update-state.json')
+                state_tmp=state_path+'.tmp'
+                with open(state_tmp,'w',encoding='utf-8') as state_file:
+                    json.dump(update_state,state_file,ensure_ascii=False,indent=2)
+                os.replace(state_tmp,state_path)
+                return self._json({'prepared':True,'version':release['version'],'prepared_at':update_state['prepared_at']})
+            except update_manager.UpdateError:
+                return self._json({'error':'La préparation de la mise à jour a échoué. La version active n’a pas été modifiée.'},502)
+            except (OSError,TypeError,ValueError):
+                return self._json({'error':'Impossible de préparer la mise à jour. La version active n’a pas été modifiée.'},500)
+        if path=='/api/admin/updates/schedule':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'La programmation nécessite le gestionnaire supervisé.'},501)
+            try:
+                payload=json.loads(body.decode('utf-8'))
+                if not isinstance(payload,dict): return self._json({'error':'Demande de programmation invalide.'},400)
+                requested_version=str(payload.get('version') or '')
+                scheduled_value=str(payload.get('scheduled_at') or '')
+                timezone_name=str(payload.get('timezone') or 'Fuseau local')
+                if len(timezone_name)>80 or chr(10) in timezone_name or chr(13) in timezone_name: return self._json({'error':'Fuseau horaire invalide.'},400)
+                scheduled_dt=datetime.datetime.fromisoformat(scheduled_value.replace('Z','+00:00'))
+                if scheduled_dt.tzinfo is None: return self._json({'error':'La date doit inclure un fuseau horaire.'},400)
+                scheduled_at=int(scheduled_dt.timestamp())
+                if scheduled_at<time.time()+300: return self._json({'error':'Choisis une date située au moins cinq minutes dans le futur.'},400)
+                if scheduled_at>time.time()+90*86400: return self._json({'error':'La programmation est limitée aux 90 prochains jours.'},400)
+                with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as f:
+                    update_state=json.load(f)
+                if not isinstance(update_state,dict) or update_state.get('status')!='prepared' or update_state.get('version')!=requested_version:
+                    return self._json({'error':'Cette version n’est plus prête à être installée. Relance la recherche.'},409)
+                if _update_apply_service_active(): return self._json({'error':'Une installation est déjà en cours.'},409)
+                maintenance={'status':'scheduled','version':requested_version,'scheduled_at':scheduled_at,'timezone':timezone_name,'scheduled_by':str(user.get('id') or ''),'created_at':int(time.time())}
+                maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
+                old_maintenance=None
+                try:
+                    with open(maintenance_path,encoding='utf-8') as f: old_maintenance=json.load(f)
+                except (OSError,ValueError): pass
+                if not isinstance(old_maintenance,dict): old_maintenance=None
+                tmp=maintenance_path+'.tmp'
+                with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
+                os.replace(tmp,maintenance_path)
+                try:
+                    _schedule_update_timer(scheduled_at)
+                except (OSError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                    if old_maintenance:
+                        restore_tmp=maintenance_path+'.restore'
+                        with open(restore_tmp,'w',encoding='utf-8') as f: json.dump(old_maintenance,f,ensure_ascii=False,indent=2)
+                        os.replace(restore_tmp,maintenance_path)
+                        if old_maintenance.get('status')=='scheduled':
+                            _schedule_update_timer(old_maintenance.get('scheduled_at'))
+                    else:
+                        try: os.unlink(maintenance_path)
+                        except OSError: pass
+                    raise
+                return self._json({'scheduled':True,'maintenance':maintenance},201)
+            except (ValueError,TypeError,KeyError,AttributeError,json.JSONDecodeError):
+                return self._json({'error':'Date ou demande de programmation invalide.'},400)
+            except (OSError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                return self._json({'error':'Impossible de programmer la maintenance. La version active reste inchangée.'},503)
+        if path=='/api/admin/updates/cancel-schedule':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire supervisé est absent.'},501)
+            try:
+                maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
+                with open(maintenance_path,encoding='utf-8') as f: maintenance=json.load(f)
+                if not isinstance(maintenance,dict) or maintenance.get('status')!='scheduled': return self._json({'error':'Aucune maintenance programmée à annuler.'},409)
+                if _update_apply_service_active(): return self._json({'error':'La maintenance a déjà commencé et ne peut plus être annulée.'},409)
+                _cancel_update_timer()
+                if _update_apply_service_active(): return self._json({'error':'La maintenance vient de commencer et ne peut plus être annulée.'},409)
+                maintenance['status']='cancelled'
+                maintenance['cancelled_at']=int(time.time())
+                tmp=maintenance_path+'.tmp'
+                with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
+                os.replace(tmp,maintenance_path)
+                return self._json({'cancelled':True})
+            except (OSError,ValueError,AttributeError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                return self._json({'error':'Impossible d’annuler la maintenance programmée.'},503)
+        if path=='/api/admin/updates/install':
+            user=self._require_auth(roles=('admin',))
+            if not user: return
+            if not _update_apply_service_installed(): return self._json({'error':'Le gestionnaire indépendant n’est pas installé sur ce serveur.'},501)
+            try:
+                request_payload=json.loads(body.decode('utf-8'))
+                requested_version=str(request_payload.get('version') or '') if isinstance(request_payload,dict) else ''
+                if not requested_version: return self._json({'error':'Version cible manquante.'},400)
+                with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
+                    update_state=json.load(state_file)
+                version=str(update_state.get('version') or '').lstrip('vV')
+                if not isinstance(update_state,dict) or update_state.get('status')!='prepared' or not re.fullmatch(r'\d+\.\d+\.\d+',version):
+                    return self._json({'error':'Aucune mise à jour prête à installer.'},409)
+                if update_state.get('version')!=requested_version:
+                    return self._json({'error':'La version préparée ne correspond plus à la version affichée.'},409)
+                if _update_apply_service_active():
+                    return self._json({'error':'Une installation de mise à jour est déjà en cours.'},409)
+                versions_root=os.path.realpath(os.path.join(DATA_DIR,'program','versions'))
+                target=os.path.realpath(os.path.join(versions_root,'V'+version))
+                if os.path.commonpath((target,versions_root))!=versions_root:
+                    return self._json({'error':'Dossier de version refusé.'},400)
+                with open(os.path.join(target,'maclasse-prepared.json'),encoding='utf-8') as meta_file:
+                    metadata=json.load(meta_file)
+                if metadata.get('sha256')!=update_state.get('sha256') or metadata.get('status')!='prepared':
+                    return self._json({'error':'La version préparée ne correspond plus à son manifeste.'},409)
+                if not os.path.isfile(os.path.join(target,'.venv','bin','python')) or not os.path.isfile(os.path.join(target,'maclasse-runtime-ready.json')) or not os.path.isfile(os.path.join(target,'server.py')):
+                    return self._json({'error':'La version préparée est incomplète.'},409)
+                try:
+                    _start_update_apply_service()
+                except RuntimeError as error:
+                    return self._json({'error':str(error)},409)
+                return self._json({'installing':True,'version':update_state.get('version')},202)
+            except (OSError,ValueError,KeyError,AttributeError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+                return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
         if path=='/api/auth/setup':
             try: obj=json.loads(body.decode('utf-8'))
             except Exception: return self._json({'error':'Requête invalide.'},400)
@@ -2111,6 +2700,7 @@ class Handler(SimpleHTTPRequestHandler):
                         self._create_backup(force=False)
                 except (OSError, ValueError, TypeError) as e:
                     return self._json({'error': f'Sauvegarde de sécurité impossible : {e}'}, 500)
+                _sanitize_rich_data(data)
                 tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                 try:
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
@@ -2286,8 +2876,18 @@ def _assert_server_host(host, allow_lan=False):
     return True
 
 
+def _stop_on_sigterm(signum, frame):
+    # launchd sends SIGTERM on bootout; route it through the same graceful close as Ctrl+C.
+    raise KeyboardInterrupt
+
+
 if __name__=='__main__':
     os.chdir(ROOT)
+    try:
+        _MANUAL_UPDATE_LOCK_FD=_acquire_manual_server_lock()
+    except (OSError,RuntimeError) as error:
+        print(f'ERREUR DE VERROU DE MISE À JOUR : {error}')
+        raise SystemExit(2)
     try:
         _assert_server_host(HOST,allow_lan=os.environ.get('MACLASSE_LAN_MODE')=='1')
     except ValueError as error:
@@ -2307,9 +2907,19 @@ if __name__=='__main__':
         except (OSError,ssl.SSLError) as error:
             print(f'ERREUR DE CERTIFICAT TLS : {error}')
             raise SystemExit(2)
-    httpd=ThreadingHTTPServer((HOST,PORT),Handler)
+    httpd=MaClasseHTTPServer((HOST,PORT),Handler)
+    # Attendre les requêtes et écritures déjà engagées lors de server_close().
+    # systemd borne cet arrêt à TimeoutStopSec=120 avant arrêt forcé.
+    httpd.daemon_threads=False
+    httpd.block_on_close=True
     if context: httpd.socket=context.wrap_socket(httpd.socket,server_side=True)
     scheme='https' if context else 'http'
     mode='réseau privé HTTPS' if HOST not in ('127.0.0.1','localhost','::1') else ('local HTTPS' if context else 'local HTTP')
     print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{HOST}:{PORT}')
-    httpd.serve_forever()
+    signal.signal(signal.SIGTERM,_stop_on_sigterm)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print('Arrêt demandé : attente de la fin des requêtes en cours…')
+    finally:
+        httpd.server_close()

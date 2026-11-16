@@ -92,6 +92,8 @@ def main() -> None:
                       if (!response.ok) throw new Error('GET /api/data: '+response.status);
                       const revision = response.headers.get('X-MaClasse-Revision');
                       const data = await response.json();
+                      data.settings = data.settings || {};
+                      data.settings.subjectColors = {...(data.settings.subjectColors || {}), francais:'#123456'};
                       data.classes = [{
                         id:'firefox-class', name:'6e A', level:'6e',
                         levels:['6e'], teacherIds:[], groups:[],
@@ -123,6 +125,8 @@ def main() -> None:
 
                 existing = page.locator('[data-schedule-id="firefox-existing-course"]')
                 expect(existing).to_be_visible()
+                if "#123456" not in (existing.get_attribute("style") or ""):
+                    raise AssertionError("La couleur personnalisée de matière n'est pas appliquée à l'EDT professeur.")
 
                 # Today, month, week navigation in both directions, then back.
                 page.locator("button.scheduleToday").click()
@@ -170,12 +174,16 @@ def main() -> None:
                 form.locator('[name="subject"]').fill("Histoire")
                 form.locator('[name="recurrence"]').select_option("weekly")
                 form.locator('[name="startDate"]').fill("2026-11-09")
+                page.evaluate("window.__scheduleScrollBefore=window.scrollY")
                 form.locator("button.primary").last.click()
                 expect(page.locator("#toast")).to_contain_text(
                     "Emploi du temps enregistré.", timeout=10_000
                 )
                 expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
                 expect(page.locator('[data-schedule-id]').filter(has_text="Histoire")).to_be_visible()
+                scroll_state = page.evaluate("() => ({before:window.__scheduleScrollBefore,after:window.scrollY})")
+                if abs(scroll_state["before"]-scroll_state["after"]) > 2:
+                    raise AssertionError("L'enregistrement du créneau a déplacé la page : "+repr(scroll_state))
 
                 # Open the same timetable as a real student account in a separate
                 # browser context, then change the timetable from the administrator.
@@ -316,6 +324,17 @@ def main() -> None:
                   appSpace='student';
                   render();
                 }""")
+                # The student account must have its own settings page and shared lesson header.
+                student_page.evaluate("""() => { page='studentSettings'; appSpace='student'; render(); }""")
+                expect(student_page.locator(".top")).to_contain_text("Paramètres")
+                expect(student_page.locator("#main")).to_contain_text("Mon profil")
+                expect(student_page.locator("#main")).to_contain_text("Sécurité")
+                expect(student_page.get_by_role("button", name="Changer mon mot de passe")).to_be_visible()
+                expect(student_page.locator(".themeChoices button")).to_have_count(3)
+                student_page.evaluate("""() => { page='studentLessons'; appSpace='student'; render(); }""")
+                expect(student_page.locator(".top")).to_contain_text("Séances & leçons")
+                expect(student_page.locator(".lessonTopBar")).to_be_visible()
+
                 # The student must see and be able to open the teacher's saved homework attachment.
                 student_page.evaluate("""async () => {
                   db=await api('/api/data');
@@ -331,6 +350,7 @@ def main() -> None:
                 )
                 if attachment_content != "Fichier de devoir de test":
                     raise AssertionError("Student cannot read teacher homework attachment: "+repr(attachment_content))
+                student_page.evaluate("""() => { closeModal(); page='studentMessages'; appSpace='student'; render(); }""")
                 mailbox = student_page.locator('.v2104App')
                 expect(mailbox).to_be_visible()
                 mailbox_state = student_page.evaluate("""() => ({
@@ -355,6 +375,9 @@ def main() -> None:
                 }""")
                 student_calendar = student_page.locator('.scheduleCalendarSurface')
                 expect(student_calendar).to_contain_text("Français")
+                student_course = student_page.locator('[data-schedule-id="firefox-existing-course"]')
+                if "#123456" not in (student_course.get_attribute("style") or ""):
+                    raise AssertionError("La couleur personnalisée de matière n'est pas transmise à l'EDT élève.")
                 # A teacher-side write must be picked up by the student's 5-second sync.
                 page.evaluate("""async () => {
                   const response = await fetch('/api/data', {cache:'no-store'});

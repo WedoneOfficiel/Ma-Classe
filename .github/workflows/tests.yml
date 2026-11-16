@@ -1,10 +1,15 @@
 name: MaClasse — tests automatisés
 
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, fix/v25-student-teacher-workflows]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -31,7 +36,7 @@ jobs:
       - name: Vérifier la syntaxe JavaScript
         run: node --check _all.js
       - name: Vérifier les lanceurs macOS
-        run: bash -n Installer-MaClasse.command Lancer-MaClasse.command Lancer-MaClasse-Reseau.command Configurer-MaClasse-Reseau.command Mettre-A-Jour-MaClasse.command Installer-MaClasse-Linux.sh Lancer-MaClasse-Reseau.sh Configurer-MaClasse-Reseau.sh Mettre-A-Jour-MaClasse-Linux.sh
+        run: bash -n Installer-MaClasse.command Lancer-MaClasse.command Lancer-MaClasse-Reseau.command Installer-Service-MaClasse-macOS.sh Lancer-MaClasse-Service-macOS.sh Appliquer-Mise-A-Jour-MaClasse-macOS.sh Configurer-MaClasse-Reseau.command Mettre-A-Jour-MaClasse.command Installer-MaClasse-Linux.sh Lancer-MaClasse-Reseau.sh Configurer-MaClasse-Reseau.sh Mettre-A-Jour-MaClasse-Linux.sh Installer-Service-MaClasse-Linux.sh Desinstaller-Service-MaClasse-Linux.sh Lancer-MaClasse-Service-Linux.sh Appliquer-Mise-A-Jour-MaClasse-Linux.sh Installer-Service-MaClasse-macOS.sh Lancer-MaClasse-Service-macOS.sh Appliquer-Mise-A-Jour-MaClasse-macOS.sh
       - name: Exécuter tous les tests JavaScript
         shell: bash
         run: |
@@ -48,13 +53,14 @@ jobs:
         run: |
           set -euo pipefail
           for test in tests/*.py; do
+            if [[ "$test" == "tests/test_macos_supervisor.py" ]]; then continue; fi
             echo "::group::$test"
-            python "$test"
+            python -c 'import subprocess,sys; subprocess.run([sys.executable, sys.argv[1]], check=True, timeout=90)' "$test"
             echo "::endgroup::"
           done
   macos-validation:
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v4
@@ -87,13 +93,15 @@ jobs:
         run: |
           set -euo pipefail
           for test in tests/*.js; do node "$test"; done
+      - name: Tester launchd réel sur macOS
+        run: python -c 'import subprocess,sys; subprocess.run([sys.executable, sys.argv[1]], check=True, timeout=160)' tests/test_macos_supervisor.py
       - name: Exécuter tous les tests Python
         shell: bash
         run: |
           set -euo pipefail
           for test in tests/*.py; do
             echo "::group::$test"
-            python "$test"
+            python -c 'import subprocess,sys; subprocess.run([sys.executable, sys.argv[1]], check=True, timeout=90)' "$test"
             echo "::endgroup::"
           done
 
