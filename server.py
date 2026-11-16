@@ -175,7 +175,7 @@ def _schedule_update_timer(timestamp):
                    check=True,capture_output=True,text=True,timeout=10)
     if _update_apply_service_active(): raise RuntimeError("L'installation de la mise à jour a déjà commencé.")
     _cancel_update_timer()
-    unit='[Unit]\\nDescription=MaClasse — maintenance programmée\\n\\n[Timer]\\nOnCalendar='+calendar+'\\nAccuracySec=1s\\nPersistent=false\\nUnit=maclasse-update-apply.service\\n\\n[Install]\\nWantedBy=timers.target\\n'
+    unit='[Unit]\nDescription=MaClasse — maintenance programmée\n\n[Timer]\nOnCalendar='+calendar+'\nAccuracySec=1s\nPersistent=false\nUnit=maclasse-update-apply.service\n\n[Install]\nWantedBy=timers.target\n'
     tmp=unit_path+'.tmp'
     with open(tmp,'w',encoding='utf-8') as f: f.write(unit)
     os.chmod(tmp,0o600); os.replace(tmp,unit_path)
