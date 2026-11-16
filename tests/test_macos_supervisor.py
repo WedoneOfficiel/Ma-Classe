@@ -169,6 +169,8 @@ assert server._update_apply_service_active() is True
         self.assertIn("maclasse-avant-maj-", script)
         self.assertIn("rollback_failed", script)
         self.assertIn("launchctl bootout", script)
+        self.assertIn("os.replace(source,destination)", script)
+        self.assertIn("os.fsync(stream.fileno())", script)
 
 if __name__ == "__main__":
     unittest.main()
