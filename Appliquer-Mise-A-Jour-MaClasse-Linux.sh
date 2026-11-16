@@ -222,6 +222,18 @@ if ! /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="
   rm -f "$BACKUP_FILE"
   abort_before_switch "La sauvegarde de la base n'est pas un JSON valide."
 fi
+if ! /usr/bin/python3 - "$BACKUP_FILE" "$BACKUP_ROOT" <<'PYSYNC'
+import os,sys
+backup,directory=sys.argv[1],sys.argv[2]
+with open(backup,"rb") as stream: os.fsync(stream.fileno())
+fd=os.open(directory,os.O_RDONLY)
+try: os.fsync(fd)
+finally: os.close(fd)
+PYSYNC
+then
+  rm -f "$BACKUP_FILE"
+  abort_before_switch "La sauvegarde de la base n'a pas pu être synchronisée sur disque."
+fi
 rm -f "$CURRENT_LINK.next"
 if ! ln -s "versions/V$VERSION_NUMBER" "$CURRENT_LINK.next" || ! mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"; then
   fail_and_restore "La bascule atomique vers la nouvelle version a échoué."
