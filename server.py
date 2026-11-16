@@ -1705,7 +1705,8 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 with open(os.path.join(DATA_DIR,'update-maintenance.json'),encoding='utf-8') as f:
                     maintenance=json.load(f)
-                return self._json({'scheduled':maintenance.get('status')=='scheduled','maintenance':maintenance if maintenance.get('status')=='scheduled' else None})
+                public_maintenance={key:maintenance.get(key) for key in ('status','version','scheduled_at','timezone')} if isinstance(maintenance,dict) and maintenance.get('status')=='scheduled' else None
+                return self._json({'scheduled':public_maintenance is not None,'maintenance':public_maintenance})
             except (OSError,ValueError,AttributeError):
                 return self._json({'scheduled':False,'maintenance':None})
         if path=='/api/auth/setup-status':
@@ -1825,9 +1826,11 @@ class Handler(SimpleHTTPRequestHandler):
             if not _update_apply_service_installed(): return self._json({'error':'La programmation nécessite le gestionnaire Linux supervisé.'},501)
             try:
                 payload=json.loads(body.decode('utf-8'))
+                if not isinstance(payload,dict): return self._json({'error':'Demande de programmation invalide.'},400)
                 requested_version=str(payload.get('version') or '')
                 scheduled_value=str(payload.get('scheduled_at') or '')
                 timezone_name=str(payload.get('timezone') or 'Fuseau local')
+                if len(timezone_name)>80 or '\\n' in timezone_name: return self._json({'error':'Fuseau horaire invalide.'},400)
                 scheduled_dt=datetime.datetime.fromisoformat(scheduled_value.replace('Z','+00:00'))
                 if scheduled_dt.tzinfo is None: return self._json({'error':'La date doit inclure un fuseau horaire.'},400)
                 scheduled_at=int(scheduled_dt.timestamp())
@@ -1835,7 +1838,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if scheduled_at>time.time()+90*86400: return self._json({'error':'La programmation est limitée aux 90 prochains jours.'},400)
                 with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as f:
                     update_state=json.load(f)
-                if update_state.get('status')!='prepared' or update_state.get('version')!=requested_version:
+                if not isinstance(update_state,dict) or update_state.get('status')!='prepared' or update_state.get('version')!=requested_version:
                     return self._json({'error':'Cette version n’est plus prête à être installée. Relance la recherche.'},409)
                 maintenance={'status':'scheduled','version':requested_version,'scheduled_at':scheduled_at,'timezone':timezone_name,'scheduled_by':str(user.get('id') or ''),'created_at':int(time.time())}
                 maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
@@ -1856,7 +1859,7 @@ class Handler(SimpleHTTPRequestHandler):
                         except OSError: pass
                     raise
                 return self._json({'scheduled':True,'maintenance':maintenance},201)
-            except (ValueError,TypeError,KeyError,json.JSONDecodeError):
+            except (ValueError,TypeError,KeyError,AttributeError,json.JSONDecodeError):
                 return self._json({'error':'Date ou demande de programmation invalide.'},400)
             except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Impossible de programmer la maintenance. La version active reste inchangée.'},503)
@@ -1867,7 +1870,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 maintenance_path=os.path.join(DATA_DIR,'update-maintenance.json')
                 with open(maintenance_path,encoding='utf-8') as f: maintenance=json.load(f)
-                if maintenance.get('status')!='scheduled': return self._json({'error':'Aucune maintenance programmée à annuler.'},409)
+                if not isinstance(maintenance,dict) or maintenance.get('status')!='scheduled': return self._json({'error':'Aucune maintenance programmée à annuler.'},409)
                 _cancel_update_timer()
                 maintenance['status']='cancelled'
                 maintenance['cancelled_at']=int(time.time())
@@ -1875,7 +1878,7 @@ class Handler(SimpleHTTPRequestHandler):
                 with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
                 os.replace(tmp,maintenance_path)
                 return self._json({'cancelled':True})
-            except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            except (OSError,ValueError,AttributeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Impossible d’annuler la maintenance programmée.'},503)
         if path=='/api/admin/updates/install':
             user=self._require_auth(roles=('admin',))
@@ -1888,7 +1891,7 @@ class Handler(SimpleHTTPRequestHandler):
                 with open(os.path.join(DATA_DIR,'update-state.json'),encoding='utf-8') as state_file:
                     update_state=json.load(state_file)
                 version=str(update_state.get('version') or '').lstrip('vV')
-                if update_state.get('status')!='prepared' or not re.fullmatch(r'\d+\.\d+\.\d+',version):
+                if not isinstance(update_state,dict) or update_state.get('status')!='prepared' or not re.fullmatch(r'\d+\.\d+\.\d+',version):
                     return self._json({'error':'Aucune mise à jour prête à installer.'},409)
                 if update_state.get('version')!=requested_version:
                     return self._json({'error':'La version préparée ne correspond plus à la version affichée.'},409)
@@ -1905,7 +1908,7 @@ class Handler(SimpleHTTPRequestHandler):
                 subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
                                check=True,capture_output=True,text=True,timeout=5)
                 return self._json({'installing':True,'version':update_state.get('version')},202)
-            except (OSError,ValueError,KeyError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            except (OSError,ValueError,KeyError,AttributeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
         if path=='/api/auth/setup':
             try: obj=json.loads(body.decode('utf-8'))
