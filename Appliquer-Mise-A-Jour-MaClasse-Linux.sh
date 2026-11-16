@@ -162,7 +162,7 @@ health_ok() {
   local host
   host="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | grep -oE 'IP Address:[0-9.]+' | head -n1 | cut -d: -f2 || true)"
   [[ -n "$host" ]] || return 1
-  curl --silent --show-error --fail --connect-timeout 2 --max-time 4 \
+  curl --noproxy '*' --silent --show-error --fail --connect-timeout 2 --max-time 4 \
     --cacert "$DATA_ROOT/tls/ca.crt" "https://$host:8765/api/health" 2>/dev/null |
     EXPECTED_VERSION="$expected" /usr/bin/python3 -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
 }
