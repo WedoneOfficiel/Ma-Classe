@@ -18,6 +18,7 @@ const context = {
   render() { this.renderCount += 1; },
   db: { schedule: [], classes: [] },
   iso(date) { const d = new Date(date); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); },
+  jsArg(value) { return JSON.stringify(String(value ?? '')); },
 };
 vm.createContext(context);
 vm.runInContext(source.slice(start, end), context);
