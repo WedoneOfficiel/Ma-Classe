@@ -49,4 +49,5 @@ export MACLASSE_TLS_CERT="$DATA_ROOT/tls/server.crt"
 export MACLASSE_TLS_KEY="$DATA_ROOT/tls/server.key"
 cd "$APP_ROOT"
 echo "MaClasse HTTPS démarre sur https://$LAN_IP:8765"
+if [[ "${MACLASSE_SUPERVISED:-}" != "systemd" ]] && command -v xdg-open >/dev/null 2>&1; then (sleep 2; xdg-open "https://$LAN_IP:8765") >/dev/null 2>&1 & fi
 exec "$PYTHON" "$APP_ROOT/server.py"
