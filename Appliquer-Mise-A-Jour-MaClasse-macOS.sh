@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 cd "$ROOT"
 DATA="$ROOT/data"
@@ -110,13 +111,9 @@ if not re.fullmatch(r"\d+\.\d+\.\d+",v): raise SystemExit("Version précédente 
 print(v)
 PY
 )"
-STAMP="$(/bin/date +%Y%m%d-%H%M%S)"
+umask 077
 BACKUP_DIR="$DATA/backups"
 mkdir -p "$BACKUP_DIR"
-BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
-[[ -f "$DATA/maclasse.json" ]] || { echo "Base de données absente." >&2; exit 1; }
-/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"
-"$ROOT/.venv/bin/python" -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE" || { echo "Sauvegarde JSON invalide." >&2; exit 1; }
 write_state installing
 SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk 'NR==1 {print $1}' || true)"
 /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; exit 1; }
@@ -130,6 +127,26 @@ for _ in {1..120}; do
 done
 if [[ "$STOPPED" != "1" ]]; then
   write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
+  exit 1
+fi
+# Snapshot after confirmed stop: no concurrent writes can be lost on rollback.
+STAMP="$(/bin/date +%Y%m%d-%H%M%S)"
+BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
+if [[ ! -f "$DATA/maclasse.json" ]] || ! /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"; then
+  if start_service; then
+    write_state failed "Impossible de sauvegarder la base après l'arrêt ; ancienne version relancée."
+  else
+    write_state rollback_failed "Impossible de sauvegarder la base et de relancer l'ancienne version."
+  fi
+  exit 1
+fi
+if ! "$ROOT/.venv/bin/python" -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE"; then
+  /bin/rm -f "$BACKUP_FILE"
+  if start_service; then
+    write_state failed "La sauvegarde JSON est invalide ; ancienne version relancée."
+  else
+    write_state rollback_failed "La sauvegarde JSON est invalide et l'ancienne version n'a pas redémarré."
+  fi
   exit 1
 fi
 /bin/rm -f "$CURRENT.next"
