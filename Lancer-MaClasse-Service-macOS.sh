@@ -19,7 +19,7 @@ KEY="$DATA/tls/server.key"
 CA="$DATA/tls/ca.crt"
 [[ -f "$CERT" && -f "$KEY" && -f "$CA" ]] || { echo "Certificats TLS absents ; relance la configuration réseau MaClasse." >&2; exit 1; }
 CERT_HOST="$(/usr/bin/openssl x509 -in "$CERT" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -oE 'IP Address:[0-9.]+' | /usr/bin/head -n1 | /usr/bin/cut -d: -f2 || true)"
-if [[ "$CERT_HOST" != "$HOST" ]]; then
+if [[ "$CERT_HOST" != "$HOST" ]] || ! /usr/bin/openssl x509 -in "$CERT" -checkend 86400 -noout >/dev/null 2>&1; then
   echo "Mise à jour du certificat HTTPS pour la nouvelle adresse LAN $HOST…"
   (cd "$ROOT" && PYTHON="$ROOT/.venv/bin/python" /bin/bash ./Configurer-MaClasse-Reseau.sh "$HOST")
 fi
