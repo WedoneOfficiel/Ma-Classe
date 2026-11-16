@@ -457,3 +457,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 14. **AMEL-U12 — double démarrage macOS après installation du service.** Les lanceurs manuels local et réseau ne vérifiaient que le port loopback ; le service launchd réseau pouvait donc être actif sur l'adresse LAN sans être détecté, et un second processus aurait pu écrire dans la même base. Les deux lanceurs vérifient maintenant le job launchd avant toute création de serveur, ouvrent l'URL HTTPS du certificat existant et refusent une seconde instance. Test statique et vérification de syntaxe shell ajoutés.
+
+
+15. **AMEL-U13 — unités systemd/launchd restant attachées au lanceur initial.** Après une mise à jour, le service pouvait continuer d'utiliser le lanceur racine initial plutôt que le lanceur versionné ; le passage vers `current` exigeait en plus de transmettre la racine stable, faute de quoi le runner prenait le dossier de version pour la racine des données. Les unités pointent maintenant vers `data/program/current/Lancer-MaClasse-Service-*.sh` et transmettent `MACLASSE_ROOT` / `MACLASSE_DATA_DIR`. Les lanceurs résolvent la racine stable et utilisent le code de la version active. Tests de syntaxe, chemin du plist et variables systemd/launchd ajoutés.
