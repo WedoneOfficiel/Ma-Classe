@@ -56,10 +56,11 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
             fakebin.mkdir()
             systemctl_log = base / "systemctl.log"
             stubs = {
-                "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\ncase "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; *"is-active --quiet maclasse.service"*) if [ "$SERVICE_ACTIVE_DURING_ROLLBACK" = "1" ] && [ -f "$SERVICE_ACTIVE_CHECK_FILE" ]; then exit 0; else touch "$SERVICE_ACTIVE_CHECK_FILE"; exit 3; fi;; esac\nexit 0\n',
+                "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\ncase "$*" in *" stop maclasse.service"*) touch "$STOPPED_MARKER";; esac\ncase "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; *"is-active --quiet maclasse.service"*) if [ "$SERVICE_ACTIVE_DURING_ROLLBACK" = "1" ] && [ -f "$SERVICE_ACTIVE_CHECK_FILE" ]; then exit 0; else touch "$SERVICE_ACTIVE_CHECK_FILE"; exit 3; fi;; esac\nexit 0\n',
                 "openssl": '#!/bin/sh\necho "X509v3 Subject Alternative Name: IP Address:192.168.1.10"\n',
                 "curl": '#!/bin/sh\nversion="$(cat "$CURRENT_LINK/VERSION.txt" | sed "s/^V//")"\nif [ "$version" = "$FAIL_VERSION" ]; then printf \'{"settings":{"school":"damaged"}}\' > "$DATA_FILE"; echo \'{"ok":false,"version":"$version","database":"error"}\'; else printf \'{"ok":true,"version":"%s","database":"ok"}\' "$version"; fi\n',
                 "sleep": '#!/bin/sh\nexit 0\n',
+                "cp": '#!/bin/sh\n[ -f "$STOPPED_MARKER" ] || { echo "database backup attempted before service stop" >&2; exit 77; }\nexec /bin/cp "$@"\n',
             }
             for name, source in stubs.items():
                 path = fakebin / name
@@ -76,6 +77,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 "SERVICE_ACTIVE_DURING_ROLLBACK": "1" if service_active_during_rollback else "0",
                 "SERVICE_ACTIVE_CHECK_FILE": str(base / "active-check-count"),
                 "DATA_FILE": str(data / "maclasse.json"),
+                "STOPPED_MARKER": str(base / "server-stopped"),
             })
             result = subprocess.run(
                 ["/usr/bin/bash", str(ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh")],
