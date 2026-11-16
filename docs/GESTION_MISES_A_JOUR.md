@@ -73,6 +73,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - La direction peut programmer une installation à une date/heure précise ou l'annuler. Un timer systemd ponctuel UTC déclenche le même moteur d'installation que l'action immédiate.
 - Une bannière de maintenance est exposée à tous les rôles authentifiés, avec date/heure locale et rappel d'enregistrer le travail. Elle est actualisée à la connexion puis périodiquement.
 - Le lanceur systemd utilise `data/program/current` pour sélectionner le code actif. Le lancement manuel classique reste distinct et n'expose pas les actions d'installation depuis l'interface.
+- Le secours CLI `Mettre-A-Jour-MaClasse-Linux.sh` détecte une installation supervisée et utilise le même vérificateur de releases, la même préparation et le même service d'installation ; il n'effectue aucun `git pull` dans ce mode. En mode historique non supervisé, il refuse désormais de modifier le code si un serveur MaClasse est actif.
 - Les paramètres affichent uniquement le numéro de version.
 
 ## Plan d'implémentation
