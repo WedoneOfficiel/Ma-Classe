@@ -542,3 +542,7 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 39. **AUDIT-U4 — adresse DHCP macOS modifiée pendant l'exécution.** Le lanceur renouvelle le certificat lorsque le LaunchAgent démarre, mais le serveur reste lié à son adresse IP actuelle pendant toute sa vie. Si le routeur attribue une nouvelle IP sans redémarrage du service, l'ancienne écoute et le certificat ne correspondent plus à l'adresse utilisée. Pas de correctif automatique engagé : une surveillance réseau doit être conçue sans entrer en conflit avec les redémarrages de mise à jour. Recommandation temporaire : réserver l'adresse DHCP du Mac dans le routeur et redémarrer le service après tout changement.
 
+
+
+40. **CI complète #1477 — tête 7990ae5.** Résultat vert sur les trois jobs : Linux (installateur réel, syntaxe, tous les tests JavaScript et Python), Firefox réel (parcours EDT avec comptes direction/professeur/élève, pièces jointes de devoir, messagerie élève, paramètres élève, synchronisation et structure EDT enseignant/élève) et macOS Apple Silicon (installateur, syntaxe, tous les tests JavaScript, bootstrap/déchargement launchd réel et tous les tests Python). Les 11 tests de tests/test_macos_supervisor.py ont été exécutés deux fois et réussis ; les 7 tests de tests/test_v25_update_scripts.py passent également (un test Linux-only est ignoré sur macOS). Cette réussite CI ne remplace pas la recette sur le Mac et le PC Fedora de l'utilisateur, ni le test d'une vraie GitHub Release.
+
