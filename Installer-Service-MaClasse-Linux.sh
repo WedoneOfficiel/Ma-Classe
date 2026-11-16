@@ -46,7 +46,8 @@ After=default.target
 [Service]
 Type=oneshot
 WorkingDirectory=$ROOT
-ExecStart=/usr/bin/bash $ROOT/Appliquer-Mise-A-Jour-MaClasse-Linux.sh
+Environment=MACLASSE_ROOT=$ROOT
+ExecStart=/usr/bin/bash $ROOT/data/program/current/Appliquer-Mise-A-Jour-MaClasse-Linux.sh
 TimeoutStartSec=900
 UMask=0077
 NoNewPrivileges=true
