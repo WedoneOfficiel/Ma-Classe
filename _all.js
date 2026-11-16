@@ -66,7 +66,7 @@ function updateSettingsCard(){
    if(maintenanceNotice?.scheduled&&maintenanceNotice.maintenance?.version===updateCheckResult.version){
     html+='<div class="notice" style="margin-top:10px">Installation programmée le <b>'+esc(formatMaintenanceDate(maintenanceNotice.maintenance.scheduled_at))+'</b>.<button class="btn small danger" style="margin-top:8px" onclick="cancelScheduledUpdate()">Annuler la maintenance</button></div>';
    }else{
-    html+='<div class="field" style="margin-top:12px"><label for="updateScheduleAt">Programmer la maintenance</label><input class="input" id="updateScheduleAt" type="datetime-local" min="'+localDateTimeMin()+'"><button class="btn" style="margin-top:8px" onclick="scheduleUpdate()">Télécharger et programmer</button></div>';
+    html+='<div class="field" style="margin-top:12px"><label for="updateScheduleAt">Programmer la maintenance</label><input class="input" id="updateScheduleAt" type="datetime-local" min="'+localDateTimeMin()+'"><button class="btn" style="margin-top:8px" onclick="scheduleUpdate()">Programmer l’installation</button></div>';
     html+='<button class="btn primary" style="margin-top:10px" onclick="installUpdate()">Installer maintenant</button>';
    }
   }
