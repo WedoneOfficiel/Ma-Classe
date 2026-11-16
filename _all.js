@@ -77,7 +77,8 @@ function updateSettingsCard(){
   else if(updateCheckResult.compatible&&updateCheckResult.install_supported&&!updateCheckResult.prepared)html+='<button class="btn" style="margin-top:10px" onclick="prepareUpdate()">Télécharger et préparer</button>';
   if(!updateCheckResult.installing&&updateCheckResult.compatible&&!updateCheckResult.install_supported){
    if(String(updateCheckResult.install_platform||'').startsWith('linux'))html+='<p class="hint">Pour activer les mises à jour depuis MaClasse, arrête d’abord le lancement manuel puis installe une fois le service Linux sur le serveur avec <code>bash Installer-Service-MaClasse-Linux.sh</code>.</p>';
-   else html+='<p class="hint">La détection fonctionne, mais l’installation intégrée n’est pas encore disponible sur ce système. Le support macOS sera ajouté ensuite.</p>';
+   else if(String(updateCheckResult.install_platform||'')==='darwin')html+='<p class="hint">Pour activer les mises à jour supervisées sur ce Mac, arrête d’abord le serveur lancé manuellement, puis exécute <code>bash Installer-Service-MaClasse-macOS.sh</code> depuis le dossier MaClasse. Le service démarrera ensuite dans ta session macOS.</p>';
+   else html+='<p class="hint">Le service de mise à jour supervisé n’est pas disponible sur ce système.</p>';
   }
   if(!updateCheckResult.installing&&updateCheckResult.prepared&&updateCheckResult.install_supported){
    html+='<p class="hint">Version téléchargée, vérifiée et prête à installer. Tu peux l’installer immédiatement ou programmer la maintenance.</p>';
