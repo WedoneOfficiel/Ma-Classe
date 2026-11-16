@@ -1,3 +1,12 @@
+MaClasse V25.0.23 — supervision des mises à jour Linux et macOS
+
+- Ajout d’un gestionnaire de mises à jour stable fondé sur les releases GitHub et un manifeste vérifié par SHA-256.
+- Préparation isolée de chaque version et environnement Python dédié, sans écraser l’installation active.
+- Supervision des services utilisateur via systemd sous Linux et launchd sous macOS.
+- Ajout du pilotage des mises à jour : vérification, préparation, installation, programmation et annulation.
+- Sauvegarde avant bascule, contrôle de santé HTTPS et retour automatique à la version précédente en cas d’échec.
+- Protection contre les installations concurrentes et séparation des données utilisateur du code applicatif.
+
 MaClasse V25.0.18 — stabilisation de l’EDT, de l’espace élève et de la maintenance
 
 - Correction du plantage de l’emploi du temps élève causé par une variable de motif non définie.
