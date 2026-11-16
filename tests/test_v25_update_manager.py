@@ -281,5 +281,43 @@ class ReleaseCheckerTests(unittest.TestCase):
             self.assertEqual(list(outside.iterdir()), [])
 
 
+    def test_corrupt_runtime_ready_marker_is_rebuilt(self):
+        for marker in ("{", "[]"):
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory() as temp:
+                program = Path(temp)
+                (program / "requirements.txt").write_text("", encoding="utf-8")
+                python = program / ".venv" / "bin" / "python"
+                python.parent.mkdir(parents=True)
+                python.write_text("", encoding="utf-8")
+                (program / "maclasse-runtime-ready.json").write_text(marker, encoding="utf-8")
+                calls = []
+                def fake_run(command, **kwargs):
+                    calls.append(command)
+                    if command[1:3] == ["-m", "venv"]:
+                        target_python = Path(command[-1]) / "bin" / "python"
+                        target_python.parent.mkdir(parents=True, exist_ok=True)
+                        target_python.write_text("", encoding="utf-8")
+                    return None
+                with patch.object(updater.sys, "_base_executable", "/usr/bin/python3", create=True), \\
+                     patch.object(updater.subprocess, "run", side_effect=fake_run), \\
+                     patch.object(updater.shutil, "which", return_value=None):
+                    updater.prepare_runtime(program)
+                self.assertEqual(len(calls), 3)
+                ready = json.loads((program / "maclasse-runtime-ready.json").read_text(encoding="utf-8"))
+                self.assertEqual(ready["requirements_sha256"], hashlib.sha256(b"").hexdigest())
+
+    def test_rejects_non_object_prepared_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            target = Path(temp) / "V25.1.0"
+            target.mkdir()
+            (target / "maclasse-prepared.json").write_text("[]", encoding="utf-8")
+            info = {"archive_url": "https://example.test/archive",
+                    "version": "25.1.0", "sha256": hashlib.sha256(self.archive).hexdigest()}
+            with patch.object(updater, "_request", return_value=self.archive):
+                with self.assertRaises(updater.UpdateError):
+                    updater.prepare_release(info, temp)
+            self.assertEqual((target / "maclasse-prepared.json").read_text(encoding="utf-8"), "[]")
+
+
 if __name__ == "__main__":
     unittest.main()
