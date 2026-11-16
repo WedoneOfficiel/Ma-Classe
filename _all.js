@@ -30,13 +30,16 @@ async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='
 function formatMaintenanceDate(timestamp){return new Date(Number(timestamp)*1000).toLocaleString()}
 function maintenanceBanner(){
  const notice=typeof maintenanceNotice!=='undefined'?maintenanceNotice:null;
- if(!notice?.scheduled||!notice.maintenance)return '';
+ if((!notice?.scheduled&&!notice?.in_progress)||!notice.maintenance)return '';
+ if(notice.in_progress){
+  return '<div class="notice warn maintenanceNotice"><b>Maintenance en cours</b><p>Une mise à jour de MaClasse est en cours. La plateforme peut être temporairement inaccessible. Merci de patienter et de ne pas relancer le serveur manuellement.</p></div>';
+ }
  const when=formatMaintenanceDate(notice.maintenance.scheduled_at);
  return '<div class="notice warn maintenanceNotice"><b>Maintenance programmée</b><p>Une mise à jour de MaClasse est prévue le '+esc(when)+'. La plateforme sera temporairement inaccessible pendant l’intervention. Pensez à enregistrer votre travail avant cette heure. Les modifications non enregistrées pourraient être perdues.</p></div>';
 }
 async function refreshMaintenanceNotice(renderOnChange=true){
  if(!authUser){maintenanceNotice=null;return}
- try{const previous=JSON.stringify(maintenanceNotice);const result=await api('/api/update-maintenance');maintenanceNotice=result?.scheduled?result:null;if(renderOnChange&&previous!==JSON.stringify(maintenanceNotice))render()}
+ try{const previous=JSON.stringify(maintenanceNotice);const result=await api('/api/update-maintenance');maintenanceNotice=(result?.scheduled||result?.in_progress)?result:null;if(renderOnChange&&previous!==JSON.stringify(maintenanceNotice))render()}
  catch(error){console.warn('Notification de maintenance indisponible',error)}
 }
 function startUpdateCheckSync(){
@@ -152,7 +155,7 @@ async function checkForUpdates(silent=false){
  finally{updateCheckBusy=false;render()}
 }
 
-async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=notice?.scheduled?notice:null}else{db=blank();maintenanceNotice=null}}catch(e){offline=true;db=blank();authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
+async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=(notice?.scheduled||notice?.in_progress)?notice:null}else{db=blank();maintenanceNotice=null}}catch(e){offline=true;db=blank();authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
 let liveSyncTimer=null,liveSyncBusy=false;
 async function refreshLiveScheduleData(){
  if(liveSyncBusy||!authUser||!['schedule','studentSchedule','lessons','studentLessons','studentWork'].includes(page)||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open'))return;
