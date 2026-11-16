@@ -74,17 +74,21 @@ health_ok() {
   # HTTP response (fail immediately instead of wasting the full retry window).
   body_file="$(/usr/bin/mktemp "$DATA/.health-check.XXXXXX")" || return 2
   if ! http_status="$(/usr/bin/curl --noproxy '*' --silent --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" --output "$body_file" --write-out '%{http_code}' "https://$host:8765/api/health" 2>/dev/null)"; then
+    echo "DEBUG health: aucune réponse HTTPS pour $expected." >&2
     /bin/rm -f "$body_file"
     return 2
   fi
   if [[ "$http_status" != "200" ]]; then
+    echo "DEBUG health: HTTP $http_status pour $expected." >&2
     /bin/rm -f "$body_file"
     return 1
   fi
   if ! EXPECTED_VERSION="$expected" "$ROOT/.venv/bin/python" -c 'import json,os,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)' "$body_file"; then
+    echo "DEBUG health: réponse JSON invalide pour $expected : $(/bin/cat "$body_file" 2>/dev/null)." >&2
     /bin/rm -f "$body_file"
     return 1
   fi
+  echo "DEBUG health: version $expected validée." >&2
   /bin/rm -f "$body_file"
   return 0
 }
