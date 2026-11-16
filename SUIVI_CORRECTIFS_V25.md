@@ -466,3 +466,19 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 17. **AMEL-S4 — XSS stockée dans les contenus riches.** Le contenu des séances, les consignes de devoir et les retours de correction étaient réinjectés en HTML brut. Un professeur pouvait accidentellement ou malicieusement publier un script, un attribut événementiel ou un lien `javascript:) exécuté dans l'espace élève. Un assainisseur HTML à liste blanche est maintenant appliqué côté serveur à la lecture et à chaque sauvegarde ; l'interface applique également un assainissement avant d'afficher ou d'éditer ces champs. Les balises de script/style/iframe/SVG sont supprimées, les attributs événementiels retirés, les liens limités à HTTP(S) et les styles aux couleurs/tailles de texte autorisées. Tests serveur et navigateur ajoutés.
+
+
+### Audit approfondi du 16/11/2026 — régressions CI et correctifs ciblés
+
+18. **AMEL-S7 — syntaxe invalide dans `cloudNewFolder()`.** Le run CI #1415 a montré que la nouvelle interpolation de `parentPath` était imbriquée dans une interpolation de template string. `node --check _all.js` échouait et l'application ne se chargeait pas ; le test Firefox EDT échouait en cascade parce que le formulaire de connexion n'apparaissait pas. Le calcul de `parentPath` a été déplacé avant le template et sa valeur est injectée par `jsArg(parentPath)` (`f12bdfd`). Le run suivant a validé `node --check` et le test Firefox réel. Statut : correctif technique appliqué, CI complète à reconfirmer sur la tête courante.
+
+19. **AMEL-U18 — génération invalide du timer systemd.** L'audit du code a révélé que `_schedule_update_timer()` écrivait des séquences littérales `\\n` au lieu de vrais retours à la ligne. Le fichier de timer ne contenait donc pas de sections systemd séparées ; le test existant vérifiait seulement la présence de mots-clés et ne détectait pas le défaut. Le code produit maintenant de vraies lignes et le test vérifie explicitement la première ligne, les sections et l'absence de séquences littérales. Correctifs poussés dans `d4cb86e`, `9474b2f` et `a9abe43`. Statut : CI à reconfirmer.
+
+20. **Fixture de test des compétences obsolète (hors bug applicatif).** Le test `test_competencies_v20.js` évaluait désormais `gradeTable()` sans fournir le helper global `jsArg` ajouté au rendu sécurisé. La CI échouait avec `ReferenceError: jsArg is not defined`, alors que le code applicatif disposait du helper. Le contexte du test est complété avec le helper déterministe ; correction dans `36bb248`. Statut : CI à reconfirmer.
+
+### État de la CI au dernier contrôle
+- Run #1415 : échec sur la syntaxe de `_all.js` ; le test Firefox échouait en cascade ; le job macOS avait aussi été arrêté à la même vérification syntaxique.
+- Run #1417 : `node --check` Linux/macOS réussi, installateur macOS Apple Silicon réussi, régression Firefox réelle réussie ; les tests JavaScript ont ensuite échoué sur la fixture obsolète `test_competencies_v20.js`.
+- Les correctifs de sérialisation du timer systemd et de la fixture JS ont été poussés après ce run. Il faut attendre une nouvelle CI complète sur le dernier commit avant de conclure.
+- Aucun artefact de release stable n'est publié à ce jour : l'installation depuis une vraie release, la vérification SHA-256 contre une release publiée et les mises à jour successives restent impossibles à valider de bout en bout.
+- Aucun test n'a été exécuté sur le Mac de l'utilisateur ni sur le PC Fedora cible ; aucune installation locale n'a été modifiée.
