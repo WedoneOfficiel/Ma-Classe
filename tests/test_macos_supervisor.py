@@ -352,7 +352,20 @@ subjectKeyIdentifier=hash
                     except (OSError, urllib.error.URLError, urllib.error.HTTPError, ValueError) as error:
                         last_error = error
                     time.sleep(0.25)
-                raise AssertionError("Le serveur de test n'est pas sain pour " + version + " : " + repr(last_error))
+                launchd_list = subprocess.run(
+                    ["/bin/launchctl", "list", label], capture_output=True, text=True, timeout=10
+                )
+                launchd_print = subprocess.run(
+                    ["/bin/launchctl", "print", domain], capture_output=True, text=True, timeout=10
+                )
+                service_log = (data / "service.log").read_text(encoding="utf-8", errors="replace") if (data / "service.log").exists() else ""
+                service_error = (data / "service-error.log").read_text(encoding="utf-8", errors="replace") if (data / "service-error.log").exists() else ""
+                raise AssertionError(
+                    "Le serveur de test n'est pas sain pour " + version + " : " + repr(last_error)
+                    + "\\nlaunchctl list:\\n" + launchd_list.stdout + launchd_list.stderr
+                    + "\\nlaunchctl print:\\n" + launchd_print.stdout + launchd_print.stderr
+                    + "\\nstdout:\\n" + service_log + "\\nstderr:\\n" + service_error
+                )
 
             try:
                 subprocess.run(["/bin/launchctl", "bootstrap", f"gui/{uid}", str(service_plist)],
