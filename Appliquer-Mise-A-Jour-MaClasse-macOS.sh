@@ -42,7 +42,10 @@ fail_restore() {
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
   if [[ -n "${PREVIOUS_LINK:-}" && -e "$PREVIOUS_LINK" ]]; then
     /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback"
-    /bin/mv -fh "$CURRENT.rollback" "$CURRENT"
+    /usr/bin/python3 - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
+import os,sys
+os.replace(sys.argv[1],sys.argv[2])
+PYLINK
   fi
   if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
     /bin/cp -p "$BACKUP_FILE" "$DATA/maclasse.json"
@@ -99,7 +102,10 @@ write_state installing
 /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; exit 1; }
 if /bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1; then fail_restore "Le serveur est toujours chargé après l'arrêt."; fi
 /bin/ln -s "versions/V$VERSION" "$CURRENT.next"
-/bin/mv -fh "$CURRENT.next" "$CURRENT" || fail_restore "Bascule atomique impossible."
+/usr/bin/python3 - "$CURRENT.next" "$CURRENT" <<'PYLINK' || fail_restore "Bascule atomique impossible."
+import os,sys
+os.replace(sys.argv[1],sys.argv[2])
+PYLINK
 start_service || fail_restore "Redémarrage launchd impossible."
 healthy=0
 for _ in {1..20}; do
