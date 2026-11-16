@@ -34,17 +34,17 @@ def run():
             assert "AccuracySec=1s" in content
             assert "Persistent=false" in content
             assert "Unit=maclasse-update-apply.service" in content
-            assert command.call_count == 8
+            assert command.call_count == 9
             second_timestamp = timestamp + 3600
             server._schedule_update_timer(second_timestamp)
             rescheduled = timer.read_text(encoding="utf-8")
             expected = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(second_timestamp))
             assert f"OnCalendar={expected}" in rescheduled
             assert rescheduled.count("OnCalendar=") == 1
-            assert command.call_count == 16
+            assert command.call_count == 18
             server._cancel_update_timer()
             assert not timer.exists()
-            assert command.call_count == 20
+            assert command.call_count == 23
     with tempfile.TemporaryDirectory() as temp:
         timer = Path(temp) / "maclasse-update-scheduled.timer"
         timer.write_text("[Timer]", encoding="utf-8")
