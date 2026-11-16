@@ -31,7 +31,7 @@ MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 512 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 20000
 ALLOWED_DOWNLOAD_HOSTS = {"api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"}
-VERSION_RE = re.compile(r"^[vV]?(\d+)\.(\d+)\.(\d+)$")
+VERSION_RE = re.compile(r"^[vV]?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 
 
