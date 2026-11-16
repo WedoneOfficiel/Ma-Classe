@@ -512,3 +512,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 30. **Bornage temporel du test launchd réel.** Les commandes de lecture `launchctl print` du nouveau test d'intégration sont maintenant limitées à 10 secondes, comme l'installation (30 s) et le déchargement (10 s). Cela évite qu'un runner macOS ne bloque indéfiniment si le domaine GUI ou launchd ne répond pas (`be66a47`). À valider sur le prochain run macOS.
+
+
+31. **Test launchd réel — second `launchctl print` non borné.** L'audit de la durée du job a montré qu'une des deux inspections du domaine GUI n'avait pas reçu le timeout (le remplacement initial n'avait modifié que la première occurrence). Les deux appels sont maintenant limités à 10 secondes (`49568cd`). Cela explique le risque de blocage du test sur macOS ; le prochain run doit confirmer le démarrage/déchargement réel.
