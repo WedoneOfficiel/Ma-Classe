@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Unit tests for one-off systemd maintenance timers."""
+import os
 import tempfile
 import time
 import sys
@@ -11,7 +12,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import server
 
 
+def test_linux_updater_support_requires_a_loaded_systemd_unit():
+    with tempfile.TemporaryDirectory() as temp:
+        data = Path(temp)
+        (data / "update-manager.enabled").write_text("enabled", encoding="utf-8")
+        env = {"MACLASSE_SUPERVISED": "systemd"}
+        with patch.object(server.sys, "platform", "linux"), \
+             patch.object(server, "DATA_DIR", str(data)), \
+             patch.dict(os.environ, env, clear=False), \
+             patch.object(server.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="not-found\n", stderr="")) as command:
+            assert server._update_apply_service_installed() is False
+            assert command.call_args.args[0][-1] == "maclasse-update-apply.service"
+        with patch.object(server.sys, "platform", "linux"), \
+             patch.object(server, "DATA_DIR", str(data)), \
+             patch.dict(os.environ, env, clear=False), \
+             patch.object(server.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="loaded\n", stderr="")):
+            assert server._update_apply_service_installed() is True
+
+
 def run():
+    test_linux_updater_support_requires_a_loaded_systemd_unit()
     with tempfile.TemporaryDirectory() as temp:
         timer = Path(temp) / "maclasse-update-scheduled.timer"
         timestamp = int(time.time()) + 3600
