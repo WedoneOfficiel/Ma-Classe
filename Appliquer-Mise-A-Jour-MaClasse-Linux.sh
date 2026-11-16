@@ -31,6 +31,13 @@ os.replace(tmp,path)
 PY
 }
 
+server_stopped() {
+  local service_state=0
+  systemctl --user is-active --quiet maclasse.service >/dev/null 2>&1 && return 1
+  service_state=$?
+  [[ "$service_state" == "3" ]]
+}
+
 write_maintenance_state() {
   local status="$1"
   MAINTENANCE_FILE="$DATA_ROOT/update-maintenance.json" MAINTENANCE_STATUS="$status" /usr/bin/python3 - <<'PY'
@@ -52,11 +59,7 @@ fail_and_restore() {
   local message="$1"
   echo "Échec de la mise à jour : $message" >&2
   systemctl --user stop maclasse.service >/dev/null 2>&1 || true
-  set +e
-  systemctl --user is-active --quiet maclasse.service >/dev/null 2>&1
-  local service_state=$?
-  set -e
-  if [[ "$service_state" != "3" ]]; then
+  if ! server_stopped; then
     write_state "rollback_failed" "$message — impossible de confirmer l'arrêt du serveur ; aucune restauration de données n'a été tentée."
     write_maintenance_state "failed"
     echo "ATTENTION : le serveur semble toujours actif ou son état est inconnu. Aucune bascule ni restauration de base n'est tentée pour éviter une corruption." >&2
@@ -167,6 +170,9 @@ write_maintenance_state "installing"
 echo "Arrêt temporaire de MaClasse…"
 if ! systemctl --user stop maclasse.service; then
   fail_and_restore "L’arrêt propre du serveur a échoué."
+fi
+if ! server_stopped; then
+  fail_and_restore "Le serveur n'est pas confirmé à l'arrêt après la demande systemd."
 fi
 rm -f "$CURRENT_LINK.next"
 if ! ln -s "versions/V$VERSION_NUMBER" "$CURRENT_LINK.next" || ! mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"; then
