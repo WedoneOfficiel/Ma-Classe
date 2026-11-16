@@ -192,7 +192,7 @@ fi
 # Snapshot after confirmed stop: no concurrent writes can be lost on rollback.
 STAMP="$(/bin/date +%Y%m%d-%H%M%S)"
 BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
-if [[ ! -f "$DATA/maclasse.json" ]] || ! /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"; then
+if [[ ! -f "$DATA/maclasse.json" || -L "$DATA/maclasse.json" ]] || ! /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"; then
   if start_service; then
     write_state failed "Impossible de sauvegarder la base après l'arrêt ; ancienne version relancée."
     write_maintenance_state failed
