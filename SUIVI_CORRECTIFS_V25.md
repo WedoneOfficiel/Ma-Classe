@@ -392,3 +392,42 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - 16 anomalies recensées.
 - 16 **Supposées résolues** sur la base des correctifs et tests automatisés/navigateur ; 0 **Corrigé** sans confirmation de l'utilisateur ; 0 encore en cours de résolution.
 - Les validations de recette sur l'installation réelle de l'utilisateur restent à faire pour confirmer les 16 anomalies. La PR reste en brouillon, sans merge ni déploiement.
+
+
+## Campagne du 16 novembre 2026 — audit complet AMEL-01, mises à jour et sécurité
+
+**Branche :** `feature/amel-01-update-manager` — PR #10, toujours en brouillon.  
+**Portée :** nouveau gestionnaire de mises à jour, 16 anomalies applicatives du registre, contrôles de sécurité et conflits de logique.
+
+### Défauts supplémentaires détectés et correctifs poussés
+
+1. **AMEL-U1 — sauvegarde prise avant arrêt confirmé.** Risque de restaurer une copie plus ancienne que la dernière écriture du serveur. Les scripts Linux/macOS prennent désormais la sauvegarde après arrêt confirmé. Le test d'intégration Linux remplace `cp` par un garde-fou qui échoue si le service n'a pas encore été arrêté ; le test macOS vérifie l'ordre des opérations.
+2. **AMEL-U2 — annulation launchd non vérifiée.** Le code pouvait supprimer le plist et annoncer l'annulation sans avoir confirmé le déchargement du job. Le contrôle `launchctl print` encadre maintenant le `bootout`, puis un second contrôle confirme l'arrêt avant suppression du plist.
+3. **AMEL-U3 — analyse incorrecte de `launchctl list`.** Un en-tête de colonnes pouvait être pris pour un PID, ou un job chargé mais inactif confondu avec un processus en cours. Le parseur ne reconnaît plus que les PID numériques. Tests ajoutés pour un job inactif et actif.
+4. **AMEL-S1 — cible de version Linux insuffisamment bornée.** Le lanceur Linux vérifie maintenant le chemin canonique du lien `data/program/current` et refuse toute cible hors de la racine ou du dossier `versions`.
+5. **AMEL-S2 — redirections GitHub.** La validation de l'hôte est désormais faite avant de suivre chaque redirection, et pas seulement après le téléchargement. Tests ajoutés pour les destinations locales, externes, avec identifiants ou ports non autorisés.
+6. **AMEL-U4 — versions SemVer à zéros initiaux.** Ces valeurs pouvaient créer un écart entre le dossier normalisé lors de la préparation et le chemin calculé lors de l'installation. Le moteur et le workflow de publication les refusent désormais.
+7. **AMEL-U5 — concurrence d'installation.** Les scripts Linux/macOS prennent un verrou exclusif `fcntl.flock` afin d'empêcher deux bascules simultanées.
+
+### Tests supplémentaires des bugs applicatifs
+
+- Le test Firefox réel couvre maintenant la couleur personnalisée d'une matière dans les espaces professeur et élève.
+- Il vérifie l'enregistrement d'un créneau sans rechargement ni perte de position au moment de la sauvegarde.
+- Il ouvre le module Paramètres élève et contrôle le profil, la sécurité et les trois choix de thème.
+- Il ouvre le module Séances & Leçons et vérifie la barre d'en-tête.
+- Le test bulletin vérifie explicitement que 8/10 devient 16/20, que la moyenne normalisée attendue est calculée et qu'une note supérieure au barème est écartée.
+- Un test serveur vérifie qu'un enseignant ayant assuré une matière pendant une période passée peut modifier l'appréciation correspondante, sans pouvoir modifier la matière d'un autre enseignant.
+
+### Résultats CI observés et corrections des tests
+
+- Le run #43842298396 a exécuté les tests Python avec succès ; le test Firefox a d'abord échoué parce que la mesure de défilement était prise avant l'ouverture de la fenêtre modale (le test mesurait le déplacement causé par l'ouverture, pas par l'enregistrement).
+- Le run #43842852531 a révélé deux défauts dans les tests ajoutés : la regex SemVer n'avait pas été modifiée dans le fichier source malgré le test, et le scénario Firefox restait sur la page Séances & Leçons lorsqu'il attendait la boîte de réception. Le code SemVer a été corrigé et la mesure de défilement a été déplacée juste avant la validation du formulaire ; le test revient maintenant explicitement à `studentMessages` après ses contrôles Paramètres/Leçons.
+- Les tests bulletin, droits d'affectation historique, intégration d'installation Linux et tests d'archives étaient verts dans ce run. Les deux échecs identifiés sont donc consignés comme défauts de couverture/fixtures, pas comme bugs applicatifs démontrés.
+- Les commits de correction ont relancé la CI ; la validation finale de la tête courante doit encore être vérifiée. Ne pas utiliser les résultats d'un run sur un commit antérieur comme preuve pour la tête courante.
+- Le job macOS est resté en file d'attente lors des derniers contrôles. Aucun essai sur le Mac réel de l'utilisateur et aucune recette Fedora n'ont été effectués.
+
+### Statut prudent au 16/11/2026
+
+- Les 16 anomalies historiques restent « Supposé résolu », jamais « Corrigé » sans retour explicite de l'utilisateur.
+- Les 7 anomalies complémentaires AMEL-U1 à AMEL-U5 et AMEL-S1 à AMEL-S2 sont inscrites dans `REGISTRE_BUGS_V25.md` avec statut « En cours de validation CI ».
+- La PR #10 reste ouverte et en brouillon ; aucune fusion, aucun déploiement et aucune modification de l'installation locale.
