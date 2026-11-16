@@ -185,6 +185,7 @@ class MacOSSupervisorTests(unittest.TestCase):
         import json
         import os
         import ssl
+        import socket
         import tempfile
         import time
         import urllib.error
@@ -198,6 +199,11 @@ class MacOSSupervisorTests(unittest.TestCase):
             capture_output=True, text=True, timeout=10
         )
         self.assertNotEqual(existing.returncode, 0, "Un agent MaClasse existe déjà ; test refusé pour ne rien perturber.")
+        with socket.socket() as probe:
+            try:
+                probe.bind(("127.0.0.1", 8765))
+            except OSError:
+                self.skipTest("Le port HTTPS 8765 est déjà utilisé.")
 
         with tempfile.TemporaryDirectory(prefix="maclasse-update-e2e-") as temp:
             tmp = Path(temp)
@@ -218,10 +224,17 @@ class MacOSSupervisorTests(unittest.TestCase):
             extensions = tls / "server.ext"
             subprocess.run(["/usr/bin/openssl", "genrsa", "-out", str(ca_key), "2048"],
                            check=True, capture_output=True, timeout=20)
+            ca_config = tls / "ca.cnf"
+            ca_config.write_text(
+                "[req]\\ndistinguished_name=dn\\nx509_extensions=v3_ca\\nprompt=no\\n"
+                "[dn]\\nCN=MaClasse updater test CA\\n"
+                "[v3_ca]\\nbasicConstraints=critical,CA:TRUE\\n"
+                "keyUsage=critical,keyCertSign,cRLSign\\nsubjectKeyIdentifier=hash\\n",
+                encoding="utf-8"
+            )
             subprocess.run([
-                "/usr/bin/openssl", "req", "-x509", "-new", "-nodes",
-                "-key", str(ca_key), "-sha256", "-days", "2",
-                "-subj", "/CN=MaClasse updater test CA", "-out", str(ca_cert)
+                "/usr/bin/openssl", "req", "-x509", "-new", "-sha256", "-days", "2",
+                "-key", str(ca_key), "-out", str(ca_cert), "-config", str(ca_config)
             ], check=True, capture_output=True, timeout=20)
             subprocess.run([
                 "/usr/bin/openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
