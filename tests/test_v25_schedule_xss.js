@@ -64,6 +64,10 @@ dragSandbox.event = {
     effectAllowed: ""
   }
 };
+dragSandbox.startScheduleDrag = (ev, id) => {
+  ev.dataTransfer.setData("text/plain", id);
+  ev.dataTransfer.effectAllowed = "move";
+};
 vm.runInNewContext(decodeAttribute(drag[1]), dragSandbox);
 assert.strictEqual(dragSandbox.dragged, payload, "drag handler must receive the original ID safely");
 
