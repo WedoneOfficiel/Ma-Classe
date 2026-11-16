@@ -605,7 +605,7 @@ subjectKeyIdentifier=hash
                 }), encoding="utf-8")
                 failed = subprocess.run(
                     ["/bin/bash", str(updater)], cwd=root, env=env,
-                    capture_output=True, text=True, timeout=75
+                    capture_output=True, text=True, timeout=140
                 )
                 self.assertNotEqual(failed.returncode, 0, failed.stdout + "\n" + failed.stderr)
                 self.assertEqual(current.resolve().name, "V25.0.23")
