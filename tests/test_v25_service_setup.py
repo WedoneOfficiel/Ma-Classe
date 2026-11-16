@@ -56,6 +56,7 @@ assert 'PREVIOUS_LINK_TARGET' in apply_script
 assert 'rollback_failed' in apply_script
 assert 'systemctl --user is-active --quiet maclasse.service' in apply_script
 assert 'Aucune bascule ni restauration de données' in apply_script
+assert 'sauvegarde de base absente ou invalide' in apply_script
 assert 'VERSION.txt' in apply_script
 assert 'maclasse-runtime-ready.json' in apply_script
 print("OK — supervision Linux : scripts valides, service isolé et désinstallation sans suppression des données.")
