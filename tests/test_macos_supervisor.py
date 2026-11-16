@@ -105,7 +105,7 @@ class MacOSSupervisorTests(unittest.TestCase):
         uid = os.getuid()
         label = "fr.maclasse.server"
         domain = f"gui/{uid}/{label}"
-        existing = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True)
+        existing = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True, timeout=10)
         self.assertNotEqual(existing.returncode, 0, "Le runner possède déjà un agent MaClasse ; test refusé pour ne rien perturber.")
         with tempfile.TemporaryDirectory(prefix="maclasse-launchd-live-") as temp:
             tmp = Path(temp)
