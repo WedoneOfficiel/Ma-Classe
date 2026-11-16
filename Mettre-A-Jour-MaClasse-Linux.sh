@@ -13,6 +13,7 @@ if [[ -f "$DATA_ROOT/update-manager.enabled" ]]; then
     echo "Une installation MaClasse est déjà en cours."
     exit 1
   fi
+  set +e
   "$APP_ROOT/.venv/bin/python" - "$ROOT" <<'PY'
 import json, os, sys, time
 from pathlib import Path
@@ -28,7 +29,7 @@ if not isinstance(database,dict):
 release=update_manager.check_latest_release(version)
 if not release.get("available"):
     print(f"MaClasse est déjà à jour ({version}).")
-    raise SystemExit(0)
+    raise SystemExit(10)
 if release.get("min_data_schema",1)>int(database.get("schemaVersion",0) or 0):
     raise SystemExit("Cette version est incompatible avec la structure actuelle des données.")
 versions=data/"program"/"versions"
@@ -47,6 +48,10 @@ tmp.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
 os.replace(tmp,path)
 print(f"Version {release['version']} téléchargée, vérifiée et prête.")
 PY
+  PY_STATUS=$?
+  set -e
+  if [[ "$PY_STATUS" == "10" ]]; then exit 0; fi
+  if [[ "$PY_STATUS" != "0" ]]; then exit "$PY_STATUS"; fi
   if ! systemctl --user start --no-block maclasse-update-apply.service; then
     echo "Impossible de lancer le gestionnaire indépendant. La version active n'a pas été remplacée." >&2
     exit 1
