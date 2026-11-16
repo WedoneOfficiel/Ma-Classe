@@ -52,19 +52,29 @@ assert.strictEqual(sandbox.navigated.length, count, "unknown actions and pages m
 assert.strictEqual(sandbox.pwned, undefined);
 
 
+const uploadStart = source.indexOf("const safeUploadUrl=value=>");
+const uploadEnd = source.indexOf(";\nconst safeRichHtml", uploadStart) + 1;
+assert(uploadStart >= 0 && uploadEnd > uploadStart, "shared upload URL validator must exist");
+const mailSandbox = {};
+vm.runInNewContext(source.slice(uploadStart, uploadEnd) + ";globalThis.safeUploadUrl=safeUploadUrl;", mailSandbox);
 const mailStart = source.indexOf("function safeMailAttachmentUrl(value){");
 const mailEnd = source.indexOf("\n  window.mailV2104PreviewAttachment", mailStart);
-assert(mailStart >= 0 && mailEnd > mailStart, "mail attachment URL validator must exist");
-const mailSandbox = {};
-vm.runInNewContext(source.slice(mailStart, mailEnd), mailSandbox);
-assert.strictEqual(mailSandbox.safeMailAttachmentUrl("/data/uploads/mail-v2/teacher:t1/report.pdf"), "/data/uploads/mail-v2/teacher:t1/report.pdf");
+assert(mailStart >= 0 && mailEnd > mailStart, "mail attachment URL wrapper must exist");
+vm.runInNewContext(source.slice(mailStart, mailEnd) + ";globalThis.safeMailAttachmentUrl=safeMailAttachmentUrl;", mailSandbox);
+const safePath = "/data/uploads/mail-v2/teacher:t1/report.pdf";
+assert.strictEqual(mailSandbox.safeUploadUrl(safePath), safePath);
+assert.strictEqual(mailSandbox.safeMailAttachmentUrl(safePath), safePath);
 for (const bad of [
   "javascript:alert(1)//data/uploads/mail-v2/teacher:t1/file.pdf",
   "https://evil.example/data/uploads/mail-v2/teacher:t1/file.pdf",
   "//evil.example/data/uploads/mail-v2/teacher:t1/file.pdf",
   "/data/uploads/mail-v2/teacher:t1/%2e%2e/secret.pdf",
+  "/data/uploads/mail-v2/teacher:t1/%5c..%5csecret.pdf",
   "/data/uploads/mail-v2/teacher:t1/file.pdf?x=1",
   "/data/uploads/mail-v2/teacher:t1/file.pdf#x"
-]) assert.strictEqual(mailSandbox.safeMailAttachmentUrl(bad), "", "unsafe attachment URL must be rejected");
+]) {
+  assert.strictEqual(mailSandbox.safeUploadUrl(bad), "", "unsafe upload URL must be rejected");
+  assert.strictEqual(mailSandbox.safeMailAttachmentUrl(bad), "", "unsafe mail attachment URL must be rejected");
+}
 
 console.log("OK — actions de notifications typées, liste blanche et résistantes aux identifiants malveillants.");
