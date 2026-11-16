@@ -65,6 +65,12 @@ class ReleaseCheckerTests(unittest.TestCase):
                 self.assertTrue(prepared.is_relative_to(Path(temp).resolve()))
                 self.assertEqual(json.loads((prepared / "maclasse-prepared.json").read_text())["status"], "prepared")
 
+    def test_no_stable_release_yet_is_not_an_error(self):
+        with patch.object(updater, "_request", side_effect=updater.NoReleaseAvailable):
+            info = updater.check_latest_release("25.0.22")
+            self.assertFalse(info["available"])
+            self.assertIsNone(info["version"])
+
     def test_no_update_when_same_or_newer_version_installed(self):
         with patch.object(updater, "_request", side_effect=self.fake_request):
             self.assertFalse(updater.check_latest_release("25.1.0")["available"])
