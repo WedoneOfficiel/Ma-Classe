@@ -5,12 +5,16 @@ cd "$(dirname "$0")"
 [[ -x .venv/bin/python ]] || { echo "Lance d'abord ./Installer-MaClasse-Linux.sh."; exit 1; }
 command -v systemctl >/dev/null 2>&1 || { echo "systemd est requis."; exit 1; }
 command -v loginctl >/dev/null 2>&1 || { echo "loginctl est requis pour activer le démarrage au boot."; exit 1; }
-for dependency in systemd-analyze curl openssl realpath python3; do
+for dependency in systemd-analyze curl openssl realpath python3 pgrep; do
   command -v "$dependency" >/dev/null 2>&1 || { echo "Dépendance manquante : $dependency."; exit 1; }
 done
 ROOT="$(pwd -P)"
 [[ "$(id -u)" -ne 0 ]] || { echo "Lance cet installateur depuis le compte utilisateur MaClasse, sans sudo devant le script."; exit 1; }
 USER_NAME="$(id -un)"
+SERVICE_PID="$(systemctl --user show --property=MainPID --value maclasse.service 2>/dev/null || echo 0)"
+while IFS= read -r pid; do
+  [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { echo "Un serveur MaClasse lancé manuellement est actif (PID $pid). Arrête-le avant d'installer le service." >&2; exit 1; }
+done < <(pgrep -f '[p]ython.*server[.]py' || true)
 if [[ ! "$ROOT" =~ ^/[A-Za-z0-9_./-]+$ ]]; then echo "Déplace MaClasse dans un chemin simple (lettres, chiffres, /, ., _ ou -) pour systemd."; exit 1; fi
 UNIT_DIR="$HOME/.config/systemd/user"
 UNIT_FILE="$UNIT_DIR/maclasse.service"
