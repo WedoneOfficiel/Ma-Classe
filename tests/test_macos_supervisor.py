@@ -272,6 +272,7 @@ subjectKeyIdentifier=hash
                     "APP_VERSION='" + version + "'\n"
                     "HEALTHY=" + ("True" if healthy else "False") + "\n"
                     "import json,os,ssl\n"
+                    "print('python-enter',flush=True)\n"
                     "from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n"
                     "class Handler(BaseHTTPRequestHandler):\n"
                     " def do_GET(self):\n"
@@ -282,8 +283,10 @@ subjectKeyIdentifier=hash
                     "  self.end_headers();self.wfile.write(body)\n"
                     " def log_message(self,*args): pass\n"
                     "server=ThreadingHTTPServer(('127.0.0.1',8765),Handler)\n"
+                    "print('socket-bound',flush=True)\n"
                     "context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)\n"
                     "context.load_cert_chain(os.environ['MACLASSE_TLS_CERT'],os.environ['MACLASSE_TLS_KEY'])\n"
+                    "print('tls-ready',flush=True)\n"
                     "server.socket=context.wrap_socket(server.socket,server_side=True)\n"
                     "server.serve_forever()\n",
                     encoding="utf-8"
