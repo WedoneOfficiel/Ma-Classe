@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 [[ "$(uname -s)" == "Darwin" ]] || { echo "Cet installateur est réservé à macOS."; exit 1; }
 [[ -x "$ROOT/.venv/bin/python" ]] || { echo "Lance d'abord Installer-MaClasse.command."; exit 1; }
