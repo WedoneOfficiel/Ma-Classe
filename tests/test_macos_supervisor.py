@@ -512,12 +512,19 @@ subjectKeyIdentifier=hash
                     + "\\nstdout:\\n" + service_log + "\\nstderr:\\n" + service_error + "\\nrunner:\\n" + runner_log + "\\nlisteners:\\n" + listener_info + "\\nprocesses:\\n" + process_info[-8000:]
                 )
 
+            idle_connection = None
             try:
                 subprocess.run(["/bin/launchctl", "bootstrap", f"gui/{uid}", str(service_plist)],
                                check=True, capture_output=True, text=True, timeout=15)
                 subprocess.run(["/bin/launchctl", "kickstart", domain],
                                check=True, capture_output=True, text=True, timeout=15)
                 wait_for_version("25.0.22")
+                # A connected client that never sends an HTTP request must not
+                # hold launchd bootout and the complete update cycle forever.
+                idle_connection = context.wrap_socket(
+                    socket.create_connection(("127.0.0.1", 8765), timeout=5),
+                    server_hostname="127.0.0.1"
+                )
 
                 updater = ROOT / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh"
                 state_file = data / "update-state.json"
@@ -591,6 +598,8 @@ subjectKeyIdentifier=hash
                 self.assertEqual(json.loads(state_file.read_text(encoding="utf-8"))["status"], "failed")
                 wait_for_version("25.0.23")
             finally:
+                if idle_connection is not None:
+                    idle_connection.close()
                 subprocess.run(["/bin/launchctl", "bootout", domain],
                                capture_output=True, text=True, timeout=10)
                 listed = subprocess.run(["/bin/launchctl", "print", domain],
