@@ -28,6 +28,10 @@ assert 'Environment=MACLASSE_SUPERVISED=systemd' in installer
 assert 'loginctl enable-linger "$USER_NAME"' in installer
 assert 'NoNewPrivileges=true' in installer
 assert 'TimeoutStopSec=120' in installer
+server_source = (ROOT / 'server.py').read_text(encoding='utf-8')
+assert 'class MaClasseHTTPServer(ThreadingHTTPServer):' in server_source
+assert 'daemon_threads=False' in server_source
+assert 'block_on_close=True' in server_source
 server_source = (ROOT / 'server.py').read_text()
 assert 'daemon_threads=False' in server_source
 assert 'httpd.server_close()' in server_source
