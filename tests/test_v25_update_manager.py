@@ -139,6 +139,23 @@ class ReleaseCheckerTests(unittest.TestCase):
             self.assertFalse((program / ".venv").exists())
             self.assertFalse((program / "maclasse-runtime-ready.json").exists())
 
+    def test_rejects_untrusted_redirect_before_request_is_sent(self):
+        handler = updater._GitHubRedirectHandler()
+        request = updater.urllib.request.Request("https://api.github.com/repos/example")
+        for destination in ("http://127.0.0.1/admin", "https://example.com/asset",
+                            "https://user@github.com/asset", "https://github.com:8443/asset"):
+            with self.subTest(destination=destination):
+                with self.assertRaises(updater.UpdateError):
+                    handler.redirect_request(request, None, 302, "Found", {}, destination)
+
+    def test_allows_redirect_between_approved_github_asset_hosts(self):
+        handler = updater._GitHubRedirectHandler()
+        request = updater.urllib.request.Request("https://api.github.com/repos/example")
+        redirected = handler.redirect_request(
+            request, None, 302, "Found", {}, "https://release-assets.githubusercontent.com/asset"
+        )
+        self.assertEqual(redirected.full_url, "https://release-assets.githubusercontent.com/asset")
+
     def test_rejects_http_asset_url(self):
         with self.assertRaises(updater.UpdateError):
             updater._request("http://example.test/archive", 100)
