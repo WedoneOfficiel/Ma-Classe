@@ -63,7 +63,7 @@ if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet ma
   echo "Le serveur est actif mais le gestionnaire de mise à jour n'est pas installé. Arrête le service ou installe le gestionnaire avant toute mise à jour." >&2
   exit 1
 fi
-if command -v pgrep >/dev/null 2>&1 && pgrep -f '[p]ython.*server\\.py' >/dev/null; then
+if command -v pgrep >/dev/null 2>&1 && pgrep -f '[p]ython.*server\.py' >/dev/null; then
   echo "Le serveur MaClasse semble actif en lancement manuel. Arrête-le avant toute mise à jour Git." >&2
   exit 1
 fi
