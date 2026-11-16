@@ -121,7 +121,8 @@ class ReleaseCheckerTests(unittest.TestCase):
             (program / "server.py").write_text("print('ok')", encoding="utf-8")
             (program / "_all.js").write_text("const ok=true;", encoding="utf-8")
             calls = []
-            def fake_run(command, **kwargs):
+            with patch.object(updater.sys, "_base_executable", "/usr/bin/python3", create=True):
+                def fake_run(command, **kwargs):
                 calls.append(command)
                 if command[1:3] == ["-m", "venv"]:
                     python = Path(command[-1]) / "bin" / "python"
