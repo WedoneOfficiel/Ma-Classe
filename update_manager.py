@@ -20,7 +20,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 OWNER = "WedoneOfficiel"
 REPOSITORY = "Ma-Classe"
@@ -44,21 +44,37 @@ class NoReleaseAvailable(UpdateError):
     """The repository has not published a stable release yet."""
 
 
-def _request(url: str, limit: int) -> bytes:
+def _validate_github_url(url: str) -> None:
     if not isinstance(url, str):
         raise UpdateError("URL de mise à jour invalide.")
-    parsed = urlsplit(url)
-    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_DOWNLOAD_HOSTS or parsed.username or parsed.password or parsed.port not in (None, 443):
+    try:
+        parsed = urlsplit(url)
+        valid_port = parsed.port in (None, 443)
+    except ValueError as exc:
+        raise UpdateError("URL de mise à jour invalide.") from exc
+    if (parsed.scheme != "https" or parsed.hostname not in ALLOWED_DOWNLOAD_HOSTS
+            or parsed.username or parsed.password or not valid_port):
         raise UpdateError("La ressource de mise à jour doit provenir de GitHub en HTTPS.")
+
+
+class _GitHubRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject unsafe redirect destinations before urllib sends the redirected request."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        destination = urljoin(req.full_url, newurl)
+        _validate_github_url(destination)
+        return super().redirect_request(req, fp, code, msg, headers, destination)
+
+
+def _request(url: str, limit: int) -> bytes:
+    _validate_github_url(url)
     request = urllib.request.Request(
         url,
         headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:
-            final = urlsplit(response.geturl())
-            if final.scheme != "https" or final.hostname not in ALLOWED_DOWNLOAD_HOSTS:
-                raise UpdateError("Redirection hors des serveurs GitHub refusée.")
+        opener = urllib.request.build_opener(_GitHubRedirectHandler())
+        with opener.open(request, timeout=20) as response:
+            _validate_github_url(response.geturl())
             data = response.read(limit + 1)
     except urllib.error.HTTPError as exc:
         if url == API_LATEST and exc.code == 404:
