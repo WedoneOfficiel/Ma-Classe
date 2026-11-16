@@ -29,6 +29,9 @@ assert 'APP_REAL="$(cd "$APP_ROOT" && pwd -P)"' in launcher
 assert 'case "$APP_REAL" in "$ROOT"|"$VERSIONS_REAL"/*)' in launcher
 assert 'ln -s ../.. "$APP_ROOT"' in launcher
 assert 'ExecStart=/usr/bin/bash $ROOT/data/program/current/Lancer-MaClasse-Service-Linux.sh' in installer
+assert 'Environment=MACLASSE_ROOT=$ROOT' in installer
+assert 'Environment=MACLASSE_DATA_DIR=$ROOT/data' in installer
+assert 'SCRIPT_DIR/../../../..' in launcher
 assert 'Environment=MACLASSE_SUPERVISED=systemd' in installer
 assert 'loginctl enable-linger "$USER_NAME"' in installer
 assert 'for dependency in systemd-analyze curl openssl realpath python3; do' in installer
