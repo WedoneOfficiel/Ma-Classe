@@ -113,3 +113,46 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 - Demande d'amélioration séparée : **1**
 
 Ce bilan est volontairement prudent : sur le commit `a6f1ce3` (run #1490), les jobs Linux et Firefox réel sont verts ; le job macOS est encore en attente. Un run macOS antérieur a révélé un échec du scénario de mise à jour HTTPS de bout en bout ; le scénario a été instrumenté pour diagnostiquer le lancement du serveur et doit repasser. Cela ne remplace pas la recette sur le Mac de l'utilisateur et le PC Fedora cible, la migration depuis V25.0.19 sur copie, ni la validation d'une release signée. Aucun bug n'est marqué « Corrigé » sans confirmation explicite.
+
+
+## Nouveaux signalements utilisateur — recette V25.0.23 (17 novembre 2026)
+
+Les éléments ci-dessous ont été rapportés après installation de V25.0.23. Ils sont enregistrés comme **Détecté / à diagnostiquer** : aucun n'est déclaré corrigé sans reproduction et confirmation. Les demandes d'évolution sont distinguées des bugs.
+
+| Identifiant | Bug / demande | Description et résultat attendu | État |
+|---|---|---|---|
+| BUL-02 | Génération PDF des bulletins limitée au local | La génération PDF semble disponible uniquement depuis l'installation locale. Elle doit fonctionner depuis les postes connectés au serveur MaClasse sur le réseau Wi-Fi/LAN, sans dépendre d'un fichier ou d'un navigateur local spécifique. Diagnostiquer le chemin de génération, les dépendances navigateur/impression et les droits d'accès. | Détecté |
+| BUL-03 | Bulletins impossibles à ouvrir par les élèves | Les élèves obtiennent un message de droits insuffisants ou une erreur lorsqu'ils tentent d'ouvrir leur bulletin. Vérifier la route de téléchargement/lecture, l'authentification, l'autorisation par élève/classe/période et le type MIME du PDF. | Détecté |
+| UI-ADM-01 | Largeur et hauteur irrégulières des boutons de la barre latérale Direction | Les boutons de navigation de l'administration n'ont pas une largeur/hauteur visuellement constante ; leur hauteur semble varier selon le nombre d'éléments ou le contenu. Harmoniser les dimensions, espacements et états avec la barre latérale Professeur, sans casser les libellés longs. | Détecté |
+| UI-SET-01 | Espacements verticaux excessifs dans Paramètres | Certains blocs/cartes des paramètres sont trop éloignés verticalement. Réduire et uniformiser les marges/paddings, vérifier les sections Apparence, Périodes, Salles, Version, Mises à jour et Données sur les différents rôles. | Détecté |
+| EXT-01 | Erreurs console d'extension navigateur | Messages observés : `[react-wrapper] 样式缺失，已跳过：css/content-lite.css NetworkError when attempting to fetch resource` et `Error: No Listener: tabs:outgoing.message.ready undefined`. Ils peuvent provenir d'une extension ou d'un script injecté, pas nécessairement de MaClasse. Reproduire en fenêtre privée/sans extensions et vérifier l'origine/stack avant de créer un correctif applicatif. | À isoler — origine inconnue |
+| AFFECT-01 | Affectations pédagogiques réservées à la Direction | L'utilisateur souhaite que les professeurs puissent également gérer les affectations qui les concernent. Définir précisément le périmètre : proposition d'affectation, ajout d'un co-enseignant, remplacement, dates et matières ; conserver validation/contrôle Direction et empêcher toute auto-attribution abusive. Il s'agit d'une évolution des droits, pas encore d'un bug démontré. | Demande d'évolution |
+| EDT-06 | Couleurs des matières non visibles dans l'EDT | Malgré le sélecteur et le paramètre de couleur ajoutés, les couleurs ne semblent pas s'appliquer aux événements de l'emploi du temps. Vérifier la persistance de `settings.subjectColors`, la résolution matière/couleur et le rendu dans les vues jour/semaine/mois, professeur/élève et après actualisation. | Détecté |
+| EDT-07 | Fond de l'emploi du temps insuffisamment contrasté | Ajouter un fond de surface derrière la grille/calendrier : blanc en thème clair et sombre/noir adapté au thème sombre, avec contraste suffisant pour distinguer la grille des éléments environnants. Vérifier lisibilité des cours, lignes, textes et couleurs personnalisées. | Demande UI |
+| AFFECT-02 | Gestion des remplaçants peu visible / incompréhensible | L'utilisateur ne trouve pas où consulter ou gérer les professeurs remplaçants, leurs périodes, matières et droits. Auditer le parcours complet : création, affectation temporaire, remplacement ponctuel, co-enseignement, expiration et visibilité dans les profils/EDT/bulletins. Déterminer si le problème est fonctionnel ou seulement de découvrabilité/ergonomie. | Détecté |
+| BUL-04 | Bulletins semblant devoir être recréés à chaque ouverture du module | Le module donne l'impression que les bulletins doivent être recréés à chaque visite. Vérifier la persistance des campagnes/périodes, le chargement des bulletins déjà créés, les filtres par classe/période et les actions de génération ; distinguer génération du PDF et création du bulletin. | Détecté |
+| VER-01 | Numéro de version incohérent selon le rôle | Le numéro de version est actualisé dans l'administration mais pas nécessairement dans les espaces professeur/élève. Afficher une version de référence unique, fournie par le serveur, dans tous les espaces et éviter les numéros codés en dur dans les clients. | Détecté |
+| UI-PROFIL-01 | Espaces manquants entre les libellés et les valeurs des profils | Des champs sont concaténés, par exemple « Prénom et nomTest Test », « ClasseCMA · CMA/CM1 », « Identifianttestt » et « Adresse e-mailNon renseignée ». Ajouter une séparation visuelle cohérente (espacement, retour à la ligne ou disposition en grille) entre libellé et valeur, y compris les valeurs vides. | Détecté |
+| MAIL-02 | Messagerie toujours inaccessible pour les élèves | Malgré le correctif de l'interface et de la projection serveur, l'utilisateur confirme que la messagerie n'est toujours pas accessible dans son installation. Reproduire avec un compte élève réel, vérifier navigation, rôle effectif, API/projection, conversation autorisée et état du compte ; ne pas considérer MAIL-01 comme confirmé résolu. | Détecté — régression/écart recette |
+| VIE-01 | Onglet Vie scolaire trop chargé | L'utilisateur souhaite n'afficher dans l'onglet Vie scolaire que les absences, justifiées ou non. Les autres informations doivent être retirées de cette vue ou déplacées dans des rubriques adaptées afin de préserver la lisibilité. À confirmer comme choix fonctionnel avant modification. | Demande d'évolution |
+
+### Vérifications complémentaires proposées pendant l'audit
+
+Ces points ne sont **pas des bugs confirmés**. Ils sont ajoutés à la recette de contrôle pour éviter de déclarer la version stable sur la seule base de la CI.
+
+| Identifiant | Point à vérifier | Pourquoi |
+|---|---|---|
+| AUDIT-REC-01 | Mise à jour supervisée suivante (V25.0.23 vers une future version) | La migration initiale vient de réussir sur le Mac. Il faut encore valider un cycle complet depuis l'interface : préparation, maintenance, redémarrage, conservation des données et retour arrière simulé. |
+| AUDIT-REC-02 | Accès simultané depuis plusieurs PC du réseau | Vérifier que les changements d'EDT, notes, bulletins, messagerie et pièces jointes restent cohérents entre plusieurs sessions et après reconnexion. |
+| AUDIT-REC-03 | Droits réels par rôle | Refaire les parcours avec des comptes Direction, professeur, élève et professeur remplaçant ; contrôler à la fois l'interface et les refus serveur. |
+| AUDIT-REC-04 | Persistance après redémarrage du serveur | Vérifier que paramètres, couleurs, affectations, bulletins, messages et pièces jointes sont toujours présents après arrêt/redémarrage du service. |
+| AUDIT-REC-05 | Impression et export depuis un poste client | Tester PDF/impression depuis un autre PC du réseau, pas seulement depuis le Mac serveur, pour repérer les dépendances locales. |
+
+### Priorités de traitement proposées
+
+1. **Bloquants fonctionnels** : BUL-03 (élèves ne pouvant pas ouvrir leurs bulletins), MAIL-02 (messagerie élève inaccessible), BUL-02 (PDF indisponible depuis les postes réseau).
+2. **Données et fonctionnement métier** : BUL-04 (persistance des bulletins), AFFECT-02 (remplacements), EDT-06 (couleurs), VER-01 (version commune).
+3. **Ergonomie et lisibilité** : UI-ADM-01, UI-SET-01, EDT-07, UI-PROFIL-01, VIE-01.
+4. **Évolution des droits** : AFFECT-01, après définition du périmètre et des garde-fous.
+5. **Diagnostic indépendant** : EXT-01, à isoler avant toute modification de MaClasse.
+
