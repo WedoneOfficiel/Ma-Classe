@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 DATA="$ROOT/data"
 CURRENT="$DATA/program/current"
