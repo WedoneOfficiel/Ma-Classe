@@ -451,3 +451,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 12. **AMEL-U10 — restauration de base non atomique.** Le rollback copiait directement le JSON de sauvegarde sur le fichier actif ; une interruption pendant cette copie pouvait laisser une base partielle. Les scripts Linux/macOS copient maintenant vers un fichier temporaire sur le même volume, font un `fsync`, remplacent atomiquement avec `os.replace`, puis synchronisent le dossier. Le scénario d'intégration Linux vérifie déjà le contenu après rollback ; le test macOS vérifie le mécanisme atomique.
+
+
+13. **AMEL-U11 — course entre installation immédiate et maintenance programmée.** Un démarrage immédiat pouvait décharger un job launchd dont le processus d'installation avait déjà démarré ; le chemin systemd ne refusait pas non plus explicitement un double démarrage. Le lancement immédiat et l'annulation du timer vérifient maintenant l'état du processus d'installation avant toute action ; un timer ne peut pas décharger un updater déjà actif. Tests ajoutés sur les deux plateformes.
