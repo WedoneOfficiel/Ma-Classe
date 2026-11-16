@@ -1702,6 +1702,7 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception:
                 return self._json({'ok':False,'version':APP_VERSION,'database':'error'},503)
         if path=='/api/update-maintenance':
+            if not self._require_auth(roles=('admin','teacher','student')): return
             try:
                 with open(os.path.join(DATA_DIR,'update-maintenance.json'),encoding='utf-8') as f:
                     maintenance=json.load(f)
