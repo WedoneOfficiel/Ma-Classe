@@ -788,5 +788,64 @@ assert server._update_apply_service_active() is False
         self.assertIn("os.replace(source,destination)", script)
         self.assertIn("os.fsync(stream.fileno())", script)
 
+    @unittest.skipUnless(sys.platform == "darwin", "La migration d'installation nécessite macOS.")
+    def test_v25_0_22_existing_install_migrates_to_managed_launchd_without_touching_data(self):
+        """Reproduces the user's V25.0.22 layout before enabling the updater supervisor."""
+        import os
+        import tempfile
+        import shutil
+        import json
+        import plistlib
+
+        with tempfile.TemporaryDirectory(prefix="maclasse-v2522-migration-") as temp:
+            base = Path(temp)
+            root = base / "MaClasse"
+            data = root / "data"
+            (root / ".venv" / "bin").mkdir(parents=True)
+            (data / "tls").mkdir(parents=True)
+            (root / ".venv" / "bin" / "python").symlink_to(sys.executable)
+            for name in SCRIPTS:
+                shutil.copy2(ROOT / name, root / name)
+            # Representative persistent V25.0.22 installation data.
+            database = {"schemaVersion": 25011, "school": "École de test",
+                        "users": [{"username": "admin"}], "classes": [{"name": "6e A"}],
+                        "students": [{"name": "Élève témoin"}]}
+            (data / "maclasse.json").write_text(json.dumps(database, ensure_ascii=False), encoding="utf-8")
+            for name in ("server.crt", "server.key", "ca.crt"):
+                (data / "tls" / name).write_text("fixture-" + name, encoding="utf-8")
+            home = base / "home"
+            fakebin = base / "bin"
+            home.mkdir()
+            fakebin.mkdir()
+            log = base / "launchctl.log"
+            launchctl = fakebin / "launchctl"
+            launchctl.write_text('#!/bin/sh\necho "$*" >> "$LAUNCHCTL_LOG"\nexit 0\n', encoding="utf-8")
+            launchctl.chmod(0o755)
+            pgrep = fakebin / "pgrep"
+            pgrep.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+            pgrep.chmod(0o755)
+            env = os.environ.copy()
+            env.update({"HOME": str(home), "PATH": str(fakebin) + os.pathsep + env.get("PATH", ""),
+                        "LAUNCHCTL_LOG": str(log)})
+            result = subprocess.run(["bash", str(root / SCRIPTS[0])], cwd=root, env=env,
+                                    capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
+            self.assertEqual(json.loads((data / "maclasse.json").read_text(encoding="utf-8")), database)
+            for name in ("server.crt", "server.key", "ca.crt"):
+                self.assertEqual((data / "tls" / name).read_text(encoding="utf-8"), "fixture-" + name)
+            current = data / "program" / "current"
+            self.assertTrue(current.is_symlink())
+            self.assertEqual(current.resolve(), root.resolve())
+            plist = home / "Library" / "LaunchAgents" / "fr.maclasse.server.plist"
+            with plist.open("rb") as stream:
+                service = plistlib.load(stream)
+            self.assertEqual(service["EnvironmentVariables"]["MACLASSE_ROOT"], str(root.resolve()))
+            self.assertEqual(service["EnvironmentVariables"]["MACLASSE_DATA_DIR"], str(data.resolve()))
+            self.assertEqual(service["ProgramArguments"][1],
+                             str(current / "Lancer-MaClasse-Service-macOS.sh"))
+            self.assertTrue((data / "update-manager.enabled").is_file())
+            self.assertIn("bootstrap", log.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()
