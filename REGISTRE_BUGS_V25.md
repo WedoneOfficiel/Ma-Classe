@@ -1,8 +1,8 @@
 # Registre des bugs — MaClasse V25
 
 **Document de référence des anomalies signalées et des défauts relevés pendant l'audit.**  
-Branche de travail : `fix/v25-student-teacher-workflows`  
-Dernière mise à jour : 15 novembre 2026
+Branche de travail : `feature/amel-01-update-manager` (PR #10, base `fix/v25-student-teacher-workflows`)  
+Dernière mise à jour : 16 novembre 2026
 
 ## Règles de suivi
 
@@ -39,15 +39,30 @@ Dernière mise à jour : 15 novembre 2026
 
 | Identifiant | Demande | Description | État |
 |---|---|---|---|
-| AMEL-01 | Gestion des mises à jour du serveur | Repenser le cycle de mise à jour pour permettre à la direction de vérifier les releases stables, préparer sans interruption, installer immédiatement ou programmer/reprogrammer/annuler une maintenance, avertir tous les rôles, sauvegarder les données et restaurer automatiquement code + base en cas d'échec. Sur `feature/amel-01-update-manager` : workflow GitHub Release, vérification SHA-256, préparation par version, interface admin, timer systemd, bannière multi-rôles, service Linux indépendant, arrêt gracieux vérifié, bascule atomique, health-check, rollback code/base, conservation des versions récentes et secours CLI sur le même moteur. Tests Linux et régression Firefox réelle verts sur `4a7444c`. Validation macOS encore en file d'attente ; recette réelle Fedora non effectuée. Le support macOS/launchd reste à développer. Ce point est une amélioration, pas un bug confirmé. | En cours de résolution |
+| AMEL-01 | Gestion des mises à jour du serveur | Repenser le cycle de mise à jour pour permettre à la direction de vérifier les releases stables, préparer sans interruption, installer immédiatement ou programmer/reprogrammer/annuler une maintenance, avertir tous les rôles, sauvegarder les données et restaurer automatiquement code + base en cas d'échec. Sur `feature/amel-01-update-manager` : workflow GitHub Release, vérification SHA-256, préparation par version, interface admin, timer systemd/launchd, bannière multi-rôles, services Linux et macOS, arrêt gracieux, bascule atomique, health-check, rollback code/base et verrou contre les installations simultanées. L'audit a trouvé puis corrigé plusieurs défauts supplémentaires (sauvegarde prise trop tôt, annulation launchd non confirmée, interprétation du PID launchd, symlink actif Linux non borné, redirections GitHub non contrôlées avant suivi, versions SemVer à zéros initiaux). Tests de régression ajoutés. La CI la plus récente doit encore être entièrement verte ; la validation macOS est en attente et la recette réelle sur le Mac et Fedora n'a pas été faite. Ce point est une amélioration, pas un bug confirmé. | En cours de résolution |
+
+## Audit complémentaire — gestionnaire de mises à jour et sécurité
+
+Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Elles sont suivies séparément des 16 bugs applicatifs historiques.
+
+| Identifiant | Anomalie découverte | Risque | Correctif engagé | État |
+|---|---|---|---|---|
+| AMEL-U1 | Sauvegarde de la base avant arrêt effectif du serveur | Une écriture pouvait survenir entre la copie et l'arrêt ; un rollback aurait pu restaurer une base obsolète et perdre cette écriture. | Les scripts Linux/macOS arrêtent et confirment l'arrêt avant de copier la base. Un test d'intégration Linux vérifie l'ordre ; un test macOS vérifie l'ordre statiquement. | En cours de validation CI |
+| AMEL-U2 | Annulation launchd annoncée sans vérifier que la tâche est déchargée | Une tâche programmée pouvait rester active après une annulation déclarée réussie. | Vérification par `launchctl print`, `bootout` contrôlé et seconde vérification ; le fichier plist n'est supprimé qu'après confirmation. | En cours de validation CI |
+| AMEL-U3 | En-tête de `launchctl list` interprété comme un PID actif | Une tâche launchd inactive pouvait être considérée comme en cours, bloquant ou faussant la programmation. | Seuls les PID numériques sont considérés comme des processus actifs ; tests dédiés avec en-tête, tâche inactive et tâche active. | En cours de validation CI |
+| AMEL-S1 | Le lanceur Linux ne bornait pas la cible réelle du lien `current` | Un lien symbolique modifié pouvait faire exécuter un programme situé hors du dossier MaClasse. | Vérification du chemin canonique : racine initiale ou dossier de versions autorisé uniquement. | En cours de validation CI |
+| AMEL-S2 | Validation de l'hôte GitHub après une redirection seulement | Une redirection non fiable aurait pu être suivie avant le contrôle final, ouvrant un risque de requête vers une destination interne. | Validation de chaque destination dans le gestionnaire de redirections avant que la requête soit envoyée ; tests de destinations locales et externes refusées. | En cours de validation CI |
+| AMEL-U4 | Versions SemVer avec zéros initiaux acceptées | Le dossier préparé pouvait être normalisé différemment de la version demandée par l'installateur. | Rejet des composants non canoniques dans le moteur et dans le workflow de publication ; test dédié. | En cours de validation CI |
+| AMEL-U5 | Deux installations pouvaient être déclenchées presque simultanément | Risque de bascules concurrentes et d'états de maintenance incohérents. | Verrou exclusif `fcntl.flock` commun aux scripts Linux et macOS. | En cours de validation CI |
 
 ## État global
 
-- Bugs suivis : **16**
+- Bugs applicatifs historiques suivis : **16**
+- Anomalies complémentaires du gestionnaire relevées : **7** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0**
+- En cours de résolution : **0** pour les 16 bugs historiques ; **7** anomalies AMEL complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
-Ce bilan est volontairement prudent : la CI du correctif applicatif précédent est verte, mais les recettes fonctionnelles réelles ne sont pas toutes terminées. Les anomalies historiques non encore reprises dans la campagne actuelle restent explicitement visibles dans le registre.
+Ce bilan est volontairement prudent : la CI du dernier état du dépôt n'est pas encore entièrement verte et la validation macOS est en attente. Les recettes fonctionnelles réelles sur l'installation de l'utilisateur restent nécessaires ; aucun bug n'est marqué « Corrigé » sans confirmation explicite.
