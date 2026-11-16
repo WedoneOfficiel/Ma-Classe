@@ -82,7 +82,7 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertEqual(data["Label"], "fr.maclasse.server")
         self.assertTrue(data["KeepAlive"])
         self.assertTrue(data["RunAtLoad"])
-        self.assertEqual(data["ProgramArguments"][1], str(root / SCRIPTS[1]))
+        self.assertEqual(data["ProgramArguments"][1], str(root / "data" / "program" / "current" / SCRIPTS[1]))
         self.assertEqual(os.readlink(root / "data" / "program" / "current"), "../..")
         marker = root / "data" / "update-manager.enabled"
         self.assertTrue(marker.is_file())
