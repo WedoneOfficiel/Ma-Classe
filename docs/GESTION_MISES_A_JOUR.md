@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**Statut : chaîne Linux de détection, préparation et première installation avec retour arrière implémentée dans une branche dédiée ; validation complète et planification/notifications encore à faire.**  
+**Statut : première chaîne Linux complète implémentée en code (détection, préparation, installation immédiate ou programmée, notifications et rollback) ; CI en cours de validation, recette Fedora et macOS restantes.**  
 **Branche de travail :** `feature/amel-01-update-manager`  
 **Branche de départ :** `fix/v25-student-teacher-workflows` (PR #9 conservée intacte).
 
@@ -69,7 +69,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
 - Le premier script indépendant `Appliquer-Mise-A-Jour-MaClasse-Linux.sh` est ajouté : sauvegarde de `maclasse.json`, arrêt propre du service, bascule atomique du lien de version, redémarrage, contrôle de santé HTTPS et retour à la version précédente en cas d'échec. Il n'a pas encore été exécuté sur le PC Fedora cible.
 - La base, les pièces jointes et les certificats sont désormais servis depuis `MACLASSE_DATA_DIR`, indépendamment du dossier de code versionné. Le serveur attend la fin des requêtes déjà engagées lors de l'arrêt supervisé.
-- La programmation des maintenances et les notifications multi-rôles ne sont pas encore implémentées.
+- La direction peut programmer une installation à une date/heure précise ou l'annuler. Un timer systemd ponctuel UTC déclenche le même moteur d'installation que l'action immédiate.
+- Une bannière de maintenance est exposée à tous les rôles authentifiés, avec date/heure locale et rappel d'enregistrer le travail. Elle est actualisée à la connexion puis périodiquement.
 - Le lanceur systemd utilise `data/program/current` pour sélectionner le code actif. Le lancement manuel classique reste distinct et n'expose pas les actions d'installation depuis l'interface.
 - Les paramètres affichent uniquement le numéro de version.
 
@@ -92,12 +93,14 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 ### Phase C — interface et planification
 - [x] Ajouter l'API authentifiée de consultation et d'action réservée à la direction (vérification, préparation et demande d'installation immédiate).
 - [x] Ajouter le centre de mises à jour dans Paramètres, visible uniquement à la direction.
-- Ajouter la programmation, l'annulation et les notifications multi-rôles.
+- [x] Ajouter la programmation ponctuelle, l'annulation et la reprogrammation via timer systemd.
+- [x] Ajouter la bannière de maintenance visible par tous les rôles.
 - Tester les fuseaux horaires, changements d'heure, maintenance annulée et utilisateurs connectés.
 
 ### Phase D — installation atomique et reprise
 - [x] Ajouter la première chaîne Linux : environnement par version, sauvegarde de la base, arrêt propre avec attente des requêtes, bascule atomique, redémarrage, health-check HTTPS et rollback du code.
 - Ajouter des tests d'intégration qui simulent les échecs à chaque étape et vérifient le retour à la version précédente.
+- Les tests automatisés couvrent le format du timer, l'annulation, les accès par rôle et la bannière ; l'exécution réelle du cycle complet et les pannes simulées restent à valider.
 - Tester sur Fedora avec le matériel cible avant toute utilisation avec des données scolaires réelles.
 
 ### Phase E — macOS
