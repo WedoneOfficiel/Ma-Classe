@@ -68,6 +68,7 @@ PYLINK
     then
       write_state rollback_failed "$message — impossible de réactiver le lien de la version précédente."
       write_maintenance_state failed
+      write_maintenance_state failed
       exit 1
     fi
   fi
@@ -75,23 +76,28 @@ PYLINK
     if ! /bin/cp -p "$BACKUP_FILE" "$DATA/maclasse.json"; then
       write_state rollback_failed "$message — restauration de la base impossible ; serveur laissé arrêté."
       write_maintenance_state failed
+      write_maintenance_state failed
       exit 1
     fi
   else
     write_state rollback_failed "$message — sauvegarde de base absente ; serveur laissé arrêté."
+    write_maintenance_state failed
     write_maintenance_state failed
     exit 1
   fi
   if ! start_service; then
     write_state rollback_failed "$message — impossible de redémarrer la version précédente."
     write_maintenance_state failed
+    write_maintenance_state failed
     exit 1
   fi
   for _ in {1..20}; do
     if health_ok "$PREVIOUS_VERSION"; then write_state failed "$message — version précédente restaurée."; exit 1; fi
+    write_maintenance_state failed
     /bin/sleep 2
   done
   write_state rollback_failed "$message — restauration appliquée mais contrôle de santé de l'ancienne version en échec."
+  write_maintenance_state failed
   write_maintenance_state failed
   exit 1
 }
@@ -148,6 +154,7 @@ done
 if [[ "$STOPPED" != "1" ]]; then
   write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
   write_maintenance_state failed
+  write_maintenance_state failed
   exit 1
 fi
 # Snapshot after confirmed stop: no concurrent writes can be lost on rollback.
@@ -156,8 +163,10 @@ BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
 if [[ ! -f "$DATA/maclasse.json" ]] || ! /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"; then
   if start_service; then
     write_state failed "Impossible de sauvegarder la base après l'arrêt ; ancienne version relancée."
+    write_maintenance_state failed
   else
     write_state rollback_failed "Impossible de sauvegarder la base et de relancer l'ancienne version."
+    write_maintenance_state failed
   fi
   exit 1
 fi
@@ -165,8 +174,10 @@ if ! "$ROOT/.venv/bin/python" -c 'import json,sys; json.load(open(sys.argv[1],en
   /bin/rm -f "$BACKUP_FILE"
   if start_service; then
     write_state failed "La sauvegarde JSON est invalide ; ancienne version relancée."
+    write_maintenance_state failed
   else
     write_state rollback_failed "La sauvegarde JSON est invalide et l'ancienne version n'a pas redémarré."
+    write_maintenance_state failed
   fi
   exit 1
 fi
