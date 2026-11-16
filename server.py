@@ -1686,7 +1686,7 @@ class Handler(SimpleHTTPRequestHandler):
                 for base,_,files in os.walk(UPLOADS):
                     for filename in files:
                         full=os.path.join(base,filename)
-                        archive.write(full,os.path.relpath(full,ROOT))
+                        archive.write(full,os.path.join('data','uploads',os.path.relpath(full,UPLOADS)))
         cutoff=now-BACKUP_RETENTION_DAYS*86400
         for pattern in ('maclasse-*.json','maclasse-*.zip'):
             for stale in glob.glob(os.path.join(backup_dir,pattern)):
