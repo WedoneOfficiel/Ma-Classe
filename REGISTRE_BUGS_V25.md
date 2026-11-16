@@ -54,14 +54,17 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 | AMEL-S2 | Validation de l'hôte GitHub après une redirection seulement | Une redirection non fiable aurait pu être suivie avant le contrôle final, ouvrant un risque de requête vers une destination interne. | Validation de chaque destination dans le gestionnaire de redirections avant que la requête soit envoyée ; tests de destinations locales et externes refusées. | En cours de validation CI |
 | AMEL-U4 | Versions SemVer avec zéros initiaux acceptées | Le dossier préparé pouvait être normalisé différemment de la version demandée par l'installateur. | Rejet des composants non canoniques dans le moteur et dans le workflow de publication ; test dédié. | En cours de validation CI |
 | AMEL-U5 | Deux installations pouvaient être déclenchées presque simultanément | Risque de bascules concurrentes et d'états de maintenance incohérents. | Verrou exclusif `fcntl.flock` commun aux scripts Linux et macOS. | En cours de validation CI |
+| AMEL-U6 | Environnement Python d'une release lié à l'ancienne version | Le nouvel environnement virtuel pouvait être construit à partir du Python de la version active, avec un risque de dépendance après suppression de cette ancienne version. | Création du venv depuis `sys._base_executable` (interpréteur système stable), avec test vérifiant l'exécutable utilisé. | En cours de validation CI |
+| AMEL-U7 | Lanceur macOS perdant la racine d'installation après la première mise à jour | Le script d'installation exécuté depuis `data/program/versions/Vx` pouvait prendre ce dossier de version pour la racine et chercher les données au mauvais endroit. | Passage explicite de `MACLASSE_ROOT` et `MACLASSE_DATA_DIR` par launchd et le lanceur ; résolution de secours depuis le chemin de version. Tests des deux plists et des chemins. | En cours de validation CI |
+| AMEL-U8 | Interface macOS annonçant à tort que le support n'existe pas | Même avec un premier service launchd développé, l'interface indiquait encore que le support macOS serait ajouté plus tard et ne donnait aucune procédure d'installation. | Message remplacé par les prérequis HTTPS et la commande d'installation du service macOS. Test UI ajouté. | En cours de validation CI |
 
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires du gestionnaire relevées : **7** (correctifs poussés, CI à valider)
+- Anomalies complémentaires du gestionnaire relevées : **10** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **7** anomalies AMEL complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **10** anomalies AMEL complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
