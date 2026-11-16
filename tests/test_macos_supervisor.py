@@ -197,7 +197,9 @@ class MacOSSupervisorTests(unittest.TestCase):
                             payload = json.loads(response.read().decode("utf-8"))
                         self.assertTrue(payload.get("ok"), payload)
                         self.assertEqual(payload.get("database"), "ok")
-                        self.assertEqual(payload.get("version"), "25.0.22")
+                        version_source = (ROOT / "server.py").read_text(encoding="utf-8")
+                        expected_version = next(line.split("\'")[1] for line in version_source.splitlines() if line.startswith("APP_VERSION="))
+                        self.assertEqual(payload.get("version"), expected_version)
                         break
                     except (OSError, urllib.error.URLError, urllib.error.HTTPError, ValueError) as error:
                         last_error = error
