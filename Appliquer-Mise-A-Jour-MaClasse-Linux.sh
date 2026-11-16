@@ -218,9 +218,11 @@ PY
 command -v pgrep >/dev/null 2>&1 || { echo "pgrep est requis pour vérifier l'absence de serveur manuel." >&2; exit 1; }
 SERVICE_PID="$(systemctl --user show --property=MainPID --value maclasse.service 2>/dev/null || true)"
 [[ "$SERVICE_PID" =~ ^[0-9]+$ && "$SERVICE_PID" != "0" ]] || { echo "Impossible d'identifier le processus MaClasse supervisé ; mise à jour refusée." >&2; exit 1; }
+if SERVER_PIDS="$(pgrep -f '[p]ython.*server[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
+[[ "$PGREP_STATUS" -le 1 ]] || { echo "Impossible de vérifier les processus Python ; mise à jour refusée par sécurité." >&2; exit 1; }
 while IFS= read -r pid; do
   [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { echo "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour." >&2; exit 1; }
-done < <(pgrep -f '[p]ython.*server[.]py' || true)
+done <<< "$SERVER_PIDS"
 
 mkdir -p "$BACKUP_ROOT"
 systemctl --user disable --now maclasse-update-scheduled.timer >/dev/null 2>&1 || true
