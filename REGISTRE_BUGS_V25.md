@@ -91,13 +91,16 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 | AUDIT-U2 | L'ancien script de mise à jour macOS pouvait modifier le code pendant que le serveur tournait et contourner le nouveau gestionnaire | Le script Mettre-A-Jour-MaClasse.command effectuait un git fetch/git merge directement dans le dossier actif. Sur un Mac avec le serveur lancé, cela pouvait remplacer des fichiers pendant leur exécution ; après installation du service supervisé, cette voie aurait également contourné les releases stables et le mécanisme atomique. | Le script refuse maintenant de s'exécuter si data/update-manager.enabled existe, et vérifie via pgrep que tout serveur MaClasse manuel est arrêté avant une mise à jour initiale. Tests fonctionnels avec faux marqueur de supervision et faux processus actif. Le parcours initial depuis V25.0.19 reste à valider sur une copie de l'installation. | Correctif poussé ; CI à confirmer |
 | AUDIT-U3 | La bannière de maintenance disparaissait au démarrage de l'installation | L'API publique ne transmettait que l'état scheduled. Dès que le superviseur passait l'état à installing, les utilisateurs ne voyaient plus la bannière alors que le serveur allait être interrompu. | Projection serveur limitée aux champs publics avec deux états distincts (scheduled et in_progress) ; la bannière affiche désormais « Maintenance en cours » et reste visible tant que le serveur répond. Tests Python de projection/confidentialité et test UI. | Correctif poussé ; CI à confirmer |
 
+
+| AUDIT-S4 | Le workflow pouvait publier une release sans attendre les tests de l'application | publish-release.yml se déclenchait sur un tag et vérifiait le numéro de version, mais ne dépendait pas du workflow de tests. Un tag accidentel sur un commit cassé aurait donc pu produire une release téléchargeable. | Le workflow de tests est désormais réutilisable via workflow_call ; la publication stable dépend explicitement de la réussite de toute la matrice Linux, macOS et Firefox. Un test vérifie le lien needs/validate et la présence des jobs macOS/Firefox. | Correctif poussé ; CI à confirmer |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires et sécurité relevées : **30** (29 correctifs en validation CI ; 1 risque de provenance à traiter avant release)
+- Anomalies complémentaires et sécurité relevées : **31** (30 correctifs en validation CI ; 1 risque de provenance à traiter avant release)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **29** anomalies complémentaires en validation CI ; **1** risque de provenance en attente de décision
+- En cours de résolution : **0** pour les 16 bugs historiques ; **30** anomalies complémentaires en validation CI ; **1** risque de provenance en attente de décision
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
