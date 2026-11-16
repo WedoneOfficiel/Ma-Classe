@@ -30,6 +30,9 @@ def _update_apply_service_installed():
         return os.environ.get('MACLASSE_SUPERVISED')=='launchd' and os.path.isfile(_launchd_service_plist())
     return False
 
+def _update_timer_unit_path():
+    return os.path.join(os.path.expanduser('~'),'.config','systemd','user','maclasse-update-scheduled.timer')
+
 def _launchd_service_plist():
     return os.path.join(os.path.expanduser('~'),'Library','LaunchAgents','fr.maclasse.server.plist')
 
