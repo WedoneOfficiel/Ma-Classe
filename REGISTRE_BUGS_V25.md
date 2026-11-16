@@ -68,6 +68,7 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-U13 | Services systemd/launchd restant attachés au lanceur initial après une mise à jour | Le service pouvait continuer d'exécuter un lanceur de la racine initiale au lieu du lanceur versionné ; pointer simplement vers `current` faisait perdre la racine stable des données. | Les unités pointent maintenant vers le lanceur de `data/program/current` et transmettent explicitement `MACLASSE_ROOT` et `MACLASSE_DATA_DIR`. Les lanceurs résolvent la racine stable et exécutent le code de la version active. Tests des variables et des chemins ajoutés. | En cours de validation CI |
 | AMEL-U14 | Rollback macOS sans confirmation de l'arrêt du nouveau serveur | Après un échec du contrôle de santé, le chemin de rollback déchargeait launchd puis restaurait immédiatement le code et la base sans confirmer que le nouveau processus avait réellement quitté. | Risque d'écritures concurrentes pendant la restauration de la base, donc perte ou corruption de données. Ajout de `stop_service_and_confirm` : capture du PID, vérification de l'état launchd, attente bornée et échec fermé si l'état reste actif ou impossible à vérifier. Test de régression avec service encore chargé et état launchd inconnu. | En cours de validation CI |
+| AUDIT-S1 | Corps POST lu avant authentification | `do_POST` lisait jusqu'à 100 Mo avant de vérifier la session et les droits, y compris pour des requêtes non authentifiées. | Risque de déni de service mémoire par connexions LAN non authentifiées. Authentification et autorisation déplacées avant la lecture du corps, avec limite de 1 Mo pour les routes d'authentification. Test de non-lecture du corps avant authentification ajouté. | En cours de validation CI |
 
 | AMEL-S3 | XSS stockée possible via identifiants et motifs de créneaux | Les identifiants de planning pouvaient être interpolés sans sérialisation dans des gestionnaires HTML inline ; le motif visuel était injecté directement dans une propriété CSS. Un professeur pouvait potentiellement viser les vues des élèves. | Les identifiants sont sérialisés comme chaînes JavaScript puis échappés pour l'attribut HTML ; les motifs sont limités à `none`, `hatch`, `cross`. Le serveur refuse les identifiants non sûrs sur les nouveaux enregistrements enseignant/élève et les messages/drafts de messagerie. Tests XSS navigateur/JS et tests de persistance serveur ajoutés. | En cours de validation CI |
 
@@ -76,10 +77,10 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires du gestionnaire relevées : **18** (correctifs poussés, CI à valider)
+- Anomalies complémentaires et sécurité relevées : **19** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **18** anomalies AMEL complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **19** anomalies complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
