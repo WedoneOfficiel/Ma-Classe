@@ -98,6 +98,25 @@ fail_and_restore() {
   exit 1
 }
 
+abort_before_switch() {
+  local message="$1"
+  echo "Mise à jour annulée avant bascule : $message" >&2
+  systemctl --user start maclasse.service >/dev/null 2>&1 || true
+  local restored=0
+  for _ in {1..15}; do
+    if health_ok "$PREVIOUS_VERSION"; then restored=1; break; fi
+    sleep 2
+  done
+  if [[ "$restored" == "1" ]]; then
+    write_state "failed" "$message — version active conservée."
+    write_maintenance_state "failed"
+  else
+    write_state "rollback_failed" "$message — le serveur précédent n'a pas pu être confirmé après redémarrage."
+    write_maintenance_state "failed"
+  fi
+  exit 1
+}
+
 health_ok() {
   local expected="$1"
   local host
@@ -154,25 +173,27 @@ PY
 )"
 [[ -n "$PREVIOUS_VERSION" ]] || { echo "Impossible d'identifier la version précédente."; exit 1; }
 
+umask 077
 mkdir -p "$BACKUP_ROOT"
-STAMP="$(date +%Y%m%d-%H%M%S)"
-BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP.json"
-if [[ -f "$DATA_ROOT/maclasse.json" ]]; then
-  cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_FILE"
-  /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE" || { echo "Sauvegarde JSON invalide : mise à jour annulée avant arrêt du serveur." >&2; exit 1; }
-else
-  echo "Base de données absente : mise à jour annulée avant arrêt du serveur." >&2
-  exit 1
-fi
 systemctl --user disable --now maclasse-update-scheduled.timer >/dev/null 2>&1 || true
 write_state "installing"
 write_maintenance_state "installing"
 echo "Arrêt temporaire de MaClasse…"
 if ! systemctl --user stop maclasse.service; then
-  fail_and_restore "L’arrêt propre du serveur a échoué."
+  abort_before_switch "L’arrêt propre du serveur a échoué."
 fi
 if ! server_stopped; then
-  fail_and_restore "Le serveur n'est pas confirmé à l'arrêt après la demande systemd."
+  abort_before_switch "Le serveur n'est pas confirmé à l'arrêt après la demande systemd."
+fi
+# Sauvegarder APRÈS l'arrêt confirmé : aucune écriture concurrente ne peut être perdue au rollback.
+STAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP.json"
+if [[ ! -f "$DATA_ROOT/maclasse.json" ]] || ! cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_FILE"; then
+  abort_before_switch "Impossible de sauvegarder la base après l'arrêt du serveur."
+fi
+if ! /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE"; then
+  rm -f "$BACKUP_FILE"
+  abort_before_switch "La sauvegarde de la base n'est pas un JSON valide."
 fi
 rm -f "$CURRENT_LINK.next"
 if ! ln -s "versions/V$VERSION_NUMBER" "$CURRENT_LINK.next" || ! mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"; then
