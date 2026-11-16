@@ -431,3 +431,17 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Les 16 anomalies historiques restent « Supposé résolu », jamais « Corrigé » sans retour explicite de l'utilisateur.
 - Les 7 anomalies complémentaires AMEL-U1 à AMEL-U5 et AMEL-S1 à AMEL-S2 sont inscrites dans `REGISTRE_BUGS_V25.md` avec statut « En cours de validation CI ».
 - La PR #10 reste ouverte et en brouillon ; aucune fusion, aucun déploiement et aucune modification de l'installation locale.
+
+
+### Compléments de l'audit macOS et du cycle de versions — 16/11/2026
+
+8. **AMEL-U6 — environnement Python d'une release lié à l'ancienne version.** Le serveur préparait le venv avec `sys.executable`, qui peut désigner le Python de la version active. Le nouveau venv est maintenant créé avec `sys._base_executable` (fallback `sys.executable`) afin de ne pas dépendre d'une version susceptible d'être supprimée. Un test vérifie l'interpréteur passé à `venv`.
+9. **AMEL-U7 — racine macOS perdue après une première mise à jour.** Un agent launchd pouvait lancer le script depuis le dossier de version actif, puis le script interpréter ce dossier comme la racine d'installation et chercher `data` au mauvais endroit. Le lanceur transmet maintenant `MACLASSE_ROOT` et `MACLASSE_DATA_DIR` ; les deux plists launchd les transportent, et le script dispose d'un fallback depuis `data/program/versions/Vx`. Tests des environnements immédiat et programmé ajoutés.
+10. **AMEL-U8 — message d'interface macOS obsolète.** Malgré l'implémentation launchd, la carte Mises à jour affichait encore « Le support macOS sera ajouté ensuite ». Le message fournit maintenant le prérequis TLS et la commande d'installation du service macOS. Test UI ajouté.
+
+### Limites fonctionnelles qui restent ouvertes
+
+- Le dépôt ne contient actuellement **aucune GitHub Release stable publiée**. Le téléchargement d'une vraie archive de release, sa signature SHA-256 publiée et le parcours complet depuis un tag ne peuvent donc pas encore être validés sur un artefact réel. Les tests actuels simulent ces réponses et archives.
+- Le job macOS de la CI reste nécessaire pour valider les scripts sur runner Apple. Même vert, il ne remplacera pas la recette sur le Mac réel, notamment après une première mise à jour puis une seconde (pour vérifier que les scripts continuent de trouver la racine et les données).
+- La recette Fedora sur le PC cible reste à faire. Aucun changement local n'a été appliqué.
+
