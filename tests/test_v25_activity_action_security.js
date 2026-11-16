@@ -51,4 +51,20 @@ sandbox.runActivityAction({ type: "eval", code: "globalThis.pwned=true" });
 assert.strictEqual(sandbox.navigated.length, count, "unknown actions and pages must be ignored");
 assert.strictEqual(sandbox.pwned, undefined);
 
+
+const mailStart = source.indexOf("function safeMailAttachmentUrl(value){");
+const mailEnd = source.indexOf("\\n  window.mailV2104PreviewAttachment", mailStart);
+assert(mailStart >= 0 && mailEnd > mailStart, "mail attachment URL validator must exist");
+const mailSandbox = {};
+vm.runInNewContext(source.slice(mailStart, mailEnd), mailSandbox);
+assert.strictEqual(mailSandbox.safeMailAttachmentUrl("/data/uploads/mail-v2/teacher:t1/report.pdf"), "/data/uploads/mail-v2/teacher:t1/report.pdf");
+for (const bad of [
+  "javascript:alert(1)//data/uploads/mail-v2/teacher:t1/file.pdf",
+  "https://evil.example/data/uploads/mail-v2/teacher:t1/file.pdf",
+  "//evil.example/data/uploads/mail-v2/teacher:t1/file.pdf",
+  "/data/uploads/mail-v2/teacher:t1/%2e%2e/secret.pdf",
+  "/data/uploads/mail-v2/teacher:t1/file.pdf?x=1",
+  "/data/uploads/mail-v2/teacher:t1/file.pdf#x"
+]) assert.strictEqual(mailSandbox.safeMailAttachmentUrl(bad), "", "unsafe attachment URL must be rejected");
+
 console.log("OK — actions de notifications typées, liste blanche et résistantes aux identifiants malveillants.");
