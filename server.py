@@ -102,6 +102,8 @@ def _schedule_update_timer(timestamp):
         import plistlib
         document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',script],
                   'WorkingDirectory':ROOT,'StartCalendarInterval':values,
+                   'EnvironmentVariables':{'MACLASSE_ROOT':os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR)),
+                                           'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
                   'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
                   'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
         tmp=plist+'.tmp'
@@ -147,6 +149,8 @@ def _start_update_apply_service():
             os.makedirs(os.path.dirname(plist),exist_ok=True)
             document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')],
                       'WorkingDirectory':ROOT,'RunAtLoad':False,
+                       'EnvironmentVariables':{'MACLASSE_ROOT':os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR)),
+                                               'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
                       'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
                       'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
             tmp=plist+'.tmp'
