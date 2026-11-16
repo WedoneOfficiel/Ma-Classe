@@ -54,6 +54,10 @@ PY
   echo "Installation déclenchée. Le serveur va redémarrer et contrôler la nouvelle version."
   exit 0
 fi
+if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet maclasse.service; then
+  echo "Le serveur est actif mais le gestionnaire de mise à jour n'est pas installé. Arrête le service ou installe le gestionnaire avant toute mise à jour." >&2
+  exit 1
+fi
 UPDATED=0
 PREVIOUS=""
 BACKUP=""
