@@ -70,7 +70,7 @@ start_service() {
 }
 stop_service_and_confirm() {
   local service_pid probe alive loaded
-  service_pid="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
+  service_pid="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
   for _ in {1..120}; do
     alive=0
@@ -205,7 +205,7 @@ umask 077
 BACKUP_DIR="$DATA/backups"
 mkdir -p "$BACKUP_DIR"
 command -v pgrep >/dev/null 2>&1 || { write_state failed "pgrep est requis pour vérifier l'absence de serveur manuel."; write_maintenance_state failed; exit 1; }
-SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
+SERVICE_PID="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
 [[ "$SERVICE_PID" =~ ^[0-9]+$ ]] || { write_state failed "Impossible d'identifier le processus launchd MaClasse ; mise à jour refusée."; write_maintenance_state failed; exit 1; }
 if SERVER_PIDS="$(pgrep -f '[p]ython.*server[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
 [[ "$PGREP_STATUS" -le 1 ]] || { write_state failed "Impossible de vérifier les processus Python ; mise à jour refusée par sécurité."; write_maintenance_state failed; exit 1; }
