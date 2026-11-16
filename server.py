@@ -27,7 +27,14 @@ def _update_apply_service_installed():
     if sys.platform.startswith('linux'):
         return os.environ.get('MACLASSE_SUPERVISED')=='systemd'
     if sys.platform=='darwin':
-        return os.environ.get('MACLASSE_SUPERVISED')=='launchd' and os.path.isfile(_launchd_service_plist())
+        if os.environ.get('MACLASSE_SUPERVISED')!='launchd' or not os.path.isfile(_launchd_service_plist()):
+            return False
+        try:
+            result=subprocess.run(['/bin/launchctl','print',f'gui/{os.getuid()}/fr.maclasse.server'],
+                                  check=False,capture_output=True,text=True,timeout=5)
+            return result.returncode==0
+        except (OSError,subprocess.TimeoutExpired):
+            return False
     return False
 
 def _update_timer_unit_path():
