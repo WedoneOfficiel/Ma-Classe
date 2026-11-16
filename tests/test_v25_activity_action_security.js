@@ -53,7 +53,7 @@ assert.strictEqual(sandbox.pwned, undefined);
 
 
 const mailStart = source.indexOf("function safeMailAttachmentUrl(value){");
-const mailEnd = source.indexOf("\\n  window.mailV2104PreviewAttachment", mailStart);
+const mailEnd = source.indexOf("\n  window.mailV2104PreviewAttachment", mailStart);
 assert(mailStart >= 0 && mailEnd > mailStart, "mail attachment URL validator must exist");
 const mailSandbox = {};
 vm.runInNewContext(source.slice(mailStart, mailEnd), mailSandbox);
