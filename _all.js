@@ -68,7 +68,7 @@ function updateSettingsCard(){
   if(updateCheckResult.installing)html+='<p class="hint">Installation lancée. Le serveur est en cours de redémarrage ; cette page peut devenir temporairement inaccessible.</p>';
   else if(updateCheckResult.compatible&&updateCheckResult.install_supported&&!updateCheckResult.prepared)html+='<button class="btn" style="margin-top:10px" onclick="prepareUpdate()">Télécharger et préparer</button>';
   if(!updateCheckResult.installing&&updateCheckResult.compatible&&!updateCheckResult.install_supported){
-   if(String(updateCheckResult.install_platform||'').startsWith('linux'))html+='<p class="hint">Pour activer les mises à jour depuis MaClasse, installe une fois le service Linux sur le serveur avec <code>bash Installer-Service-MaClasse-Linux.sh</code>.</p>';
+   if(String(updateCheckResult.install_platform||'').startsWith('linux'))html+='<p class="hint">Pour activer les mises à jour depuis MaClasse, arrête d’abord le lancement manuel puis installe une fois le service Linux sur le serveur avec <code>bash Installer-Service-MaClasse-Linux.sh</code>.</p>';
    else html+='<p class="hint">La détection fonctionne, mais l’installation intégrée n’est pas encore disponible sur ce système. Le support macOS sera ajouté ensuite.</p>';
   }
   if(!updateCheckResult.installing&&updateCheckResult.prepared&&updateCheckResult.install_supported){
