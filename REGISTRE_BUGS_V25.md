@@ -85,13 +85,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-U18 | Fichier de timer systemd écrit avec des `\\n` littéraux | La programmation d'une maintenance Linux écrivait les séparateurs `\\n` dans le fichier `.timer` au lieu de vrais retours à la ligne. systemd ne pouvait donc pas lire correctement les sections `[Unit]`, `[Timer]` et `[Install]` ; la programmation Linux était défectueuse malgré un test qui ne vérifiait que la présence de mots-clés. | Remplacement par de vrais séparateurs de ligne dans `server.py`. Le test `test_v25_update_schedule.py` vérifie maintenant les lignes et sections exactes et rejette les séquences littérales `\\n`. Correctif poussé dans `a9abe43`. Le test de timer et l'ensemble des tests Python Linux sont verts sur la CI #1448 ; validation macOS complète encore en cours. | CI Linux réussie ; macOS en attente |
 
+| AUDIT-S3 | Accumulation illimitée des versions sur macOS | Contrairement au script Linux, le script macOS ne supprimait aucune ancienne version après une mise à jour réussie. Les dossiers de versions s'accumulaient dans `data/program/versions` et pouvaient finir par saturer le disque. | Nettoyage après contrôle de santé réussi : conservation des trois versions les plus récentes, de la version active et du prédécesseur immédiat ; suppression uniquement de répertoires réels sous le dossier `versions`, sans suivre les liens symboliques. Test fonctionnel dédié ajouté. | Correctif poussé ; CI à confirmer |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires et sécurité relevées : **27** (26 correctifs en validation CI ; 1 risque de provenance à traiter avant release)
+- Anomalies complémentaires et sécurité relevées : **28** (27 correctifs en validation CI ; 1 risque de provenance à traiter avant release)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **26** anomalies complémentaires en validation CI ; **1** risque de provenance en attente de décision
+- En cours de résolution : **0** pour les 16 bugs historiques ; **27** anomalies complémentaires en validation CI ; **1** risque de provenance en attente de décision
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
