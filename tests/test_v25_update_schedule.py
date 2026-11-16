@@ -32,10 +32,17 @@ def run():
             assert "Persistent=false" in content
             assert "Unit=maclasse-update-apply.service" in content
             assert command.call_count == 5
+            second_timestamp = timestamp + 3600
+            server._schedule_update_timer(second_timestamp)
+            rescheduled = timer.read_text(encoding="utf-8")
+            expected = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(second_timestamp))
+            assert f"OnCalendar={expected}" in rescheduled
+            assert rescheduled.count("OnCalendar=") == 1
+            assert command.call_count == 10
             server._cancel_update_timer()
             assert not timer.exists()
-            assert command.call_count == 7
-    print("OK — timer systemd unique, UTC, précis, annulable et sans exécution shell arbitraire.")
+            assert command.call_count == 12
+    print("OK — timer systemd unique, UTC, précis, reprogrammable, annulable et sans exécution shell arbitraire.")
 
 
 if __name__ == "__main__":
