@@ -1897,7 +1897,7 @@ class Handler(SimpleHTTPRequestHandler):
                 with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
                 os.replace(tmp,maintenance_path)
                 return self._json({'cancelled':True})
-            except (OSError,ValueError,AttributeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            except (OSError,ValueError,AttributeError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Impossible d’annuler la maintenance programmée.'},503)
         if path=='/api/admin/updates/install':
             user=self._require_auth(roles=('admin',))
