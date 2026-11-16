@@ -538,3 +538,7 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 38. **AUDIT-S4 — publication stable sans dépendance aux tests.** Le workflow publish-release.yml validait le tag et VERSION.txt, mais pouvait publier une release même si les tests de l'application échouaient. Le workflow tests.yml expose maintenant workflow_call et la publication dépend du job réutilisable validate, qui exécute la matrice Linux, macOS et Firefox. Test statique du lien de dépendance ajouté dans test_v25_update_scripts.py (commits 26e25cb, e862dbe, 7c3113d). À confirmer sur un vrai déclenchement par tag avant toute release.
 
+
+
+39. **AUDIT-U4 — adresse DHCP macOS modifiée pendant l'exécution.** Le lanceur renouvelle le certificat lorsque le LaunchAgent démarre, mais le serveur reste lié à son adresse IP actuelle pendant toute sa vie. Si le routeur attribue une nouvelle IP sans redémarrage du service, l'ancienne écoute et le certificat ne correspondent plus à l'adresse utilisée. Pas de correctif automatique engagé : une surveillance réseau doit être conçue sans entrer en conflit avec les redémarrages de mise à jour. Recommandation temporaire : réserver l'adresse DHCP du Mac dans le routeur et redémarrer le service après tout changement.
+
