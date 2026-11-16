@@ -81,13 +81,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-S7 | Erreur de syntaxe dans la création de dossier Cloud | La fonction `cloudNewFolder()` construisait un template HTML avec une interpolation `${...}` imbriquée dans une autre interpolation. Le fichier `_all.js` ne pouvait plus être analysé par JavaScript ; l'application ne démarrait pas correctement et les tests navigateur échouaient en cascade. | La valeur `parentPath` est maintenant calculée avant la construction du template puis injectée via `jsArg(parentPath)`. Correctif poussé dans `f12bdfd`. À confirmer par `node --check`, les tests JavaScript, le parcours Firefox et une vérification fonctionnelle de création de dossier. | En cours de validation CI |
 
+| AMEL-U18 | Fichier de timer systemd écrit avec des `\\n` littéraux | La programmation d'une maintenance Linux écrivait les séparateurs `\\n` dans le fichier `.timer` au lieu de vrais retours à la ligne. systemd ne pouvait donc pas lire correctement les sections `[Unit]`, `[Timer]` et `[Install]` ; la programmation Linux était défectueuse malgré un test qui ne vérifiait que la présence de mots-clés. | Remplacement par de vrais séparateurs de ligne dans `server.py`. Le test `test_v25_update_schedule.py` vérifie maintenant les lignes et sections exactes et rejette les séquences littérales `\\n`. Correctif poussé dans `a9abe43` ; CI à confirmer. | En cours de validation CI |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires et sécurité relevées : **25** (correctifs poussés, CI à valider)
+- Anomalies complémentaires et sécurité relevées : **26** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **25** anomalies complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **26** anomalies complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
