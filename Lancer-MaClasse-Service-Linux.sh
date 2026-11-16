@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+if [[ -n "${MACLASSE_ROOT:-}" ]]; then
+  ROOT="$MACLASSE_ROOT"
+elif [[ -d "$SCRIPT_DIR/data" ]]; then
+  ROOT="$SCRIPT_DIR"
+else
+  ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd -P)"
+fi
+ROOT="$(cd "$ROOT" && pwd -P)"
 [[ "$(uname -s)" == "Linux" ]] || { echo "Ce service est réservé à Linux."; exit 1; }
 command -v ip >/dev/null 2>&1 || { echo "Commande ip absente."; exit 1; }
 command -v awk >/dev/null 2>&1 || { echo "Commande awk absente."; exit 1; }
 command -v openssl >/dev/null 2>&1 || { echo "Commande openssl absente."; exit 1; }
 
-DATA_ROOT="$ROOT/data"
+DATA_ROOT="${MACLASSE_DATA_DIR:-$ROOT/data}"
+DATA_ROOT="$(cd "$DATA_ROOT" && pwd -P)"
 PROGRAM_ROOT="$DATA_ROOT/program"
 VERSIONS_ROOT="$PROGRAM_ROOT/versions"
 APP_ROOT="$PROGRAM_ROOT/current"
@@ -50,6 +59,7 @@ LAN_IP="$(ip -4 -o addr show dev "$IFACE" scope global | awk 'NR==1 {split($4,a,
 export MACLASSE_LAN_MODE=1
 export MACLASSE_HOST="$LAN_IP"
 export MACLASSE_PORT=8765
+export MACLASSE_ROOT="$ROOT"
 export MACLASSE_DATA_DIR="$DATA_ROOT"
 export MACLASSE_TLS_CERT="$DATA_ROOT/tls/server.crt"
 export MACLASSE_TLS_KEY="$DATA_ROOT/tls/server.key"
