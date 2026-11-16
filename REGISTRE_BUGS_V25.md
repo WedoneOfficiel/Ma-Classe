@@ -79,13 +79,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-S4 | XSS stockée via le contenu HTML des séances, consignes et corrections | Le contenu riche publié par les professeurs était réinjecté en HTML sans assainissement ; des balises script, attributs événementiels ou liens `javascript:` pouvaient s'exécuter dans les vues élèves. | Assainisseur HTML à liste blanche côté serveur lors du chargement et de la sauvegarde, plus assainissement côté navigateur avant affichage/édition. Autorise seulement le formatage nécessaire, liens HTTP(S) et styles de texte limités. Tests serveur couvrant scripts, événements, liens et CSS. | En cours de validation CI |
 
+| AMEL-S7 | Erreur de syntaxe dans la création de dossier Cloud | La fonction `cloudNewFolder()` construisait un template HTML avec une interpolation `${...}` imbriquée dans une autre interpolation. Le fichier `_all.js` ne pouvait plus être analysé par JavaScript ; l'application ne démarrait pas correctement et les tests navigateur échouaient en cascade. | La valeur `parentPath` est maintenant calculée avant la construction du template puis injectée via `jsArg(parentPath)`. Correctif poussé dans `f12bdfd`. À confirmer par `node --check`, les tests JavaScript, le parcours Firefox et une vérification fonctionnelle de création de dossier. | En cours de validation CI |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires et sécurité relevées : **24** (correctifs poussés, CI à valider)
+- Anomalies complémentaires et sécurité relevées : **25** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **24** anomalies complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **25** anomalies complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
