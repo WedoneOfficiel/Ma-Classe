@@ -92,14 +92,20 @@ def _public_update_maintenance(maintenance):
 
 def _update_apply_service_active():
     if sys.platform=='darwin':
-        result=subprocess.run(['/bin/launchctl','list','fr.maclasse.update'],
+        domain=f'gui/{os.getuid()}/fr.maclasse.update'
+        result=subprocess.run(['/bin/launchctl','print',domain],
                               check=False,capture_output=True,text=True,timeout=10)
         if result.returncode!=0:
-            if 'Could not find service' in (result.stderr or ''): return False
+            message=(result.stdout or '')+' '+(result.stderr or '')
+            if 'Could not find service' in message: return False
             raise RuntimeError("Impossible de vérifier l'état de la tâche launchd.")
-        # launchctl list may include a column header; only a numeric PID means running.
-        return any((line.split() and line.split()[0].isdigit())
-                   for line in (result.stdout or '').splitlines())
+        # launchctl print exposes the live PID as "pid = N"; an idle loaded
+        # LaunchAgent has no positive PID and must not block cancellation.
+        for line in (result.stdout or '').splitlines():
+            fields=line.strip().split()
+            if len(fields)==3 and fields[0]=='pid' and fields[1]=='=' and fields[2].isdigit():
+                return int(fields[2])>0
+        return False
     result=subprocess.run(['/usr/bin/systemctl','--user','is-active','--quiet','maclasse-update-apply.service'],
                           check=False,capture_output=True,text=True,timeout=10)
     if result.returncode==0: return True
