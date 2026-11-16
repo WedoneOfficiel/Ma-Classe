@@ -1,6 +1,7 @@
 name: MaClasse — tests automatisés
 
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
