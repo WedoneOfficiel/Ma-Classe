@@ -28,6 +28,22 @@ with open(tmp,"w",encoding="utf-8") as f: json.dump(d,f,ensure_ascii=False,inden
 os.replace(tmp,p)
 PY
 }
+write_maintenance_state() {
+  local status="$1"
+  "$ROOT/.venv/bin/python" - "$DATA/update-maintenance.json" "$status" <<'PY'
+import json,os,sys,time
+path,status=sys.argv[1],sys.argv[2]
+try:
+    with open(path,encoding="utf-8") as stream: data=json.load(stream)
+    if isinstance(data,dict) and data.get("status") in ("scheduled","installing"):
+        data.update(status=status,updated_at=int(time.time()))
+        tmp=path+".tmp"
+        with open(tmp,"w",encoding="utf-8") as stream: json.dump(data,stream,ensure_ascii=False,indent=2)
+        os.replace(tmp,path)
+except (OSError,ValueError):
+    pass
+PY
+}
 health_ok() {
   local expected="$1" host
   host="$(/usr/bin/openssl x509 -in "$DATA/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -oE 'IP Address:[0-9.]+' | /usr/bin/head -n1 | /usr/bin/cut -d: -f2 || true)"
@@ -121,12 +137,12 @@ STOPPED=0
 for _ in {1..120}; do
   ALIVE=0
   if [[ "$SERVICE_PID" =~ ^[0-9]+$ ]] && /bin/kill -0 "$SERVICE_PID" >/dev/null 2>&1; then ALIVE=1; fi
-  if /usr/bin/pgrep -f '[p]ython.*server[.]py' >/dev/null 2>&1; then ALIVE=1; fi
   if [[ "$ALIVE" == "0" ]]; then STOPPED=1; break; fi
   /bin/sleep 1
 done
 if [[ "$STOPPED" != "1" ]]; then
   write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
+  write_maintenance_state failed
   exit 1
 fi
 # Snapshot after confirmed stop: no concurrent writes can be lost on rollback.
@@ -163,6 +179,7 @@ for _ in {1..20}; do
 done
 [[ "$healthy" == "1" ]] || fail_restore "Le contrôle de santé n'a pas confirmé la nouvelle version."
 write_state installed
+write_maintenance_state completed
 if [[ -f "$DATA/update-maintenance.json" ]]; then
   "$ROOT/.venv/bin/python" - "$DATA/update-maintenance.json" <<'PY'
 import json,os,sys,time
