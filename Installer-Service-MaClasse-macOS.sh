@@ -9,6 +9,13 @@ LABEL="fr.maclasse.server"
 UPDATE_LABEL="fr.maclasse.update"
 AGENTS="$HOME/Library/LaunchAgents"
 mkdir -p "$AGENTS" "$ROOT/data/program"
+if command -v pgrep >/dev/null 2>&1 && pgrep -f '[p]ython.*server\\.py' >/dev/null 2>&1; then
+  RUNNING_PID="$(/bin/launchctl list "$LABEL" 2>/dev/null | /usr/bin/awk 'NR==1 {print $1}')"
+  if [[ -z "$RUNNING_PID" || "$RUNNING_PID" == "-" ]]; then
+    echo "Un serveur MaClasse lancé manuellement est déjà actif. Arrête-le avec Ctrl+C, puis relance cet installateur."
+    exit 1
+  fi
+fi
 chmod 700 "$ROOT/data" "$AGENTS"
 CURRENT="$ROOT/data/program/current"
 if [[ ! -e "$CURRENT" && ! -L "$CURRENT" ]]; then
