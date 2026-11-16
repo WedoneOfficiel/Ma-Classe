@@ -41,6 +41,13 @@ class PostBodyAuthenticationTests(unittest.TestCase):
         self.assertEqual(handler.roles, ("admin", "teacher", "student"))
         self.assertIsNone(handler.response)
 
+    def test_large_backup_restore_is_admin_authorized_before_body_read(self):
+        handler = StubHandler()
+        handler.path = "/api/backup/restore"
+        server.Handler.do_POST(handler)
+        self.assertTrue(handler.auth_called)
+        self.assertEqual(handler.roles, ("admin",))
+
     def test_change_password_requires_a_session_before_body_read(self):
         handler = StubHandler()
         handler.path = "/api/auth/change-password"
