@@ -1878,6 +1878,15 @@ class MaClasseHTTPServer(ThreadingHTTPServer):
         self.server_name=str(self.server_address[0])
         self.server_port=int(self.server_address[1])
 
+    def get_request(self):
+        # Apply the read deadline to the accepted socket itself, before TLS
+        # handshake / HTTP handler setup. Handler.timeout alone is too late
+        # for a client that connects and then stalls during TLS or its first
+        # request line; such a worker would make server_close() wait forever.
+        request, client_address = super().get_request()
+        request.settimeout(20)
+        return request, client_address
+
 
 class Handler(SimpleHTTPRequestHandler):
     # Borne les connexions inactives pour qu'un client abandonné ne bloque pas
