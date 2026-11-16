@@ -78,18 +78,18 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 cwd=program, env=env, capture_output=True, text=True, timeout=30
             )
             state = json.loads((data / "update-state.json").read_text(encoding="utf-8"))
-            return result, current.resolve(), previous.resolve(), target.resolve(), state, data
+            database = json.loads((data / "maclasse.json").read_text(encoding="utf-8"))\n            backup_count = len(list((data / "backups").glob("maclasse-avant-maj-*.json")))\n            return result, current.resolve(), previous.resolve(), target.resolve(), state, database, backup_count
 
     def test_success_switches_atomically_and_preserves_persistent_data(self):
-        result, active, previous, target, state, data = self.run_update()
+        result, active, previous, target, state, database, backup_count = self.run_update()
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertEqual(active, target)
         self.assertEqual(state["status"], "installed")
-        self.assertEqual(json.loads((data / "maclasse.json").read_text())["settings"]["school"], "Test")
-        self.assertEqual(len(list((data / "backups").glob("maclasse-avant-maj-*.json"))), 1)
+        self.assertEqual(database["settings"]["school"], "Test")
+        self.assertEqual(backup_count, 1)
 
     def test_failed_health_check_restores_previous_release(self):
-        result, active, previous, target, state, data = self.run_update(fail_version="25.0.23")
+        result, active, previous, target, state, database, backup_count = self.run_update(fail_version="25.0.23")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(active, previous)
         self.assertEqual(state["status"], "failed")
