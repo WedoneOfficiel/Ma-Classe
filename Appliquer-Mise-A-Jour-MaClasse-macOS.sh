@@ -145,7 +145,7 @@ umask 077
 BACKUP_DIR="$DATA/backups"
 mkdir -p "$BACKUP_DIR"
 write_state installing
-SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk 'NR==1 {print $1}' || true)"
+SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
 /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; write_maintenance_state failed; exit 1; }
 STOPPED=0
 for _ in {1..120}; do
