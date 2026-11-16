@@ -557,7 +557,17 @@ subjectKeyIdentifier=hash
                         "process_table": subprocess.run(
                             ["/bin/ps", "-axo", "pid,ppid,stat,command"],
                             capture_output=True, text=True, timeout=10
-                        ).stdout[-6000:]
+                        ).stdout[-6000:],
+                        "listener": subprocess.run(
+                            ["/usr/sbin/lsof", "-nP", "-iTCP:8765"],
+                            capture_output=True, text=True, timeout=10
+                        ).stdout,
+                        "health_probe": subprocess.run(
+                            ["/usr/bin/curl", "--noproxy", "*", "--insecure", "--silent", "--show-error",
+                             "--connect-timeout", "2", "--max-time", "4", "--write-out", "\\nHTTP=%{http_code}",
+                             "https://127.0.0.1:8765/api/health"],
+                            capture_output=True, text=True, timeout=10
+                        ).stdout
                     }
                     self.fail(f"Mise à jour macOS bloquée après 75 s : {timeout_error}\\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2, default=lambda value: value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)))
                 if success.returncode != 0:
