@@ -14,6 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "Le moteur d'installation cible systemd/Linux.")
 class UpdateApplyIntegrationTests(unittest.TestCase):
+    def test_rollback_fails_closed_if_previous_release_disappears(self):
+        script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text(encoding="utf-8")
+        self.assertIn('! -d "$PREVIOUS_TARGET"', script)
+        self.assertIn("réactivation atomique de la version précédente impossible", script)
+        self.assertIn("base non restaurée", script)
+
     def test_update_installer_uses_an_exclusive_process_lock(self):
         script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text(encoding="utf-8")
         self.assertIn("fcntl.LOCK_EX | fcntl.LOCK_NB", script)
