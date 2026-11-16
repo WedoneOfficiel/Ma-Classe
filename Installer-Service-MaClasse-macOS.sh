@@ -34,6 +34,7 @@ document={
     "Label": label,
     "ProgramArguments": ["/bin/bash", os.path.join(root,"data","program","current","Lancer-MaClasse-Service-macOS.sh")],
     "WorkingDirectory": root,
+    "EnvironmentVariables": {"MACLASSE_ROOT": root, "MACLASSE_DATA_DIR": os.path.join(root,"data")},
     "RunAtLoad": True,
     "KeepAlive": True,
     "ThrottleInterval": 5,
