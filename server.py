@@ -628,6 +628,20 @@ def _teacher_assignment_active(item, on_date=None):
 
 
 
+
+def _bulletin_pdf_access_allowed(database,user,bulletin):
+    """A PDF is readable by the direction, a teacher of its class, or its own student."""
+    if not isinstance(user,dict) or not isinstance(bulletin,dict): return False
+    role=user.get('role')
+    if role=='admin': return True
+    student_id=str(bulletin.get('studentId') or '')
+    class_id=str(bulletin.get('classId') or '')
+    if role=='student':
+        return bool(student_id) and str(user.get('studentId') or '')==student_id
+    if role=='teacher':
+        return bool(class_id) and class_id in _teacher_class_ids(database,user)
+    return False
+
 def _teacher_schedule_assignment_suspended(data,slot,teacher_id,on_date=None):
     """Le titulaire perd temporairement les droits de matière quand il est remplacé."""
     tid=str(teacher_id or '')
@@ -2592,10 +2606,8 @@ class Handler(SimpleHTTPRequestHandler):
                 class_record=next((x for x in database.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),None)
                 if not student_record or not class_record or str(student_record.get('classId') or '')!=class_id:
                     return self._json({'error':'Bulletin incohérent ou élève introuvable.'},409)
-                if user.get('role')=='teacher' and class_id not in _teacher_class_ids(database,user):
-                    return self._json({'error':'Ce bulletin ne relève pas de vos classes.'},403)
-                if user.get('role')=='student' and str(user.get('studentId') or '')!=student_id:
-                    return self._json({'error':'Ce bulletin ne vous appartient pas.'},403)
+                if not _bulletin_pdf_access_allowed(database,user,bulletin):
+                    return self._json({'error':'Ce bulletin ne vous est pas accessible.'},403)
                 term_id=str(bulletin.get('termId') or '')
                 term_record=next((x for x in (database.get('settings',{}).get('terms',[]) if isinstance(database.get('settings'),dict) else []) or [] if isinstance(x,dict) and str(x.get('id'))==term_id),None)
                 # Tout le contenu métier du PDF est recalculé depuis la base serveur.
