@@ -448,3 +448,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 11. **AMEL-U9 — annulation systemd non confirmée.** Le timer Linux pouvait être supprimé du disque et considéré annulé même si `systemctl disable --now` n'avait pas réussi. L'annulation contrôle maintenant séparément `is-active` et `is-enabled`, et ne supprime le fichier qu'après confirmation de l'état inactif/désactivé. Un test simule un timer toujours actif et vérifie que le fichier est conservé et que l'annulation échoue.
+
+
+12. **AMEL-U10 — restauration de base non atomique.** Le rollback copiait directement le JSON de sauvegarde sur le fichier actif ; une interruption pendant cette copie pouvait laisser une base partielle. Les scripts Linux/macOS copient maintenant vers un fichier temporaire sur le même volume, font un `fsync`, remplacent atomiquement avec `os.replace`, puis synchronisent le dossier. Le scénario d'intégration Linux vérifie déjà le contenu après rollback ; le test macOS vérifie le mécanisme atomique.
