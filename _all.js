@@ -11,8 +11,9 @@ function blank(){return {evaluationTemplates:[],competencyLibrary:[],settings:{r
 async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='/api/data'||path==='/api/save')){const rev=r.headers.get('X-MaClasse-Revision');if(rev)dataRevision=rev}if(!r.ok){let detail=await r.text();try{const parsed=JSON.parse(detail);if(parsed.code==='REVISION_CONFLICT'||parsed.code==='REVISION_REQUIRED')detail='Les données ont changé sur le serveur. Recharge la page avant de continuer pour éviter d’écraser le travail d’un autre utilisateur.';else detail=parsed.error||detail}catch{}const error=Error(detail);error.status=r.status;throw error}return r.json()}
 function formatMaintenanceDate(timestamp){return new Date(Number(timestamp)*1000).toLocaleString()}
 function maintenanceBanner(){
- if(!maintenanceNotice?.scheduled||!maintenanceNotice.maintenance)return '';
- const when=formatMaintenanceDate(maintenanceNotice.maintenance.scheduled_at);
+ const notice=typeof maintenanceNotice!=='undefined'?maintenanceNotice:null;
+ if(!notice?.scheduled||!notice.maintenance)return '';
+ const when=formatMaintenanceDate(notice.maintenance.scheduled_at);
  return '<div class="notice warn maintenanceNotice"><b>Maintenance programmée</b><p>Une mise à jour de MaClasse est prévue le '+esc(when)+'. La plateforme sera temporairement inaccessible pendant l’intervention. Pensez à enregistrer votre travail avant cette heure. Les modifications non enregistrées pourraient être perdues.</p></div>';
 }
 async function refreshMaintenanceNotice(){
@@ -56,6 +57,7 @@ async function cancelScheduledUpdate(){
  });
 }
 function updateSettingsCard(){
+ const scheduledNotice=typeof maintenanceNotice!=='undefined'?maintenanceNotice:null;
  let html='<div class="card settingsCard"><div class="sectionhead"><h2>Mises à jour</h2><span class="pill">'+MC_VERSION+'</span></div><p class="muted">Recherche les nouvelles versions stables publiées officiellement pour MaClasse.</p><button class="btn primary" onclick="checkForUpdates()" '+(updateCheckBusy?'disabled':'')+'>'+(updateCheckBusy?'Vérification…':'Rechercher des mises à jour')+'</button>';
  if(updateCheckResult?.available){
   html+='<div class="notice '+(updateCheckResult.compatible?'':'warn')+'" style="margin-top:12px"><b>'+esc(updateCheckResult.version)+'</b><p>'+esc(updateCheckResult.release_notes||'Nouvelle version stable disponible.')+'</p><p>'+(updateCheckResult.compatible?'Compatible avec les données actuelles.':esc(updateCheckResult.compatibility_message||'Mise à jour incompatible.'))+'</p></div>';
@@ -63,8 +65,8 @@ function updateSettingsCard(){
   if(updateCheckResult.compatible&&!updateCheckResult.install_supported)html+='<p class="hint">Le gestionnaire de mises à jour Linux doit être installé sur le serveur avant de pouvoir préparer et installer cette version depuis MaClasse.</p>';
   if(updateCheckResult.prepared&&updateCheckResult.install_supported){
    html+='<p class="hint">Version téléchargée, vérifiée et prête à installer. Tu peux l’installer immédiatement ou programmer la maintenance.</p>';
-   if(maintenanceNotice?.scheduled&&maintenanceNotice.maintenance?.version===updateCheckResult.version){
-    html+='<div class="notice" style="margin-top:10px">Installation programmée le <b>'+esc(formatMaintenanceDate(maintenanceNotice.maintenance.scheduled_at))+'</b>.<button class="btn small danger" style="margin-top:8px" onclick="cancelScheduledUpdate()">Annuler la maintenance</button></div>';
+   if(scheduledNotice?.scheduled&&scheduledNotice.maintenance?.version===updateCheckResult.version){
+    html+='<div class="notice" style="margin-top:10px">Installation programmée le <b>'+esc(formatMaintenanceDate(scheduledNotice.maintenance.scheduled_at))+'</b>.<button class="btn small danger" style="margin-top:8px" onclick="cancelScheduledUpdate()">Annuler la maintenance</button></div>';
    }else{
     html+='<div class="field" style="margin-top:12px"><label for="updateScheduleAt">Programmer la maintenance</label><input class="input" id="updateScheduleAt" type="datetime-local" min="'+localDateTimeMin()+'"><button class="btn" style="margin-top:8px" onclick="scheduleUpdate()">Programmer l’installation</button></div>';
     html+='<button class="btn primary" style="margin-top:10px" onclick="installUpdate()">Installer maintenant</button>';
