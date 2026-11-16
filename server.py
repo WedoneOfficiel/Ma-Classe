@@ -114,6 +114,7 @@ def _schedule_update_timer(timestamp):
 
 def _start_update_apply_service():
     if sys.platform=='darwin':
+        _cancel_update_timer()
         plist=_launchd_update_plist()
         if not os.path.isfile(plist):
             import plistlib
