@@ -100,8 +100,19 @@ BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
 /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"
 "$ROOT/.venv/bin/python" -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE" || { echo "Sauvegarde JSON invalide." >&2; exit 1; }
 write_state installing
+SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk 'NR==1 {print $1}' || true)"
 /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; exit 1; }
-if /bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1; then fail_restore "Le serveur est toujours chargé après l'arrêt."; fi
+if [[ "$SERVICE_PID" =~ ^[0-9]+$ ]]; then
+  STOPPED=0
+  for _ in {1..120}; do
+    if ! /bin/kill -0 "$SERVICE_PID" >/dev/null 2>&1; then STOPPED=1; break; fi
+    /bin/sleep 1
+  done
+  if [[ "$STOPPED" != "1" ]]; then
+    write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
+    exit 1
+  fi
+fi
 /bin/ln -s "versions/V$VERSION" "$CURRENT.next"
 "$ROOT/.venv/bin/python" - "$CURRENT.next" "$CURRENT" <<'PYLINK' || fail_restore "Bascule atomique impossible."
 import os,sys
