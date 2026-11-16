@@ -481,9 +481,13 @@ function subjectColor(subject){const key=subjectColorKey(subject),custom=db?.set
 function eventColorSet(hex){const h=String(hex||'').replace('#','');const n=parseInt(h.length===3?h.split('').map(x=>x+x).join(''):h,16);if(!Number.isFinite(n))return subjectColor('');const r=(n>>16)&255,g=(n>>8)&255,b=n&255;const lum=(.2126*r+.7152*g+.0722*b)/255;const mix=(a,t)=>Math.round(a+(255-a)*t);const bg=`rgb(${mix(r,lum<.45?.72:.86)},${mix(g,lum<.45?.72:.86)},${mix(b,lum<.45?.72:.86)})`;const border=`rgb(${Math.min(255,Math.round(r*.82+255*.18))},${Math.min(255,Math.round(g*.82+255*.18))},${Math.min(255,Math.round(b*.82+255*.18))})`;return [bg,border,hex]}
 function eventCard(o,d,studentMode=false){
   const date=iso(d), top=Math.max(0,(mins(o.time)-360)*1.2),height=Math.max(42,(mins(o.endTime||addHour(o.time))-mins(o.time))*1.2);
-  const c=subjectColor(o.subject), pattern=o.pattern||'none';
-  return `<div class="event ${pattern!=='none'?'hasPattern':''}" draggable="${studentMode?'false':'true'}" ondragstart="startScheduleDrag(event,'${o.id}')" data-schedule-id="${o.id}" data-date="${date}" style="top:${top}px;height:${height}px;--event-bg:${c[0]};--event-border:${c[1]};--event-accent:${c[2]};--event-pattern:${pattern};" onclick="${studentMode?`openStudentLesson('', '${o.id}', '${date}')`:`openOccurrence('${o.id}','${date}')`}">
-    ${studentMode?'':`<button class="eventEdit" type="button" onclick="event.stopPropagation();openSchedule('${o.id}')" title="Modifier le créneau" aria-label="Modifier le créneau">✎</button>`}
+  const c=subjectColor(o.subject), rawPattern=String(o.pattern||'none'), pattern=['none','hatch','cross'].includes(rawPattern)?rawPattern:'none';
+  const scheduleId=String(o.id??''), idArg=JSON.stringify(scheduleId).replace(/\\u2028/g,'\\\\u2028').replace(/\\u2029/g,'\\\\u2029'), dateArg=JSON.stringify(date);
+  const dragHandler=esc(`startScheduleDrag(event,${idArg})`);
+  const clickHandler=esc(studentMode?`openStudentLesson('',${idArg},${dateArg})`:`openOccurrence(${idArg},${dateArg})`);
+  const editHandler=esc(`event.stopPropagation();openSchedule(${idArg})`);
+  return `<div class="event ${pattern!=='none'?'hasPattern':''}" draggable="${studentMode?'false':'true'}" ondragstart="${dragHandler}" data-schedule-id="${esc(scheduleId)}" data-date="${date}" style="top:${top}px;height:${height}px;--event-bg:${c[0]};--event-border:${c[1]};--event-accent:${c[2]};--event-pattern:${pattern};" onclick="${clickHandler}">
+    ${studentMode?'':`<button class="eventEdit" type="button" onclick="${editHandler}" title="Modifier le créneau" aria-label="Modifier le créneau">✎</button>`}
     <b>${time(o.time)} · ${esc(o.subject)}</b><small>${esc(cls(o.classId)?.name||'')}${o.room?' · '+esc(o.room):''}</small>${o.group?`<span class="eventGroup">${esc(o.group)}</span>`:''}${o._overrideDate?`<span class="eventException" title="${esc(o.overrides?.[o._overrideDate]?.note||'Modification ponctuelle')}${o.replacementTeacher?' · Remplacement : '+esc(o.replacementTeacher):''}">⚠</span>`:''}
   </div>` }
 function startScheduleDrag(ev,id){ev.dataTransfer.setData('text/plain',id);ev.dataTransfer.effectAllowed='move'}
