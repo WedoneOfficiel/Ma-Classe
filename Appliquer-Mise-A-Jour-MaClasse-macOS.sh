@@ -116,7 +116,7 @@ PYLINK
     exit 1
   fi
   if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
-    RESTORE_TMP="$DATA/maclasse.json.rollback.$.tmp"
+    RESTORE_TMP="$DATA/maclasse.json.rollback.${BASHPID}.tmp"
     /bin/rm -f "$RESTORE_TMP"
     if ! /bin/cp -p "$BACKUP_FILE" "$RESTORE_TMP"; then
       write_state rollback_failed "$message — copie temporaire de la base impossible ; serveur laissé arrêté."
@@ -204,8 +204,13 @@ PY
 umask 077
 BACKUP_DIR="$DATA/backups"
 mkdir -p "$BACKUP_DIR"
-write_state installing
+command -v pgrep >/dev/null 2>&1 || { write_state failed "pgrep est requis pour vérifier l'absence de serveur manuel."; write_maintenance_state failed; exit 1; }
 SERVICE_PID="$(/bin/launchctl list "$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
+[[ "$SERVICE_PID" =~ ^[0-9]+$ ]] || { write_state failed "Impossible d'identifier le processus launchd MaClasse ; mise à jour refusée."; write_maintenance_state failed; exit 1; }
+while IFS= read -r pid; do
+  [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { write_state failed "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour."; write_maintenance_state failed; exit 1; }
+done < <(pgrep -f '[p]ython.*server[.]py' || true)
+write_state installing
 /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; write_maintenance_state failed; exit 1; }
 STOPPED=0
 for _ in {1..120}; do
@@ -221,7 +226,7 @@ if [[ "$STOPPED" != "1" ]]; then
 fi
 # Snapshot after confirmed stop: no concurrent writes can be lost on rollback.
 STAMP="$(/bin/date +%Y%m%d-%H%M%S)"
-BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP-$.json"
+BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP-${BASHPID}.json"
 if [[ ! -f "$DATA/maclasse.json" || -L "$DATA/maclasse.json" ]] || ! /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"; then
   if start_service; then
     write_state failed "Impossible de sauvegarder la base après l'arrêt ; ancienne version relancée."
