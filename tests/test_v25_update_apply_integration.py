@@ -39,7 +39,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 "version": version, "sha256": sha, "status": "prepared"
             }), encoding="utf-8")
 
-    def run_update(self, fail_version=None, service_active_during_rollback=False):
+    def run_update(self, fail_version=None, service_active_during_rollback=False, manual_server=False):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             program = base / "program"
@@ -67,9 +67,10 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
             fakebin.mkdir()
             systemctl_log = base / "systemctl.log"
             stubs = {
-                "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\ncase "$*" in *" stop maclasse.service"*) touch "$STOPPED_MARKER";; esac\ncase "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; *"is-active --quiet maclasse.service"*) if [ "$SERVICE_ACTIVE_DURING_ROLLBACK" = "1" ] && [ -f "$SERVICE_ACTIVE_CHECK_FILE" ]; then exit 0; else touch "$SERVICE_ACTIVE_CHECK_FILE"; exit 3; fi;; esac\nexit 0\n',
+                "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\ncase "$*" in *"show --property=MainPID --value maclasse.service"*) echo 1234; exit 0;; esac\ncase "$*" in *" stop maclasse.service"*) touch "$STOPPED_MARKER";; esac\ncase "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; *"is-active --quiet maclasse.service"*) if [ "$SERVICE_ACTIVE_DURING_ROLLBACK" = "1" ] && [ -f "$SERVICE_ACTIVE_CHECK_FILE" ]; then exit 0; else touch "$SERVICE_ACTIVE_CHECK_FILE"; exit 3; fi;; esac\nexit 0\n',
                 "openssl": '#!/bin/sh\necho "X509v3 Subject Alternative Name: IP Address:192.168.1.10"\n',
                 "curl": '#!/bin/sh\nversion="$(cat "$CURRENT_LINK/VERSION.txt" | sed "s/^V//")"\nif [ "$version" = "$FAIL_VERSION" ]; then printf \'{"settings":{"school":"damaged"}}\' > "$DATA_FILE"; echo \'{"ok":false,"version":"$version","database":"error"}\'; else printf \'{"ok":true,"version":"%s","database":"ok"}\' "$version"; fi\n',
+                "pgrep": '#!/bin/sh\nif [ "$MANUAL_SERVER" = "1" ]; then echo 99999; exit 0; fi\nexit 1\n',
                 "sleep": '#!/bin/sh\nexit 0\n',
                 "cp": '#!/bin/sh\n[ -f "$STOPPED_MARKER" ] || { echo "database backup attempted before service stop" >&2; exit 77; }\nexec /bin/cp "$@"\n',
             }
@@ -86,6 +87,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 "SYSTEMCTL_LOG": str(systemctl_log),
                 "FAIL_VERSION": fail_version or "",
                 "SERVICE_ACTIVE_DURING_ROLLBACK": "1" if service_active_during_rollback else "0",
+                "MANUAL_SERVER": "1" if manual_server else "0",
                 "SERVICE_ACTIVE_CHECK_FILE": str(base / "active-check-count"),
                 "DATA_FILE": str(data / "maclasse.json"),
                 "STOPPED_MARKER": str(base / "server-stopped"),
@@ -100,6 +102,13 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
             old_version_exists = (versions / "V25.0.10").exists()
             previous_version_exists = previous.exists()
             return result, current.resolve(), previous.resolve(), target.resolve(), state, database, backup_count, old_version_exists, previous_version_exists
+
+    def test_refuses_update_while_an_unmanaged_server_process_is_running(self):
+        result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update(manual_server=True)
+        self.assertNotEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertEqual(active, previous)
+        self.assertEqual(state["status"], "prepared")
+        self.assertEqual(backup_count, 0, "no database backup or mutation should occur before unmanaged server is stopped")
 
     def test_success_switches_atomically_and_preserves_persistent_data(self):
         result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update()
