@@ -23,7 +23,7 @@ SERVICE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.server.plist"
 UID_NOW="$(id -u)"
 exec 9>"$DATA/update-apply.lock"
 if ! "$ROOT/.venv/bin/python" -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2>/dev/null; then
-  echo "Une autre opération de mise à jour est déjà en cours." >&2
+  echo "Une autre mise à jour est en cours ou un serveur manuel utilise encore le verrou partagé ; arrête-le avant de continuer." >&2
   exit 1
 fi
 write_state() {
