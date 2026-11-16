@@ -97,14 +97,16 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AUDIT-U4 | Changement d'adresse DHCP du Mac non détecté pendant que le serveur reste lancé | Le lanceur macOS détecte l'adresse IPv4 et renouvelle le certificat au démarrage du LaunchAgent. Si le routeur attribue une nouvelle adresse pendant que le processus serveur reste actif, le serveur continue d'écouter l'ancienne adresse et son certificat ne correspond plus à la nouvelle. Le service ne redémarre pas automatiquement lors d'un changement DHCP. | Risque identifié, non corrigé. Pour la première mise en service, réserver une adresse DHCP au Mac dans le routeur et redémarrer le service après tout changement d'adresse. Une surveillance réseau/reprise automatique devra être conçue et testée séparément pour ne pas introduire de redémarrages concurrents avec le gestionnaire de mises à jour. | Détecté — à traiter |
 
+| MIG-01 | Migration initiale depuis V25.0.19 non validée | L'installation actuellement utilisée n'a pas encore le nouveau gestionnaire supervisé ; elle ne peut donc pas recevoir directement les mises à jour depuis Paramètres. | La nouvelle architecture suppose un dossier de données persistant et un lien `data/program/current` vers les versions isolées. Aucun parcours complet et automatisé de migration d'une installation V25.0.19 existante vers cette architecture n'a encore été exécuté sur une copie représentative. Le contrôle de compatibilité dépend aussi de `schemaVersion` dans `data/maclasse.json` ; une valeur absente ou inférieure à `min_data_schema=25011` bloque la préparation. Il faut créer une sauvegarde externe, vérifier le schéma réel de la base V25.0.19, migrer une copie, comparer base/pièces jointes/certificats et tester le retour arrière avant de donner une commande à l'utilisateur. | Détecté — bloquant avant migration réelle |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires et sécurité relevées : **32** (30 correctifs passés en CI ; 2 risques détectés à traiter avant release/recette)
+- Anomalies complémentaires et sécurité relevées : **33** (30 correctifs engagés et testés sur une CI antérieure ; 3 points bloquants ou à confirmer : signature des releases, changement DHCP macOS et migration initiale V25.0.19)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **30** anomalies complémentaires avec CI réussie, recette locale restante ; **2** risques détectés en attente de traitement (signature de release et changement d'adresse DHCP macOS)
-- Détectés : **0**
+- En cours de résolution : **0** pour les 16 bugs historiques ; **30** anomalies complémentaires avec correctifs engagés ; **3** points détectés en attente de traitement ou de recette (signature de release, changement d'adresse DHCP macOS, migration initiale V25.0.19)
+- Détectés : **1** (MIG-01 ; les risques signature/DHCP sont comptés dans les anomalies complémentaires ouvertes)
 - Demande d'amélioration séparée : **1**
 
-Ce bilan est volontairement prudent : la CI Linux, macOS Apple Silicon et Firefox est verte sur le commit 7990ae5. Cela ne remplace pas la recette sur le Mac de l'utilisateur et le PC Fedora cible, ni la validation d'une vraie release publiée. Aucun bug n'est marqué « Corrigé » sans confirmation explicite.
+Ce bilan est volontairement prudent : sur le commit `a6f1ce3` (run #1490), les jobs Linux et Firefox réel sont verts ; le job macOS est encore en attente. Un run macOS antérieur a révélé un échec du scénario de mise à jour HTTPS de bout en bout ; le scénario a été instrumenté pour diagnostiquer le lancement du serveur et doit repasser. Cela ne remplace pas la recette sur le Mac de l'utilisateur et le PC Fedora cible, la migration depuis V25.0.19 sur copie, ni la validation d'une release signée. Aucun bug n'est marqué « Corrigé » sans confirmation explicite.
