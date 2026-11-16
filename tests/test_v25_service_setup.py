@@ -39,7 +39,8 @@ assert 'ProtectSystem=full' in installer
 assert 'ReadWritePaths=$ROOT/data' in installer
 assert 'maclasse-update-apply.service' in installer
 assert 'touch "$ROOT/data/update-manager.enabled"' in installer
-assert 'Appliquer-Mise-A-Jour-MaClasse-Linux.sh' in installer
+assert 'Environment=MACLASSE_ROOT=$ROOT' in installer
+assert 'ExecStart=/usr/bin/bash $ROOT/data/program/current/Appliquer-Mise-A-Jour-MaClasse-Linux.sh' in installer
 assert 'rm -f "$UNIT_FILE"' in uninstaller
 assert 'rm -rf' not in uninstaller
 assert 'if systemctl --user is-active --quiet maclasse-update-apply.service' in uninstaller
