@@ -2,10 +2,10 @@
 """Unit tests for one-off systemd maintenance timers."""
 import tempfile
 import time
-from pathlib import Path
-from unittest.mock import patch
-from types import SimpleNamespace
 import sys
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import server
@@ -15,8 +15,14 @@ def run():
     with tempfile.TemporaryDirectory() as temp:
         timer = Path(temp) / "maclasse-update-scheduled.timer"
         timestamp = int(time.time()) + 3600
+
+        def fake_run(command, **kwargs):
+            if "is-active" in command:
+                return SimpleNamespace(returncode=3)
+            return SimpleNamespace(returncode=0)
+
         with patch.object(server, "_update_timer_unit_path", return_value=str(timer)), \
-             patch.object(server.subprocess, "run") as command:
+             patch.object(server.subprocess, "run", side_effect=fake_run) as command:
             server._schedule_update_timer(timestamp)
             assert timer.is_file()
             content = timer.read_text(encoding="utf-8")
