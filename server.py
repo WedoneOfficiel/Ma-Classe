@@ -27,7 +27,13 @@ def _update_apply_service_installed():
     marker=os.path.join(DATA_DIR,'update-manager.enabled')
     if not os.path.isfile(marker): return False
     if sys.platform.startswith('linux'):
-        return os.environ.get('MACLASSE_SUPERVISED')=='systemd'
+        if os.environ.get('MACLASSE_SUPERVISED')!='systemd': return False
+        try:
+            result=subprocess.run(['/usr/bin/systemctl','--user','show','--property=LoadState','--value','maclasse-update-apply.service'],
+                                  check=False,capture_output=True,text=True,timeout=5)
+            return result.returncode==0 and (result.stdout or '').strip()=='loaded'
+        except (OSError,subprocess.TimeoutExpired):
+            return False
     if sys.platform=='darwin':
         if os.environ.get('MACLASSE_SUPERVISED')!='launchd' or not os.path.isfile(_launchd_service_plist()):
             return False
