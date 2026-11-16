@@ -482,7 +482,7 @@ function eventColorSet(hex){const h=String(hex||'').replace('#','');const n=pars
 function eventCard(o,d,studentMode=false){
   const date=iso(d), top=Math.max(0,(mins(o.time)-360)*1.2),height=Math.max(42,(mins(o.endTime||addHour(o.time))-mins(o.time))*1.2);
   const c=subjectColor(o.subject), rawPattern=String(o.pattern||'none'), pattern=['none','hatch','cross'].includes(rawPattern)?rawPattern:'none';
-  const scheduleId=String(o.id??''), idArg=JSON.stringify(scheduleId).replace(/\\u2028/g,'\\\\u2028').replace(/\\u2029/g,'\\\\u2029'), dateArg=JSON.stringify(date);
+  const scheduleId=String(o.id??''), idArg=JSON.stringify(scheduleId), dateArg=JSON.stringify(date);
   const dragHandler=esc(`startScheduleDrag(event,${idArg})`);
   const clickHandler=esc(studentMode?`openStudentLesson('',${idArg},${dateArg})`:`openOccurrence(${idArg},${dateArg})`);
   const editHandler=esc(`event.stopPropagation();openSchedule(${idArg})`);
