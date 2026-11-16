@@ -32,7 +32,7 @@ class UpdateScriptSafetyTests(unittest.TestCase):
             version = data / "program" / "versions" / "V25.0.22"
             python = version / ".venv" / "bin" / "python"
             python.parent.mkdir(parents=True)
-            python.write_text("#!/bin/sh\\nexit 10\\n", encoding="utf-8")
+            python.write_text("#!/bin/sh\nexit 10\n", encoding="utf-8")
             python.chmod(0o755)
             current = data / "program" / "current"
             current.parent.mkdir(parents=True, exist_ok=True)
@@ -45,15 +45,15 @@ class UpdateScriptSafetyTests(unittest.TestCase):
             log = Path(tmp) / "systemctl.log"
             systemctl = fakebin / "systemctl"
             systemctl.write_text(
-                '#!/bin/sh\\n'
-                'echo "$*" >> "$SYSTEMCTL_LOG"\\n'
+                '#!/bin/sh\n'
+                'echo "$*" >> "$SYSTEMCTL_LOG"\n'
                 'case "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; '
                 '*"show --property=MainPID --value maclasse.service"*) echo 0; exit 0;; '
-                'esac\\nexit 0\\n', encoding="utf-8"
+                'esac\nexit 0\n', encoding="utf-8"
             )
             systemctl.chmod(0o755)
             pgrep = fakebin / "pgrep"
-            pgrep.write_text("#!/bin/sh\\nexit 1\\n", encoding="utf-8")
+            pgrep.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
             pgrep.chmod(0o755)
             env = os.environ.copy()
             env.update({"PATH": str(fakebin) + os.pathsep + env.get("PATH", ""), "SYSTEMCTL_LOG": str(log)})
