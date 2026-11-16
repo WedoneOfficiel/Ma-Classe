@@ -515,3 +515,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 31. **Test launchd réel — second `launchctl print` non borné.** L'audit de la durée du job a montré qu'une des deux inspections du domaine GUI n'avait pas reçu le timeout (le remplacement initial n'avait modifié que la première occurrence). Les deux appels sont maintenant limités à 10 secondes (`49568cd`). Cela explique le risque de blocage du test sur macOS ; le prochain run doit confirmer le démarrage/déchargement réel.
+
+
+32. **CI Python — durée individuelle bornée.** Le job macOS reste sur l'étape de tests Python alors que Linux a terminé. Pour identifier précisément un test qui bloquerait le runner et éviter une attente de 20 minutes sans diagnostic, chaque fichier Python est maintenant exécuté dans un sous-processus limité à 90 secondes sur Linux et macOS (`a5011f9`). Le nom du fichier est déjà affiché dans le groupe de logs ; un dépassement sera ainsi attribuable. CI à reconfirmer.
