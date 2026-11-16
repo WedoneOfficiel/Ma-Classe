@@ -71,10 +71,33 @@ start_service() {
 stop_service_and_confirm() {
   local service_pid probe alive loaded
   service_pid="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
-  /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
-  for _ in {1..120}; do
-    alive=0
-    if [[ "$service_pid" =~ ^[0-9]+$ ]] && /bin/kill -0 "$service_pid" >/dev/null 2>&1; then alive=1; fi
+  [[ "$service_pid" =~ ^[0-9]+$ ]] || return 1
+
+  # bootout peut attendre indéfiniment server_close() si un client TLS inactif
+  # conserve un thread de requête. Le lancer en arrière-plan permet de borner
+  # l'arrêt sans jamais sauvegarder la base tant que le processus existe.
+  /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 &
+  local bootout_pid=$!
+
+  # Laisser au serveur 25 s pour son arrêt gracieux (timeout HTTP : 20 s).
+  for _ in {1..25}; do
+    if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
+    /bin/sleep 1
+  done
+
+  # Sécurité : un arrêt gracieux bloqué ne doit pas figer la mise à jour.
+  # La sauvegarde n'aura lieu qu'après confirmation de la mort du processus.
+  if /bin/kill -0 "$service_pid" >/dev/null 2>&1; then
+    echo "Arrêt gracieux bloqué ; arrêt forcé du serveur PID $service_pid." >&2
+    /bin/kill -KILL "$service_pid" >/dev/null 2>&1 || true
+  fi
+  for _ in {1..10}; do
+    if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
+    /bin/sleep 1
+  done
+  /bin/kill -0 "$service_pid" >/dev/null 2>&1 && return 1
+
+  for _ in {1..10}; do
     if probe="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>&1)"; then
       loaded=1
     else
@@ -83,9 +106,15 @@ stop_service_and_confirm() {
         *) return 1 ;;
       esac
     fi
-    if [[ "$alive" == "0" && "$loaded" == "0" ]]; then return 0; fi
+    if [[ "$loaded" == "0" ]]; then
+      # The job is unloaded and its process is confirmed dead. Do not let a
+      # wedged launchctl client keep the updater itself blocked.
+      /bin/kill "$bootout_pid" >/dev/null 2>&1 || true
+      return 0
+    fi
     /bin/sleep 1
   done
+  /bin/kill "$bootout_pid" >/dev/null 2>&1 || true
   return 1
 }
 fail_restore() {
@@ -213,16 +242,8 @@ while IFS= read -r pid; do
   [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { write_state failed "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour."; write_maintenance_state failed; exit 1; }
 done <<< "$SERVER_PIDS"
 write_state installing
-/bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; write_maintenance_state failed; exit 1; }
-STOPPED=0
-for _ in {1..120}; do
-  ALIVE=0
-  if [[ "$SERVICE_PID" =~ ^[0-9]+$ ]] && /bin/kill -0 "$SERVICE_PID" >/dev/null 2>&1; then ALIVE=1; fi
-  if [[ "$ALIVE" == "0" ]]; then STOPPED=1; break; fi
-  /bin/sleep 1
-done
-if [[ "$STOPPED" != "1" ]]; then
-  write_state failed "Le serveur n'a pas terminé son arrêt gracieux en 120 secondes ; aucune bascule n'a été effectuée."
+if ! stop_service_and_confirm; then
+  write_state failed "Impossible de confirmer l'arrêt complet du serveur launchd ; aucune sauvegarde ni bascule n'a été effectuée."
   write_maintenance_state failed
   exit 1
 fi
