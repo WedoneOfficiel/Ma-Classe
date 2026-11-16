@@ -146,6 +146,8 @@ def _safe_member_path(name: str) -> PurePosixPath:
         raise UpdateError("L'archive contient un chemin dangereux.")
     if path.parts and re.match(r"^[A-Za-z]:", path.parts[0]):
         raise UpdateError("L'archive contient un chemin Windows interdit.")
+    if path.parts and path.parts[0] in {"data", ".git", ".venv", "maclasse-prepared.json", "maclasse-runtime-ready.json"}:
+        raise UpdateError("L'archive tente de remplacer un dossier ou marqueur réservé.")
     return path
 
 
@@ -158,7 +160,11 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
         raise UpdateError("L'empreinte de l'archive ne correspond pas au manifeste.")
     version_parts = _version_tuple(release.get("version", ""))
     target = staging_root / ("V" + ".".join(str(part) for part in version_parts))
+    if target.is_symlink():
+        raise UpdateError("Le dossier de version préparée ne peut pas être un lien symbolique.")
     if target.exists():
+        if target.resolve().parent != staging_root:
+            raise UpdateError("Le dossier de version préparée sort du stockage autorisé.")
         metadata_path = target / "maclasse-prepared.json"
         try:
             existing = json.loads(metadata_path.read_text(encoding="utf-8"))
