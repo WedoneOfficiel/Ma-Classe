@@ -11,6 +11,8 @@ SCRIPTS = (
     "Installer-Service-MaClasse-macOS.sh",
     "Lancer-MaClasse-Service-macOS.sh",
     "Appliquer-Mise-A-Jour-MaClasse-macOS.sh",
+    "Lancer-MaClasse.command",
+    "Lancer-MaClasse-Reseau.command",
 )
 
 class MacOSSupervisorTests(unittest.TestCase):
@@ -18,6 +20,15 @@ class MacOSSupervisorTests(unittest.TestCase):
         for name in SCRIPTS:
             with self.subTest(script=name):
                 subprocess.run(["bash", "-n", str(ROOT / name)], check=True)
+
+    def test_manual_launchers_never_start_a_second_server_when_launchd_is_loaded(self):
+        for name in SCRIPTS[3:]:
+            with self.subTest(script=name):
+                source = (ROOT / name).read_text(encoding="utf-8")
+                guard = source.index('launchctl print "gui/$(id -u)/fr.maclasse.server"')
+                start = source.index(".venv/bin/python server.py")
+                self.assertLess(guard, start)
+                self.assertIn("partagerait la même base de données", source)
 
     def test_service_is_user_scoped_and_keeps_data_outside_versions(self):
         installer = (ROOT / SCRIPTS[0]).read_text(encoding="utf-8")
