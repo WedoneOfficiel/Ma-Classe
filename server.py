@@ -23,6 +23,31 @@ DATA_DIR=os.path.abspath(os.environ.get('MACLASSE_DATA_DIR') or os.path.join(ROO
 DATA_FILE=os.path.join(DATA_DIR,'maclasse.json')
 UPLOADS=os.path.join(DATA_DIR,'uploads')
 
+_MANUAL_UPDATE_LOCK_FD=None
+
+def _acquire_manual_server_lock():
+    """Keep manual server processes from racing an atomic update/rollback."""
+    if os.environ.get('MACLASSE_SUPERVISED') in ('systemd','launchd'):
+        return None
+    try:
+        import fcntl
+    except ImportError:
+        return None
+    os.makedirs(DATA_DIR,exist_ok=True)
+    path=os.path.join(DATA_DIR,'update-apply.lock')
+    fd=os.open(path,os.O_CREAT|os.O_RDWR,0o600)
+    try:
+        os.fchmod(fd,0o600)
+        fcntl.flock(fd,fcntl.LOCK_SH|fcntl.LOCK_NB)
+    except BlockingIOError as error:
+        os.close(fd)
+        raise RuntimeError('Une mise à jour MaClasse est en cours ; le serveur manuel ne peut pas démarrer.') from error
+    except Exception:
+        os.close(fd)
+        raise
+    return fd
+
+
 def _update_apply_service_installed():
     marker=os.path.join(DATA_DIR,'update-manager.enabled')
     if not os.path.isfile(marker): return False
@@ -2804,6 +2829,11 @@ def _stop_on_sigterm(signum, frame):
 
 if __name__=='__main__':
     os.chdir(ROOT)
+    try:
+        _MANUAL_UPDATE_LOCK_FD=_acquire_manual_server_lock()
+    except (OSError,RuntimeError) as error:
+        print(f'ERREUR DE VERROU DE MISE À JOUR : {error}')
+        raise SystemExit(2)
     try:
         _assert_server_host(HOST,allow_lan=os.environ.get('MACLASSE_LAN_MODE')=='1')
     except ValueError as error:
