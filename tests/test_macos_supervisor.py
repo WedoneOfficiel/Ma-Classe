@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static safety checks for the macOS launchd update supervisor."""
 import plistlib
+import stat
 import subprocess
 import unittest
 from pathlib import Path
@@ -71,7 +72,10 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertTrue(data["RunAtLoad"])
         self.assertEqual(data["ProgramArguments"][1], str(root / SCRIPTS[1]))
         self.assertEqual(os.readlink(root / "data" / "program" / "current"), "../..")
-        self.assertTrue((root / "data" / "update-manager.enabled").is_file())
+        marker = root / "data" / "update-manager.enabled"
+        self.assertTrue(marker.is_file())
+        self.assertEqual(stat.S_IMODE(marker.stat().st_mode), 0o600)
+        self.assertIn("$1 ~ /^[0-9]+$/", (root / SCRIPTS[0]).read_text(encoding="utf-8"))
         calls = log.read_text(encoding="utf-8")
         self.assertIn("bootstrap", calls)
         self.assertIn("kickstart", calls)
