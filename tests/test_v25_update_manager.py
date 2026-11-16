@@ -196,5 +196,51 @@ class ReleaseCheckerTests(unittest.TestCase):
                 updater.check_latest_release("25.0.22")
 
 
+    def test_rejects_zip_symbolic_links(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            info = zipfile.ZipInfo("server.py")
+            info.create_system = 3
+            info.external_attr = (0o120777 << 16)
+            archive.writestr(info, "target")
+        payload = buffer.getvalue()
+        info = {"archive_url": "https://example.test/archive",
+                "version": "25.1.0", "sha256": hashlib.sha256(payload).hexdigest()}
+        with patch.object(updater, "_request", return_value=payload):
+            with tempfile.TemporaryDirectory() as temp:
+                with self.assertRaises(updater.UpdateError):
+                    updater.prepare_release(info, temp)
+                self.assertEqual(list(Path(temp).iterdir()), [])
+
+    def test_rejects_archive_with_too_many_entries(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for index in range(updater.MAX_ARCHIVE_ENTRIES + 1):
+                archive.writestr(f"file-{index}.txt", "x")
+        payload = buffer.getvalue()
+        info = {"archive_url": "https://example.test/archive",
+                "version": "25.1.0", "sha256": hashlib.sha256(payload).hexdigest()}
+        with patch.object(updater, "_request", return_value=payload):
+            with tempfile.TemporaryDirectory() as temp:
+                with self.assertRaises(updater.UpdateError):
+                    updater.prepare_release(info, temp)
+                self.assertEqual(list(Path(temp).iterdir()), [])
+
+    def test_prepared_version_cannot_be_replaced_by_different_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            target = Path(temp) / "V25.1.0"
+            target.mkdir()
+            (target / "maclasse-prepared.json").write_text(
+                json.dumps({"sha256": "0" * 64, "status": "prepared"}), encoding="utf-8")
+            payload = self.archive
+            info = {"archive_url": "https://example.test/archive",
+                    "version": "25.1.0", "sha256": hashlib.sha256(payload).hexdigest()}
+            with patch.object(updater, "_request", return_value=payload):
+                with self.assertRaises(updater.UpdateError):
+                    updater.prepare_release(info, temp)
+                self.assertEqual((target / "maclasse-prepared.json").read_text(encoding="utf-8"),
+                                 json.dumps({"sha256": "0" * 64, "status": "prepared"}))
+
+
 if __name__ == "__main__":
     unittest.main()
