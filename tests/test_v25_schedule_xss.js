@@ -55,7 +55,16 @@ assert.strictEqual(sandbox.pwned, undefined, "ID text must not execute as JavaSc
 
 const drag = html.match(/ondragstart="([^"]*)"/);
 assert(drag, "event card must keep its drag action");
-vm.runInNewContext(decodeAttribute(drag[1]), sandbox);
-assert.strictEqual(sandbox.dragged, payload, "drag handler must receive the original ID safely");
+// Inline browser handlers receive a global event object. Give the VM an explicit
+// drag event with the DataTransfer API instead of relying on Node's absent DOM globals.
+const dragSandbox = { ...sandbox };
+dragSandbox.event = {
+  dataTransfer: {
+    setData: (_type, value) => { dragSandbox.dragged = value; },
+    effectAllowed: ""
+  }
+};
+vm.runInNewContext(decodeAttribute(drag[1]), dragSandbox);
+assert.strictEqual(dragSandbox.dragged, payload, "drag handler must receive the original ID safely");
 
 console.log("OK — timetable event IDs and patterns are safe against stored HTML/JS injection.");
