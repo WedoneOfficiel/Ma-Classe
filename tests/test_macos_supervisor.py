@@ -122,6 +122,22 @@ assert immediate["EnvironmentVariables"]["MACLASSE_DATA_DIR"] == str(tmp / "data
 assert "StartCalendarInterval" not in immediate
 assert any(call[:2] == ["/bin/launchctl", "kickstart"] for call in calls)
 
+# Never unload an updater process that has already started installing.
+active_calls = []
+def active_run(args, **kwargs):
+    active_calls.append(args)
+    if args[:3] == ["/bin/launchctl", "list", "fr.maclasse.update"]:
+        return subprocess.CompletedProcess(args, 0, "4321 0 fr.maclasse.update", "")
+    return subprocess.CompletedProcess(args, 0, "", "")
+server.subprocess.run = active_run
+try:
+    server._cancel_update_timer()
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("running launchd updater was allowed to be unloaded")
+assert not any(call[:2] == ["/bin/launchctl", "bootout"] for call in active_calls)
+
 # A failed bootout must not be reported as a successful cancellation.
 def stuck_run(args, **kwargs):
     if args[:2] == ["/bin/launchctl", "print"]:
