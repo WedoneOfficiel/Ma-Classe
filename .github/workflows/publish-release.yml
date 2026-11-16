@@ -24,7 +24,7 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           VERSION="$(tr -d '\r\n' < VERSION.txt)"
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           [[ "$VERSION" == "V${TAG#v}" ]] || {
             echo "Le tag $TAG ne correspond pas à VERSION.txt ($VERSION)." >&2
             exit 1
