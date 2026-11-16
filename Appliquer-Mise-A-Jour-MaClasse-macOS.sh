@@ -12,6 +12,11 @@ SERVICE_LABEL="fr.maclasse.server"
 UPDATE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.update.plist"
 SERVICE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.server.plist"
 UID_NOW="$(id -u)"
+exec 9>"$DATA/update-apply.lock"
+if ! "$ROOT/.venv/bin/python" -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2>/dev/null; then
+  echo "Une autre opération de mise à jour est déjà en cours." >&2
+  exit 1
+fi
 write_state() {
   UPDATE_STATUS="$1" UPDATE_ERROR="${2:-}" STATE_FILE="$STATE" "$ROOT/.venv/bin/python" - <<'PY'
 import json,os,time
