@@ -550,3 +550,18 @@ La déconnexion attend la sauvegarde en attente. En complément, le navigateur a
 - La synchronisation automatique du planning n'applique plus une réponse serveur si l'utilisateur a ouvert un formulaire, commencé une sauvegarde ou changé de page pendant la requête ; elle ne peut donc plus écraser un brouillon local avec une réponse arrivée en retard.
 - Les noms de fichiers sont transmis en UTF-8 percent-encodé dans un en-tête ASCII, puis décodés côté serveur. Les apostrophes typographiques, accents et caractères combinés ne font plus échouer `fetch`.
 - Le certificat HTTPS local est émis par l'autorité MaClasse. Chaque appareil client doit approuver `data/tls/ca.crt` ; ne jamais contourner l'avertissement ni partager `ca.key` ou `server.key`.
+
+
+## Supervision des mises à jour macOS — expérimental
+
+Après l'installation initiale et la configuration réseau HTTPS, le service utilisateur macOS peut être installé depuis le dossier MaClasse :
+
+```bash
+bash Installer-Service-MaClasse-macOS.sh
+```
+
+Le service `launchd` démarre MaClasse à l'ouverture de session et le relance après un incident. Il utilise les certificats TLS et la base existants dans `data/`. Les mises à jour préparées sont installées par un processus indépendant, avec sauvegarde de la base, bascule atomique du lien de version et contrôle HTTPS avant validation. Les commandes `.command` restent disponibles comme secours.
+
+Journaux : `data/macos-service.log`, `data/macos-service-error.log`, `data/macos-update.log` et `data/macos-update-error.log`.
+
+Cette supervision est encore expérimentale : ne l'active pas sur une installation contenant des données scolaires réelles avant la validation complète des tests et une sauvegarde externe.

@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+const fs = require('fs');
+const assert = require('assert');
+const source = fs.readFileSync('_all.js', 'utf8');
+assert(source.includes("function maintenanceBanner()"));
+assert(source.includes("notice.in_progress"));
+assert(source.includes("Maintenance en cours"));
+assert(source.includes("result?.scheduled||result?.in_progress"));
+assert(source.includes("api('/api/update-maintenance')"));
+assert(source.includes("function scheduleUpdate()"));
+assert(source.includes("function cancelScheduledUpdate()"));
+assert(source.includes("function editScheduledUpdate()"));
+assert(source.includes("Enregistrer le nouvel horaire"));
+assert(source.includes("onclick=\"installUpdate()\">Installer maintenant</button>"));
+assert(source.includes("else if(!silent)toast('Une nouvelle version stable est disponible dans Paramètres.')"));
+assert(source.includes("Installer maintenant"));
+assert(source.includes("Installer-Service-MaClasse-macOS.sh"));
+assert(!source.includes("Le support macOS sera ajouté ensuite."));
+assert(source.includes("Les modifications non enregistrées pourraient être perdues."));
+assert(source.includes("authCanManage()"));
+console.log("OK — carte de mise à jour direction, programmation, annulation et bannière multi-rôles.");

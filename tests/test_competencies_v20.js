@@ -12,7 +12,7 @@ function getFunction(name, nextName) {
 }
 function getLine(name) { const line = source.split(/\r?\n/).find(x => x.startsWith(`function ${name}(`)); assert(line, `function ${name} found`); return line; }
 const db = { evaluations: [{ id:'e1', classId:'c1', competencies:['Comprendre un texte'], grades:[{studentId:'s1', value:'15', comment:'Bien'}] }] };
-const ctx = { db, authUser:{role:'admin'}, save(){}, targetStudents(e){return [{id:'s1',first:'Alice',last:'Test',group:''}]}, esc:x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'), evalAverage:()=> '15.00', gradeExtremes:()=>({min:'15.00',max:'15.00'}), JSON, String, Array, Object, Number, Math };
+const ctx = { db, authUser:{role:'admin'}, save(){}, jsArg:x=>JSON.stringify(String(x??'')), targetStudents(e){return [{id:'s1',first:'Alice',last:'Test',group:''}]}, esc:x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'), evalAverage:()=> '15.00', gradeExtremes:()=>({min:'15.00',max:'15.00'}), JSON, String, Array, Object, Number, Math };
 vm.createContext(ctx);
 vm.runInContext([getFunction('setCompetencyRating','deleteEvaluation'), getLine('gradeTable')].join('\n'), ctx);
 ctx.setCompetencyRating('e1','s1','Comprendre un texte','3');
@@ -24,5 +24,5 @@ db.evaluations[0].grades[0].competencyRatings['Comprendre un texte']='4';
 const html = ctx.gradeTable(db.evaluations[0]);
 assert.ok(html.includes('Comprendre un texte'));
 assert.ok(html.includes('Très bien maîtrisé'));
-assert.ok(html.includes("setCompetencyRating('e1','s1'"));
+assert.ok(html.includes('setCompetencyRating("e1","s1"'));
 console.log('OK — niveaux de compétence enregistrés, effaçables et affichés sans écraser les notes.');

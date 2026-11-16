@@ -5,6 +5,7 @@ assert(start>=0,'Module V21.04 présent');
 const ctx={
  db:{mailboxV2:null,conversations:[{id:'legacy'}],messages:[],mailFolders:[],students:[{id:'s1',first:'Camille',last:'Test',classId:'c1'},{id:'s2',first:'Alex',last:'Autre',classId:'c1'}],teachers:[{id:'t1',first:'Prof',last:'Test',active:true},{id:'t2',first:'Autre',last:'Prof',active:true}]},
  window:{},document:{createElement:()=>({}),head:{appendChild(){}}},
+ jsArg:x=>JSON.stringify(String(x??'')),
  esc:x=>String(x??''),activeStudent:()=> 's1',currentTeacherId:()=> 't1',
  student:id=>ctx.db.students.find(x=>x.id===id)||null,teacherUser:id=>ctx.db.teachers.find(x=>x.id===(id||'t1'))||ctx.db.teachers[0],teacherName:t=>(t.first+' '+t.last).trim(),
  accessibleTeachersForStudent:()=>[{id:'t1',first:'Prof',last:'Test'}],teacherCanReachStudent:()=>true,cls:()=>({name:'Classe'}),

@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Linux integration simulation for atomic update, health-check and rollback."""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@unittest.skipUnless(sys.platform.startswith("linux"), "Le moteur d'installation cible systemd/Linux.")
+class UpdateApplyIntegrationTests(unittest.TestCase):
+    def test_rollback_fails_closed_if_previous_release_disappears(self):
+        script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text(encoding="utf-8")
+        self.assertIn('! -d "$PREVIOUS_TARGET"', script)
+        self.assertIn("réactivation atomique de la version précédente impossible", script)
+        self.assertIn("base non restaurée", script)
+
+    def test_update_installer_uses_an_exclusive_process_lock(self):
+        script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text(encoding="utf-8")
+        self.assertIn("fcntl.LOCK_EX | fcntl.LOCK_NB", script)
+        self.assertIn('update-apply.lock', script)
+
+    def make_version(self, directory, version, sha=None):
+        directory.mkdir(parents=True)
+        (directory / "VERSION.txt").write_text("V" + version + "\n", encoding="utf-8")
+        (directory / "server.py").write_text("APP_VERSION='" + version + "'\n", encoding="utf-8")
+        (directory / "_all.js").write_text("const MC_VERSION='V" + version + "';\n", encoding="utf-8")
+        (directory / ".venv" / "bin").mkdir(parents=True)
+        (directory / ".venv" / "bin" / "python").write_text("#!/bin/sh\n", encoding="utf-8")
+        (directory / ".venv" / "bin" / "python").chmod(0o755)
+        (directory / "maclasse-runtime-ready.json").write_text('{"ready":true}', encoding="utf-8")
+        if sha:
+            (directory / "maclasse-prepared.json").write_text(json.dumps({
+                "version": version, "sha256": sha, "status": "prepared"
+            }), encoding="utf-8")
+
+    def run_update(self, fail_version=None, service_active_during_rollback=False, manual_server=False):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            program = base / "program"
+            data = program / "data"
+            versions = data / "program" / "versions"
+            versions.mkdir(parents=True)
+            self.make_version(versions / "V25.0.10", "25.0.10")
+            self.make_version(versions / "V25.0.20", "25.0.20")
+            previous = versions / "V25.0.22"
+            self.make_version(previous, "25.0.22")
+            current = data / "program" / "current"
+            current.symlink_to("versions/V25.0.22")
+            target = versions / "V25.0.23"
+            sha = "a" * 64
+            self.make_version(target, "25.0.23", sha)
+            (data / "tls").mkdir()
+            (data / "tls" / "server.crt").write_text("test cert", encoding="utf-8")
+            (data / "tls" / "ca.crt").write_text("test CA", encoding="utf-8")
+            (data / "maclasse.json").write_text('{"settings":{"school":"Test"}}', encoding="utf-8")
+            (data / "update-state.json").write_text(json.dumps({
+                "status": "prepared", "version": "v25.0.23", "sha256": sha
+            }), encoding="utf-8")
+
+            fakebin = base / "bin"
+            fakebin.mkdir()
+            systemctl_log = base / "systemctl.log"
+            stubs = {
+                "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\ncase "$*" in *"show --property=MainPID --value maclasse.service"*) echo 1234; exit 0;; esac\ncase "$*" in *" stop maclasse.service"*) touch "$STOPPED_MARKER";; esac\ncase "$*" in *"is-active --quiet maclasse-update-apply.service"*) exit 3;; *"is-active --quiet maclasse.service"*) if [ "$SERVICE_ACTIVE_DURING_ROLLBACK" = "1" ] && [ -f "$SERVICE_ACTIVE_CHECK_FILE" ]; then exit 0; else touch "$SERVICE_ACTIVE_CHECK_FILE"; exit 3; fi;; esac\nexit 0\n',
+                "openssl": '#!/bin/sh\necho "X509v3 Subject Alternative Name: IP Address:192.168.1.10"\n',
+                "curl": '#!/bin/sh\nversion="$(cat "$CURRENT_LINK/VERSION.txt" | sed "s/^V//")"\nif [ "$version" = "$FAIL_VERSION" ]; then printf \'{"settings":{"school":"damaged"}}\' > "$DATA_FILE"; echo \'{"ok":false,"version":"$version","database":"error"}\'; else printf \'{"ok":true,"version":"%s","database":"ok"}\' "$version"; fi\n',
+                "pgrep": '#!/bin/sh\nif [ "$MANUAL_SERVER" = "1" ]; then echo 99999; exit 0; fi\nexit 1\n',
+                "sleep": '#!/bin/sh\nexit 0\n',
+                "cp": '#!/bin/sh\n[ -f "$STOPPED_MARKER" ] || { echo "database backup attempted before service stop" >&2; exit 77; }\nexec /bin/cp "$@"\n',
+            }
+            for name, source in stubs.items():
+                path = fakebin / name
+                path.write_text(source, encoding="utf-8")
+                path.chmod(0o755)
+
+            env = os.environ.copy()
+            env.update({
+                "PATH": str(fakebin) + os.pathsep + env.get("PATH", ""),
+                "MACLASSE_ROOT": str(program),
+                "CURRENT_LINK": str(current),
+                "SYSTEMCTL_LOG": str(systemctl_log),
+                "FAIL_VERSION": fail_version or "",
+                "SERVICE_ACTIVE_DURING_ROLLBACK": "1" if service_active_during_rollback else "0",
+                "MANUAL_SERVER": "1" if manual_server else "0",
+                "SERVICE_ACTIVE_CHECK_FILE": str(base / "active-check-count"),
+                "DATA_FILE": str(data / "maclasse.json"),
+                "STOPPED_MARKER": str(base / "server-stopped"),
+            })
+            result = subprocess.run(
+                ["/usr/bin/bash", str(ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh")],
+                cwd=program, env=env, capture_output=True, text=True, timeout=30
+            )
+            state = json.loads((data / "update-state.json").read_text(encoding="utf-8"))
+            database = json.loads((data / "maclasse.json").read_text(encoding="utf-8"))
+            backup_count = len(list((data / "backups").glob("maclasse-avant-maj-*.json")))
+            old_version_exists = (versions / "V25.0.10").exists()
+            previous_version_exists = previous.exists()
+            return result, current.resolve(), previous.resolve(), target.resolve(), state, database, backup_count, old_version_exists, previous_version_exists
+
+    def test_refuses_update_while_an_unmanaged_server_process_is_running(self):
+        result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update(manual_server=True)
+        self.assertNotEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertEqual(active, previous)
+        self.assertEqual(state["status"], "prepared")
+        self.assertEqual(backup_count, 0, "no database backup or mutation should occur before unmanaged server is stopped")
+
+    def test_success_switches_atomically_and_preserves_persistent_data(self):
+        result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update()
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        self.assertEqual(active, target)
+        self.assertEqual(state["status"], "installed")
+        self.assertEqual(database["settings"]["school"], "Test")
+        self.assertEqual(backup_count, 1)
+        self.assertFalse(old_version_exists)
+        self.assertTrue(previous_version_exists)
+
+    def test_refuses_database_restore_if_server_cannot_be_stopped(self):
+        result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update(
+            fail_version="25.0.23", service_active_during_rollback=True
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(active, target)
+        self.assertEqual(state["status"], "rollback_failed")
+        self.assertEqual(database["settings"]["school"], "damaged")
+
+    def test_failed_health_check_restores_previous_release(self):
+        result, active, previous, target, state, database, backup_count, old_version_exists, previous_version_exists = self.run_update(fail_version="25.0.23")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(active, previous)
+        self.assertEqual(state["status"], "failed")
+        self.assertIn("version précédente restaurée", state["last_error"])
+        self.assertEqual(database["settings"]["school"], "Test")
+        self.assertEqual(backup_count, 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

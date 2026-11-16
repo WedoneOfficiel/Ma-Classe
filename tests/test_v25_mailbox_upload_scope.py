@@ -58,6 +58,33 @@ class MailboxAndUploadScopeTests(unittest.TestCase):
         self.assertNotIn('forged',messages)
         self.assertEqual({d['id'] for d in merged['mailboxV2']['drafts']},{'d1','d2'})
 
+    def test_teacher_mailbox_rejects_scriptable_message_and_draft_ids(self):
+        incoming=copy.deepcopy(server._teacher_visible_data(self.data,self.t1))
+        incoming['mailboxV2']['messages'].append({
+            'id':"x');alert(1);//",'sender':{'key':'teacher:t1','role':'teacher','id':'t1'},
+            'to':['teacher:t2'],'body':'malicious'
+        })
+        incoming['mailboxV2']['drafts'].append({
+            'id':"draft');alert(1);//",'owner':'teacher:t1','body':'malicious'
+        })
+        merged=server._merge_teacher_data(self.data,incoming,self.t1)
+        ids={m['id'] for m in merged['mailboxV2']['messages']}
+        draft_ids={d['id'] for d in merged['mailboxV2']['drafts']}
+        self.assertNotIn("x');alert(1);//",ids)
+        self.assertNotIn("draft');alert(1);//",draft_ids)
+
+    def test_student_mailbox_rejects_scriptable_message_ids(self):
+        data=copy.deepcopy(self.data)
+        data['classes'][0]['teacherIds']=['t1']
+        incoming=copy.deepcopy(data)
+        incoming['mailboxV2']={'schemaVersion':2,'messages':[{
+            'id':"x');alert(1);//",'sender':{'key':'student:s1','role':'student','id':'s1'},
+            'to':['teacher:t1'],'subject':'Test','body':'malicious'
+        }],'states':{},'drafts':[],'folders':[]}
+        user={'id':'student-user','role':'student','studentId':'s1'}
+        merged=server._student_merge_mailbox(data,incoming,user,data)
+        self.assertFalse(any(m.get('id')=="x');alert(1);//" for m in merged['messages']))
+
     def test_non_cloud_upload_requires_visible_record_reference_for_read(self):
         path=os.path.join(server.UPLOADS,'lessons','c1'); os.makedirs(path)
         with open(os.path.join(path,'shared.pdf'),'wb') as f:f.write(b'ok')

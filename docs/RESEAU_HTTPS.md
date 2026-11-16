@@ -26,6 +26,14 @@ Lance le mode réseau :
 
 Le script détecte l'adresse IPv4 de l'interface par défaut, crée une autorité de certification locale et un certificat serveur pour cette adresse, puis démarre MaClasse en HTTPS.
 
+Pour installer le premier service systemd utilisateur expérimental (démarrage automatique et redémarrage après incident), après cette initialisation, exécute depuis le compte Linux qui possède le dossier MaClasse :
+
+```bash
+bash Installer-Service-MaClasse-Linux.sh
+```
+
+Le script peut demander le mot de passe sudo pour activer le maintien du service au démarrage (`loginctl enable-linger`). État : `systemctl --user status maclasse.service`. Journaux : `journalctl --user -u maclasse.service -f`. Arrêt : `systemctl --user stop maclasse.service`. Désinstallation du service uniquement : `bash Desinstaller-Service-MaClasse-Linux.sh` ; le programme et les données restent en place. Ce premier service est expérimental et doit être testé sur le PC Fedora cible avant de remplacer le lancement manuel.
+
 ### macOS Apple Silicon
 
 Lance `Installer-MaClasse.command`, initialise d'abord MaClasse en local, puis utilise `Lancer-MaClasse-Reseau.command`.

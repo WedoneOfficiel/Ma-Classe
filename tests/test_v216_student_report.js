@@ -51,7 +51,7 @@ console.log('OK — V21.17 moteur Student Report : périodes, publication, barè
 
 // Régression UI : les handlers inline doivent rester valides dans un attribut HTML.
 const source=js;
-assert(source.includes("studentReportDetail('${String(item.evaluationId)"),'detail handler must use HTML-safe single-quoted JS args');
-assert(source.includes("setStudentResultsTerm('${String(sid)"),'term handler must use HTML-safe single-quoted JS args');
+assert(source.includes('studentReportDetail(${jsArg(item.evaluationId)},${jsArg(sid)})'),'detail handler must use HTML-safe serialized JS args');
+assert(source.includes('setStudentResultsTerm(${jsArg(sid)},this.value)'),'term handler must use HTML-safe serialized JS args');
 assert(source.includes('function studentReportDetail(evaluationId,sid)'), 'detail handler must receive evaluationId, not a report item');
 console.log('OK — V21.17 handlers Résultats : détail des évaluations et changement de période.');

@@ -130,6 +130,20 @@ class StudentSubmissionUploadIntegrationTest(unittest.TestCase):
         self.assertEqual(final_data["submissions"][0]["status"], "submitted")
         self.assertTrue(final_data["submissions"][0]["submittedAt"])
 
+    def test_student_cannot_persist_scriptable_submission_id(self):
+        status, visible, headers = self.request("/api/data")
+        self.assertEqual(status, 200)
+        visible["submissions"].append({
+            "id": "x');alert(1);//", "lessonId": "lesson-1", "studentId": "student-1",
+            "status": "draft", "files": [], "createdAt": "2026-11-13T12:00:00"
+        })
+        status, result, _ = self.request("/api/save", "POST", visible,
+                                        extra_headers={"If-Match": headers.get("X-MaClasse-Revision")})
+        self.assertEqual(status, 200, result)
+        status, fresh, _ = self.request("/api/data")
+        self.assertEqual(status, 200)
+        self.assertFalse(any(x.get("id") == "x');alert(1);//" for x in fresh["submissions"]))
+
     def test_student_cannot_upload_into_another_students_folder(self):
         status, result, _ = self.request(
             "/api/upload", "POST", raw=b"not allowed",

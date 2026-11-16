@@ -392,3 +392,162 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - 16 anomalies recensées.
 - 16 **Supposées résolues** sur la base des correctifs et tests automatisés/navigateur ; 0 **Corrigé** sans confirmation de l'utilisateur ; 0 encore en cours de résolution.
 - Les validations de recette sur l'installation réelle de l'utilisateur restent à faire pour confirmer les 16 anomalies. La PR reste en brouillon, sans merge ni déploiement.
+
+
+## Campagne du 16 novembre 2026 — audit complet AMEL-01, mises à jour et sécurité
+
+**Branche :** `feature/amel-01-update-manager` — PR #10, toujours en brouillon.  
+**Portée :** nouveau gestionnaire de mises à jour, 16 anomalies applicatives du registre, contrôles de sécurité et conflits de logique.
+
+### Défauts supplémentaires détectés et correctifs poussés
+
+1. **AMEL-U1 — sauvegarde prise avant arrêt confirmé.** Risque de restaurer une copie plus ancienne que la dernière écriture du serveur. Les scripts Linux/macOS prennent désormais la sauvegarde après arrêt confirmé. Le test d'intégration Linux remplace `cp` par un garde-fou qui échoue si le service n'a pas encore été arrêté ; le test macOS vérifie l'ordre des opérations.
+2. **AMEL-U2 — annulation launchd non vérifiée.** Le code pouvait supprimer le plist et annoncer l'annulation sans avoir confirmé le déchargement du job. Le contrôle `launchctl print` encadre maintenant le `bootout`, puis un second contrôle confirme l'arrêt avant suppression du plist.
+3. **AMEL-U3 — analyse incorrecte de `launchctl list`.** Un en-tête de colonnes pouvait être pris pour un PID, ou un job chargé mais inactif confondu avec un processus en cours. Le parseur ne reconnaît plus que les PID numériques. Tests ajoutés pour un job inactif et actif.
+4. **AMEL-S1 — cible de version Linux insuffisamment bornée.** Le lanceur Linux vérifie maintenant le chemin canonique du lien `data/program/current` et refuse toute cible hors de la racine ou du dossier `versions`.
+5. **AMEL-S2 — redirections GitHub.** La validation de l'hôte est désormais faite avant de suivre chaque redirection, et pas seulement après le téléchargement. Tests ajoutés pour les destinations locales, externes, avec identifiants ou ports non autorisés.
+6. **AMEL-U4 — versions SemVer à zéros initiaux.** Ces valeurs pouvaient créer un écart entre le dossier normalisé lors de la préparation et le chemin calculé lors de l'installation. Le moteur et le workflow de publication les refusent désormais.
+7. **AMEL-U5 — concurrence d'installation.** Les scripts Linux/macOS prennent un verrou exclusif `fcntl.flock` afin d'empêcher deux bascules simultanées.
+
+### Tests supplémentaires des bugs applicatifs
+
+- Le test Firefox réel couvre maintenant la couleur personnalisée d'une matière dans les espaces professeur et élève.
+- Il vérifie l'enregistrement d'un créneau sans rechargement ni perte de position au moment de la sauvegarde.
+- Il ouvre le module Paramètres élève et contrôle le profil, la sécurité et les trois choix de thème.
+- Il ouvre le module Séances & Leçons et vérifie la barre d'en-tête.
+- Le test bulletin vérifie explicitement que 8/10 devient 16/20, que la moyenne normalisée attendue est calculée et qu'une note supérieure au barème est écartée.
+- Un test serveur vérifie qu'un enseignant ayant assuré une matière pendant une période passée peut modifier l'appréciation correspondante, sans pouvoir modifier la matière d'un autre enseignant.
+
+### Résultats CI observés et corrections des tests
+
+- Le run #43842298396 a exécuté les tests Python avec succès ; le test Firefox a d'abord échoué parce que la mesure de défilement était prise avant l'ouverture de la fenêtre modale (le test mesurait le déplacement causé par l'ouverture, pas par l'enregistrement).
+- Le run #43842852531 a révélé deux défauts dans les tests ajoutés : la regex SemVer n'avait pas été modifiée dans le fichier source malgré le test, et le scénario Firefox restait sur la page Séances & Leçons lorsqu'il attendait la boîte de réception. Le code SemVer a été corrigé et la mesure de défilement a été déplacée juste avant la validation du formulaire ; le test revient maintenant explicitement à `studentMessages` après ses contrôles Paramètres/Leçons.
+- Les tests bulletin, droits d'affectation historique, intégration d'installation Linux et tests d'archives étaient verts dans ce run. Les deux échecs identifiés sont donc consignés comme défauts de couverture/fixtures, pas comme bugs applicatifs démontrés.
+- Les commits de correction ont relancé la CI ; la validation finale de la tête courante doit encore être vérifiée. Ne pas utiliser les résultats d'un run sur un commit antérieur comme preuve pour la tête courante.
+- Le job macOS est resté en file d'attente lors des derniers contrôles. Aucun essai sur le Mac réel de l'utilisateur et aucune recette Fedora n'ont été effectués.
+
+### Statut prudent au 16/11/2026
+
+- Les 16 anomalies historiques restent « Supposé résolu », jamais « Corrigé » sans retour explicite de l'utilisateur.
+- Les 7 anomalies complémentaires AMEL-U1 à AMEL-U5 et AMEL-S1 à AMEL-S2 sont inscrites dans `REGISTRE_BUGS_V25.md` avec statut « En cours de validation CI ».
+- La PR #10 reste ouverte et en brouillon ; aucune fusion, aucun déploiement et aucune modification de l'installation locale.
+
+
+### Compléments de l'audit macOS et du cycle de versions — 16/11/2026
+
+8. **AMEL-U6 — environnement Python d'une release lié à l'ancienne version.** Le serveur préparait le venv avec `sys.executable`, qui peut désigner le Python de la version active. Le nouveau venv est maintenant créé avec `sys._base_executable` (fallback `sys.executable`) afin de ne pas dépendre d'une version susceptible d'être supprimée. Un test vérifie l'interpréteur passé à `venv`.
+9. **AMEL-U7 — racine macOS perdue après une première mise à jour.** Un agent launchd pouvait lancer le script depuis le dossier de version actif, puis le script interpréter ce dossier comme la racine d'installation et chercher `data` au mauvais endroit. Le lanceur transmet maintenant `MACLASSE_ROOT` et `MACLASSE_DATA_DIR` ; les deux plists launchd les transportent, et le script dispose d'un fallback depuis `data/program/versions/Vx`. Tests des environnements immédiat et programmé ajoutés.
+10. **AMEL-U8 — message d'interface macOS obsolète.** Malgré l'implémentation launchd, la carte Mises à jour affichait encore « Le support macOS sera ajouté ensuite ». Le message fournit maintenant le prérequis TLS et la commande d'installation du service macOS. Test UI ajouté.
+
+### Limites fonctionnelles qui restent ouvertes
+
+- Le dépôt ne contient actuellement **aucune GitHub Release stable publiée**. Le téléchargement d'une vraie archive de release, sa signature SHA-256 publiée et le parcours complet depuis un tag ne peuvent donc pas encore être validés sur un artefact réel. Les tests actuels simulent ces réponses et archives.
+- Le job macOS de la CI reste nécessaire pour valider les scripts sur runner Apple. Même vert, il ne remplacera pas la recette sur le Mac réel, notamment après une première mise à jour puis une seconde (pour vérifier que les scripts continuent de trouver la racine et les données).
+- La recette Fedora sur le PC cible reste à faire. Aucun changement local n'a été appliqué.
+
+
+
+11. **AMEL-U9 — annulation systemd non confirmée.** Le timer Linux pouvait être supprimé du disque et considéré annulé même si `systemctl disable --now` n'avait pas réussi. L'annulation contrôle maintenant séparément `is-active` et `is-enabled`, et ne supprime le fichier qu'après confirmation de l'état inactif/désactivé. Un test simule un timer toujours actif et vérifie que le fichier est conservé et que l'annulation échoue.
+
+
+12. **AMEL-U10 — restauration de base non atomique.** Le rollback copiait directement le JSON de sauvegarde sur le fichier actif ; une interruption pendant cette copie pouvait laisser une base partielle. Les scripts Linux/macOS copient maintenant vers un fichier temporaire sur le même volume, font un `fsync`, remplacent atomiquement avec `os.replace`, puis synchronisent le dossier. Le scénario d'intégration Linux vérifie déjà le contenu après rollback ; le test macOS vérifie le mécanisme atomique.
+
+
+13. **AMEL-U11 — course entre installation immédiate et maintenance programmée.** Un démarrage immédiat pouvait décharger un job launchd dont le processus d'installation avait déjà démarré ; le chemin systemd ne refusait pas non plus explicitement un double démarrage. Le lancement immédiat et l'annulation du timer vérifient maintenant l'état du processus d'installation avant toute action ; un timer ne peut pas décharger un updater déjà actif. Tests ajoutés sur les deux plateformes.
+
+
+14. **AMEL-U12 — double démarrage macOS après installation du service.** Les lanceurs manuels local et réseau ne vérifiaient que le port loopback ; le service launchd réseau pouvait donc être actif sur l'adresse LAN sans être détecté, et un second processus aurait pu écrire dans la même base. Les deux lanceurs vérifient maintenant le job launchd avant toute création de serveur, ouvrent l'URL HTTPS du certificat existant et refusent une seconde instance. Test statique et vérification de syntaxe shell ajoutés.
+
+
+15. **AMEL-U13 — unités systemd/launchd restant attachées au lanceur initial.** Après une mise à jour, le service pouvait continuer d'utiliser le lanceur racine initial plutôt que le lanceur versionné ; le passage vers `current` exigeait en plus de transmettre la racine stable, faute de quoi le runner prenait le dossier de version pour la racine des données. Les unités pointent maintenant vers `data/program/current/Lancer-MaClasse-Service-*.sh` et transmettent `MACLASSE_ROOT` / `MACLASSE_DATA_DIR`. Les lanceurs résolvent la racine stable et utilisent le code de la version active. Tests de syntaxe, chemin du plist et variables systemd/launchd ajoutés.
+
+
+16. **AMEL-S3 — XSS stockée via identifiants et motifs de créneaux.** L'audit a trouvé des identifiants de planning injectés directement dans des gestionnaires HTML inline et un motif injecté dans une propriété CSS. Le correctif sérialise les identifiants en littéraux JavaScript puis échappe l'attribut HTML, limite les motifs à `none`, `hatch`, `cross`, et refuse côté serveur les nouveaux identifiants non sûrs dans les enregistrements enseignant/élève et les messages/drafts de messagerie. Tests ajoutés : exécution du gestionnaire généré avec un identifiant malveillant, rejet des identifiants côté serveur, et rejet des motifs CSS arbitraires.
+
+
+17. **AMEL-S4 — XSS stockée dans les contenus riches.** Le contenu des séances, les consignes de devoir et les retours de correction étaient réinjectés en HTML brut. Un professeur pouvait accidentellement ou malicieusement publier un script, un attribut événementiel ou un lien `javascript:) exécuté dans l'espace élève. Un assainisseur HTML à liste blanche est maintenant appliqué côté serveur à la lecture et à chaque sauvegarde ; l'interface applique également un assainissement avant d'afficher ou d'éditer ces champs. Les balises de script/style/iframe/SVG sont supprimées, les attributs événementiels retirés, les liens limités à HTTP(S) et les styles aux couleurs/tailles de texte autorisées. Tests serveur et navigateur ajoutés.
+
+
+### Audit approfondi du 16/11/2026 — régressions CI et correctifs ciblés
+
+18. **AMEL-S7 — syntaxe invalide dans `cloudNewFolder()`.** Le run CI #1415 a montré que la nouvelle interpolation de `parentPath` était imbriquée dans une interpolation de template string. `node --check _all.js` échouait et l'application ne se chargeait pas ; le test Firefox EDT échouait en cascade parce que le formulaire de connexion n'apparaissait pas. Le calcul de `parentPath` a été déplacé avant le template et sa valeur est injectée par `jsArg(parentPath)` (`f12bdfd`). Le run suivant a validé `node --check` et le test Firefox réel. Statut : correctif technique appliqué, CI complète à reconfirmer sur la tête courante.
+
+19. **AMEL-U18 — génération invalide du timer systemd.** L'audit du code a révélé que `_schedule_update_timer()` écrivait des séquences littérales `\\n` au lieu de vrais retours à la ligne. Le fichier de timer ne contenait donc pas de sections systemd séparées ; le test existant vérifiait seulement la présence de mots-clés et ne détectait pas le défaut. Le code produit maintenant de vraies lignes et le test vérifie explicitement la première ligne, les sections et l'absence de séquences littérales. Correctifs poussés dans `d4cb86e`, `9474b2f` et `a9abe43`. Statut : CI à reconfirmer.
+
+20. **Fixture de test des compétences obsolète (hors bug applicatif).** Le test `test_competencies_v20.js` évaluait désormais `gradeTable()` sans fournir le helper global `jsArg` ajouté au rendu sécurisé. La CI échouait avec `ReferenceError: jsArg is not defined`, alors que le code applicatif disposait du helper. Le contexte du test est complété avec le helper déterministe ; correction dans `36bb248`. Statut : CI à reconfirmer.
+
+### État de la CI au dernier contrôle
+- Run #1415 : échec sur la syntaxe de `_all.js` ; le test Firefox échouait en cascade ; le job macOS avait aussi été arrêté à la même vérification syntaxique.
+- Run #1417 : `node --check` Linux/macOS réussi, installateur macOS Apple Silicon réussi, régression Firefox réelle réussie ; les tests JavaScript ont ensuite échoué sur la fixture obsolète `test_competencies_v20.js`.
+- Les correctifs de sérialisation du timer systemd et de la fixture JS ont été poussés après ce run. Il faut attendre une nouvelle CI complète sur le dernier commit avant de conclure.
+- Aucun artefact de release stable n'est publié à ce jour : l'installation depuis une vraie release, la vérification SHA-256 contre une release publiée et les mises à jour successives restent impossibles à valider de bout en bout.
+- Aucun test n'a été exécuté sur le Mac de l'utilisateur ni sur le PC Fedora cible ; aucune installation locale n'a été modifiée.
+
+
+21. **Fixture de test des compétences — format des arguments.** Après ajout du helper `jsArg`, le test évaluait bien la fonction mais attendait encore des arguments sérialisés avec apostrophes simples. Le sérialiseur produit volontairement des littéraux JSON entre guillemets doubles ; l'assertion était donc obsolète. Elle attend maintenant `setCompetencyRating("e1","s1"` (`0f88e86`). Ce n'est pas un défaut fonctionnel de l'application, mais un défaut du test. La nouvelle CI doit confirmer la suite complète.
+
+
+22. **Fixture de test de messagerie V21.04 — helper manquant.** Après correction de la fixture compétences, la suite JS a atteint `test_v2104_mail_model.js`, qui évaluait le rendu réel `messages()` sans fournir `jsArg`. Le test échouait donc par `ReferenceError`, sans démontrer de défaut de la messagerie. Le helper déterministe est ajouté au sandbox (`3d88655`). La CI suivante doit vérifier si d'autres anciens sandboxes nécessitent la même mise à jour.
+
+
+23. **Assertion UI de messagerie V21.11 obsolète.** Le test attendait encore l'interpolation brute `${m.id}` dans le handler des favoris, alors que le code actuel utilise correctement `jsArg(m.id)`, `jsArg(role)` et `jsArg(sid)` pour éviter l'injection de code. Le test est adapté à cette sérialisation sûre (`f0e22dc`). La CI suivante doit confirmer le reste de la suite JavaScript.
+
+
+24. **Assertions UI du module Résultats élève V21.17 obsolètes.** Le test attendait les anciennes interpolations directes de chaînes dans les handlers du détail d'évaluation et du sélecteur de période. Le code actuel utilise `jsArg()` pour sérialiser les identifiants ; les deux assertions sont mises à jour pour vérifier cette protection (`46fcedd`). La CI suivante doit poursuivre la suite complète.
+
+
+25. **Assertion de navigation EDT obsolète.** Le test attendait encore l'interpolation directe `${iso(x)}` dans les handlers du calendrier mensuel et du mini-calendrier. Le code utilise maintenant `jsArg(iso(x))` pour sérialiser les dates dans les attributs HTML. Les assertions contrôlent cette version sûre (`1e53fc3`). Les tests de logique du calendrier eux-mêmes avaient passé jusqu'à cette assertion. CI à reconfirmer.
+
+
+26. **Sandbox du test de navigation EDT — helper manquant.** Après adaptation des assertions aux handlers de dates sérialisés, le test a exécuté le vrai rendu du calendrier mensuel mais son contexte VM ne fournissait pas `jsArg`. Le helper de sérialisation est ajouté au sandbox (`8c647a3`). Les assertions de logique de navigation et de récurrence avaient été franchies avant le rendu mensuel. CI à reconfirmer.
+
+
+27. **Renforcement de la recette macOS launchd.** Les tests précédents validaient la génération du plist et simulaient `launchctl` ; ils ne vérifiaient pas que le gestionnaire launchd du runner macOS acceptait réellement le bootstrap. Un test d'intégration isolé crée un HOME temporaire, installe un agent avec un lanceur factice, vérifie son démarrage effectif puis le décharge et nettoie le processus (`e667b59`). Il est limité au runner macOS et ne touche pas à une installation réelle de l'utilisateur. Il doit encore passer en CI.
+
+
+28. **Sandbox du test EDT élève — helper manquant.** La suite a atteint le rendu de la page « Séances & leçons » et le test VM n'avait pas le helper `jsArg` désormais utilisé pour les dates dans les attributs. Ajout du sérialiseur au contexte du test (`60b7580`). Les vérifications précédentes du rendu élève et des fonctions de navigation avaient passé avant cette exception. CI à reconfirmer.
+
+
+29. **Assertion du test systemd — échappement incorrect.** La première version du test renforcé cherchait un vrai caractère de nouvelle ligne (`\n` interprété par Python) au lieu de la séquence littérale barre oblique inversée + n. Le code de production avait bien produit des retours à la ligne ; c'est l'assertion qui échouait. L'assertion teste maintenant la séquence littérale avec le bon échappement (`40e0f2a`). Les 18 tests du gestionnaire de mises à jour et les 6 tests d'application/rollback avaient déjà passé avant cette assertion.
+
+
+30. **Bornage temporel du test launchd réel.** Les commandes de lecture `launchctl print` du nouveau test d'intégration sont maintenant limitées à 10 secondes, comme l'installation (30 s) et le déchargement (10 s). Cela évite qu'un runner macOS ne bloque indéfiniment si le domaine GUI ou launchd ne répond pas (`be66a47`). À valider sur le prochain run macOS.
+
+
+31. **Test launchd réel — second `launchctl print` non borné.** L'audit de la durée du job a montré qu'une des deux inspections du domaine GUI n'avait pas reçu le timeout (le remplacement initial n'avait modifié que la première occurrence). Les deux appels sont maintenant limités à 10 secondes (`49568cd`). Cela explique le risque de blocage du test sur macOS ; le prochain run doit confirmer le démarrage/déchargement réel.
+
+
+32. **CI Python — durée individuelle bornée.** Le job macOS reste sur l'étape de tests Python alors que Linux a terminé. Pour identifier précisément un test qui bloquerait le runner et éviter une attente de 20 minutes sans diagnostic, chaque fichier Python est maintenant exécuté dans un sous-processus limité à 90 secondes sur Linux et macOS (`a5011f9`). Le nom du fichier est déjà affiché dans le groupe de logs ; un dépassement sera ainsi attribuable. CI à reconfirmer.
+
+
+33. **Risque de chaîne d'approvisionnement — signature de release absente.** Le SHA-256 de l'archive est vérifié contre le manifeste de la même release GitHub : cela protège contre la corruption et les incohérences, mais ne constitue pas une signature d'éditeur indépendante. Une compromission du compte ou du workflow de publication pourrait remplacer à la fois manifeste et archive. Le registre contient maintenant `AUDIT-S2` : ajouter une signature détachée ou une attestation vérifiable avec clé publique épinglée. Ce point exige une décision/configuration de clé de signature dans GitHub Actions ; il est bloquant avant toute release stable de production.
+
+
+34. **Campagne CI Linux — run #1452.** Résultat vert sur la tête `957f6e1` : installateur Linux réel, `node --check`, syntaxe des lanceurs, 45 fichiers de tests JavaScript, compilation Python et 30 fichiers de tests Python. Les 188 cas `unittest` exécutés dans les suites Python sont tous verts, notamment les 18 tests `update_manager`, les 6 tests d'application/rollback et le test de timer systemd. La régression EDT Firefox réel est encore en cours sur ce run ; le job macOS est en attente.
+
+
+34. **Test XSS EDT — faux événement de glisser-déposer incomplet.** Le test appelait le gestionnaire inline ondragstart dans Node VM sans lui fournir un objet navigateur event/DataTransfer complet. La CI échouait donc dans le harnais de test, pas dans le rendu ou la sérialisation des identifiants. Le test fournit maintenant un faux DataTransfer réaliste et vérifie la valeur transmise (0c9e770, puis ajustement de l'assertion dans 431e485). Le run #1460 a confirmé que la suite JavaScript Linux et macOS passait après cette correction.
+
+35. **AUDIT-U2 — mise à jour macOS historique non sûre en mode supervisé.** Mettre-A-Jour-MaClasse.command pouvait encore effectuer un git merge directement dans le code actif. Ajout d'un refus explicite si data/update-manager.enabled existe et d'un contrôle pgrep qui impose l'arrêt du serveur pour le parcours initial non supervisé. Deux tests fonctionnels couvrent le refus en mode supervisé et le refus si le serveur est actif (b07dd00, 7efc952). La migration initiale depuis V25.0.19 devra être répétée sur une copie de données avant de donner une procédure utilisateur.
+
+36. **AUDIT-U3 — bannière de maintenance masquée pendant l'installation.** L'API ne publiait que l'état scheduled ; au passage à installing, elle renvoyait une absence de maintenance. Ajout de _public_update_maintenance() avec projection minimale des données, état in_progress, bannière « Maintenance en cours » et tests Python/UI (507f13d, ab8291c, 8dd978e, c432453). CI à confirmer sur la tête finale.
+
+37. **CI #1459 — défaut de fixture de test, pas défaut d'application.** Le test test_v25_schedule_xss.js a d'abord échoué car l'objet de glisser-déposer n'était pas fourni au contexte VM, puis son assertion observait le mauvais sandbox. Les deux défauts du test ont été corrigés. Le run #1460 a ensuite passé tous les tests JavaScript et Python Linux ; sur macOS, les tests JavaScript et l'intégration launchd réelle ont également passé, tandis que les tests Python continuaient au dernier contrôle.
+
+
+
+38. **AUDIT-S4 — publication stable sans dépendance aux tests.** Le workflow publish-release.yml validait le tag et VERSION.txt, mais pouvait publier une release même si les tests de l'application échouaient. Le workflow tests.yml expose maintenant workflow_call et la publication dépend du job réutilisable validate, qui exécute la matrice Linux, macOS et Firefox. Test statique du lien de dépendance ajouté dans test_v25_update_scripts.py (commits 26e25cb, e862dbe, 7c3113d). À confirmer sur un vrai déclenchement par tag avant toute release.
+
+
+
+39. **AUDIT-U4 — adresse DHCP macOS modifiée pendant l'exécution.** Le lanceur renouvelle le certificat lorsque le LaunchAgent démarre, mais le serveur reste lié à son adresse IP actuelle pendant toute sa vie. Si le routeur attribue une nouvelle IP sans redémarrage du service, l'ancienne écoute et le certificat ne correspondent plus à l'adresse utilisée. Pas de correctif automatique engagé : une surveillance réseau doit être conçue sans entrer en conflit avec les redémarrages de mise à jour. Recommandation temporaire : réserver l'adresse DHCP du Mac dans le routeur et redémarrer le service après tout changement.
+
+
+
+40. **CI complète #1477 — tête 7990ae5.** Résultat vert sur les trois jobs : Linux (installateur réel, syntaxe, tous les tests JavaScript et Python), Firefox réel (parcours EDT avec comptes direction/professeur/élève, pièces jointes de devoir, messagerie élève, paramètres élève, synchronisation et structure EDT enseignant/élève) et macOS Apple Silicon (installateur, syntaxe, tous les tests JavaScript, bootstrap/déchargement launchd réel et tous les tests Python). Les 11 tests de tests/test_macos_supervisor.py ont été exécutés deux fois et réussis ; les 7 tests de tests/test_v25_update_scripts.py passent également (un test Linux-only est ignoré sur macOS). Cette réussite CI ne remplace pas la recette sur le Mac et le PC Fedora de l'utilisateur, ni le test d'une vraie GitHub Release.
+
+
+
+41. **AMEL-U19 — échec du test macOS de mise à jour HTTPS de bout en bout.** Le run #1486 a passé l'installation Apple Silicon, la syntaxe et les tests JavaScript, mais le scénario réel launchd → serveur HTTPS → mise à jour → health-check n'a pas obtenu de réponse HTTP sur la version initiale. Le test launchd isolé passait. Le run #1489 a reproduit l'échec ; le test a été instrumenté pour journaliser le lanceur, l'état des processus et les sockets TCP, et son client HTTPS local utilise maintenant un opener sans proxy. Les jobs Linux et Firefox du run #1490 sont verts ; le job macOS a été annulé par les commits suivants. Un nouveau run #1492 est en attente. Ne pas déclarer la chaîne macOS validée avant réussite du test de bout en bout et de tous les tests Python macOS.
+
+42. **MIG-01 — migration initiale V25.0.19 non validée.** L'installation actuelle ne possède pas encore le gestionnaire supervisé. L'architecture cible utilise data/program/current, des versions isolées et un dossier data persistant. La préparation vérifie schemaVersion contre min_data_schema=25011 ; si le champ est absent ou trop ancien, elle bloque la mise à jour. Aucun script de migration complet n'a été testé sur une copie représentative. Le registre REGISTRE_BUGS_V25.md marque ce point bloquant avant toute procédure utilisateur : sauvegarde externe, vérification du schéma, préservation base/uploads/certificats, migration et rollback sur copie.

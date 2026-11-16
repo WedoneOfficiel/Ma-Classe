@@ -21,7 +21,7 @@ assert(source.includes("${studentMode?'':`<button class=\"eventEdit\""), 'Le bou
 assert(source.includes("${studentMode?'':'ondragover=\"allowScheduleDrop(event)\""), 'Les zones de dépôt doivent être désactivées dans l’EDT élève.');
 assert(source.includes('name="color" value="${esc(subjectColor(s.subject)[2])}"'), 'Le formulaire EDT doit proposer la couleur globale de la matière.');
 assert(source.includes('db.settings.subjectColors??={}'), 'Les couleurs personnalisées doivent être stockées dans les paramètres.');
-assert(source.includes("const c=subjectColor(o.subject), pattern=o.pattern||'none';"), 'Les créneaux doivent lire la couleur depuis la matière.');
+assert(source.includes("const c=subjectColor(o.subject), rawPattern=String(o.pattern||'none'), pattern="), 'Les créneaux doivent lire la couleur depuis la matière et normaliser le motif.');
 assert(source.includes('db.schedule.filter(x=>subjectColorKey(x.subject)===subjectColorKey(o.subject)).forEach(x=>delete x.color)'), 'La sauvegarde doit supprimer les anciennes couleurs locales de la matière.');
 assert(source.includes('La couleur est commune à une matière dans tout l’établissement'), 'Le gestionnaire doit expliquer la portée globale de la couleur.');
 
@@ -62,7 +62,8 @@ const context = {
   studentLessonDayList: () => '<div id="lesson-list"></div>',
   studentLessonWorkList: () => '<div id="work-list"></div>',
   studentLessonUpcomingList: () => '<div id="upcoming-list"></div>',
-  iso: d => { const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+  iso: d => { const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); },
+  jsArg: value => JSON.stringify(String(value ?? ''))
 };
 vm.createContext(context);
 let start = source.indexOf('function studentSchedule(){');

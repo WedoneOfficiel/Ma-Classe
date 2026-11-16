@@ -6,6 +6,19 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "Ce lanceur réseau est réservé à macOS."
   exit 1
 fi
+if /bin/launchctl print "gui/$(id -u)/fr.maclasse.server" >/dev/null 2>&1; then
+  echo "Le service MaClasse est déjà chargé par launchd."
+  echo "Ne démarre pas une seconde copie : elle partagerait la même base de données."
+  HOST="$(/usr/bin/openssl x509 -in "data/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -oE 'IP Address:[0-9.]+' | /usr/bin/head -n1 | /usr/bin/cut -d: -f2 || true)"
+  if [[ -n "$HOST" ]]; then
+    open -a "Firefox" "https://$HOST:8765" >/dev/null 2>&1 || open "https://$HOST:8765" >/dev/null 2>&1 || true
+  else
+    echo "Certificat HTTPS introuvable ; consulte data/macos-service-error.log."
+  fi
+  read -r -p "Appuie sur Entrée pour fermer cette fenêtre… " _ || true
+  exit 0
+fi
+
 if [[ ! -x ".venv/bin/python" ]]; then
   echo "Installe d'abord MaClasse avec Installer-MaClasse.command."
   read -r -p "Appuie sur Entrée pour fermer… " _ || true
