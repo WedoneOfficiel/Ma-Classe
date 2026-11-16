@@ -56,7 +56,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
             stubs = {
                 "systemctl": '#!/bin/sh\necho "$*" >> "$SYSTEMCTL_LOG"\nexit 0\n',
                 "openssl": '#!/bin/sh\necho "X509v3 Subject Alternative Name: IP Address:192.168.1.10"\n',
-                "curl": '#!/bin/sh\nversion="$(cat "$CURRENT_LINK/VERSION.txt" | sed "s/^V//")"\nif [ "$version" = "$FAIL_VERSION" ]; then echo \'{"ok":false,"version":"$version","database":"error"}\'; else printf \'{"ok":true,"version":"%s","database":"ok"}\' "$version"; fi\n',
+                "curl": '#!/bin/sh\nversion="$(cat "$CURRENT_LINK/VERSION.txt" | sed "s/^V//")"\nif [ "$version" = "$FAIL_VERSION" ]; then printf \'{"settings":{"school":"damaged"}}\' > "$DATA_FILE"; echo \'{"ok":false,"version":"$version","database":"error"}\'; else printf \'{"ok":true,"version":"%s","database":"ok"}\' "$version"; fi\n',
                 "sleep": '#!/bin/sh\nexit 0\n',
             }
             for name, source in stubs.items():
@@ -71,6 +71,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
                 "CURRENT_LINK": str(current),
                 "SYSTEMCTL_LOG": str(systemctl_log),
                 "FAIL_VERSION": fail_version or "",
+                "DATA_FILE": str(data / "maclasse.json"),
             })
             result = subprocess.run(
                 ["/usr/bin/bash", str(ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh")],
