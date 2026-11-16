@@ -6,7 +6,7 @@ const NAV=[['dashboard','⌂','Tableau de bord'],['activity','◉','Centre d’a
 const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const uid=()=>globalThis.crypto?.randomUUID?globalThis.crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2); const iso=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
-let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let setupRequired=false;let dataRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
+let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let updateCheckTimer=null;let setupRequired=false;let dataRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
 function blank(){return {evaluationTemplates:[],competencyLibrary:[],settings:{rooms:[],termMode:'trimestres',terms:[{id:uid(),name:'Trimestre 1',start:'2026-09-01',end:'2026-12-18'},{id:uid(),name:'Trimestre 2',start:'2027-01-04',end:'2027-03-31'},{id:uid(),name:'Trimestre 3',start:'2027-04-01',end:'2027-07-02'}]},classes:[],students:[],teachers:[],subjects:[],schedule:[],teacherAssignments:[],lessons:[],evaluations:[],attendance:[],bulletins:[],attachments:[],submissions:[],conversations:[],cloudItems:[],mailFolders:[],users:[],notifications:[],auditLog:[]}}
 async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='/api/data'||path==='/api/save')){const rev=r.headers.get('X-MaClasse-Revision');if(rev)dataRevision=rev}if(!r.ok){let detail=await r.text();try{const parsed=JSON.parse(detail);if(parsed.code==='REVISION_CONFLICT'||parsed.code==='REVISION_REQUIRED')detail='Les données ont changé sur le serveur. Recharge la page avant de continuer pour éviter d’écraser le travail d’un autre utilisateur.';else detail=parsed.error||detail}catch{}const error=Error(detail);error.status=r.status;throw error}return r.json()}
 function formatMaintenanceDate(timestamp){return new Date(Number(timestamp)*1000).toLocaleString()}
@@ -20,6 +20,10 @@ async function refreshMaintenanceNotice(){
  if(!authUser){maintenanceNotice=null;return}
  try{const previous=JSON.stringify(maintenanceNotice);const result=await api('/api/update-maintenance');maintenanceNotice=result?.scheduled?result:null;if(previous!==JSON.stringify(maintenanceNotice))render()}
  catch(error){console.warn('Notification de maintenance indisponible',error)}
+}
+function startUpdateCheckSync(){
+ if(updateCheckTimer)return;
+ updateCheckTimer=window.setInterval(()=>{if(authCanManage())checkForUpdates(true)},6*60*60*1000);
 }
 function startMaintenanceNoticeSync(){
  if(maintenanceNoticeTimer)return;
@@ -102,20 +106,20 @@ async function prepareUpdate(){
  }catch(error){toast(error.message||'Préparation impossible.')}
  finally{updateCheckBusy=false;render()}
 }
-async function checkForUpdates(){
+async function checkForUpdates(silent=false){
  if(!authCanManage())return toast('La recherche de mises à jour est réservée à la direction.');
  if(updateCheckBusy)return;
  updateCheckBusy=true;render();
  try{
   updateCheckResult=await api('/api/admin/updates/check');
-  if(!updateCheckResult.available)toast('MaClasse est déjà à jour.');
+  if(!updateCheckResult.available){if(!silent)toast('MaClasse est déjà à jour.')}
   else if(!updateCheckResult.compatible)toast('Une mise à jour existe, mais elle est incompatible avec la structure actuelle des données.');
-  else toast('Une nouvelle version stable est disponible.');
- }catch(error){updateCheckResult={error:error.message||'Vérification indisponible.'};toast(updateCheckResult.error)}
+  else toast('Une nouvelle version stable est disponible dans Paramètres.');
+ }catch(error){updateCheckResult={error:error.message||'Vérification indisponible.'};if(!silent)toast(updateCheckResult.error)}
  finally{updateCheckBusy=false;render()}
 }
 
-async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=notice?.scheduled?notice:null}else{db=blank();maintenanceNotice=null}}catch(e){offline=true;db=blank();authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync()}
+async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=notice?.scheduled?notice:null}else{db=blank();maintenanceNotice=null}}catch(e){offline=true;db=blank();authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
 let liveSyncTimer=null,liveSyncBusy=false;
 async function refreshLiveScheduleData(){
  if(liveSyncBusy||!authUser||!['schedule','studentSchedule','lessons','studentLessons','studentWork'].includes(page)||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open'))return;
@@ -163,7 +167,7 @@ function ensureUsers(){if(!Array.isArray(db.users))db.users=[];db.teachers=db.us
 function authCanManage(){return authUser?.role==='admin'}
 function authCanTeacher(){return authUser?.role==='teacher'||authUser?.role==='admin'}
 function authStudent(){return authUser?.role==='student'?authUser.studentId:''}
-async function performLogin(e){e.preventDefault();const f=new FormData(e.target),username=String(f.get('username')||'').trim().toLowerCase(),pass=String(f.get('password')||'');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({username,password:pass})});const out=await r.json();if(!r.ok)throw Error(out.error||'Connexion impossible.');writeSession(out.user);if(out.user.mustChangePassword){openInitialPasswordModal();return}db=await api('/api/data');await refreshMaintenanceNotice();normalize();setupRequired=false;appSpace=out.user.role==='student'?'student':'teacher';page=out.user.role==='student'?'studentHome':(out.user.role==='admin'?'adminUsers':'dashboard');render()}catch(err){toast(err.message||'Identifiant ou mot de passe incorrect.')}}
+async function performLogin(e){e.preventDefault();const f=new FormData(e.target),username=String(f.get('username')||'').trim().toLowerCase(),pass=String(f.get('password')||'');try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({username,password:pass})});const out=await r.json();if(!r.ok)throw Error(out.error||'Connexion impossible.');writeSession(out.user);if(out.user.mustChangePassword){openInitialPasswordModal();return}db=await api('/api/data');await refreshMaintenanceNotice();normalize();setupRequired=false;appSpace=out.user.role==='student'?'student':'teacher';page=out.user.role==='student'?'studentHome':(out.user.role==='admin'?'adminUsers':'dashboard');render();if(authCanManage())checkForUpdates(true)}catch(err){toast(err.message||'Identifiant ou mot de passe incorrect.')}}
 function openInitialPasswordModal(){openModal('Changer mon mot de passe',`<div class="notice warn">Saisis ton mot de passe actuel, puis choisis un nouveau mot de passe personnel d’au moins 12 caractères.</div><form onsubmit="saveInitialPassword(event)"><div class="form"><div class="field full"><label>Mot de passe actuel</label><input class="input" name="current" type="password" autocomplete="current-password" required></div><div class="field full"><label>Nouveau mot de passe personnel</label><input class="input" name="next" type="password" minlength="12" autocomplete="new-password" required></div><div class="field full"><label>Confirmer le nouveau mot de passe</label><input class="input" name="confirm" type="password" minlength="12" autocomplete="new-password" required></div></div><div class="modalfoot"><button class="btn primary">Enregistrer et continuer</button></div></form>`)}
 async function saveInitialPassword(e){e.preventDefault();const f=new FormData(e.target),current=String(f.get('current')||''),next=String(f.get('next')||''),confirm=String(f.get('confirm')||'');if(next.length<12)return toast('Choisis au moins 12 caractères.');if(next!==confirm)return toast('Les deux mots de passe ne correspondent pas.');try{const r=await fetch('/api/auth/change-password',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({currentPassword:current,newPassword:next})}),out=await r.json();if(!r.ok)throw Error(out.error||'Modification impossible.');closeModal();const session=await api('/api/auth/session');writeSession(session.user);db=await api('/api/data');normalize();appSpace=authUser.role==='student'?'student':'teacher';page=authUser.role==='student'?'studentHome':(authUser.role==='admin'?'adminUsers':'dashboard');render();toast('Mot de passe modifié.')}catch(err){toast(err.message||'Modification impossible.')}}
 async function loginTeacher(e){return performLogin(e)}
