@@ -65,13 +65,17 @@ fail_and_restore() {
   rm -f "$CURRENT_LINK.rollback"
   ln -s "$PREVIOUS_LINK_TARGET" "$CURRENT_LINK.rollback"
   mv -Tf "$CURRENT_LINK.rollback" "$CURRENT_LINK"
-  if [[ -n "${BACKUP_FILE:-}" && -f "$BACKUP_FILE" ]]; then
-    if ! cp -a "$BACKUP_FILE" "$DATA_ROOT/maclasse.json"; then
-      write_state "rollback_failed" "$message — code précédent restauré, mais la base n'a pas pu être restaurée depuis sa sauvegarde."
-      write_maintenance_state "failed"
-      echo "ATTENTION : le code précédent est réactivé, mais la restauration de la base a échoué. Le serveur reste arrêté pour protéger les données." >&2
-      exit 1
-    fi
+  if [[ -z "${BACKUP_FILE:-}" || ! -f "$BACKUP_FILE" ]] || ! /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE"; then
+    write_state "rollback_failed" "$message — sauvegarde de base absente ou invalide ; le serveur reste arrêté."
+    write_maintenance_state "failed"
+    echo "ATTENTION : sauvegarde de base absente ou invalide. Le serveur reste arrêté pour protéger les données." >&2
+    exit 1
+  fi
+  if ! cp -a "$BACKUP_FILE" "$DATA_ROOT/maclasse.json"; then
+    write_state "rollback_failed" "$message — code précédent restauré, mais la base n'a pas pu être restaurée depuis sa sauvegarde."
+    write_maintenance_state "failed"
+    echo "ATTENTION : le code précédent est réactivé, mais la restauration de la base a échoué. Le serveur reste arrêté pour protéger les données." >&2
+    exit 1
   fi
   systemctl --user start maclasse.service || true
   local restored=0
@@ -152,6 +156,7 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP.json"
 if [[ -f "$DATA_ROOT/maclasse.json" ]]; then
   cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_FILE"
+  /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE" || { echo "Sauvegarde JSON invalide : mise à jour annulée avant arrêt du serveur." >&2; exit 1; }
 else
   echo "Base de données absente : mise à jour annulée avant arrêt du serveur." >&2
   exit 1
