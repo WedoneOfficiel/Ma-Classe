@@ -524,10 +524,29 @@ subjectKeyIdentifier=hash
                 state_file.write_text(json.dumps({
                     "status": "prepared", "version": "25.0.23", "sha256": good_sha
                 }), encoding="utf-8")
-                success = subprocess.run(
-                    ["/bin/bash", str(updater)], cwd=root, env=env,
-                    capture_output=True, text=True, timeout=75
-                )
+                try:
+                    success = subprocess.run(
+                        ["/bin/bash", str(updater)], cwd=root, env=env,
+                        capture_output=True, text=True, timeout=75
+                    )
+                except subprocess.TimeoutExpired as timeout_error:
+                    timeout_diagnostics = {
+                        "update_state": state_file.read_text(encoding="utf-8", errors="replace") if state_file.exists() else "<absent>",
+                        "current_link": os.readlink(current) if current.is_symlink() else "<not a symlink>",
+                        "launchd_service": subprocess.run(
+                            ["/bin/launchctl", "print", f"gui/{uid}/fr.maclasse.server"],
+                            capture_output=True, text=True, timeout=10
+                        ).stdout,
+                        "processes": subprocess.run(
+                            ["/usr/bin/pgrep", "-alf", "server[.]py"],
+                            capture_output=True, text=True, timeout=10
+                        ).stdout,
+                        "process_table": subprocess.run(
+                            ["/bin/ps", "-axo", "pid,ppid,stat,command"],
+                            capture_output=True, text=True, timeout=10
+                        ).stdout[-6000:]
+                    }
+                    self.fail(f"Mise à jour macOS bloquée après 75 s : {timeout_error}\\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2))
                 if success.returncode != 0:
                     diagnostics = {}
                     for name in ("macos-update.log", "macos-update-error.log", "service.log", "service-error.log"):
