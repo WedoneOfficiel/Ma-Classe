@@ -49,7 +49,7 @@ def _schedule_update_timer(timestamp):
                    check=True,capture_output=True,text=True,timeout=10)
     subprocess.run(['/usr/bin/systemctl','--user','disable','--now','maclasse-update-scheduled.timer'],
                    check=False,capture_output=True,text=True,timeout=10)
-    unit='[Unit]\nDescription=MaClasse — maintenance programmée\n\n[Timer]\nOnCalendar='+calendar+'\nPersistent=false\nUnit=maclasse-update-apply.service\n\n[Install]\nWantedBy=timers.target\n'
+    unit='[Unit]\nDescription=MaClasse — maintenance programmée\n\n[Timer]\nOnCalendar='+calendar+'\nAccuracySec=1s\nPersistent=false\nUnit=maclasse-update-apply.service\n\n[Install]\nWantedBy=timers.target\n'
     tmp=unit_path+'.tmp'
     with open(tmp,'w',encoding='utf-8') as f:
         f.write(unit)
