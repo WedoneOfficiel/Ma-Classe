@@ -574,13 +574,13 @@ subjectKeyIdentifier=hash
             finally:
                 subprocess.run(["/bin/launchctl", "bootout", domain],
                                capture_output=True, text=True, timeout=10)
-                listed = subprocess.run(["/bin/launchctl", "list", label],
+                listed = subprocess.run(["/bin/launchctl", "print", domain],
                                         capture_output=True, text=True, timeout=10)
                 for line in (listed.stdout or "").splitlines():
-                    fields = line.split()
-                    if fields and fields[0].isdigit():
+                    fields = line.strip().split()
+                    if len(fields) == 3 and fields[0] == "pid" and fields[1] == "=" and fields[2].isdigit() and int(fields[2]) > 0:
                         try:
-                            os.kill(int(fields[0]), 15)
+                            os.kill(int(fields[2]), 15)
                         except OSError:
                             pass
 
@@ -601,7 +601,7 @@ def fake_run(args, **kwargs):
     calls.append(args)
     if args[:2] == ["/bin/launchctl", "print"]:
         return subprocess.CompletedProcess(args, 1, "", "Could not find service")
-    if args[:3] == ["/bin/launchctl", "list", "fr.maclasse.update"]:
+    if args[:2] == ["/bin/launchctl", "print"]:
         return subprocess.CompletedProcess(args, 1, "", "Could not find service")
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = fake_run
@@ -629,7 +629,7 @@ assert any(call[:2] == ["/bin/launchctl", "kickstart"] for call in calls)
 active_calls = []
 def active_run(args, **kwargs):
     active_calls.append(args)
-    if args[:3] == ["/bin/launchctl", "list", "fr.maclasse.update"]:
+    if args[:2] == ["/bin/launchctl", "print"]:
         return subprocess.CompletedProcess(args, 0, "4321 0 fr.maclasse.update", "")
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = active_run
@@ -664,16 +664,18 @@ assert scheduled.exists()
 """
         subprocess.run(["python", "-c", code, str(ROOT)], check=True, cwd=ROOT)
 
-    def test_launchd_activity_parser_ignores_header_and_idle_job(self):
+    def test_launchd_activity_parser_uses_print_pid_and_idle_state(self):
         code = r"""
 import subprocess, sys
 sys.path.insert(0, str(sys.argv[1]))
 import server
 server.sys.platform = "darwin"
-server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\n- 0 fr.maclasse.update\n", "")
+server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "state = waiting\n", "")
 assert server._update_apply_service_active() is False
-server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\n4321 0 fr.maclasse.update\n", "")
+server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "state = running\npid = 4321\n", "")
 assert server._update_apply_service_active() is True
+server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 113, "", "Could not find service")
+assert server._update_apply_service_active() is False
 """
         subprocess.run(["python", "-c", code, str(ROOT)], check=True, cwd=ROOT)
 
@@ -705,7 +707,6 @@ assert server._update_apply_service_active() is True
             fake.write_text(
                 "#!/bin/sh\n"
                 "case \"$1\" in\n"
-                "  list) printf 'PID Status Label\\n- 0 fr.maclasse.server\\n' ;;\n"
                 "  bootout) touch \"$BOOTED\" ;;\n"
                 "  print) if [ ! -f \"$BOOTED\" ]; then echo loaded; exit 0; fi; "
                 "n=0; [ ! -f \"$COUNT\" ] || n=$(cat \"$COUNT\"); n=$((n+1)); "
