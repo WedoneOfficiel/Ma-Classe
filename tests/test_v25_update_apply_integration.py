@@ -35,6 +35,8 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
             data = program / "data"
             versions = data / "program" / "versions"
             versions.mkdir(parents=True)
+            self.make_version(versions / "V25.0.10", "25.0.10")
+            self.make_version(versions / "V25.0.20", "25.0.20")
             previous = versions / "V25.0.22"
             self.make_version(previous, "25.0.22")
             current = data / "program" / "current"
@@ -80,18 +82,21 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
             state = json.loads((data / "update-state.json").read_text(encoding="utf-8"))
             database = json.loads((data / "maclasse.json").read_text(encoding="utf-8"))
             backup_count = len(list((data / "backups").glob("maclasse-avant-maj-*.json")))
-            return result, current.resolve(), previous.resolve(), target.resolve(), state, database, backup_count
+            old_version_exists = (versions / "V25.0.10").exists()
+            return result, current.resolve(), previous.resolve(), target.resolve(), state, database, backup_count, old_version_exists
 
     def test_success_switches_atomically_and_preserves_persistent_data(self):
-        result, active, previous, target, state, database, backup_count = self.run_update()
+        result, active, previous, target, state, database, backup_count, old_version_exists = self.run_update()
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertEqual(active, target)
         self.assertEqual(state["status"], "installed")
         self.assertEqual(database["settings"]["school"], "Test")
         self.assertEqual(backup_count, 1)
+        self.assertFalse(old_version_exists)
+        self.assertTrue(previous.exists())
 
     def test_failed_health_check_restores_previous_release(self):
-        result, active, previous, target, state, database, backup_count = self.run_update(fail_version="25.0.23")
+        result, active, previous, target, state, database, backup_count, old_version_exists = self.run_update(fail_version="25.0.23")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(active, previous)
         self.assertEqual(state["status"], "failed")
