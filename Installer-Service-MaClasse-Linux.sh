@@ -5,6 +5,9 @@ cd "$(dirname "$0")"
 [[ -x .venv/bin/python ]] || { echo "Lance d'abord ./Installer-MaClasse-Linux.sh."; exit 1; }
 command -v systemctl >/dev/null 2>&1 || { echo "systemd est requis."; exit 1; }
 command -v loginctl >/dev/null 2>&1 || { echo "loginctl est requis pour activer le démarrage au boot."; exit 1; }
+for dependency in systemd-analyze curl openssl realpath python3; do
+  command -v "$dependency" >/dev/null 2>&1 || { echo "Dépendance manquante : $dependency."; exit 1; }
+done
 ROOT="$(pwd -P)"
 [[ "$(id -u)" -ne 0 ]] || { echo "Lance cet installateur depuis le compte utilisateur MaClasse, sans sudo devant le script."; exit 1; }
 USER_NAME="$(id -un)"
