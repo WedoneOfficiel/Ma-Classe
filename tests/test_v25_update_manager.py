@@ -242,5 +242,44 @@ class ReleaseCheckerTests(unittest.TestCase):
                                  json.dumps({"sha256": "0" * 64, "status": "prepared"}))
 
 
+    def test_rejects_duplicate_manifest_assets(self):
+        self.release["assets"].append(dict(self.release["assets"][0]))
+        with patch.object(updater, "_request", side_effect=self.fake_request):
+            with self.assertRaises(updater.UpdateError):
+                updater.check_latest_release("25.0.22")
+
+    def test_rejects_duplicate_archive_assets(self):
+        self.release["assets"].append(dict(self.release["assets"][1]))
+        with patch.object(updater, "_request", side_effect=self.fake_request):
+            with self.assertRaises(updater.UpdateError):
+                updater.check_latest_release("25.0.22")
+
+    def test_rejects_manifest_with_unsupported_schema_version(self):
+        self.manifest["schema_version"] = 2
+        with patch.object(updater, "_request", side_effect=self.fake_request):
+            with self.assertRaises(updater.UpdateError):
+                updater.check_latest_release("25.0.22")
+
+    def test_rejects_archive_url_with_credentials_or_nonstandard_port(self):
+        for url in ("https://user:pass@github.com/asset", "https://github.com:444/asset",
+                    "https://github.com.evil.example/asset", "https://github.com\\\\@127.0.0.1/asset"):
+            with self.subTest(url=url):
+                with self.assertRaises(updater.UpdateError):
+                    updater._validate_github_url(url)
+
+    def test_rejects_symlink_as_prepared_version_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            outside = root / "outside"
+            outside.mkdir()
+            (root / "V25.1.0").symlink_to(outside, target_is_directory=True)
+            info = {"archive_url": "https://example.test/archive",
+                    "version": "25.1.0", "sha256": hashlib.sha256(self.archive).hexdigest()}
+            with patch.object(updater, "_request", return_value=self.archive):
+                with self.assertRaises(updater.UpdateError):
+                    updater.prepare_release(info, root)
+            self.assertEqual(list(outside.iterdir()), [])
+
+
 if __name__ == "__main__":
     unittest.main()
