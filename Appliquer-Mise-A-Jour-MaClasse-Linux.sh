@@ -80,10 +80,32 @@ fail_and_restore() {
     echo "ATTENTION : sauvegarde de base absente ou invalide. Le serveur reste arrêté pour protéger les données." >&2
     exit 1
   fi
-  if ! cp -a "$BACKUP_FILE" "$DATA_ROOT/maclasse.json"; then
-    write_state "rollback_failed" "$message — code précédent restauré, mais la base n'a pas pu être restaurée depuis sa sauvegarde."
+  RESTORE_TMP="$DATA_ROOT/maclasse.json.rollback.$"
+  rm -f "$RESTORE_TMP"
+  if ! cp -a "$BACKUP_FILE" "$RESTORE_TMP"; then
+    write_state "rollback_failed" "$message — copie temporaire de la base impossible."
     write_maintenance_state "failed"
-    echo "ATTENTION : le code précédent est réactivé, mais la restauration de la base a échoué. Le serveur reste arrêté pour protéger les données." >&2
+    echo "ATTENTION : la base n'a pas pu être préparée pour restauration. Le serveur reste arrêté." >&2
+    exit 1
+  fi
+  if ! /usr/bin/python3 - "$RESTORE_TMP" "$DATA_ROOT/maclasse.json" <<'PYRESTORE'
+import os,sys
+source,destination=sys.argv[1],sys.argv[2]
+with open(source,"rb") as stream: os.fsync(stream.fileno())
+os.replace(source,destination)
+directory=os.open(os.path.dirname(destination),os.O_RDONLY)
+try:
+    os.fsync(directory)
+except OSError:
+    pass
+finally:
+    os.close(directory)
+PYRESTORE
+  then
+    rm -f "$RESTORE_TMP"
+    write_state "rollback_failed" "$message — restauration atomique de la base impossible."
+    write_maintenance_state "failed"
+    echo "ATTENTION : la base n'a pas pu être restaurée atomiquement. Le serveur reste arrêté." >&2
     exit 1
   fi
   systemctl --user start maclasse.service || true
