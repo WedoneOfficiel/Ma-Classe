@@ -491,3 +491,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 23. **Assertion UI de messagerie V21.11 obsolète.** Le test attendait encore l'interpolation brute `${m.id}` dans le handler des favoris, alors que le code actuel utilise correctement `jsArg(m.id)`, `jsArg(role)` et `jsArg(sid)` pour éviter l'injection de code. Le test est adapté à cette sérialisation sûre (`f0e22dc`). La CI suivante doit confirmer le reste de la suite JavaScript.
+
+
+24. **Assertions UI du module Résultats élève V21.17 obsolètes.** Le test attendait les anciennes interpolations directes de chaînes dans les handlers du détail d'évaluation et du sélecteur de période. Le code actuel utilise `jsArg()` pour sérialiser les identifiants ; les deux assertions sont mises à jour pour vérifier cette protection (`46fcedd`). La CI suivante doit poursuivre la suite complète.
