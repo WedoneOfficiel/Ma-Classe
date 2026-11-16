@@ -164,11 +164,6 @@ def main() -> None:
                 expect(existing).to_be_visible()
 
                 # Create a second course through the actual modal and form.
-                page.evaluate("""() => {
-                  document.body.style.minHeight='2400px';
-                  window.scrollTo(0,420);
-                  window.__scheduleScrollBefore=window.scrollY;
-                }""")
                 page.evaluate("openSchedule()")
                 form = page.locator("#modalback form")
                 expect(form).to_be_visible()
@@ -179,6 +174,7 @@ def main() -> None:
                 form.locator('[name="subject"]').fill("Histoire")
                 form.locator('[name="recurrence"]').select_option("weekly")
                 form.locator('[name="startDate"]').fill("2026-11-09")
+                page.evaluate("window.__scheduleScrollBefore=window.scrollY")
                 form.locator("button.primary").last.click()
                 expect(page.locator("#toast")).to_contain_text(
                     "Emploi du temps enregistré.", timeout=10_000
