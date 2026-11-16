@@ -28,6 +28,47 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn('MACLASSE_TLS_KEY="$KEY"', runner)
 
 
+
+    @unittest.skipUnless(__import__("sys").platform == "darwin", "L'installateur launchd ne peut être exécuté que sur macOS.")
+    def test_service_installer_builds_and_loads_user_agent(self):
+        import os
+        import shutil
+        import tempfile
+        tmp = Path(tempfile.mkdtemp(prefix="maclasse-launchd-installer-"))
+        root = tmp / "MaClasse"
+        (root / ".venv" / "bin").mkdir(parents=True)
+        (root / "data" / "tls").mkdir(parents=True)
+        (root / ".venv" / "bin" / "python").symlink_to(__import__("sys").executable)
+        for name in SCRIPTS:
+            shutil.copy2(ROOT / name, root / name)
+        for name in ("server.crt", "server.key", "ca.crt"):
+            (root / "data" / "tls" / name).write_text("test-only placeholder", encoding="utf-8")
+        home = tmp / "home"
+        fakebin = tmp / "bin"
+        home.mkdir()
+        fakebin.mkdir()
+        log = tmp / "launchctl.log"
+        launchctl = fakebin / "launchctl"
+        launchctl.write_text("#!/bin/sh\necho \"$*\" >> \"$LAUNCHCTL_LOG\"\nexit 0\n", encoding="utf-8")
+        launchctl.chmod(0o755)
+        env = os.environ.copy()
+        env.update({"HOME": str(home), "PATH": str(fakebin) + os.pathsep + env.get("PATH", ""),
+                    "LAUNCHCTL_LOG": str(log)})
+        subprocess.run(["bash", str(root / SCRIPTS[0])], check=True, cwd=root, env=env,
+                       capture_output=True, text=True, timeout=20)
+        plist = home / "Library" / "LaunchAgents" / "fr.maclasse.server.plist"
+        with plist.open("rb") as stream:
+            data = plistlib.load(stream)
+        self.assertEqual(data["Label"], "fr.maclasse.server")
+        self.assertTrue(data["KeepAlive"])
+        self.assertTrue(data["RunAtLoad"])
+        self.assertEqual(data["ProgramArguments"][1], str(root / SCRIPTS[1]))
+        self.assertEqual(os.readlink(root / "data" / "program" / "current"), "../..")
+        self.assertTrue((root / "data" / "update-manager.enabled").is_file())
+        calls = log.read_text(encoding="utf-8")
+        self.assertIn("bootstrap", calls)
+        self.assertIn("kickstart", calls)
+
     def test_launchd_schedule_and_immediate_job_plists(self):
         code = r"""
 import os, pathlib, plistlib, subprocess, sys, tempfile, time
