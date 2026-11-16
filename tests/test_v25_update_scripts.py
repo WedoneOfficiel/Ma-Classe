@@ -11,6 +11,14 @@ class UpdateScriptSafetyTests(unittest.TestCase):
             with self.subTest(script=name):
                 subprocess.run(["bash", "-n", str(ROOT / name)], check=True)
 
+    def test_supervised_linux_cli_uses_the_same_stable_release_engine(self):
+        source = (ROOT / "Mettre-A-Jour-MaClasse-Linux.sh").read_text(encoding="utf-8")
+        self.assertIn('if [[ -f "$DATA_ROOT/update-manager.enabled" ]]', source)
+        self.assertIn("update_manager.check_latest_release(version)", source)
+        self.assertIn("update_manager.prepare_runtime(prepared)", source)
+        self.assertIn("maclasse-update-apply.service", source)
+        self.assertIn("Le serveur est actif mais le gestionnaire", source)
+
     def test_both_scripts_back_up_data_and_roll_back_failed_validation(self):
         for name in ("Mettre-A-Jour-MaClasse.command", "Mettre-A-Jour-MaClasse-Linux.sh"):
             with self.subTest(script=name):
