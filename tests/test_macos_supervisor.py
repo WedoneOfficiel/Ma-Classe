@@ -98,7 +98,7 @@ def fake_run(args, **kwargs):
     if args[:2] == ["/bin/launchctl", "print"]:
         return subprocess.CompletedProcess(args, 1, "", "Could not find service")
     if args[:3] == ["/bin/launchctl", "list", "fr.maclasse.update"]:
-        return subprocess.CompletedProcess(args, 1, "", "")
+        return subprocess.CompletedProcess(args, 1, "", "Could not find service")
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = fake_run
 server._schedule_update_timer(time.time() + 3600)
