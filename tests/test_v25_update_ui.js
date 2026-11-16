@@ -8,6 +8,7 @@ assert(source.includes("function scheduleUpdate()"));
 assert(source.includes("function cancelScheduledUpdate()"));
 assert(source.includes("function editScheduledUpdate()"));
 assert(source.includes("Enregistrer le nouvel horaire"));
+assert(source.includes("onclick=\"installUpdate()\">Installer maintenant</button>"));
 assert(source.includes("else if(!silent)toast('Une nouvelle version stable est disponible dans Paramètres.')"));
 assert(source.includes("Installer maintenant"));
 assert(source.includes("Les modifications non enregistrées pourraient être perdues."));
