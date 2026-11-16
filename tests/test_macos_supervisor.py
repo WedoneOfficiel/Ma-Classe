@@ -559,7 +559,7 @@ subjectKeyIdentifier=hash
                             capture_output=True, text=True, timeout=10
                         ).stdout[-6000:]
                     }
-                    self.fail(f"Mise à jour macOS bloquée après 75 s : {timeout_error}\\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2))
+                    self.fail(f"Mise à jour macOS bloquée après 75 s : {timeout_error}\\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2, default=lambda value: value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)))
                 if success.returncode != 0:
                     diagnostics = {}
                     for name in ("macos-update.log", "macos-update-error.log", "service.log", "service-error.log"):
