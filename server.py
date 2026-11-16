@@ -155,6 +155,8 @@ def _schedule_update_timer(timestamp):
         raise
 
 def _start_update_apply_service():
+    if _update_apply_service_active():
+        raise RuntimeError("Une installation de mise à jour est déjà en cours.")
     if sys.platform=='darwin':
         _cancel_update_timer()
         plist=_launchd_update_plist()
@@ -2026,6 +2028,8 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'error':'Aucune mise à jour prête à installer.'},409)
                 if update_state.get('version')!=requested_version:
                     return self._json({'error':'La version préparée ne correspond plus à la version affichée.'},409)
+                if _update_apply_service_active():
+                    return self._json({'error':'Une installation de mise à jour est déjà en cours.'},409)
                 versions_root=os.path.realpath(os.path.join(DATA_DIR,'program','versions'))
                 target=os.path.realpath(os.path.join(versions_root,'V'+version))
                 if os.path.commonpath((target,versions_root))!=versions_root:
