@@ -21,6 +21,7 @@ class UpdateApplyIntegrationTests(unittest.TestCase):
         (directory / "_all.js").write_text("const MC_VERSION='V" + version + "';\n", encoding="utf-8")
         (directory / ".venv" / "bin").mkdir(parents=True)
         (directory / ".venv" / "bin" / "python").write_text("#!/bin/sh\n", encoding="utf-8")
+        (directory / ".venv" / "bin" / "python").chmod(0o755)
         (directory / "maclasse-runtime-ready.json").write_text('{"ready":true}', encoding="utf-8")
         if sha:
             (directory / "maclasse-prepared.json").write_text(json.dumps({
