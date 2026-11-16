@@ -53,7 +53,7 @@ class MacOSSupervisorTests(unittest.TestCase):
         launchctl.write_text("#!/bin/sh\necho \"$*\" >> \"$LAUNCHCTL_LOG\"\nexit 0\n", encoding="utf-8")
         launchctl.chmod(0o755)
         pgrep = fakebin / "pgrep"
-        pgrep.write_text("#!/bin/sh\\nexit 1\\n", encoding="utf-8")
+        pgrep.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
         pgrep.chmod(0o755)
         env = os.environ.copy()
         env.update({"HOME": str(home), "PATH": str(fakebin) + os.pathsep + env.get("PATH", ""),
