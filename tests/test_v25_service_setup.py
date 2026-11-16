@@ -38,6 +38,8 @@ assert 'touch "$ROOT/data/update-manager.enabled"' in installer
 assert 'Appliquer-Mise-A-Jour-MaClasse-Linux.sh' in installer
 assert 'rm -f "$UNIT_FILE"' in uninstaller
 assert 'rm -rf' not in uninstaller
+assert 'if systemctl --user is-active --quiet maclasse-update-apply.service' in uninstaller
+assert 'La maintenance programmée a été annulée.' in uninstaller
 assert 'UPDATE_UNIT_FILE="$UNIT_DIR/maclasse-update-apply.service"' in uninstaller
 assert 'rm -f "$ROOT/data/update-manager.enabled"' in uninstaller
 apply_script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text()
