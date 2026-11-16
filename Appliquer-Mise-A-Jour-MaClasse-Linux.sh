@@ -215,7 +215,7 @@ fi
 # Sauvegarder APRÈS l'arrêt confirmé : aucune écriture concurrente ne peut être perdue au rollback.
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP.json"
-if [[ ! -f "$DATA_ROOT/maclasse.json" ]] || ! cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_FILE"; then
+if [[ ! -f "$DATA_ROOT/maclasse.json" || -L "$DATA_ROOT/maclasse.json" ]] || ! cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_FILE"; then
   abort_before_switch "Impossible de sauvegarder la base après l'arrêt du serveur."
 fi
 if ! /usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE"; then
