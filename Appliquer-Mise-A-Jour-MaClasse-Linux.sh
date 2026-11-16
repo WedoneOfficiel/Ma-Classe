@@ -52,7 +52,7 @@ fail_and_restore() {
   echo "Échec de la mise à jour : $message" >&2
   systemctl --user stop maclasse.service >/dev/null 2>&1 || true
   rm -f "$CURRENT_LINK.rollback"
-  ln -s "$PREVIOUS_TARGET" "$CURRENT_LINK.rollback"
+  ln -s "$PREVIOUS_LINK_TARGET" "$CURRENT_LINK.rollback"
   mv -Tf "$CURRENT_LINK.rollback" "$CURRENT_LINK"
   systemctl --user start maclasse.service || true
   local restored=0
@@ -116,6 +116,7 @@ META_VERSION="$(/usr/bin/python3 -c 'import json,sys; print(str(json.load(open(s
 [[ "$META_SHA" == "$EXPECTED_SHA" && "$META_VERSION" == "$VERSION_NUMBER" ]] || { echo "Le manifeste de la version préparée ne correspond plus."; exit 1; }
 PREVIOUS_TARGET="$(readlink -f "$CURRENT_LINK")"
 case "$PREVIOUS_TARGET" in "$ROOT"|"$VERSIONS_REAL"/*) ;; *) echo "Cible active précédente non reconnue."; exit 1;; esac
+PREVIOUS_LINK_TARGET="$(realpath --relative-to="$PROGRAM_ROOT" "$PREVIOUS_TARGET")"
 PREVIOUS_VERSION="$(/usr/bin/python3 - "$PREVIOUS_TARGET" <<'PY'
 import re,sys
 from pathlib import Path
@@ -140,7 +141,7 @@ if ! systemctl --user stop maclasse.service; then
   fail_and_restore "L’arrêt propre du serveur a échoué."
 fi
 rm -f "$CURRENT_LINK.next"
-if ! ln -s "$TARGET" "$CURRENT_LINK.next" || ! mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"; then
+if ! ln -s "versions/V$VERSION_NUMBER" "$CURRENT_LINK.next" || ! mv -Tf "$CURRENT_LINK.next" "$CURRENT_LINK"; then
   fail_and_restore "La bascule atomique vers la nouvelle version a échoué."
 fi
 echo "Redémarrage de MaClasse $VERSION_NUMBER…"
