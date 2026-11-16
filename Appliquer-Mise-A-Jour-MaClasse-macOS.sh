@@ -68,8 +68,24 @@ PY
 }
 health_ok() {
   local expected="$1" host response http_status body_file
-  host="$(/usr/bin/openssl x509 -in "$DATA/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -oE 'IP Address:[0-9.]+' | /usr/bin/head -n1 | /usr/bin/cut -d: -f2 || true)"
-  [[ -n "$host" ]] || return 2
+  # Parse the certificate SAN with Python rather than OpenSSL/LibreSSL display text.
+  host="$("$ROOT/.venv/bin/python" - "$DATA/tls/server.crt" <<'PYSAN' 2>/dev/null || true
+import ipaddress, ssl, sys
+certificate = ssl._ssl._test_decode_cert(sys.argv[1])
+for kind, value in certificate.get("subjectAltName", ()):
+    if kind == "IP Address":
+        try:
+            print(ipaddress.ip_address(value))
+            break
+        except ValueError:
+            pass
+PYSAN
+)"
+  if [[ -z "$host" ]]; then
+    echo "DEBUG health: aucun SAN IP exploitable dans $DATA/tls/server.crt." >&2
+    /usr/bin/openssl x509 -in "$DATA/tls/server.crt" -noout -ext subjectAltName >&2 2>/dev/null || true
+    return 2
+  fi
   # Distinguish an unreachable service (retry) from an explicit unhealthy
   # HTTP response (fail immediately instead of wasting the full retry window).
   body_file="$(/usr/bin/mktemp "$DATA/.health-check.XXXXXX")" || return 2
