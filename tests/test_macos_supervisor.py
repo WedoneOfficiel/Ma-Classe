@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 """Static safety checks for the macOS launchd update supervisor."""
+import json
+import os
 import plistlib
+import shutil
+import ssl
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+import urllib.error
+import urllib.request
+import socket
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,6 +105,112 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn("bootstrap", calls)
         self.assertIn("kickstart", calls)
 
+
+    @unittest.skipUnless(sys.platform == "darwin", "Le vrai serveur launchd nécessite macOS.")
+    def test_launchd_starts_real_maclasse_server_over_local_https(self):
+        uid = os.getuid()
+        label = "fr.maclasse.server"
+        domain = f"gui/{uid}/{label}"
+        existing = subprocess.run(
+            ["/bin/launchctl", "print", domain],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertNotEqual(existing.returncode, 0, "Un agent MaClasse existe déjà ; test refusé.")
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+
+        with tempfile.TemporaryDirectory(prefix="maclasse-real-server-launchd-") as temp:
+            tmp = Path(temp)
+            root = tmp / "MaClasse"
+            data = root / "data"
+            tls = data / "tls"
+            agents = tmp / "home" / "Library" / "LaunchAgents"
+            (root / ".venv" / "bin").mkdir(parents=True)
+            tls.mkdir(parents=True)
+            agents.mkdir(parents=True)
+            (root / ".venv" / "bin" / "python").symlink_to(sys.executable)
+            shutil.copy2(ROOT / "server.py", root / "server.py")
+            shutil.copy2(ROOT / "update_manager.py", root / "update_manager.py")
+            (data / "maclasse.json").write_text(
+                json.dumps({"schemaVersion": 25011, "users": [], "classes": [], "students": []}),
+                encoding="utf-8"
+            )
+            cert = tls / "server.crt"
+            key = tls / "server.key"
+            subprocess.run([
+                "/usr/bin/openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                "-keyout", str(key), "-out", str(cert), "-days", "2",
+                "-subj", "/CN=127.0.0.1",
+                "-addext", "subjectAltName=IP:127.0.0.1",
+                "-addext", "basicConstraints=critical,CA:TRUE",
+                "-addext", "keyUsage=critical,digitalSignature,keyCertSign,keyEncipherment"
+            ], check=True, capture_output=True, timeout=30)
+            key.chmod(0o600)
+            runner = root / "launch-server.sh"
+            runner.write_text(
+                "#!/bin/bash\nset -euo pipefail\n"
+                "exec \"$MACLASSE_ROOT/.venv/bin/python\" -u \"$MACLASSE_ROOT/server.py\"\n",
+                encoding="utf-8"
+            )
+            runner.chmod(0o700)
+            plist = agents / (label + ".plist")
+            with plist.open("wb") as stream:
+                plistlib.dump({
+                    "Label": label,
+                    "ProgramArguments": ["/bin/bash", str(runner)],
+                    "WorkingDirectory": str(root),
+                    "EnvironmentVariables": {
+                        "MACLASSE_SUPERVISED": "launchd",
+                        "MACLASSE_ROOT": str(root),
+                        "MACLASSE_DATA_DIR": str(data),
+                        "MACLASSE_HOST": "127.0.0.1",
+                        "MACLASSE_PORT": str(port),
+                        "MACLASSE_TLS_CERT": str(cert),
+                        "MACLASSE_TLS_KEY": str(key)
+                    },
+                    "RunAtLoad": True,
+                    "KeepAlive": True,
+                    "StandardOutPath": str(data / "launchd-real-server.log"),
+                    "StandardErrorPath": str(data / "launchd-real-server-error.log")
+                }, stream, fmt=plistlib.FMT_XML)
+            plist.chmod(0o600)
+            context = ssl.create_default_context(cafile=str(cert))
+            opener = urllib.request.build_opener(
+                urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=context)
+            )
+            url = f"https://127.0.0.1:{port}/api/health"
+            try:
+                subprocess.run(
+                    ["/bin/launchctl", "bootstrap", f"gui/{uid}", str(plist)],
+                    check=True, capture_output=True, text=True, timeout=15
+                )
+                subprocess.run(
+                    ["/bin/launchctl", "kickstart", domain],
+                    check=True, capture_output=True, text=True, timeout=15
+                )
+                deadline = time.time() + 20
+                last_error = None
+                while time.time() < deadline:
+                    try:
+                        with opener.open(url, timeout=2) as response:
+                            payload = json.loads(response.read().decode("utf-8"))
+                        self.assertTrue(payload.get("ok"), payload)
+                        self.assertEqual(payload.get("database"), "ok")
+                        self.assertEqual(payload.get("version"), "25.0.22")
+                        break
+                    except (OSError, urllib.error.URLError, urllib.error.HTTPError, ValueError) as error:
+                        last_error = error
+                        time.sleep(0.25)
+                else:
+                    logs = (data / "launchd-real-server.log").read_text(encoding="utf-8", errors="replace") if (data / "launchd-real-server.log").exists() else ""
+                    errors = (data / "launchd-real-server-error.log").read_text(encoding="utf-8", errors="replace") if (data / "launchd-real-server-error.log").exists() else ""
+                    raise AssertionError(f"Le vrai serveur MaClasse ne répond pas sous launchd : {last_error}\nstdout:\n{logs}\nstderr:\n{errors}")
+            finally:
+                subprocess.run(
+                    ["/bin/launchctl", "bootout", f"gui/{uid}", label],
+                    capture_output=True, text=True, timeout=15
+                )
 
     @unittest.skipUnless(__import__("sys").platform == "darwin", "launchd réel uniquement sur macOS.")
     def test_real_launchd_bootstrap_starts_and_unloads_isolated_agent(self):
