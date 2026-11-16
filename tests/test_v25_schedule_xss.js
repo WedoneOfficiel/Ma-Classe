@@ -14,6 +14,7 @@ assert(source.includes("safeRichHtml(sub.correctionComment||'')"), "teacher corr
 
 const sandbox = {
   iso: () => "2026-11-16",
+  event: { preventDefault() {} },
   mins: () => 600,
   addHour: () => "11:00",
   subjectColor: () => ["#ffffff", "#dddddd", "#123456"],
