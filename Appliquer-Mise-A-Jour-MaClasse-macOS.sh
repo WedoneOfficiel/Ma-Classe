@@ -213,6 +213,25 @@ if ! "$ROOT/.venv/bin/python" -c 'import json,sys; json.load(open(sys.argv[1],en
   fi
   exit 1
 fi
+if ! "$ROOT/.venv/bin/python" - "$BACKUP_FILE" "$BACKUP_DIR" <<'PYSYNC'
+import os,sys
+backup,directory=sys.argv[1],sys.argv[2]
+with open(backup,"rb") as stream: os.fsync(stream.fileno())
+fd=os.open(directory,os.O_RDONLY)
+try: os.fsync(fd)
+finally: os.close(fd)
+PYSYNC
+then
+  /bin/rm -f "$BACKUP_FILE"
+  if start_service; then
+    write_state failed "La sauvegarde de la base n'a pas pu être synchronisée ; ancienne version relancée."
+    write_maintenance_state failed
+  else
+    write_state rollback_failed "La sauvegarde de la base n'a pas pu être synchronisée et l'ancienne version n'a pas redémarré."
+    write_maintenance_state failed
+  fi
+  exit 1
+fi
 /bin/rm -f "$CURRENT.next"
 /bin/ln -s "versions/V$VERSION" "$CURRENT.next"
 "$ROOT/.venv/bin/python" - "$CURRENT.next" "$CURRENT" <<'PYLINK' || fail_restore "Bascule atomique impossible."
