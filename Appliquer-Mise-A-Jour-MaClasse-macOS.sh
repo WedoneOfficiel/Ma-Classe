@@ -30,7 +30,7 @@ health_ok() {
   local expected="$1" host
   host="$(/usr/bin/openssl x509 -in "$DATA/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -oE 'IP Address:[0-9.]+' | /usr/bin/head -n1 | /usr/bin/cut -d: -f2 || true)"
   [[ -n "$host" ]] || return 1
-  /usr/bin/curl --silent --fail --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" "https://$host:8765/api/health" 2>/dev/null | EXPECTED_VERSION="$expected" /usr/bin/python3 -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
+  /usr/bin/curl --silent --fail --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" "https://$host:8765/api/health" 2>/dev/null | EXPECTED_VERSION="$expected" "$ROOT/.venv/bin/python" -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
 }
 start_service() {
   /bin/launchctl bootstrap "gui/$UID_NOW" "$SERVICE_PLIST" 2>/dev/null || true
@@ -42,7 +42,7 @@ fail_restore() {
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
   if [[ -n "${PREVIOUS_LINK:-}" && -e "$PREVIOUS_LINK" ]]; then
     /bin/ln -s "$PREVIOUS_LINK" "$CURRENT.rollback"
-    /usr/bin/python3 - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
+    "$ROOT/.venv/bin/python" - "$CURRENT.rollback" "$CURRENT" <<'PYLINK'
 import os,sys
 os.replace(sys.argv[1],sys.argv[2])
 PYLINK
@@ -63,7 +63,7 @@ PYLINK
 }
 [[ "$(uname -s)" == "Darwin" ]] || { echo "Réservé à macOS." >&2; exit 1; }
 [[ -f "$STATE" && -L "$CURRENT" && -f "$SERVICE_PLIST" ]] || { echo "Gestionnaire ou service launchd absent." >&2; exit 1; }
-read -r VERSION SHA STATUS < <(/usr/bin/python3 - "$STATE" <<'PY'
+read -r VERSION SHA STATUS < <("$ROOT/.venv/bin/python" - "$STATE" <<'PY'
 import json,re,sys
 d=json.load(open(sys.argv[1],encoding="utf-8"))
 v=str(d.get("version","")).lstrip("vV")
@@ -75,7 +75,7 @@ PY
 )
 TARGET="$VERSIONS/V$VERSION"
 [[ -d "$TARGET" && ! -L "$TARGET" && -x "$TARGET/.venv/bin/python" && -f "$TARGET/maclasse-runtime-ready.json" ]] || { echo "Version préparée incomplète." >&2; exit 1; }
-EXPECTED="$(/usr/bin/python3 - "$TARGET/maclasse-prepared.json" <<'PY'
+EXPECTED="$("$ROOT/.venv/bin/python" - "$TARGET/maclasse-prepared.json" <<'PY'
 import json,sys
 d=json.load(open(sys.argv[1],encoding="utf-8")); print(d.get("sha256",""))
 PY
@@ -83,7 +83,7 @@ PY
 [[ "$EXPECTED" == "$SHA" ]] || { echo "Manifeste préparé incohérent." >&2; exit 1; }
 PREVIOUS_LINK="$(/usr/bin/readlink "$CURRENT")"
 PREVIOUS_REAL="$(cd "$(dirname "$CURRENT")" && cd "$(readlink "$CURRENT")" && pwd -P)"
-PREVIOUS_VERSION="$(/usr/bin/python3 - "$PREVIOUS_REAL/VERSION.txt" <<'PY'
+PREVIOUS_VERSION="$("$ROOT/.venv/bin/python" - "$PREVIOUS_REAL/VERSION.txt" <<'PY'
 import re,sys
 from pathlib import Path
 v=Path(sys.argv[1]).read_text(encoding="utf-8").strip().lstrip("vV")
@@ -97,12 +97,12 @@ mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="$BACKUP_DIR/maclasse-avant-maj-$STAMP.json"
 [[ -f "$DATA/maclasse.json" ]] || { echo "Base de données absente." >&2; exit 1; }
 /bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"
-/usr/bin/python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE" || { echo "Sauvegarde JSON invalide." >&2; exit 1; }
+"$ROOT/.venv/bin/python" -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' "$BACKUP_FILE" || { echo "Sauvegarde JSON invalide." >&2; exit 1; }
 write_state installing
 /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" || { write_state failed "Impossible d'arrêter proprement launchd."; exit 1; }
 if /bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1; then fail_restore "Le serveur est toujours chargé après l'arrêt."; fi
 /bin/ln -s "versions/V$VERSION" "$CURRENT.next"
-/usr/bin/python3 - "$CURRENT.next" "$CURRENT" <<'PYLINK' || fail_restore "Bascule atomique impossible."
+"$ROOT/.venv/bin/python" - "$CURRENT.next" "$CURRENT" <<'PYLINK' || fail_restore "Bascule atomique impossible."
 import os,sys
 os.replace(sys.argv[1],sys.argv[2])
 PYLINK
@@ -115,7 +115,7 @@ done
 [[ "$healthy" == "1" ]] || fail_restore "Le contrôle de santé n'a pas confirmé la nouvelle version."
 write_state installed
 if [[ -f "$DATA/update-maintenance.json" ]]; then
-  /usr/bin/python3 - "$DATA/update-maintenance.json" <<'PY'
+  "$ROOT/.venv/bin/python" - "$DATA/update-maintenance.json" <<'PY'
 import json,os,sys,time
 p=sys.argv[1]
 try:
