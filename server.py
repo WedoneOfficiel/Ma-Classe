@@ -818,16 +818,31 @@ def _student_accessible_teacher_ids(data, student_record):
 
 
 
+def _mail_attachment_relative_path(url):
+    """Accepte uniquement une URL relative canonique vers un fichier uploadé."""
+    raw=str(url or '').strip()
+    if not raw or chr(92) in raw: return None
+    parsed=urlparse(raw)
+    if parsed.scheme or parsed.netloc or parsed.query or parsed.fragment: return None
+    prefix='/data/uploads/'
+    if not parsed.path.startswith(prefix): return None
+    try:
+        rel=unquote(parsed.path[len(prefix):],encoding='utf-8',errors='strict')
+    except (UnicodeDecodeError,ValueError):
+        return None
+    if not rel or chr(92) in rel or chr(0) in rel: return None
+    if any(part in ('','.','..') for part in rel.split('/')): return None
+    return rel
+
+
 def _mailbox_message_safe_attachments(message, prefixes):
-    """Ne conserve que les pièces jointes situées dans les dossiers explicitement autorisés."""
+    """Ne conserve que les pièces jointes relatives situées dans les dossiers autorisés."""
     item=dict(message)
     safe=[]
     for attachment in item.get('attachments') or []:
         if not isinstance(attachment,dict): continue
-        url=str(attachment.get('url') or '').replace(chr(92),'/')
-        if '/data/uploads/' not in url: continue
-        rel=url.split('/data/uploads/',1)[1]
-        if any(rel.startswith(prefix) for prefix in prefixes):
+        rel=_mail_attachment_relative_path(attachment.get('url'))
+        if rel is not None and any(rel.startswith(prefix) for prefix in prefixes):
             safe.append(attachment)
     item['attachments']=safe
     return item
@@ -915,12 +930,13 @@ def _student_merge_mailbox(current, incoming, user, data):
                 break
         if not valid: continue
         for attachment in message.get('attachments') or []:
-            if not isinstance(attachment,dict): continue
-            url=str(attachment.get('url') or '').replace(chr(92),'/')
-            if '/data/uploads/' not in url:
+            if not isinstance(attachment,dict):
                 valid=False
                 break
-            rel=url.split('/data/uploads/',1)[1]
+            rel=_mail_attachment_relative_path(attachment.get('url'))
+            if rel is None:
+                valid=False
+                break
             prefixes=(f'mail-v2/student:{sid}/',f'mail-v2-drafts/student:{sid}/')
             if not rel.startswith(prefixes):
                 valid=False
@@ -1000,11 +1016,21 @@ def _teacher_merge_mailbox(current, incoming, user, data):
         if not valid: continue
         # Les pièces jointes de messagerie doivent rester dans le dossier de l'expéditeur.
         for attachment in message.get('attachments') or []:
-            if not isinstance(attachment,dict): continue
-            url=str(attachment.get('url') or '').replace('\\','/')
-            if '/data/uploads/' in url:
-                rel=url.split('/data/uploads/',1)[1]
-                if not rel.startswith(f'mail-v2/teacher:{tid}/'): valid=False; break
+            if not isinstance(attachment,dict):
+                valid=False
+                break
+            rel=_mail_attachment_relative_path(attachment.get('url'))
+            if rel is None or not rel.startswith(f'mail-v2/teacher:{tid}/'):
+                valid=False
+                break
+            try:
+                lexical=os.path.join(UPLOADS,*rel.split('/'))
+                if os.path.islink(lexical) or not os.path.isfile(_safe_upload_path(rel)):
+                    valid=False
+                    break
+            except (ValueError,OSError):
+                valid=False
+                break
         if valid: result_messages.append(message)
     old_states=old.get('states') if isinstance(old.get('states'),dict) else {}
     new_states=new.get('states') if isinstance(new.get('states'),dict) else {}
