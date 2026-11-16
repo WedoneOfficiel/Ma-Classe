@@ -1830,7 +1830,7 @@ class Handler(SimpleHTTPRequestHandler):
                 requested_version=str(payload.get('version') or '')
                 scheduled_value=str(payload.get('scheduled_at') or '')
                 timezone_name=str(payload.get('timezone') or 'Fuseau local')
-                if len(timezone_name)>80 or '\\n' in timezone_name: return self._json({'error':'Fuseau horaire invalide.'},400)
+                if len(timezone_name)>80 or chr(10) in timezone_name or chr(13) in timezone_name: return self._json({'error':'Fuseau horaire invalide.'},400)
                 scheduled_dt=datetime.datetime.fromisoformat(scheduled_value.replace('Z','+00:00'))
                 if scheduled_dt.tzinfo is None: return self._json({'error':'La date doit inclure un fuseau horaire.'},400)
                 scheduled_at=int(scheduled_dt.timestamp())
