@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**Statut : première chaîne Linux complète implémentée en code (détection, préparation, installation immédiate ou programmée, notifications et rollback) ; CI en cours de validation, recette Fedora et macOS restantes.**  
+**Statut : chaînes Linux/systemd et macOS/launchd implémentées ; CI complète en cours sur la tête de branche ; recettes réelles Fedora et Mac utilisateur restantes. Aucune release stable n'est publiée.**  
 **Branche de travail :** `feature/amel-01-update-manager`  
 **Branche de départ :** `fix/v25-student-teacher-workflows` (PR #9 conservée intacte).
 
@@ -34,7 +34,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 - Un superviseur local indépendant contrôle le cycle de vie du serveur.
 - Sur Fedora/Linux, le service utilisateur **systemd** supervise MaClasse et son gestionnaire. L'installation configure le démarrage automatique et le maintien du service après déconnexion (linger).
-- Sur macOS, un agent **launchd** assure le même rôle.
+- Sur macOS, un agent utilisateur **launchd** assure le même rôle pendant la session ouverte. Un LaunchAgent ne garantit pas le fonctionnement après déconnexion de l'utilisateur.
 - Le serveur web déclenche uniquement des unités systemd prédéfinies via des appels locaux fixes. Aucun endpoint réseau ne permet de lancer une commande shell libre.
 - Le service reste sans privilèges root et les unités limitent les écritures au dossier de données. Le superviseur et le serveur tournent sous le même compte système dédié à MaClasse.
 
@@ -45,8 +45,8 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 3. La direction choisit **Installer maintenant** ou **Télécharger et programmer**.
 4. Le téléchargement et les contrôles se font avant l'interruption. Une préparation échouée ne touche pas au serveur actif.
 5. Pour une installation programmée, tous les rôles reçoivent une notification avec la date et l'heure locales exactes. La direction peut annuler ou modifier l'horaire directement depuis Paramètres.
-6. À l'heure prévue, le serveur cesse d'accepter de nouvelles connexions ; son arrêt gracieux attend la fin des requêtes déjà engagées. systemd borne l'attente à 120 secondes avant arrêt forcé.
-7. Une copie horodatée de la base JSON (qui contient aussi les paramètres) est créée avant l'arrêt. En cas d'échec, cette copie est restaurée avant de redémarrer l'ancienne version. Les fichiers téléversés restent dans leur emplacement persistant et ne sont pas recopiés pendant la mise à jour.
+6. À l'heure prévue, le serveur cesse d'accepter de nouvelles connexions ; son arrêt gracieux attend la fin des requêtes déjà engagées. systemd borne l'attente à 120 secondes avant arrêt forcé ; le script macOS attend également jusqu'à 120 secondes et échoue sans bascule si l'arrêt n'est pas confirmé.
+7. Une copie horodatée de la base JSON (qui contient aussi les paramètres) est créée **après confirmation de l'arrêt**. En cas d'échec, le serveur suivant est d'abord arrêté et la copie est restaurée atomiquement avant de redémarrer l'ancienne version. Les fichiers téléversés restent dans leur emplacement persistant et ne sont pas recopiés pendant la mise à jour.
 8. Le gestionnaire active la version préparée et redémarre le serveur.
 9. Des contrôles de santé vérifient que le serveur répond, que la version attendue est active et que la base est lisible.
 10. Si le démarrage ou le contrôle échoue, le gestionnaire réactive la version précédente et redémarre. La sauvegarde reste disponible. Après une installation réussie, le nettoyage conserve les trois versions récentes ainsi que la version active et son prédécesseur pour le retour arrière.
@@ -54,7 +54,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 ### 5. Notifications et sécurité
 
 - Seule la direction voit les informations de version et les actions de mise à jour.
-- Tous les comptes reçoivent uniquement l'annonce de maintenance programmée, sa date/heure et le rappel d'enregistrer leur travail.
+- Tous les comptes reçoivent l'annonce de maintenance programmée, sa date/heure et le rappel d'enregistrer leur travail ; la bannière reste visible avec un message « Maintenance en cours » pendant l'installation.
 - Une maintenance annulée ou reprogrammée met à jour la notification.
 - Les actions de gestion sont authentifiées côté serveur et réservées au rôle administrateur ; masquer un bouton dans le navigateur ne constitue jamais un contrôle d'accès.
 - Les archives et manifestes sont vérifiés ; les chemins d'archive sont contrôlés contre les traversées de répertoires et les liens symboliques dangereux.
@@ -106,8 +106,20 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Tester sur Fedora avec le matériel cible avant toute utilisation avec des données scolaires réelles.
 
 ### Phase E — macOS
-- Ajouter le superviseur launchd et reprendre les mêmes tests de cycle de vie.
-- Conserver les commandes `.command` comme secours.
+- [x] Ajouter le superviseur launchd utilisateur, le lanceur réseau HTTPS, l'agent de maintenance immédiate/programmée et le rollback code/base.
+- [x] Ajouter les tests de génération des plist, de programmation/annulation et un test de bootstrap/déchargement launchd réel sur runner macOS isolé.
+- [ ] Obtenir une CI complète verte sur la tête finale.
+- [ ] Effectuer la recette sur le Mac de l'utilisateur (démarrage, arrêt, redémarrage, mise à jour, programmation, annulation et rollback).
+- Conserver les commandes `.command` pour le lancement et le parcours initial de migration ; après activation du gestionnaire supervisé, l'ancien script Git refuse de modifier le code actif.
+
+
+## Limites et migration initiale
+
+- Le mécanisme de mise à jour intégré n'existe pas dans les anciennes versions telles que V25.0.19. Le premier passage vers une version qui contient AMEL-01 est donc une migration distincte ; elle doit être répétée sur une copie de l'installation et accompagnée d'une sauvegarde externe avant toute consigne de mise à jour réelle.
+- Une fois le gestionnaire supervisé installé et une release stable publiée, les mises à jour normales sont pilotées depuis Paramètres > Mises à jour. Le terminal ne sert plus au téléchargement/à l'installation courante ; il reste nécessaire pour l'installation initiale du service, le dépannage ou une récupération.
+- Le script macOS historique refuse maintenant de faire un git merge si le marqueur du gestionnaire supervisé est présent, et refuse toute mise à jour initiale si un serveur MaClasse tourne encore.
+- Le SHA-256 publié avec le manifeste détecte les corruptions et incohérences d'archive, mais ne constitue pas une signature d'éditeur. Une attestation ou signature vérifiable, avec clé publique épinglée, reste bloquante avant une release stable destinée à des données scolaires réelles.
+- La chaîne macOS utilise un LaunchAgent de session utilisateur : MaClasse démarre à l'ouverture de session et ne doit pas être considérée comme un service disponible après déconnexion de cet utilisateur.
 
 ## Critères d'acceptation
 
