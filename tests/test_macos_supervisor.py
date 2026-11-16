@@ -226,10 +226,17 @@ class MacOSSupervisorTests(unittest.TestCase):
                            check=True, capture_output=True, timeout=20)
             ca_config = tls / "ca.cnf"
             ca_config.write_text(
-                "[req]\\ndistinguished_name=dn\\nx509_extensions=v3_ca\\nprompt=no\\n"
-                "[dn]\\nCN=MaClasse updater test CA\\n"
-                "[v3_ca]\\nbasicConstraints=critical,CA:TRUE\\n"
-                "keyUsage=critical,keyCertSign,cRLSign\\nsubjectKeyIdentifier=hash\\n",
+                """[req]
+distinguished_name=dn
+x509_extensions=v3_ca
+prompt=no
+[dn]
+CN=MaClasse updater test CA
+[v3_ca]
+basicConstraints=critical,CA:TRUE
+keyUsage=critical,keyCertSign,cRLSign
+subjectKeyIdentifier=hash
+""",
                 encoding="utf-8"
             )
             ca_result = subprocess.run([
