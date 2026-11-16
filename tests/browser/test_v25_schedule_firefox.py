@@ -350,6 +350,7 @@ def main() -> None:
                 )
                 if attachment_content != "Fichier de devoir de test":
                     raise AssertionError("Student cannot read teacher homework attachment: "+repr(attachment_content))
+                student_page.evaluate("""() => { closeModal(); page='studentMessages'; appSpace='student'; render(); }""")
                 mailbox = student_page.locator('.v2104App')
                 expect(mailbox).to_be_visible()
                 mailbox_state = student_page.evaluate("""() => ({
