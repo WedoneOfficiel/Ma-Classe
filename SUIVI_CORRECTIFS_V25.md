@@ -524,3 +524,13 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 34. **Campagne CI Linux — run #1452.** Résultat vert sur la tête `957f6e1` : installateur Linux réel, `node --check`, syntaxe des lanceurs, 45 fichiers de tests JavaScript, compilation Python et 30 fichiers de tests Python. Les 188 cas `unittest` exécutés dans les suites Python sont tous verts, notamment les 18 tests `update_manager`, les 6 tests d'application/rollback et le test de timer systemd. La régression EDT Firefox réel est encore en cours sur ce run ; le job macOS est en attente.
+
+
+34. **Test XSS EDT — faux événement de glisser-déposer incomplet.** Le test appelait le gestionnaire inline ondragstart dans Node VM sans lui fournir un objet navigateur event/DataTransfer complet. La CI échouait donc dans le harnais de test, pas dans le rendu ou la sérialisation des identifiants. Le test fournit maintenant un faux DataTransfer réaliste et vérifie la valeur transmise (0c9e770, puis ajustement de l'assertion dans 431e485). Le run #1460 a confirmé que la suite JavaScript Linux et macOS passait après cette correction.
+
+35. **AUDIT-U2 — mise à jour macOS historique non sûre en mode supervisé.** Mettre-A-Jour-MaClasse.command pouvait encore effectuer un git merge directement dans le code actif. Ajout d'un refus explicite si data/update-manager.enabled existe et d'un contrôle pgrep qui impose l'arrêt du serveur pour le parcours initial non supervisé. Deux tests fonctionnels couvrent le refus en mode supervisé et le refus si le serveur est actif (b07dd00, 7efc952). La migration initiale depuis V25.0.19 devra être répétée sur une copie de données avant de donner une procédure utilisateur.
+
+36. **AUDIT-U3 — bannière de maintenance masquée pendant l'installation.** L'API ne publiait que l'état scheduled ; au passage à installing, elle renvoyait une absence de maintenance. Ajout de _public_update_maintenance() avec projection minimale des données, état in_progress, bannière « Maintenance en cours » et tests Python/UI (507f13d, ab8291c, 8dd978e, c432453). CI à confirmer sur la tête finale.
+
+37. **CI #1459 — défaut de fixture de test, pas défaut d'application.** Le test test_v25_schedule_xss.js a d'abord échoué car l'objet de glisser-déposer n'était pas fourni au contexte VM, puis son assertion observait le mauvais sandbox. Les deux défauts du test ont été corrigés. Le run #1460 a ensuite passé tous les tests JavaScript et Python Linux ; sur macOS, les tests JavaScript et l'intégration launchd réelle ont également passé, tandis que les tests Python continuaient au dernier contrôle.
+
