@@ -25,6 +25,7 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn("gui/$(id -u)", installer)
         self.assertIn("fr.maclasse.server", installer)
         self.assertIn("KeepAlive", installer)
+        self.assertIn('MACLASSE_ROOT="$ROOT"', runner)
         self.assertIn('MACLASSE_DATA_DIR="$DATA"', runner)
         self.assertIn('MACLASSE_SUPERVISED=launchd', runner)
         self.assertIn('MACLASSE_TLS_KEY="$KEY"', runner)
