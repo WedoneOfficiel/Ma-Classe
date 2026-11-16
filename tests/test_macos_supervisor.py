@@ -256,7 +256,7 @@ class MacOSSupervisorTests(unittest.TestCase):
                     ["bash", str(root / "Installer-Service-MaClasse-macOS.sh")],
                     cwd=root, env=env, capture_output=True, text=True, timeout=30,
                 )
-                self.assertEqual(result.returncode, 0, result.stdout + "\\n" + result.stderr)
+                self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
                 marker_file = root / "data" / "launchd-live.pid"
                 deadline = time.time() + 10
                 while time.time() < deadline and not marker_file.exists():
@@ -287,11 +287,11 @@ class MacOSSupervisorTests(unittest.TestCase):
                 "-addext", "subjectAltName=IP:127.0.0.1"
             ], check=True, capture_output=True, timeout=30)
             parser = (
-                "import ipaddress,ssl,sys\\n"
-                "certificate=ssl._ssl._test_decode_cert(sys.argv[1])\\n"
-                "for kind,value in certificate.get('subjectAltName',()):\\n"
-                " if kind=='IP Address':\\n"
-                "  print(ipaddress.ip_address(value)); break\\n"
+                "import ipaddress,ssl,sys\n"
+                "certificate=ssl._ssl._test_decode_cert(sys.argv[1])\n"
+                "for kind,value in certificate.get('subjectAltName',()):\n"
+                " if kind=='IP Address':\n"
+                "  print(ipaddress.ip_address(value)); break\n"
             )
             result = subprocess.run(
                 [sys.executable, "-c", parser, str(certificate)],
@@ -393,7 +393,7 @@ subjectKeyIdentifier=hash
                 "-key", str(ca_key), "-out", str(ca_cert), "-config", str(ca_config),
                 "-extensions", "v3_ca", "-subj", "/CN=MaClasse updater test CA"
             ], capture_output=True, text=True, timeout=20)
-            self.assertEqual(ca_result.returncode, 0, ca_result.stdout + "\\n" + ca_result.stderr)
+            self.assertEqual(ca_result.returncode, 0, ca_result.stdout + "\n" + ca_result.stderr)
             subprocess.run([
                 "/usr/bin/openssl", "req", "-new", "-newkey", "rsa:2048", "-nodes",
                 "-keyout", str(server_key), "-out", str(server_csr),
@@ -532,9 +532,9 @@ subjectKeyIdentifier=hash
                 listener_info = subprocess.run(["/usr/sbin/lsof", "-nP", "-iTCP:8765", "-sTCP:LISTEN"], capture_output=True, text=True, timeout=10).stdout
                 raise AssertionError(
                     "Le serveur de test n'est pas sain pour " + version + " : " + repr(last_error)
-                    + "\\nlaunchctl list:\\n" + launchd_list.stdout + launchd_list.stderr
-                    + "\\nlaunchctl print:\\n" + launchd_print.stdout + launchd_print.stderr
-                    + "\\nstdout:\\n" + service_log + "\\nstderr:\\n" + service_error + "\\nrunner:\\n" + runner_log + "\\nlisteners:\\n" + listener_info + "\\nprocesses:\\n" + process_info[-8000:]
+                    + "\nlaunchctl list:\n" + launchd_list.stdout + launchd_list.stderr
+                    + "\nlaunchctl print:\n" + launchd_print.stdout + launchd_print.stderr
+                    + "\nstdout:\n" + service_log + "\nstderr:\n" + service_error + "\nrunner:\n" + runner_log + "\nlisteners:\n" + listener_info + "\nprocesses:\n" + process_info[-8000:]
                 )
 
             idle_connection = None
@@ -588,12 +588,12 @@ subjectKeyIdentifier=hash
                         ).stdout,
                         "health_probe": subprocess.run(
                             ["/usr/bin/curl", "--noproxy", "*", "--insecure", "--silent", "--show-error",
-                             "--connect-timeout", "2", "--max-time", "4", "--write-out", "\\nHTTP=%{http_code}",
+                             "--connect-timeout", "2", "--max-time", "4", "--write-out", "\nHTTP=%{http_code}",
                              "https://127.0.0.1:8765/api/health"],
                             capture_output=True, text=True, timeout=10
                         ).stdout
                     }
-                    self.fail(f"Mise à jour macOS bloquée après 140 s : {timeout_error}\\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2, default=lambda value: value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)))
+                    self.fail(f"Mise à jour macOS bloquée après 140 s : {timeout_error}\n" + json.dumps(timeout_diagnostics, ensure_ascii=False, indent=2, default=lambda value: value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)))
                 if success.returncode != 0:
                     diagnostics = {}
                     for name in ("macos-update.log", "macos-update-error.log", "service.log", "service-error.log"):
