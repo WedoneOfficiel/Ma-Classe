@@ -119,7 +119,7 @@ def _start_update_apply_service():
             import plistlib
             os.makedirs(os.path.dirname(plist),exist_ok=True)
             document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')],
-                      'WorkingDirectory':ROOT,'RunAtLoad':True,
+                      'WorkingDirectory':ROOT,'RunAtLoad':False,
                       'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
                       'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
             tmp=plist+'.tmp'
