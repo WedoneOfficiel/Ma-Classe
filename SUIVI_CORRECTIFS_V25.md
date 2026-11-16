@@ -521,3 +521,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 33. **Risque de chaîne d'approvisionnement — signature de release absente.** Le SHA-256 de l'archive est vérifié contre le manifeste de la même release GitHub : cela protège contre la corruption et les incohérences, mais ne constitue pas une signature d'éditeur indépendante. Une compromission du compte ou du workflow de publication pourrait remplacer à la fois manifeste et archive. Le registre contient maintenant `AUDIT-S2` : ajouter une signature détachée ou une attestation vérifiable avec clé publique épinglée. Ce point exige une décision/configuration de clé de signature dans GitHub Actions ; il est bloquant avant toute release stable de production.
+
+
+34. **Campagne CI Linux — run #1452.** Résultat vert sur la tête `957f6e1` : installateur Linux réel, `node --check`, syntaxe des lanceurs, 45 fichiers de tests JavaScript, compilation Python et 30 fichiers de tests Python. Les 188 cas `unittest` exécutés dans les suites Python sont tous verts, notamment les 18 tests `update_manager`, les 6 tests d'application/rollback et le test de timer systemd. La régression EDT Firefox réel est encore en cours sur ce run ; le job macOS est en attente.
