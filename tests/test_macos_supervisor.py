@@ -208,9 +208,20 @@ class MacOSSupervisorTests(unittest.TestCase):
                     raise AssertionError(f"Le vrai serveur MaClasse ne répond pas sous launchd : {last_error}\nstdout:\n{logs}\nstderr:\n{errors}")
             finally:
                 subprocess.run(
-                    ["/bin/launchctl", "bootout", f"gui/{uid}", label],
+                    ["/bin/launchctl", "bootout", domain],
                     capture_output=True, text=True, timeout=15
                 )
+                deadline = time.time() + 10
+                while time.time() < deadline:
+                    probe = subprocess.run(
+                        ["/bin/launchctl", "print", domain],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    if probe.returncode != 0 and "Could not find service" in (probe.stderr or ""):
+                        break
+                    time.sleep(0.2)
+                else:
+                    self.fail("Le LaunchAgent du vrai serveur MaClasse n'a pas été déchargé après le test.")
 
     @unittest.skipUnless(__import__("sys").platform == "darwin", "launchd réel uniquement sur macOS.")
     def test_real_launchd_bootstrap_starts_and_unloads_isolated_agent(self):
