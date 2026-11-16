@@ -841,8 +841,12 @@ assert server._update_apply_service_active() is False
                 service = plistlib.load(stream)
             self.assertEqual(service["EnvironmentVariables"]["MACLASSE_ROOT"], str(root.resolve()))
             self.assertEqual(service["EnvironmentVariables"]["MACLASSE_DATA_DIR"], str(data.resolve()))
-            self.assertEqual(service["ProgramArguments"][1],
-                             str(current / "Lancer-MaClasse-Service-macOS.sh"))
+            # macOS may canonicalize /var through its /private/var symlink.
+            # Compare resolved paths rather than their textual spelling.
+            self.assertEqual(
+                Path(service["ProgramArguments"][1]).resolve(),
+                (current / "Lancer-MaClasse-Service-macOS.sh").resolve(),
+            )
             self.assertTrue((data / "update-manager.enabled").is_file())
             self.assertIn("bootstrap", log.read_text(encoding="utf-8"))
 
