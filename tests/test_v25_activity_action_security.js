@@ -6,7 +6,7 @@ const source = fs.readFileSync("_all.js", "utf8");
 assert(!source.includes("new Function("), "application data must never be executed as generated JavaScript");
 assert(!source.includes('onclick="${x.action}"'), "student activity must not inject action strings into HTML");
 assert(!source.includes('onclick="${n.action}"'), "student notifications must not inject action strings into HTML");
-assert(source.includes('function jsObjectArg(value)'), "object arguments need an HTML-safe serializer");
+assert(source.includes('const jsObjectArg=value=>'), "object arguments need an HTML-safe serializer");
 assert(source.includes("runActivityAction(${jsObjectArg(x.action)})"));
 assert(source.includes("runActivityAction(${jsObjectArg(n.action)})"));
 
@@ -42,7 +42,7 @@ assert.strictEqual(sandbox.navigated.at(-1), "studentMessages");
 
 sandbox.runActivityAction({ type: "cloud", id: payload, page: "studentDocuments" });
 assert.strictEqual(sandbox.window.cloudSelected, payload);
-assert.deepStrictEqual(sandbox.window.cloudPath, []);
+assert.strictEqual(sandbox.window.cloudPath.length, 0);
 assert.strictEqual(sandbox.navigated.at(-1), "studentDocuments");
 
 const count = sandbox.navigated.length;
