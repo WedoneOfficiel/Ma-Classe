@@ -454,3 +454,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 13. **AMEL-U11 — course entre installation immédiate et maintenance programmée.** Un démarrage immédiat pouvait décharger un job launchd dont le processus d'installation avait déjà démarré ; le chemin systemd ne refusait pas non plus explicitement un double démarrage. Le lancement immédiat et l'annulation du timer vérifient maintenant l'état du processus d'installation avant toute action ; un timer ne peut pas décharger un updater déjà actif. Tests ajoutés sur les deux plateformes.
+
+
+14. **AMEL-U12 — double démarrage macOS après installation du service.** Les lanceurs manuels local et réseau ne vérifiaient que le port loopback ; le service launchd réseau pouvait donc être actif sur l'adresse LAN sans être détecté, et un second processus aurait pu écrire dans la même base. Les deux lanceurs vérifient maintenant le job launchd avant toute création de serveur, ouvrent l'URL HTTPS du certificat existant et refusent une seconde instance. Test statique et vérification de syntaxe shell ajoutés.
