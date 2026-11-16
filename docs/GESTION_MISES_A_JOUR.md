@@ -49,7 +49,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 7. Une copie horodatée de la base JSON (qui contient aussi les paramètres) est créée avant l'arrêt. En cas d'échec, cette copie est restaurée avant de redémarrer l'ancienne version. Les fichiers téléversés restent dans leur emplacement persistant et ne sont pas recopiés pendant la mise à jour.
 8. Le gestionnaire active la version préparée et redémarre le serveur.
 9. Des contrôles de santé vérifient que le serveur répond, que la version attendue est active et que la base est lisible.
-10. Si le démarrage ou le contrôle échoue, le gestionnaire réactive la version précédente et redémarre. La sauvegarde reste disponible.
+10. Si le démarrage ou le contrôle échoue, le gestionnaire réactive la version précédente et redémarre. La sauvegarde reste disponible. Après une installation réussie, le nettoyage conserve les trois versions récentes ainsi que la version active et son prédécesseur pour le retour arrière.
 
 ### 5. Notifications et sécurité
 
