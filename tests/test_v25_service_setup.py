@@ -22,6 +22,9 @@ assert 'MACLASSE_LAN_MODE=1' in launcher
 assert 'export MACLASSE_TLS_CERT="$DATA_ROOT/tls/server.crt"' in launcher
 assert 'export MACLASSE_TLS_KEY="$DATA_ROOT/tls/server.key"' in launcher
 assert 'exec "$PYTHON" "$APP_ROOT/server.py"' in launcher
+assert 'DATA_REAL="$(cd "$DATA_ROOT" && pwd -P)"' in launcher
+assert 'PROGRAM_REAL="$(cd "$PROGRAM_ROOT" && pwd -P)"' in launcher
+assert '[[ "$PROGRAM_REAL" == "$DATA_REAL/program" && "$VERSIONS_REAL" == "$PROGRAM_REAL/versions" ]]' in launcher
 assert 'APP_REAL="$(cd "$APP_ROOT" && pwd -P)"' in launcher
 assert 'case "$APP_REAL" in "$ROOT"|"$VERSIONS_REAL"/*)' in launcher
 assert 'ln -s ../.. "$APP_ROOT"' in launcher
