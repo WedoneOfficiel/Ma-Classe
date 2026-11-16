@@ -485,3 +485,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 
 
 21. **Fixture de test des compétences — format des arguments.** Après ajout du helper `jsArg`, le test évaluait bien la fonction mais attendait encore des arguments sérialisés avec apostrophes simples. Le sérialiseur produit volontairement des littéraux JSON entre guillemets doubles ; l'assertion était donc obsolète. Elle attend maintenant `setCompetencyRating("e1","s1"` (`0f88e86`). Ce n'est pas un défaut fonctionnel de l'application, mais un défaut du test. La nouvelle CI doit confirmer la suite complète.
+
+
+22. **Fixture de test de messagerie V21.04 — helper manquant.** Après correction de la fixture compétences, la suite JS a atteint `test_v2104_mail_model.js`, qui évaluait le rendu réel `messages()` sans fournir `jsArg`. Le test échouait donc par `ReferenceError`, sans démontrer de défaut de la messagerie. Le helper déterministe est ajouté au sandbox (`3d88655`). La CI suivante doit vérifier si d'autres anciens sandboxes nécessitent la même mise à jour.
