@@ -51,6 +51,6 @@ printf 'enabled\n' > "$ROOT/data/update-manager.enabled.tmp"
 mv "$ROOT/data/update-manager.enabled.tmp" "$ROOT/data/update-manager.enabled"
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$(id -u)" "$AGENTS/$LABEL.plist"
-launchctl kickstart -k "gui/$(id -u)/$LABEL"
+launchctl kickstart "gui/$(id -u)/$LABEL"
 echo "Supervision macOS installée. État : launchctl print gui/$(id -u)/$LABEL"
 echo "Données et certificats conservés dans $ROOT/data."
