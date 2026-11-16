@@ -22,6 +22,15 @@ fail() {
 }
 if [[ ! -d .git ]] || ! command -v git >/dev/null 2>&1; then fail "Cette installation n'est pas un clone Git. N'utilise pas ce script pour cette installation."; fi
 if [[ ! -x .venv/bin/python ]]; then fail "L'environnement Python est absent. Lance d'abord Installer-MaClasse.command."; fi
+# Once the supervised updater is installed, code changes must go through the
+# authenticated in-app workflow; never mutate the active version with git merge.
+if [[ -f data/update-manager.enabled ]]; then
+  fail "Le gestionnaire de mises à jour supervisé est installé. Utilise Paramètres > Mises à jour dans MaClasse ; cette commande Git est désactivée pour protéger la version active."
+fi
+command -v pgrep >/dev/null 2>&1 || fail "pgrep est requis pour vérifier que le serveur est arrêté."
+if pgrep -f '[p]ython.*server[.]py' >/dev/null 2>&1; then
+  fail "Le serveur MaClasse est encore actif. Arrête-le avec Ctrl+C avant la mise à jour initiale."
+fi
 REMOTE="$(git remote get-url origin 2>/dev/null || true)"
 [[ "$REMOTE" =~ WedoneOfficiel/Ma-Classe(\.git)?$ ]] || fail "Le dépôt distant origin n'est pas le dépôt officiel MaClasse."
 BRANCH="$(git branch --show-current)"
