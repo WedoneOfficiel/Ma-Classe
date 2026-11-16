@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 ROOT="${MACLASSE_ROOT:-$(cd "$(dirname "$0")" && pwd -P)}"
 ROOT="$(cd "$ROOT" && pwd -P)"
 DATA_ROOT="$ROOT/data"
@@ -7,6 +8,11 @@ PROGRAM_ROOT="$DATA_ROOT/program"
 VERSIONS_ROOT="$PROGRAM_ROOT/versions"
 CURRENT_LINK="$PROGRAM_ROOT/current"
 STATE_FILE="$DATA_ROOT/update-state.json"
+exec 9>"$DATA_ROOT/update-apply.lock"
+if ! /usr/bin/python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2>/dev/null; then
+  echo "Une autre opération de mise à jour est déjà en cours." >&2
+  exit 1
+fi
 BACKUP_ROOT="$DATA_ROOT/backups"
 
 write_state() {
@@ -173,7 +179,6 @@ PY
 )"
 [[ -n "$PREVIOUS_VERSION" ]] || { echo "Impossible d'identifier la version précédente."; exit 1; }
 
-umask 077
 mkdir -p "$BACKUP_ROOT"
 systemctl --user disable --now maclasse-update-scheduled.timer >/dev/null 2>&1 || true
 write_state "installing"
