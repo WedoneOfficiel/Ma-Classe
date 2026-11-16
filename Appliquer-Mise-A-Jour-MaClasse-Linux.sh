@@ -10,7 +10,7 @@ CURRENT_LINK="$PROGRAM_ROOT/current"
 STATE_FILE="$DATA_ROOT/update-state.json"
 exec 9>"$DATA_ROOT/update-apply.lock"
 if ! /usr/bin/python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2>/dev/null; then
-  echo "Une autre opération de mise à jour est déjà en cours." >&2
+  echo "Une autre mise à jour est en cours ou un serveur manuel utilise encore le verrou partagé ; arrête-le avant de continuer." >&2
   exit 1
 fi
 BACKUP_ROOT="$DATA_ROOT/backups"
