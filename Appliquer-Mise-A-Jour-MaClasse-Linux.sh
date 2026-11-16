@@ -29,6 +29,22 @@ os.replace(tmp,path)
 PY
 }
 
+write_maintenance_state() {
+  local status="$1"
+  MAINTENANCE_FILE="$DATA_ROOT/update-maintenance.json" MAINTENANCE_STATUS="$status" /usr/bin/python3 - <<'PY'
+import json, os, time
+path=os.environ["MAINTENANCE_FILE"]
+if not os.path.isfile(path): raise SystemExit(0)
+with open(path,encoding="utf-8") as f: state=json.load(f)
+if state.get("status") in ("scheduled","installing"):
+    state["status"]=os.environ["MAINTENANCE_STATUS"]
+    state["updated_at"]=int(time.time())
+    tmp=path+".tmp"
+    with open(tmp,"w",encoding="utf-8") as f: json.dump(state,f,ensure_ascii=False,indent=2)
+    os.replace(tmp,path)
+PY
+}
+
 fail_and_restore() {
   local message="$1"
   echo "Échec de la mise à jour : $message" >&2
@@ -44,9 +60,11 @@ fail_and_restore() {
   done
   if [[ "$restored" == "1" ]]; then
     write_state "failed" "$message — version précédente restaurée."
+    write_maintenance_state "failed"
     echo "Retour à la version $PREVIOUS_VERSION effectué."
   else
     write_state "rollback_failed" "$message — le redémarrage de la version précédente a également échoué."
+    write_maintenance_state "failed"
     echo "ATTENTION : restauration automatique du code effectuée, mais le serveur ne répond pas. Consulter journalctl." >&2
   fi
   exit 1
@@ -108,7 +126,9 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 if [[ -f "$DATA_ROOT/maclasse.json" ]]; then
   cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_ROOT/maclasse-avant-maj-$STAMP.json"
 fi
+systemctl --user disable --now maclasse-update-scheduled.timer >/dev/null 2>&1 || true
 write_state "installing"
+write_maintenance_state "installing"
 LAN_IP="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | grep -oE 'IP Address:[0-9.]+' | head -n1 | cut -d: -f2 || true)"
 [[ -n "$LAN_IP" ]] || fail_and_restore "Adresse IP du certificat TLS introuvable."
 
@@ -133,4 +153,5 @@ if [[ "$healthy" != "1" ]]; then
   fail_and_restore "Le contrôle de santé n'a pas confirmé la version $EXPECTED_VERSION."
 fi
 write_state "installed"
+write_maintenance_state "completed"
 echo "Mise à jour MaClasse $VERSION_NUMBER installée et contrôlée avec succès."
