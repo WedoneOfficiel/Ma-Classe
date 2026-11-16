@@ -50,7 +50,7 @@ class MacOSSupervisorTests(unittest.TestCase):
         fakebin.mkdir()
         log = tmp / "launchctl.log"
         launchctl = fakebin / "launchctl"
-        launchctl.write_text("#!/bin/sh\\necho \"$*\" >> \"$LAUNCHCTL_LOG\"\\nexit 0\\n", encoding="utf-8")
+        launchctl.write_text("#!/bin/sh\necho \"$*\" >> \"$LAUNCHCTL_LOG\"\nexit 0\n", encoding="utf-8")
         launchctl.chmod(0o755)
         env = os.environ.copy()
         env.update({"HOME": str(home), "PATH": str(fakebin) + os.pathsep + env.get("PATH", ""),
