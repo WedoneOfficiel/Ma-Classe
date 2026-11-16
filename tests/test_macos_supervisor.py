@@ -3,6 +3,8 @@
 import plistlib
 import stat
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -146,6 +148,36 @@ class MacOSSupervisorTests(unittest.TestCase):
                         os.kill(int(pid_file.read_text(encoding="utf-8")), 15)
                     except (OSError, ValueError):
                         pass
+
+
+    def test_macos_updater_retains_active_previous_and_three_newest_versions(self):
+        script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh").read_text(encoding="utf-8")
+        start_marker = 'if ! "$ROOT/.venv/bin/python" - "$VERSIONS" "$TARGET_REAL" "$PREVIOUS_REAL" <<\'PY\'\n'
+        self.assertIn(start_marker, script)
+        start = script.index(start_marker) + len(start_marker)
+        end = script.index("\nPY\nthen", start)
+        pruning_code = script[start:end]
+        with tempfile.TemporaryDirectory(prefix="maclasse-version-retention-") as temp:
+            versions = Path(temp) / "versions"
+            versions.mkdir()
+            paths = {}
+            for version in range(1, 7):
+                path = versions / f"V1.0.{version}"
+                path.mkdir()
+                paths[version] = path
+            outside = Path(temp) / "outside"
+            outside.mkdir()
+            (versions / "V1.0.7").symlink_to(outside, target_is_directory=True)
+            subprocess.run(
+                [sys.executable, "-c", pruning_code, str(versions), str(paths[6]), str(paths[2])],
+                check=True,
+            )
+            self.assertTrue(paths[6].is_dir(), "La version active doit être conservée.")
+            self.assertTrue(paths[2].is_dir(), "La version de rollback doit être conservée.")
+            self.assertTrue(paths[4].is_dir() and paths[5].is_dir(), "Les trois versions les plus récentes doivent être conservées.")
+            self.assertFalse(paths[1].exists())
+            self.assertFalse(paths[3].exists())
+            self.assertTrue(outside.is_dir(), "Le nettoyage ne doit jamais suivre un lien symbolique.")
 
     def test_launchd_schedule_and_immediate_job_plists(self):
         code = r"""
