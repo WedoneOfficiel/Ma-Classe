@@ -2047,7 +2047,7 @@ class Handler(SimpleHTTPRequestHandler):
                 except RuntimeError as error:
                     return self._json({'error':str(error)},409)
                 return self._json({'installing':True,'version':update_state.get('version')},202)
-            except (OSError,ValueError,KeyError,AttributeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            except (OSError,ValueError,KeyError,AttributeError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
         if path=='/api/auth/setup':
             try: obj=json.loads(body.decode('utf-8'))
