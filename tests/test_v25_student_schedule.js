@@ -62,7 +62,8 @@ const context = {
   studentLessonDayList: () => '<div id="lesson-list"></div>',
   studentLessonWorkList: () => '<div id="work-list"></div>',
   studentLessonUpcomingList: () => '<div id="upcoming-list"></div>',
-  iso: d => { const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+  iso: d => { const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); },
+  jsArg: value => JSON.stringify(String(value ?? ''))
 };
 vm.createContext(context);
 let start = source.indexOf('function studentSchedule(){');
