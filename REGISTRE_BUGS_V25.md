@@ -70,13 +70,15 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-S3 | XSS stockée possible via identifiants et motifs de créneaux | Les identifiants de planning pouvaient être interpolés sans sérialisation dans des gestionnaires HTML inline ; le motif visuel était injecté directement dans une propriété CSS. Un professeur pouvait potentiellement viser les vues des élèves. | Les identifiants sont sérialisés comme chaînes JavaScript puis échappés pour l'attribut HTML ; les motifs sont limités à `none`, `hatch`, `cross`. Le serveur refuse les identifiants non sûrs sur les nouveaux enregistrements enseignant/élève et les messages/drafts de messagerie. Tests XSS navigateur/JS et tests de persistance serveur ajoutés. | En cours de validation CI |
 
+| AMEL-S4 | XSS stockée via le contenu HTML des séances, consignes et corrections | Le contenu riche publié par les professeurs était réinjecté en HTML sans assainissement ; des balises script, attributs événementiels ou liens `javascript:` pouvaient s'exécuter dans les vues élèves. | Assainisseur HTML à liste blanche côté serveur lors du chargement et de la sauvegarde, plus assainissement côté navigateur avant affichage/édition. Autorise seulement le formatage nécessaire, liens HTTP(S) et styles de texte limités. Tests serveur couvrant scripts, événements, liens et CSS. | En cours de validation CI |
+
 ## État global
 
 - Bugs applicatifs historiques suivis : **16**
-- Anomalies complémentaires du gestionnaire relevées : **16** (correctifs poussés, CI à valider)
+- Anomalies complémentaires du gestionnaire relevées : **17** (correctifs poussés, CI à valider)
 - Corrigés (confirmés par l'utilisateur) : **0**
 - Supposés résolus (correctif et tests jugés satisfaisants, à confirmer par l'utilisateur) : **16**
-- En cours de résolution : **0** pour les 16 bugs historiques ; **16** anomalies AMEL complémentaires en validation CI
+- En cours de résolution : **0** pour les 16 bugs historiques ; **17** anomalies AMEL complémentaires en validation CI
 - Détectés : **0**
 - Demande d'amélioration séparée : **1**
 
