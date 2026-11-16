@@ -135,9 +135,9 @@ import subprocess, sys
 sys.path.insert(0, str(sys.argv[1]))
 import server
 server.sys.platform = "darwin"
-server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\\n- 0 fr.maclasse.update\\n", "")
+server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\n- 0 fr.maclasse.update\n", "")
 assert server._update_apply_service_active() is False
-server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\\n4321 0 fr.maclasse.update\\n", "")
+server.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 0, "PID Status Label\n4321 0 fr.maclasse.update\n", "")
 assert server._update_apply_service_active() is True
 """
         subprocess.run(["python", "-c", code, str(ROOT)], check=True, cwd=ROOT)
