@@ -9,7 +9,11 @@ permissions:
   contents: write
 
 jobs:
+  validate:
+    uses: ./.github/workflows/tests.yml
+
   release:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le code de la version taguée
