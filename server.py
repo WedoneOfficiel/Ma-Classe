@@ -1846,6 +1846,7 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     with open(maintenance_path,encoding='utf-8') as f: old_maintenance=json.load(f)
                 except (OSError,ValueError): pass
+                if not isinstance(old_maintenance,dict): old_maintenance=None
                 tmp=maintenance_path+'.tmp'
                 with open(tmp,'w',encoding='utf-8') as f: json.dump(maintenance,f,ensure_ascii=False,indent=2)
                 os.replace(tmp,maintenance_path)
