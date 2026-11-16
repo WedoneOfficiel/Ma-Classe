@@ -852,7 +852,7 @@ def _teacher_merge_mailbox(current, incoming, user, data):
     valid_teachers={str(x.get('id')) for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher'}
     valid_students={str(x.get('id')) for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in allowed_classes}
     for ident,message in new_by_id.items():
-        if ident in old_by_id: continue
+        if ident in old_by_id or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',ident): continue
         sender=message.get('sender') if isinstance(message.get('sender'),dict) else {}
         if sender.get('key')!=me or sender.get('role')!='teacher' or str(sender.get('id') or '')!=tid: continue
         recipients=[x for field in ('to','cc','bcc','sharedWith') for x in (message.get(field) or []) if isinstance(x,str)]
