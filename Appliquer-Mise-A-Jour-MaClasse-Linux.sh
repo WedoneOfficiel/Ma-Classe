@@ -95,6 +95,7 @@ print(version,sha,state["status"])
 PY
 )
 TARGET="$VERSIONS_ROOT/V$VERSION_NUMBER"
+[[ ! -L "$TARGET" ]] || { echo "Le dossier de version ne peut pas être un lien symbolique."; exit 1; }
 [[ -d "$TARGET" ]] || { echo "Dossier de version préparée absent."; exit 1; }
 [[ -x "$TARGET/.venv/bin/python" && -f "$TARGET/maclasse-runtime-ready.json" && -f "$TARGET/server.py" && -f "$TARGET/_all.js" ]] || { echo "Version préparée incomplète."; exit 1; }
 EXPECTED_VERSION="$VERSION_NUMBER"
