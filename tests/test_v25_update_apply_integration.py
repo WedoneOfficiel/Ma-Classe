@@ -14,6 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @unittest.skipUnless(sys.platform.startswith("linux"), "Le moteur d'installation cible systemd/Linux.")
 class UpdateApplyIntegrationTests(unittest.TestCase):
+    def test_update_installer_uses_an_exclusive_process_lock(self):
+        script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text(encoding="utf-8")
+        self.assertIn("fcntl.LOCK_EX | fcntl.LOCK_NB", script)
+        self.assertIn('update-apply.lock', script)
+
     def make_version(self, directory, version, sha=None):
         directory.mkdir(parents=True)
         (directory / "VERSION.txt").write_text("V" + version + "\n", encoding="utf-8")
