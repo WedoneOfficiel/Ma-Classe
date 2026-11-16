@@ -26,6 +26,7 @@ assert 'ln -s ../.. "$APP_ROOT"' in launcher
 assert 'ExecStart=/usr/bin/bash $ROOT/Lancer-MaClasse-Service-Linux.sh' in installer
 assert 'Environment=MACLASSE_SUPERVISED=systemd' in installer
 assert 'loginctl enable-linger "$USER_NAME"' in installer
+assert 'for dependency in systemd-analyze curl openssl realpath python3; do' in installer
 assert 'NoNewPrivileges=true' in installer
 assert 'TimeoutStopSec=120' in installer
 server_source = (ROOT / 'server.py').read_text(encoding='utf-8')
