@@ -92,7 +92,7 @@ fail_and_restore() {
     echo "ATTENTION : sauvegarde de base absente ou invalide. Le serveur reste arrêté pour protéger les données." >&2
     exit 1
   fi
-  RESTORE_TMP="$DATA_ROOT/maclasse.json.rollback.$.tmp"
+  RESTORE_TMP="$DATA_ROOT/maclasse.json.rollback.${BASHPID}.tmp"
   rm -f "$RESTORE_TMP"
   if ! cp -a "$BACKUP_FILE" "$RESTORE_TMP"; then
     write_state "rollback_failed" "$message — copie temporaire de la base impossible."
@@ -213,6 +213,15 @@ PY
 )"
 [[ -n "$PREVIOUS_VERSION" ]] || { echo "Impossible d'identifier la version précédente."; exit 1; }
 
+# Only the systemd-owned server may be running during an update. A manually
+# launched second process could keep writing to the same database after stop.
+command -v pgrep >/dev/null 2>&1 || { echo "pgrep est requis pour vérifier l'absence de serveur manuel." >&2; exit 1; }
+SERVICE_PID="$(systemctl --user show --property=MainPID --value maclasse.service 2>/dev/null || true)"
+[[ "$SERVICE_PID" =~ ^[0-9]+$ && "$SERVICE_PID" != "0" ]] || { echo "Impossible d'identifier le processus MaClasse supervisé ; mise à jour refusée." >&2; exit 1; }
+while IFS= read -r pid; do
+  [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { echo "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour." >&2; exit 1; }
+done < <(pgrep -f '[p]ython.*server[.]py' || true)
+
 mkdir -p "$BACKUP_ROOT"
 systemctl --user disable --now maclasse-update-scheduled.timer >/dev/null 2>&1 || true
 write_state "installing"
@@ -226,7 +235,7 @@ if ! server_stopped; then
 fi
 # Sauvegarder APRÈS l'arrêt confirmé : aucune écriture concurrente ne peut être perdue au rollback.
 STAMP="$(date +%Y%m%d-%H%M%S)"
-BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP-$.json"
+BACKUP_FILE="$BACKUP_ROOT/maclasse-avant-maj-$STAMP-${BASHPID}.json"
 if [[ ! -f "$DATA_ROOT/maclasse.json" || -L "$DATA_ROOT/maclasse.json" ]] || ! cp -a "$DATA_ROOT/maclasse.json" "$BACKUP_FILE"; then
   abort_before_switch "Impossible de sauvegarder la base après l'arrêt du serveur."
 fi
