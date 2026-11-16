@@ -1880,6 +1880,10 @@ class MaClasseHTTPServer(ThreadingHTTPServer):
 
 
 class Handler(SimpleHTTPRequestHandler):
+    # Borne les connexions inactives pour qu'un client abandonné ne bloque pas
+    # indéfiniment l'arrêt gracieux du serveur pendant une mise à jour supervisée.
+    timeout=20
+
     def _session_user(self):
         raw=self.headers.get('Cookie','')
         token=''
