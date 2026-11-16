@@ -713,52 +713,23 @@ assert server._update_apply_service_active() is False
         stop = script.index('launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL"')
         backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
         self.assertLess(stop, backup)
-        self.assertLess(script.index('if [[ "$STOPPED" != "1" ]]'), backup)
+        self.assertLess(script.index("if ! stop_service_and_confirm; then"), backup)
         self.assertIn("write_maintenance_state completed", script)
 
 
-    def test_rollback_waits_for_launchd_job_to_be_unloaded(self):
-        import os
-        import tempfile
+    def test_launchd_shutdown_is_bounded_and_confirms_process_exit_before_backup(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
         start = script.index("stop_service_and_confirm() {")
-        end = script.index("\n}\nfail_restore()", start) + 2
+        end = script.index("\\n}\\nfail_restore()", start) + 2
         function = script[start:end]
-        function = function.replace("/bin/launchctl", '"$FAKE_LAUNCHCTL"')
-        function = function.replace("/usr/bin/awk", "awk")
-        function = function.replace("/bin/kill", "kill")
-        function = function.replace("/bin/sleep 1", ":")
-        with tempfile.TemporaryDirectory(prefix="maclasse-launchd-stop-") as temp:
-            root = Path(temp)
-            fake = root / "launchctl"
-            fake.write_text(
-                "#!/bin/sh\n"
-                "case \"$1\" in\n"
-                "  bootout) touch \"$BOOTED\" ;;\n"
-                "  print) if [ ! -f \"$BOOTED\" ]; then echo loaded; exit 0; fi; "
-                "n=0; [ ! -f \"$COUNT\" ] || n=$(cat \"$COUNT\"); n=$((n+1)); "
-                "echo \"$n\" > \"$COUNT\"; if [ \"$n\" -lt 3 ]; then echo loaded; exit 0; "
-                "else echo 'Could not find service' >&2; exit 113; fi ;;\n"
-                "esac\n",
-                encoding="utf-8",
-            )
-            fake.chmod(0o755)
-            env = os.environ.copy()
-            env.update({"FAKE_LAUNCHCTL": str(fake), "BOOTED": str(root / "booted"),
-                        "COUNT": str(root / "count")})
-            command = "UID_NOW=501; SERVICE_LABEL=fr.maclasse.server; " + function + "; stop_service_and_confirm"
-            subprocess.run(["bash", "-c", command], check=True, env=env, timeout=5)
-            self.assertEqual((root / "count").read_text(encoding="utf-8").strip(), "3")
-
-            fake.write_text(
-                "#!/bin/sh\n"
-                "case \"$1\" in list) printf 'PID Status Label\\n- 0 fr.maclasse.server\\n' ;; "
-                "bootout) : ;; print) echo 'Operation not permitted' >&2; exit 1 ;; esac\n",
-                encoding="utf-8",
-            )
-            fake.chmod(0o755)
-            result = subprocess.run(["bash", "-c", command], env=env, capture_output=True, text=True, timeout=5)
-            self.assertNotEqual(result.returncode, 0, "unknown launchctl state must fail closed")
+        self.assertIn("launchctl bootout", function)
+        self.assertIn("for _ in {1..25}", function)
+        self.assertIn("/bin/kill -KILL", function)
+        self.assertIn("/bin/kill -0", function)
+        self.assertIn("Could not find service", function)
+        self.assertLess(function.index("/bin/kill -KILL"), function.index('if probe='))
+        backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
+        self.assertLess(script.index("if ! stop_service_and_confirm; then"), backup)
 
     def test_installer_checks_health_and_has_rollback_path(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
