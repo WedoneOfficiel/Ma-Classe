@@ -1330,6 +1330,12 @@ def _merge_teacher_data(current,incoming,user):
                         if isinstance(value,dict):
                             safe_value=dict(value); safe_value.pop('replacementTeacherId',None); safe_value.pop('replacementOfTeacherId',None); safe_overrides[date]=safe_value
                     item['overrides']=safe_overrides
+                allowed_patterns=('none','hatch','cross')
+                if item.get('pattern') not in allowed_patterns:
+                    old_pattern=previous.get('pattern') if isinstance(previous,dict) else 'none'
+                    item['pattern']=old_pattern if old_pattern in allowed_patterns else 'none'
+                if not previous and not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(item.get('id') or '')):
+                    continue
             if item.get('studentId') and str(item.get('studentId')) not in student_ids: continue
             if key=='submissions':
                 lesson=next((l for l in current.get('lessons',[]) or [] if isinstance(l,dict) and str(l.get('id'))==str(item.get('lessonId') or '')),None)
