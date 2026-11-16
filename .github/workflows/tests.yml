@@ -2,7 +2,7 @@ name: MaClasse — tests automatisés
 
 on:
   push:
-    branches: [main, feature/amel-01-update-manager]
+    branches: [main]
   pull_request:
     branches: [main, fix/v25-student-teacher-workflows]
 
