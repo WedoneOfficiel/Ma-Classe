@@ -445,3 +445,6 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 - Le job macOS de la CI reste nécessaire pour valider les scripts sur runner Apple. Même vert, il ne remplacera pas la recette sur le Mac réel, notamment après une première mise à jour puis une seconde (pour vérifier que les scripts continuent de trouver la racine et les données).
 - La recette Fedora sur le PC cible reste à faire. Aucun changement local n'a été appliqué.
 
+
+
+11. **AMEL-U9 — annulation systemd non confirmée.** Le timer Linux pouvait être supprimé du disque et considéré annulé même si `systemctl disable --now` n'avait pas réussi. L'annulation contrôle maintenant séparément `is-active` et `is-enabled`, et ne supprime le fichier qu'après confirmation de l'état inactif/désactivé. Un test simule un timer toujours actif et vérifie que le fichier est conservé et que l'annulation échoue.
