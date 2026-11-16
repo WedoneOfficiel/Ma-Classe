@@ -24,21 +24,26 @@ fi
 [[ -L "$CURRENT" ]] || { echo "Le chemin data/program/current existe mais n'est pas un lien symbolique ; aucune modification effectuée."; exit 1; }
 TARGET="$(cd "$(dirname "$CURRENT")" && cd "$(readlink "$CURRENT")" && pwd -P)"
 [[ "$TARGET" == "$ROOT" || "$TARGET" == "$ROOT/data/program/versions/"* ]] || { echo "La version active pointe hors du dossier MaClasse."; exit 1; }
-cat > "$AGENTS/$LABEL.plist.tmp" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>Label</key><string>$LABEL</string>
-<key>ProgramArguments</key><array><string>/bin/bash</string><string>$ROOT/Lancer-MaClasse-Service-macOS.sh</string></array>
-<key>WorkingDirectory</key><string>$ROOT</string>
-<key>RunAtLoad</key><true/>
-<key>KeepAlive</key><true/>
-<key>ThrottleInterval</key><integer>5</integer>
-<key>StandardOutPath</key><string>$ROOT/data/macos-service.log</string>
-<key>StandardErrorPath</key><string>$ROOT/data/macos-service-error.log</string>
-<key>ProcessType</key><string>Background</string>
-</dict></plist>
-PLIST
+ROOT_PATH="$ROOT" AGENTS_PATH="$AGENTS" LABEL="$LABEL" "$ROOT/.venv/bin/python" - <<'PY'
+import os, plistlib
+root=os.environ["ROOT_PATH"]
+agents=os.environ["AGENTS_PATH"]
+label=os.environ["LABEL"]
+document={
+    "Label": label,
+    "ProgramArguments": ["/bin/bash", os.path.join(root,"Lancer-MaClasse-Service-macOS.sh")],
+    "WorkingDirectory": root,
+    "RunAtLoad": True,
+    "KeepAlive": True,
+    "ThrottleInterval": 5,
+    "StandardOutPath": os.path.join(root,"data","macos-service.log"),
+    "StandardErrorPath": os.path.join(root,"data","macos-service-error.log"),
+    "ProcessType": "Background",
+}
+path=os.path.join(agents,label+".plist.tmp")
+with open(path,"wb") as stream: plistlib.dump(document,stream,fmt=plistlib.FMT_XML,sort_keys=True)
+os.chmod(path,0o600)
+PY
 /usr/bin/plutil -lint "$AGENTS/$LABEL.plist.tmp" >/dev/null
 mv "$AGENTS/$LABEL.plist.tmp" "$AGENTS/$LABEL.plist"
 chmod 600 "$AGENTS/$LABEL.plist"
