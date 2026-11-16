@@ -6,7 +6,7 @@ const NAV=[['dashboard','⌂','Tableau de bord'],['activity','◉','Centre d’a
 const DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const uid=()=>globalThis.crypto?.randomUUID?globalThis.crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2); const iso=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
-let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let updateCheckTimer=null;let setupRequired=false;let dataRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
+let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let updateCheckTimer=null;let maintenanceEditMode=false;let setupRequired=false;let dataRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
 function blank(){return {evaluationTemplates:[],competencyLibrary:[],settings:{rooms:[],termMode:'trimestres',terms:[{id:uid(),name:'Trimestre 1',start:'2026-09-01',end:'2026-12-18'},{id:uid(),name:'Trimestre 2',start:'2027-01-04',end:'2027-03-31'},{id:uid(),name:'Trimestre 3',start:'2027-04-01',end:'2027-07-02'}]},classes:[],students:[],teachers:[],subjects:[],schedule:[],teacherAssignments:[],lessons:[],evaluations:[],attendance:[],bulletins:[],attachments:[],submissions:[],conversations:[],cloudItems:[],mailFolders:[],users:[],notifications:[],auditLog:[]}}
 async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='/api/data'||path==='/api/save')){const rev=r.headers.get('X-MaClasse-Revision');if(rev)dataRevision=rev}if(!r.ok){let detail=await r.text();try{const parsed=JSON.parse(detail);if(parsed.code==='REVISION_CONFLICT'||parsed.code==='REVISION_REQUIRED')detail='Les données ont changé sur le serveur. Recharge la page avant de continuer pour éviter d’écraser le travail d’un autre utilisateur.';else detail=parsed.error||detail}catch{}const error=Error(detail);error.status=r.status;throw error}return r.json()}
 function formatMaintenanceDate(timestamp){return new Date(Number(timestamp)*1000).toLocaleString()}
@@ -29,6 +29,12 @@ function startMaintenanceNoticeSync(){
  if(maintenanceNoticeTimer)return;
  maintenanceNoticeTimer=window.setInterval(refreshMaintenanceNotice,60000);
 }
+function localDateTimeValue(timestamp){
+ const value=new Date(Number(timestamp)*1000);
+ value.setMinutes(value.getMinutes()-value.getTimezoneOffset());
+ return value.toISOString().slice(0,16);
+}
+function editScheduledUpdate(){maintenanceEditMode=true;render()}
 function localDateTimeMin(){
  const value=new Date(Date.now()+5*60*1000);
  value.setMinutes(value.getMinutes()-value.getTimezoneOffset());
@@ -45,6 +51,7 @@ async function scheduleUpdate(){
  try{
   const result=await api('/api/admin/updates/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:updateCheckResult.version,scheduled_at,timezone})});
   maintenanceNotice={scheduled:true,maintenance:result.maintenance};
+  maintenanceEditMode=false;
   toast('Maintenance programmée. Tous les utilisateurs seront prévenus.');
   render();
  }catch(error){toast(error.message||'Impossible de programmer la maintenance.')}
@@ -55,6 +62,7 @@ async function cancelScheduledUpdate(){
   try{
    await api('/api/admin/updates/cancel-schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
    maintenanceNotice=null;
+   maintenanceEditMode=false;
    toast('Maintenance annulée.');
    render();
   }catch(error){toast(error.message||'Impossible d’annuler la maintenance.')}
@@ -74,9 +82,12 @@ function updateSettingsCard(){
   if(!updateCheckResult.installing&&updateCheckResult.prepared&&updateCheckResult.install_supported){
    html+='<p class="hint">Version téléchargée, vérifiée et prête à installer. Tu peux l’installer immédiatement ou programmer la maintenance.</p>';
    if(scheduledNotice?.scheduled&&scheduledNotice.maintenance?.version===updateCheckResult.version){
-    html+='<div class="notice" style="margin-top:10px">Installation programmée le <b>'+esc(formatMaintenanceDate(scheduledNotice.maintenance.scheduled_at))+'</b>.<button class="btn small danger" style="margin-top:8px" onclick="cancelScheduledUpdate()">Annuler la maintenance</button></div>';
-   }else{
-    html+='<div class="field" style="margin-top:12px"><label for="updateScheduleAt">Programmer la maintenance</label><input class="input" id="updateScheduleAt" type="datetime-local" min="'+localDateTimeMin()+'"><button class="btn" style="margin-top:8px" onclick="scheduleUpdate()">Programmer l’installation</button></div>';
+    html+='<div class="notice" style="margin-top:10px">Installation programmée le <b>'+esc(formatMaintenanceDate(scheduledNotice.maintenance.scheduled_at))+'</b>.';
+   if(!maintenanceEditMode)html+='<button class="btn small" style="margin-top:8px" onclick="editScheduledUpdate()">Modifier l’horaire</button>';
+   html+='<button class="btn small danger" style="margin-top:8px;margin-left:6px" onclick="cancelScheduledUpdate()">Annuler la maintenance</button></div>';
+   if(maintenanceEditMode)html+='<div class="field" style="margin-top:12px"><label for="updateScheduleAt">Nouvel horaire de maintenance</label><input class="input" id="updateScheduleAt" type="datetime-local" min="'+localDateTimeMin()+'" value="'+localDateTimeValue(scheduledNotice.maintenance.scheduled_at)+'"><button class="btn" style="margin-top:8px" onclick="scheduleUpdate()">Enregistrer le nouvel horaire</button><button class="btn small" style="margin-top:8px;margin-left:6px" onclick="maintenanceEditMode=false;render()">Garder l’horaire actuel</button></div>';
+  }else{
+   html+='<div class="field" style="margin-top:12px"><label for="updateScheduleAt">Programmer la maintenance</label><input class="input" id="updateScheduleAt" type="datetime-local" min="'+localDateTimeMin()+'"><button class="btn" style="margin-top:8px" onclick="scheduleUpdate()">Programmer l’installation</button></div>';
     html+='<button class="btn primary" style="margin-top:10px" onclick="installUpdate()">Installer maintenant</button>';
    }
   }
