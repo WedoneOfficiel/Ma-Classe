@@ -10,13 +10,13 @@ LABEL="fr.maclasse.server"
 UPDATE_LABEL="fr.maclasse.update"
 AGENTS="$HOME/Library/LaunchAgents"
 mkdir -p "$AGENTS" "$ROOT/data/program"
-if command -v pgrep >/dev/null 2>&1 && pgrep -f '[p]ython.*server[.]py' >/dev/null 2>&1; then
-  RUNNING_PID="$(/bin/launchctl list "$LABEL" 2>/dev/null | /usr/bin/awk '$1 ~ /^[0-9]+$/ {print $1; exit}')"
-  if [[ -z "$RUNNING_PID" || "$RUNNING_PID" == "-" ]]; then
-    echo "Un serveur MaClasse lancé manuellement est déjà actif. Arrête-le avec Ctrl+C, puis relance cet installateur."
-    exit 1
-  fi
-fi
+command -v pgrep >/dev/null 2>&1 || { echo "pgrep est requis pour vérifier l'absence de serveur manuel."; exit 1; }
+if RUNNING_PIDS="$(pgrep -f '[p]ython.*server[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
+[[ "$PGREP_STATUS" -le 1 ]] || { echo "Impossible de vérifier les processus Python ; installation refusée par sécurité."; exit 1; }
+RUNNING_PID="$(/bin/launchctl list "$LABEL" 2>/dev/null | /usr/bin/awk '$1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
+while IFS= read -r pid; do
+  [[ -z "$pid" || "$pid" == "$RUNNING_PID" ]] || { echo "Un serveur MaClasse lancé manuellement est déjà actif (PID $pid). Arrête-le avec Ctrl+C, puis relance cet installateur."; exit 1; }
+done <<< "$RUNNING_PIDS"
 chmod 700 "$ROOT/data" "$AGENTS"
 CURRENT="$ROOT/data/program/current"
 if [[ ! -e "$CURRENT" && ! -L "$CURRENT" ]]; then
