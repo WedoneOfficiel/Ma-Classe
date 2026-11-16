@@ -2040,9 +2040,18 @@ class Handler(SimpleHTTPRequestHandler):
             if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
-        max_length=1024*1024 if path.startswith('/api/auth/') else 100*1024*1024
+        if path.startswith('/api/auth/'):
+            max_length=1*1024*1024
+        elif path=='/api/upload':
+            max_length=50*1024*1024
+        elif path=='/api/backup/restore':
+            max_length=100*1024*1024
+        elif path in ('/api/data','/api/save'):
+            max_length=20*1024*1024
+        else:
+            max_length=10*1024*1024
         if length<0 or length>max_length:
-            return self._json({'error':'Requête trop volumineuse (1 Mo maximum).' if max_length<100*1024*1024 else 'Requête trop volumineuse (100 Mo maximum).'},413)
+            return self._json({'error':f'Requête trop volumineuse (maximum {max_length//(1024*1024)} Mo pour cette opération).'},413)
         body=self.rfile.read(length)
         if path=='/api/admin/updates/prepare':
             user=self._require_auth(roles=('admin',))
