@@ -2372,7 +2372,7 @@ class Handler(SimpleHTTPRequestHandler):
             SESSIONS.pop(token,None)
             self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); secure='; Secure' if isinstance(getattr(self,'connection',None),ssl.SSLSocket) else ''
             self.send_header('Set-Cookie',f'mc_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0{secure}'); self.end_headers(); self.wfile.write(b'{"ok":true}'); return
-        allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin','teacher')
+        allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin','teacher')
         user=self._require_auth(roles=allowed_roles)
         if not user: return
         if path=='/api/admin/teacher':
@@ -2594,6 +2594,8 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._json({'error':'Bulletin incohérent ou élève introuvable.'},409)
                 if user.get('role')=='teacher' and class_id not in _teacher_class_ids(database,user):
                     return self._json({'error':'Ce bulletin ne relève pas de vos classes.'},403)
+                if user.get('role')=='student' and str(user.get('studentId') or '')!=student_id:
+                    return self._json({'error':'Ce bulletin ne vous appartient pas.'},403)
                 term_id=str(bulletin.get('termId') or '')
                 term_record=next((x for x in (database.get('settings',{}).get('terms',[]) if isinstance(database.get('settings'),dict) else []) or [] if isinstance(x,dict) and str(x.get('id'))==term_id),None)
                 # Tout le contenu métier du PDF est recalculé depuis la base serveur.
