@@ -44,7 +44,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 2. Notification visible uniquement dans l'espace direction.
 3. La direction choisit **Installer maintenant** ou **Télécharger et programmer**.
 4. Le téléchargement et les contrôles se font avant l'interruption. Une préparation échouée ne touche pas au serveur actif.
-5. Pour une installation programmée, tous les rôles reçoivent une notification avec la date et l'heure locales exactes. La direction peut annuler ou modifier l'horaire.
+5. Pour une installation programmée, tous les rôles reçoivent une notification avec la date et l'heure locales exactes. La direction peut annuler ou modifier l'horaire directement depuis Paramètres.
 6. À l'heure prévue, le serveur cesse d'accepter de nouvelles connexions ; son arrêt gracieux attend la fin des requêtes déjà engagées. systemd borne l'attente à 120 secondes avant arrêt forcé.
 7. Une copie horodatée de la base JSON (qui contient aussi les paramètres) est créée avant l'arrêt. En cas d'échec, cette copie est restaurée avant de redémarrer l'ancienne version. Les fichiers téléversés restent dans leur emplacement persistant et ne sont pas recopiés pendant la mise à jour.
 8. Le gestionnaire active la version préparée et redémarre le serveur.
@@ -68,7 +68,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - La vérification des releases stables est lancée à la connexion de la direction puis répétée toutes les six heures ; la direction peut aussi la relancer manuellement depuis Paramètres. Une nouvelle version est signalée uniquement à la direction.
 - La direction peut télécharger/préparer une version compatible depuis Paramètres. Chaque version préparée possède son propre `.venv` et un marqueur `maclasse-prepared.json`. Le serveur actif n'est pas interrompu.
 - La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
-- Le moteur indépendant `Appliquer-Mise-A-Jour-MaClasse-Linux.sh` sauvegarde `maclasse.json`, attend la fin des requêtes engagées (limite systemd de 120 s), bascule atomiquement le lien de version, redémarre et contrôle la santé HTTPS. En cas d'échec, il restaure la base et le code précédents avant de relancer le service. Le moteur est appelé depuis la version active pour que ses correctifs restent à jour au fil des releases. Il n'a pas encore été exécuté sur le PC Fedora cible.
+- Le moteur indépendant `Appliquer-Mise-A-Jour-MaClasse-Linux.sh` sauvegarde `maclasse.json`, attend la fin des requêtes engagées (limite systemd de 120 s), bascule atomiquement le lien de version, redémarre et contrôle la santé HTTPS. En cas d'échec, il restaure la base et le code précédents avant de relancer le service. Le moteur de mise à jour est lui-même exécuté depuis le lien de version active afin que les correctifs du moteur soient repris à chaque nouvelle release. Le moteur est appelé depuis la version active pour que ses correctifs restent à jour au fil des releases. Il n'a pas encore été exécuté sur le PC Fedora cible.
 - La base, les pièces jointes et les certificats sont désormais servis depuis `MACLASSE_DATA_DIR`, indépendamment du dossier de code versionné. Le serveur attend la fin des requêtes déjà engagées lors de l'arrêt supervisé.
 - La direction peut programmer une installation à une date/heure précise ou l'annuler. Un timer systemd ponctuel UTC déclenche le même moteur d'installation que l'action immédiate.
 - Une bannière de maintenance est exposée à tous les rôles authentifiés, avec date/heure locale et rappel d'enregistrer le travail. Elle est actualisée à la connexion puis périodiquement.
@@ -94,12 +94,12 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 ### Phase C — interface et planification
 - [x] Ajouter l'API authentifiée de consultation et d'action réservée à la direction (vérification, préparation et demande d'installation immédiate).
 - [x] Ajouter le centre de mises à jour dans Paramètres, visible uniquement à la direction.
-- [x] Ajouter la programmation ponctuelle, l'annulation et la reprogrammation via timer systemd.
+- [x] Ajouter la programmation ponctuelle, l'annulation et la reprogrammation depuis l'interface via timer systemd.
 - [x] Ajouter la bannière de maintenance visible par tous les rôles.
 - Tester les fuseaux horaires, changements d'heure, maintenance annulée et utilisateurs connectés.
 
 ### Phase D — installation atomique et reprise
-- [x] Ajouter la première chaîne Linux : environnement par version, sauvegarde de la base, arrêt propre avec attente des requêtes, bascule atomique, redémarrage, health-check HTTPS et rollback du code.
+- [x] Ajouter la première chaîne Linux : environnement par version, sauvegarde de la base, arrêt propre avec attente des requêtes, bascule atomique, redémarrage, health-check HTTPS et rollback du code et de la base.
 - [x] Ajouter un scénario d'intégration Linux simulant une installation réussie et un health-check défaillant ; vérifier la bascule, la restauration du code et de la base.
 - Les tests automatisés couvrent aussi le timer, l'annulation, les accès par rôle, la bannière et les scripts systemd. La CI du dernier commit et les pannes supplémentaires restent à valider.
 - Tester sur Fedora avec le matériel cible avant toute utilisation avec des données scolaires réelles.
