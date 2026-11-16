@@ -306,8 +306,12 @@ subjectKeyIdentifier=hash
             runner = root / "Lancer-MaClasse-Service-macOS.sh"
             runner.write_text(
                 '#!/bin/bash\nset -euo pipefail\n'
+                'exec >> "$MACLASSE_DATA_DIR/runner.log" 2>&1\n'
+                'echo "runner-start pid=$$ data=$MACLASSE_DATA_DIR"\n'
                 'PROGRAM="$MACLASSE_DATA_DIR/program/current"\n'
-                'exec "$PROGRAM/.venv/bin/python" "$PROGRAM/server.py"\n',
+                'echo "program=$PROGRAM resolved=$(cd "$PROGRAM" && pwd -P)"\n'
+                'ls -l "$PROGRAM/.venv/bin/python" "$PROGRAM/server.py"\n'
+                'exec "$PROGRAM/.venv/bin/python" -u "$PROGRAM/server.py"\n',
                 encoding="utf-8"
             )
             runner.chmod(0o700)
@@ -360,11 +364,12 @@ subjectKeyIdentifier=hash
                 )
                 service_log = (data / "service.log").read_text(encoding="utf-8", errors="replace") if (data / "service.log").exists() else ""
                 service_error = (data / "service-error.log").read_text(encoding="utf-8", errors="replace") if (data / "service-error.log").exists() else ""
+                runner_log = (data / "runner.log").read_text(encoding="utf-8", errors="replace") if (data / "runner.log").exists() else ""
                 raise AssertionError(
                     "Le serveur de test n'est pas sain pour " + version + " : " + repr(last_error)
                     + "\\nlaunchctl list:\\n" + launchd_list.stdout + launchd_list.stderr
                     + "\\nlaunchctl print:\\n" + launchd_print.stdout + launchd_print.stderr
-                    + "\\nstdout:\\n" + service_log + "\\nstderr:\\n" + service_error
+                    + "\\nstdout:\\n" + service_log + "\\nstderr:\\n" + service_error + "\\nrunner:\\n" + runner_log
                 )
 
             try:
