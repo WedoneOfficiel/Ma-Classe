@@ -2066,7 +2066,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not self._session_user():
                 return self._json({'error':'Connexion requise.'},401)
         elif path not in public_post_paths:
-            admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/user-status','/api/reset')
+            admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/user-status','/api/backup/restore','/api/reset')
             roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin',) if path in admin_only_paths else ('admin','teacher')
             if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
