@@ -32,7 +32,7 @@ agents=os.environ["AGENTS_PATH"]
 label=os.environ["LABEL"]
 document={
     "Label": label,
-    "ProgramArguments": ["/bin/bash", os.path.join(root,"Lancer-MaClasse-Service-macOS.sh")],
+    "ProgramArguments": ["/bin/bash", os.path.join(root,"data","program","current","Lancer-MaClasse-Service-macOS.sh")],
     "WorkingDirectory": root,
     "RunAtLoad": True,
     "KeepAlive": True,
