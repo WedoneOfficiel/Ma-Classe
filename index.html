@@ -2041,6 +2041,20 @@ html[data-mc-theme="dark"] .scheduleCalendarSurface{
 .v14InfoGrid>div>small{display:block;line-height:1.3;color:var(--muted)}
 .v14InfoGrid>div>b{display:block;max-width:100%;line-height:1.4;overflow-wrap:anywhere;white-space:normal}
 @media(max-width:560px){.v14InfoGrid{grid-template-columns:minmax(0,1fr);gap:10px}}
+
+/* La couleur du cours est portée par les variables inline de chaque événement.
+   Les thèmes ne doivent jamais les remplacer par un bleu générique. */
+html[data-mc-theme="light"] .event,
+html[data-mc-theme="dark"] .event{
+  background:var(--event-bg,var(--blue2))!important;
+  border-color:var(--event-border,#bcd2fa)!important;
+  border-left-color:var(--event-accent,var(--blue))!important;
+  color:var(--event-accent,var(--ui-text))!important;
+}
+html[data-mc-theme="light"] .event b,
+html[data-mc-theme="dark"] .event b{color:var(--event-accent,var(--ui-text))!important}
+html[data-mc-theme="light"] .event small,
+html[data-mc-theme="dark"] .event small{color:var(--ui-text-2,var(--muted))!important}
 </style>
 
 
