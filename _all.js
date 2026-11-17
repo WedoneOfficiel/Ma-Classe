@@ -199,7 +199,7 @@ function writeSession(u){authUser={id:u.id,role:u.role,teacherId:u.role==='teach
 window.addEventListener('beforeunload',event=>{if(saveTimer||savePending||saveError){event.preventDefault();event.returnValue=''}});
 async function clearSession(){try{await flushPendingSave();await api('/api/auth/logout',{method:'POST'})}catch(e){toast('Déconnexion annulée : les dernières modifications n’ont pas pu être enregistrées. '+(e.message||''));return}authUser=null;db=blank();appSpace='teacher';page='dashboard';render()}
 async function hashPassword(v){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(v)));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-function ensureUsers(){if(!Array.isArray(db.users))db.users=[];db.teachers=db.users.filter(u=>u&&u.role==='teacher').map(u=>{u.teacherId=u.id;return u});syncTeacherClassLinks()}
+function ensureUsers(){if(!Array.isArray(db.users))db.users=[];const byId=new Map();db.users.filter(u=>u&&u.role==='teacher').forEach(u=>byId.set(String(u.id),u));(Array.isArray(db.teachers)?db.teachers:[]).filter(u=>u&&u.role==='teacher').forEach(u=>{const id=String(u.id||u.teacherId||'');if(id){const prior=byId.get(id)||{};byId.set(id,{...prior,...u,teacherId:id})}});db.teachers=[...byId.values()];syncTeacherClassLinks()}
 function authCanManage(){return authUser?.role==='admin'}
 function authCanTeacher(){return authUser?.role==='teacher'||authUser?.role==='admin'}
 function authStudent(){return authUser?.role==='student'?authUser.studentId:''}
