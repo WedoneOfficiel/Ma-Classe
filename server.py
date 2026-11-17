@@ -1169,7 +1169,12 @@ def _teacher_visible_data(data,user):
         by_id[own['id']]=own
         out['teachers']=list(by_id.values())
     else: out['teachers']=[]
-    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
+    visible_users=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
+    visible_user_ids={str(x.get('id') or '') for x in visible_users}
+    for account in data.get('users',[]) or []:
+        if isinstance(account,dict) and account.get('role')=='teacher' and account.get('active') is not False and str(account.get('id') or '') not in visible_user_ids:
+            visible_users.append({k:account[k] for k in ('id','role','first','last','active','subjects') if k in account})
+    out['users']=visible_users
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     owned_schedule_ids={str(x.get('id') or '') for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids and tids in ({str(x.get('teacherId') or '')}|{str(v) for v in x.get('teacherIds',[]) or []})}
     out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('scheduleId') or '') in owned_schedule_ids or str(x.get('teacherId') or '')==tids or str(x.get('supersedesTeacherId') or '')==tids)]
