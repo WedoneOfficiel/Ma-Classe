@@ -21,6 +21,8 @@ def run():
     assert "'/api/bulletin-pdf'" in source
     gate="allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf')"
     assert gate in source, 'student role must pass the generic POST gate for bulletin PDF only'
+    early_gate="roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf')"
+    assert early_gate in source, 'student role must pass the pre-body POST authorization gate for bulletin PDF'
     print('OK — PDF bulletin : élève propriétaire autorisé, autres élèves et enseignants non affectés refusés.')
 
 if __name__=='__main__':
