@@ -1495,7 +1495,7 @@ def _merge_teacher_data(current,incoming,user):
                     continue
                 if kind=='replacement':
                     supersedes=str(item.get('supersedesTeacherId') or '')
-                    if not end or supersedes not in base_ids:
+                    if not end or supersedes not in base_ids or target_id==supersedes:
                         continue
                     item['supersedesTeacherId']=supersedes
                 else:
