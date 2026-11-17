@@ -2003,6 +2003,36 @@ input[type="checkbox"]:checked::after{content:""!important;display:block!importa
 .bulletinPreparation>.bulletinTabs{display:flex!important;justify-content:center!important;align-items:center!important;width:calc(100% - 12px)!important;margin:12px auto 12px!important;padding:2px 14px 8px!important;position:relative;left:4px;top:-2px;box-sizing:border-box;min-height:44px;text-align:center!important}
 .bulletinPreparation>.bulletinTabs .tab{align-self:center;white-space:nowrap}
 @media(max-width:760px){.bulletinPreparation>.bulletinTabs{width:100%!important;left:0;top:0;justify-content:flex-start!important;padding:2px 4px 8px!important}}
+
+/* V25.0.23 — retours de recette : densité, navigation et lisibilité EDT */
+.nav .navBtn{
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  height:38px!important;
+  min-height:38px!important;
+  flex:0 0 38px!important;
+  box-sizing:border-box!important;
+  white-space:nowrap!important;
+}
+.nav .navBtn b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.settingsGrid{gap:10px!important}
+.settingsGrid>.settingsCard{padding:14px!important}
+.settingsCard>.sectionhead{margin-bottom:8px!important}
+.settingsCard>.section{margin-top:9px!important}
+.settingsCard .notice{margin:7px 0 9px!important}
+.scheduleCalendarSurface{
+  padding:12px!important;
+  background:var(--paper)!important;
+  border:1px solid var(--line)!important;
+  border-radius:14px!important;
+  box-shadow:0 4px 16px rgba(20,30,50,.045);
+}
+html[data-mc-theme="dark"] .scheduleCalendarSurface{
+  background:var(--paper)!important;
+  border-color:var(--line)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+}
 </style>
 
 
