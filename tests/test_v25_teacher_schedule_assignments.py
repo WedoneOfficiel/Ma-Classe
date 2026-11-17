@@ -61,7 +61,8 @@ def run():
 
     visible=server._teacher_visible_data(fixture(),{'id':'teacher-1','role':'teacher'})
     assert {x['id'] for x in visible['teachers']}=={'teacher-1','teacher-2'}
-    assert {x['id'] for x in visible['users'] if x.get('role')=='teacher'}=={'teacher-1','teacher-2'}, 'the client derives its teacher directory from the users collection'
+    assert {x['id'] for x in visible['teachers']}=={'teacher-1','teacher-2'}, 'the minimal teacher directory is delivered separately from account records'
+    assert {x['id'] for x in visible['users'] if x.get('role')=='teacher'}=={'teacher-1'}, 'the users collection remains limited to the signed-in teacher'
     assert any(x['id']=='admin-assignment' for x in visible['teacherAssignments'])
     print('OK — affectations limitées aux cours du professeur, annuaire minimal et protection des affectations Direction.')
 
