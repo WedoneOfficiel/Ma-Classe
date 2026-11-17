@@ -286,3 +286,12 @@ Validation CI complémentaire — 12/11/2026
 - Les enseignants peuvent de nouveau gérer librement leurs matières depuis leur profil, comme auparavant.
 - Les anciennes sauvegardes V25 avec fiches et comptes élèves séparés ne sont pas migrées : la recette V25.0.15 se fait sur une base neuve.
 - CI Ubuntu et macOS Apple Silicon : tests JavaScript, tests Python et intégration HTTP.
+
+
+17/11/2026 — V25.0.24 : corrections issues de la recette V25.0.23
+- Répare l’accès des élèves à la messagerie et à leurs bulletins PDF, avec vérification serveur stricte du propriétaire du bulletin.
+- Génère les bulletins PDF sur le serveur afin que les postes connectés au réseau utilisent le même service que le poste hôte.
+- Fiabilise la création et la sauvegarde des bulletins : confirmation serveur, absence de doublons et restauration locale en cas d’échec.
+- Autorise les professeurs à gérer les affectations temporaires uniquement sur leurs propres créneaux, avec contrôles serveur et protection des affectations de la Direction.
+- Simplifie la Vie scolaire côté élève et corrige plusieurs problèmes d’affichage : couleurs de matières, fond de l’EDT, navigation Direction, paramètres, profils et numéro de version commun.
+- Validations automatisées Linux, macOS Apple Silicon et Firefox réel réussies sur le code candidat.

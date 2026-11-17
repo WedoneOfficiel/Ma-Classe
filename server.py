@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 from html import escape as html_escape
 from html.parser import HTMLParser
 
-APP_VERSION='25.0.23'
+APP_VERSION='25.0.24'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
@@ -628,6 +628,20 @@ def _teacher_assignment_active(item, on_date=None):
 
 
 
+
+def _bulletin_pdf_access_allowed(database,user,bulletin):
+    """A PDF is readable by the direction, a teacher of its class, or its own student."""
+    if not isinstance(user,dict) or not isinstance(bulletin,dict): return False
+    role=user.get('role')
+    if role=='admin': return True
+    student_id=str(bulletin.get('studentId') or '')
+    class_id=str(bulletin.get('classId') or '')
+    if role=='student':
+        return bool(student_id) and str(user.get('studentId') or '')==student_id
+    if role=='teacher':
+        return bool(class_id) and class_id in _teacher_class_ids(database,user)
+    return False
+
 def _teacher_schedule_assignment_suspended(data,slot,teacher_id,on_date=None):
     """Le titulaire perd temporairement les droits de matière quand il est remplacé."""
     tid=str(teacher_id or '')
@@ -1144,11 +1158,23 @@ def _teacher_visible_data(data,user):
     profile={k:v for k,v in (canonical or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
     if profile:
         profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
-        out['teachers']=[profile]
+        # Annuaire minimal des enseignants actifs pour les affectations, sans secrets ni coordonnées privées.
+        directory=[]
+        for account in data.get('users',[]) or []:
+            if isinstance(account,dict) and account.get('role')=='teacher' and account.get('active') is not False:
+                directory.append({k:account[k] for k in ('id','first','last','active','subjects') if k in account})
+        own={k:v for k,v in profile.items() if k not in ('passwordHash','password','mustChangePassword')}
+        own['id']=str(user.get('id') or tids); own['teacherId']=own['id']; own['classIds']=sorted(class_ids)
+        by_id={str(x.get('id')):x for x in directory}
+        by_id[own['id']]=own
+        out['teachers']=list(by_id.values())
     else: out['teachers']=[]
-    out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
+    visible_users=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
+    visible_user_ids={str(x.get('id') or '') for x in visible_users}
+    out['users']=visible_users
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
-    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('teacherId') or '')==tids or str(x.get('supersedesTeacherId') or '')==tids)]
+    owned_schedule_ids={str(x.get('id') or '') for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids and tids in ({str(x.get('teacherId') or '')}|{str(v) for v in x.get('teacherIds',[]) or []})}
+    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('scheduleId') or '') in owned_schedule_ids or str(x.get('teacherId') or '')==tids or str(x.get('supersedesTeacherId') or '')==tids)]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
     for item in data.get('evaluations',[]) or []:
@@ -1376,7 +1402,7 @@ def _merge_teacher_data(current,incoming,user):
     merged=dict(current)
     # Les classes sont fusionnées avant les élèves afin qu'un élève puisse être
     # enregistré dans une classe créée dans la même sauvegarde.
-    scoped=('classes','students','schedule','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','mailFolders')
+    scoped=('classes','students','schedule','teacherAssignments','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','mailFolders')
     for key in scoped:
         old=[x for x in current.get(key,[]) or [] if isinstance(x,dict)]
         new=[x for x in incoming.get(key,[]) or [] if isinstance(x,dict)]
@@ -1391,6 +1417,16 @@ def _merge_teacher_data(current,incoming,user):
             if key=='cloudItems':
                 x=scope_record
                 return _cloud_path_allowed(user,x.get('serverName',''),write=True) or _cloud_grant(x,user,current,write=True)
+            if key=='teacherAssignments':
+                slot=next((z for z in current.get('schedule',[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==str(scope_record.get('scheduleId') or '')),None)
+                if not slot or str(slot.get('classId') or '')!=str(scope_record.get('classId') or ''):
+                    return False
+                base_ids={str(slot.get('teacherId') or '')}|{str(v) for v in slot.get('teacherIds',[]) or []}
+                if tid not in base_ids:
+                    return False
+                if stored:
+                    return str(stored.get('createdBy') or '')==tid
+                return _norm_text(slot.get('subject'))==_norm_text(scope_record.get('subject'))
             if key=='conversations':
                 return str(scope_record.get('teacherId') or '')==tid or str(scope_record.get('classId') or '') in allowed or tid in {str(v) for v in scope_record.get('participantIds',[]) or []}
             if key=='notifications':
@@ -1435,6 +1471,39 @@ def _merge_teacher_data(current,incoming,user):
                         continue
                     item['teacherIds']=[tid]
                     item['principalTeacherId']=tid if str(item.get('principalTeacherId') or '')==tid else ''
+            if key=='teacherAssignments':
+                previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
+                slot=next((z for z in current.get('schedule',[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==str(item.get('scheduleId') or '')),None)
+                if not slot:
+                    continue
+                base_ids={str(slot.get('teacherId') or '')}|{str(v) for v in slot.get('teacherIds',[]) or []}
+                target_id=str(item.get('teacherId') or '')
+                valid_targets={str(x.get('id')) for x in current.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher' and x.get('active') is not False}
+                item['classId']=str(slot.get('classId') or '')
+                item['subject']=str(slot.get('subject') or '')
+                item['scheduleId']=str(slot.get('id') or '')
+                if target_id not in valid_targets:
+                    continue
+                if previous:
+                    item['createdBy']=tid
+                else:
+                    if tid not in base_ids:
+                        continue
+                    item['createdBy']=tid
+                start=str(item.get('startDate') or '')
+                end=str(item.get('endDate') or '')
+                kind=str(item.get('type') or 'replacement')
+                if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',start) or (end and not re.fullmatch(r'\d{4}-\d{2}-\d{2}',end)) or (end and end<start) or kind not in ('replacement','additional'):
+                    continue
+                if kind=='replacement':
+                    supersedes=str(item.get('supersedesTeacherId') or '')
+                    if not end or supersedes not in base_ids or target_id==supersedes:
+                        continue
+                    item['supersedesTeacherId']=supersedes
+                else:
+                    item['supersedesTeacherId']=''
+                if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(item.get('id') or '')):
+                    continue
             if key=='conversations':
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
@@ -2121,7 +2190,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({'error':'Connexion requise.'},401)
         elif path not in public_post_paths:
             admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/user-status','/api/backup/restore','/api/reset')
-            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin',) if path in admin_only_paths else ('admin','teacher')
+            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin',) if path in admin_only_paths else ('admin','teacher')
             if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
@@ -2372,7 +2441,7 @@ class Handler(SimpleHTTPRequestHandler):
             SESSIONS.pop(token,None)
             self.send_response(200); self.send_header('Content-Type','application/json; charset=utf-8'); secure='; Secure' if isinstance(getattr(self,'connection',None),ssl.SSLSocket) else ''
             self.send_header('Set-Cookie',f'mc_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0{secure}'); self.end_headers(); self.wfile.write(b'{"ok":true}'); return
-        allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload') else ('admin','teacher')
+        allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin','teacher')
         user=self._require_auth(roles=allowed_roles)
         if not user: return
         if path=='/api/admin/teacher':
@@ -2592,8 +2661,8 @@ class Handler(SimpleHTTPRequestHandler):
                 class_record=next((x for x in database.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),None)
                 if not student_record or not class_record or str(student_record.get('classId') or '')!=class_id:
                     return self._json({'error':'Bulletin incohérent ou élève introuvable.'},409)
-                if user.get('role')=='teacher' and class_id not in _teacher_class_ids(database,user):
-                    return self._json({'error':'Ce bulletin ne relève pas de vos classes.'},403)
+                if not _bulletin_pdf_access_allowed(database,user,bulletin):
+                    return self._json({'error':'Ce bulletin ne vous est pas accessible.'},403)
                 term_id=str(bulletin.get('termId') or '')
                 term_record=next((x for x in (database.get('settings',{}).get('terms',[]) if isinstance(database.get('settings'),dict) else []) or [] if isinstance(x,dict) and str(x.get('id'))==term_id),None)
                 # Tout le contenu métier du PDF est recalculé depuis la base serveur.

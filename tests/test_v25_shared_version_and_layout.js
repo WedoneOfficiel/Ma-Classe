@@ -1,0 +1,10 @@
+const fs=require('fs'),assert=require('assert');
+const html=fs.readFileSync('index.html','utf8'),js=fs.readFileSync('_all.js','utf8');
+assert(html.includes('id="appVersionLabel"'),'the global sidebar must expose the version label');
+assert(js.includes("const appVersionLabel=document.getElementById('appVersionLabel');if(appVersionLabel)appVersionLabel.textContent=MC_VERSION"),'the global label must use the shared application version constant');
+assert(html.includes('.nav .navBtn{')&&html.includes('height:34px!important;')&&html.includes('width:100%!important;'),'direction navigation buttons must have stable dimensions');
+assert(html.includes('.settingsGrid{gap:10px!important}'),'settings cards must use compact vertical spacing');
+assert(html.includes('.scheduleCalendarSurface{')&&html.includes('background:var(--paper)!important;'),'the timetable must sit on a theme-aware surface');
+assert(html.includes('html[data-mc-theme="light"] .event,')&&html.includes('html[data-mc-theme="dark"] .event{')&&html.includes('background:var(--event-bg,var(--blue2))!important;'),'light and dark themes must preserve each event custom color');
+assert(html.includes('.v14InfoGrid>div{display:flex;flex-direction:column;')&&html.includes('gap:4px;'),'profile labels and values must be visibly separated');
+console.log('OK — version commune, barre Direction, densité des paramètres, surface EDT et profils.');
