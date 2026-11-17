@@ -1158,11 +1158,21 @@ def _teacher_visible_data(data,user):
     profile={k:v for k,v in (canonical or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
     if profile:
         profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
-        out['teachers']=[profile]
+        # Annuaire minimal des enseignants actifs pour les affectations, sans secrets ni coordonnées privées.
+        directory=[]
+        for account in data.get('users',[]) or []:
+            if isinstance(account,dict) and account.get('role')=='teacher' and account.get('active') is not False:
+                directory.append({k:account[k] for k in ('id','first','last','active','subjects') if k in account})
+        own={k:v for k,v in profile.items() if k not in ('passwordHash','password','mustChangePassword')}
+        own['id']=str(user.get('id') or tids); own['teacherId']=own['id']; own['classIds']=sorted(class_ids)
+        by_id={str(x.get('id')):x for x in directory}
+        by_id[own['id']]=own
+        out['teachers']=list(by_id.values())
     else: out['teachers']=[]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     out['schedule']=[x for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
-    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('teacherId') or '')==tids or str(x.get('supersedesTeacherId') or '')==tids)]
+    owned_schedule_ids={str(x.get('id') or '') for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids and tids in ({str(x.get('teacherId') or '')}|{str(v) for v in x.get('teacherIds',[]) or []})}
+    out['teacherAssignments']=[x for x in data.get('teacherAssignments',[]) or [] if isinstance(x,dict) and (str(x.get('scheduleId') or '') in owned_schedule_ids or str(x.get('teacherId') or '')==tids or str(x.get('supersedesTeacherId') or '')==tids)]
     out['lessons']=[x for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '') in class_ids]
     evaluations=[]
     for item in data.get('evaluations',[]) or []:
@@ -1390,7 +1400,7 @@ def _merge_teacher_data(current,incoming,user):
     merged=dict(current)
     # Les classes sont fusionnées avant les élèves afin qu'un élève puisse être
     # enregistré dans une classe créée dans la même sauvegarde.
-    scoped=('classes','students','schedule','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','mailFolders')
+    scoped=('classes','students','schedule','teacherAssignments','lessons','evaluations','attendance','bulletins','attachments','submissions','conversations','cloudItems','notifications','mailFolders')
     for key in scoped:
         old=[x for x in current.get(key,[]) or [] if isinstance(x,dict)]
         new=[x for x in incoming.get(key,[]) or [] if isinstance(x,dict)]
@@ -1405,6 +1415,16 @@ def _merge_teacher_data(current,incoming,user):
             if key=='cloudItems':
                 x=scope_record
                 return _cloud_path_allowed(user,x.get('serverName',''),write=True) or _cloud_grant(x,user,current,write=True)
+            if key=='teacherAssignments':
+                slot=next((z for z in current.get('schedule',[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==str(scope_record.get('scheduleId') or '')),None)
+                if not slot or str(slot.get('classId') or '')!=str(scope_record.get('classId') or ''):
+                    return False
+                base_ids={str(slot.get('teacherId') or '')}|{str(v) for v in slot.get('teacherIds',[]) or []}
+                if tid not in base_ids:
+                    return False
+                if stored:
+                    return str(stored.get('createdBy') or '')==tid
+                return _norm_text(slot.get('subject'))==_norm_text(scope_record.get('subject'))
             if key=='conversations':
                 return str(scope_record.get('teacherId') or '')==tid or str(scope_record.get('classId') or '') in allowed or tid in {str(v) for v in scope_record.get('participantIds',[]) or []}
             if key=='notifications':
@@ -1449,6 +1469,39 @@ def _merge_teacher_data(current,incoming,user):
                         continue
                     item['teacherIds']=[tid]
                     item['principalTeacherId']=tid if str(item.get('principalTeacherId') or '')==tid else ''
+            if key=='teacherAssignments':
+                previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
+                slot=next((z for z in current.get('schedule',[]) or [] if isinstance(z,dict) and str(z.get('id') or '')==str(item.get('scheduleId') or '')),None)
+                if not slot:
+                    continue
+                base_ids={str(slot.get('teacherId') or '')}|{str(v) for v in slot.get('teacherIds',[]) or []}
+                target_id=str(item.get('teacherId') or '')
+                valid_targets={str(x.get('id')) for x in current.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher' and x.get('active') is not False}
+                item['classId']=str(slot.get('classId') or '')
+                item['subject']=str(slot.get('subject') or '')
+                item['scheduleId']=str(slot.get('id') or '')
+                if target_id not in valid_targets:
+                    continue
+                if previous:
+                    item['createdBy']=tid
+                else:
+                    if tid not in base_ids:
+                        continue
+                    item['createdBy']=tid
+                start=str(item.get('startDate') or '')
+                end=str(item.get('endDate') or '')
+                kind=str(item.get('type') or 'replacement')
+                if not re.fullmatch(r'\\d{4}-\\d{2}-\\d{2}',start) or (end and not re.fullmatch(r'\\d{4}-\\d{2}-\\d{2}',end)) or (end and end<start) or kind not in ('replacement','additional'):
+                    continue
+                if kind=='replacement':
+                    supersedes=str(item.get('supersedesTeacherId') or '')
+                    if not end or supersedes not in base_ids:
+                        continue
+                    item['supersedesTeacherId']=supersedes
+                else:
+                    item['supersedesTeacherId']=''
+                if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}',str(item.get('id') or '')):
+                    continue
             if key=='conversations':
                 previous=next((x for x in old if str(x.get('id') or '')==str(item.get('id') or '')),None)
                 if previous:
