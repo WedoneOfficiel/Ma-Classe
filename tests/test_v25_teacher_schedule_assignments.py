@@ -50,6 +50,14 @@ def run():
     })
     merged=server._merge_teacher_data(current,malicious,{'id':'teacher-1','role':'teacher'})
     assert not any(x['id']=='forbidden-assignment' for x in merged['teacherAssignments'])
+    self_replace=copy.deepcopy(current)
+    self_replace['teacherAssignments'].append({
+        'id':'self-replacement','scheduleId':'slot-1','classId':'class-1',
+        'subject':'Mathématiques','teacherId':'teacher-1','startDate':'2026-11-20',
+        'endDate':'2026-12-20','type':'replacement','supersedesTeacherId':'teacher-1'
+    })
+    merged=server._merge_teacher_data(current,self_replace,{'id':'teacher-1','role':'teacher'})
+    assert not any(x['id']=='self-replacement' for x in merged['teacherAssignments'])
 
     visible=server._teacher_visible_data(fixture(),{'id':'teacher-1','role':'teacher'})
     assert {x['id'] for x in visible['teachers']}=={'teacher-1','teacher-2'}
