@@ -1491,7 +1491,7 @@ def _merge_teacher_data(current,incoming,user):
                 start=str(item.get('startDate') or '')
                 end=str(item.get('endDate') or '')
                 kind=str(item.get('type') or 'replacement')
-                if not re.fullmatch(r'\\d{4}-\\d{2}-\\d{2}',start) or (end and not re.fullmatch(r'\\d{4}-\\d{2}-\\d{2}',end)) or (end and end<start) or kind not in ('replacement','additional'):
+                if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',start) or (end and not re.fullmatch(r'\d{4}-\d{2}-\d{2}',end)) or (end and end<start) or kind not in ('replacement','additional'):
                     continue
                 if kind=='replacement':
                     supersedes=str(item.get('supersedesTeacherId') or '')
