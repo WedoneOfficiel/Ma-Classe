@@ -58,6 +58,22 @@ def run():
         assert headers.get('Strict-Transport-Security')=='max-age=31536000'
         status,_,_=request(base+'/api/auth/login','POST',{'username':'direction','password':password},origin=f'http://{host}',context=context)
         assert status==403, 'An HTTP Origin must not be accepted on the HTTPS listener'
+        # Vérifie qu'un poste client HTTPS du réseau peut réellement télécharger
+        # un bulletin PDF depuis le serveur (et pas seulement ouvrir une session).
+        database_path=app/'data'/'maclasse.json'
+        database=json.loads(database_path.read_text(encoding='utf-8'))
+        database.setdefault('classes',[]).append({'id':'network-class','name':'6A','teacherIds':[]})
+        database.setdefault('students',[]).append({'id':'network-student','classId':'network-class','first':'Alice','last':'Martin'})
+        database.setdefault('settings',{}).setdefault('terms',[]).append({'id':'network-term','name':'Trimestre 1','start':'2026-09-01','end':'2026-12-31'})
+        database.setdefault('evaluations',[])
+        database.setdefault('attendance',[])
+        database.setdefault('schedule',[])
+        database.setdefault('bulletins',[]).append({'id':'network-bulletin','studentId':'network-student','classId':'network-class','termId':'network-term','validated':True,'published':True,'publishedAt':'2026-11-17T10:00:00Z','overall':'Bon travail','subjectData':{}})
+        database_path.write_text(json.dumps(database,ensure_ascii=False),encoding='utf-8')
+        status,pdf_headers,pdf_body=request(base+'/api/bulletin-pdf','POST',{'bulletinId':'network-bulletin'},origin=base,context=context,cookie=cookie.split(';')[0])
+        assert status==200, 'A remote HTTPS client must be able to generate a published bulletin PDF: '+pdf_body.decode('utf-8','replace')[:300]
+        assert 'application/pdf' in pdf_headers.get('Content-Type','').lower()
+        assert pdf_body.startswith(b'%PDF-'), 'The remote endpoint must return actual PDF bytes'
         status,logout_headers,_=request(base+'/api/auth/logout','POST',{},origin=base,context=context,cookie=cookie.split(';')[0])
         assert status==200 and 'Secure' in logout_headers.get('Set-Cookie','')
     finally:
