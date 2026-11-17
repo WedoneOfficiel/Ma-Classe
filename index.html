@@ -2033,12 +2033,20 @@ html[data-mc-theme="dark"] .scheduleCalendarSurface{
   border-color:var(--line)!important;
   box-shadow:0 8px 24px rgba(0,0,0,.18);
 }
+
+/* V25.0.23 — version visible dans tous les espaces et champs de profil lisibles */
+.brand small #appVersionLabel{display:inline;font-size:inherit;font-weight:750;color:inherit;white-space:nowrap}
+.v14InfoGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+.v14InfoGrid>div{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.v14InfoGrid>div>small{display:block;line-height:1.3;color:var(--muted)}
+.v14InfoGrid>div>b{display:block;max-width:100%;line-height:1.4;overflow-wrap:anywhere;white-space:normal}
+@media(max-width:560px){.v14InfoGrid{grid-template-columns:minmax(0,1fr);gap:10px}}
 </style>
 
 
 </head>
 <body>
-<div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire</small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><span id="spaceFoot" hidden></span></aside><main class="main" id="main"></main></div>
+<div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire · <span id="appVersionLabel"></span></small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><span id="spaceFoot" hidden></span></aside><main class="main" id="main"></main></div>
 <div class="modalback" id="modalback"><div class="modal" id="modal"></div></div><div class="toast" id="toast"></div>
 
 <script src="_all.js"></script>
