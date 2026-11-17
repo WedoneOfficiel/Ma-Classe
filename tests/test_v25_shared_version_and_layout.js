@@ -5,5 +5,6 @@ assert(js.includes("const appVersionLabel=document.getElementById('appVersionLab
 assert(html.includes('.nav .navBtn{')&&html.includes('height:38px!important;')&&html.includes('width:100%!important;'),'direction navigation buttons must have stable dimensions');
 assert(html.includes('.settingsGrid{gap:10px!important}'),'settings cards must use compact vertical spacing');
 assert(html.includes('.scheduleCalendarSurface{')&&html.includes('background:var(--paper)!important;'),'the timetable must sit on a theme-aware surface');
+assert(html.includes('html[data-mc-theme="light"] .event,')&&html.includes('html[data-mc-theme="dark"] .event{')&&html.includes('background:var(--event-bg,var(--blue2))!important;'),'light and dark themes must preserve each event custom color');
 assert(html.includes('.v14InfoGrid>div{display:flex;flex-direction:column;')&&html.includes('gap:4px;'),'profile labels and values must be visibly separated');
 console.log('OK — version commune, barre Direction, densité des paramètres, surface EDT et profils.');
