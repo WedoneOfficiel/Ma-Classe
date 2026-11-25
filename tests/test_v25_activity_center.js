@@ -6,7 +6,7 @@ assert(start>=0&&end>start,'Le Centre d’activité doit être présent');
 const context={
   appSpace:'teacher',
   activityData:()=>({missingGrades:[],submissions:[],missing:[],unjust:[],upcoming:[]}),
-  db:{evaluations:[]},
+  db:{evaluations:[],auditLog:[{id:'audit-1',at:'2026-11-25T10:00:00Z',actor:'Prof Test',action:'Évaluation créée',detail:'Mathématiques'}]},
   iso:()=> '2026-11-25',
   dayOcc:()=>[],
   notificationFeed:()=>[],
@@ -35,6 +35,14 @@ assert(html.includes('Cours, notes, rendus et messages au même endroit'),
   'Le bloc principal doit conserver son rôle de synthèse.');
 assert(html.includes('À traiter')&&html.includes('Activité récente'),
   'Les deux autres panneaux du Centre d’activité doivent rester visibles.');
+assert(html.includes('Historique des actions')&&html.includes('Évaluation créée'),
+  'Le Centre d’activité doit préserver l’historique des actions de l’ancienne vue quotidienne.');
+assert(html.includes('onclick="downloadAuditLog()"'),
+  'L’export de l’historique doit rester accessible depuis le Centre d’activité.');
+assert(!source.includes('function today(){'),
+  'L’ancienne vue quotidienne non routable ne doit pas subsister comme fonction morte.');
+assert(source.includes("if(p==='today'||p==='notifications')p='activity'"),
+  'Les anciennes entrées aujourd’hui/notifications doivent rester compatibles avec le Centre d’activité.');
 assert(!html.includes('Votre planning et les accès rapides du jour'),
   'L’ancien second bloc dupliqué doit être retiré.');
-console.log('OK — Centre d’activité : un seul bloc Aujourd’hui, cible de navigation et panneaux conservés.');
+console.log('OK — Centre d’activité : bloc Aujourd’hui, actions, activité récente et historique consolidés ; ancienne vue quotidienne morte retirée.');
