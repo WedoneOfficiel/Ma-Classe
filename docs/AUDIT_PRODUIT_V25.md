@@ -4,7 +4,7 @@
 **Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
 **Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
 **Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
-**Validation automatisée :** workflow [#1747](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45697822027) vert sur la tête vérifiée (`832d466`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
+**Validation automatisée :** workflow [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140) vert sur la tête vérifiée (`7c5f80b`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
 
 Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
 
@@ -325,7 +325,7 @@ Ces doublons ne prouvent pas à eux seuls un bug : les déclarations JavaScript 
 
 ### Inspection des captures Firefox
 
-Le workflow #1747 a publié un artefact de 74 captures : écrans Professeur et Élève, thèmes clair/sombre et plusieurs dimensions mobiles. Les vues Emploi du temps, Paramètres, Résultats, Vie scolaire et Messagerie ont été examinées sur un échantillon de ces captures.
+Le workflow #1754 a publié un artefact de 74 captures : écrans Professeur et Élève, thèmes clair/sombre et plusieurs dimensions mobiles. Les vues Emploi du temps, Paramètres, Résultats, Vie scolaire et Messagerie ont été examinées sur un échantillon de ces captures.
 
 Constats :
 - les surfaces clair/sombre et les principaux espacements sont cohérents sur les écrans examinés ;

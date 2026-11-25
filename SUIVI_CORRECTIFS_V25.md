@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `832d466`, CI complète #1747 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `7c5f80b`, CI complète #1754 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -609,8 +609,8 @@ Le premier test complet après l'ajout du bouton « Remplacements & co-enseignem
 
 ## Validation finale du candidat V25.0.25 — 25/11/2026
 
-**Commit testé :** `832d46647e8bcb0cb4b86de59e77da5216514728`  
-**Workflow :** [#1747](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45697822027)  
+**Commit testé :** `7c5f80b47e8bcb0cb4b86de59e77da5216514728`  
+**Workflow :** [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140)  
 **Résultat :** succès sur les trois jobs Linux, macOS Apple Silicon et Firefox réel.
 
 - Le test de navigation EDT qui échouait dans le workflow #1742 est maintenant vert : le bouton Remplacements ne lit plus `authUser` pendant la construction de la page ; le filtrage demeure appliqué dans `openScheduleAssignmentDirectory()`.
@@ -620,3 +620,8 @@ Le premier test complet après l'ajout du bouton « Remplacements & co-enseignem
 - La régression EDT Firefox réel est verte et a produit un artefact de 74 captures.
 
 **À ne pas confondre avec une recette de livraison :** aucune publication ni fusion de la PR #13 n'a été effectuée. La base réelle, le réseau Wi-Fi physique et les comptes utilisateur restent à vérifier avant release.
+
+
+## Vérification de la tête finale après clarification du filtre — workflow #1754
+
+La tête `7c5f80b` est entièrement verte sur le workflow [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140) : tests Linux, Firefox réel et macOS Apple Silicon. Le dernier ajustement a remplacé le filtre « Toutes mes classes » par « Toutes les classes accessibles », libellé valable aussi bien pour la Direction que pour un professeur ; l'assertion associée est incluse dans cette exécution.

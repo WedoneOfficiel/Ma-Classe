@@ -2,7 +2,7 @@
 
 **Document de référence des anomalies signalées, des correctifs et des recettes restantes.**  
 Version candidate : `V25.0.25` — branche `feat/v25.0.25-stabilisation-reseau-migrations` ([PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), base `main`, non fusionnée).  
-Dernière synchronisation : 25 novembre 2026 — CI complète [#1747](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45697822027) verte sur Linux, macOS Apple Silicon et Firefox réel (`832d466`). La recette sur les machines et comptes réels reste distincte.
+Dernière synchronisation : 25 novembre 2026 — CI complète [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140) verte sur Linux, macOS Apple Silicon et Firefox réel (`7c5f80b`). La recette sur les machines et comptes réels reste distincte.
 
 ## Règles de suivi
 
@@ -252,9 +252,9 @@ Les nouvelles modifications sont soumises à une nouvelle exécution CI sur la t
 La première exécution de la nouvelle interface a mis en évidence une dépendance au global `authUser` dans le rendu du planning, alors qu'un test d'intégration isole volontairement cette fonction. Cette dépendance a été retirée : la liste centrale appelle le contrôle `canManageScheduleAssignments()` avant d'afficher chaque créneau. La correction est dans `d66a78f`. Le job Firefox réel du workflow #1742 était vert ; les jobs Linux et macOS ont échoué sur ce test de rendu. Ne pas considérer AFFECT-02 validé par CI tant que le nouveau workflow sur la tête corrigée n'est pas entièrement vert.
 
 
-### Résultat de la CI finale de stabilisation — workflow #1747
+### Résultat de la CI finale de stabilisation — workflow #1754
 
-La tête de branche `832d466` a passé les trois jobs :
+La tête de branche `7c5f80b` a passé les trois jobs :
 - `tests` : succès (tests JavaScript et Python Linux, compilation Python, installateur Linux) ;
 - `Régression EDT — Firefox réel` : succès ; artefact de captures de 74 images disponible ;
 - `macos-validation` : succès (installateur Apple Silicon, syntaxe JavaScript/Python, tests JavaScript, test launchd réel et suite Python macOS).
