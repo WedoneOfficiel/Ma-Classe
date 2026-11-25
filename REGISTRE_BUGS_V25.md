@@ -245,3 +245,8 @@ Les contrôles suivants ont été ajoutés à la branche après la première CI 
 - VIE-01 : la vue élève est limitée aux absences justifiées ou non ; assertion de contenu ajoutée.
 
 Les nouvelles modifications sont soumises à une nouvelle exécution CI sur la tête courante de la PR. Aucune anomalie n'est déclarée corrigée de façon définitive avant recette dans l'installation de référence.
+
+
+### Note de validation AFFECT-02 — workflow #1742
+
+La première exécution de la nouvelle interface a mis en évidence une dépendance au global `authUser` dans le rendu du planning, alors qu'un test d'intégration isole volontairement cette fonction. Cette dépendance a été retirée : la liste centrale appelle le contrôle `canManageScheduleAssignments()` avant d'afficher chaque créneau. La correction est dans `d66a78f`. Le job Firefox réel du workflow #1742 était vert ; les jobs Linux et macOS ont échoué sur ce test de rendu. Ne pas considérer AFFECT-02 validé par CI tant que le nouveau workflow sur la tête corrigée n'est pas entièrement vert.
