@@ -9,7 +9,7 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.25 (candidate sur branche dédiée)  
+**Version de travail :** V25.0.25 (candidat de stabilisation)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
@@ -640,11 +640,11 @@ Une fois les contrôles terminés, l'utilisateur peut ouvrir MaClasse et lancer 
 
 ## Synchronisation de l'audit — 25/11/2026
 
-La branche de stabilisation V25.0.25 part du commit c8e5576 (V25.0.24). Elle ne modifie pas main.
+Le lot de stabilisation V25.0.25 part du commit c8e5576 (V25.0.24) et aligne les marqueurs serveur, interface et VERSION.txt.
 
 - Le gestionnaire de mises à jour vérifie maintenant, en plus du SHA-256 déclaré dans le manifeste, les métadonnées de taille et de digest SHA-256 des assets GitHub lorsqu'elles existent. Les assets historiques sans digest restent acceptés, mais ne sont pas présentés comme signés.
 - Le scénario macOS de migration de l'installation historique est exécuté à partir d'un fixture V25.0.19 ; le test contrôle que la base, les certificats et le lien actif restent intacts après l'installation du service launchd.
-- Le test macOS de bout en bout couvrant mise à jour HTTPS, health-check et rollback est déjà présent dans tests/test_macos_supervisor.py. Il doit réussir dans la CI de la présente branche ; son succès sur une machine GitHub ne remplace pas la recette physique sur le Mac cible.
+- Le test macOS de bout en bout couvrant mise à jour HTTPS, health-check et rollback est déjà présent dans tests/test_macos_supervisor.py. Il a réussi dans la CI GitHub Actions #1573 (Linux, macOS/launchd et Firefox réel) ; ce succès sur des runners hébergés ne remplace pas la recette physique sur le Mac cible.
 - La détection d'un changement d'adresse DHCP pendant que le serveur macOS reste actif n'est pas encore automatisée. Réserver une IP dans le DHCP et redémarrer le service après changement reste nécessaire.
 - Les releases ne possèdent toujours pas de signature éditeur indépendante. Le digest fourni par GitHub et le SHA-256 du manifeste sont des contrôles d'intégrité, pas une preuve cryptographique de l'identité de l'éditeur.
 - Le fonctionnement Wi-Fi entre appareils physiques, le pare-feu Fedora, l'installation de l'autorité dans Firefox et la restauration sur un autre poste restent à valider sur le matériel réel.
