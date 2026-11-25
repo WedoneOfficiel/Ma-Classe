@@ -75,7 +75,7 @@ class VisualConsistencyTests(unittest.TestCase):
     def test_visible_screens_use_french_singular_and_plural_counts(self):
         self.assertIn("function countLabel(value,singular,plural)", JS)
         start = JS.index("function studentLessons(){")
-        end = JS.index("\\nfunction ", start + 20)
+        end = JS.index("\nfunction ", start + 20)
         student_lessons = JS[start:end]
         self.assertIn("countLabel(occ(d).length,'créneau','créneaux')", student_lessons)
         self.assertIn("countLabel(items.filter(l=>l.date===lessonDay).length,'séance','séances')", student_lessons)
@@ -83,13 +83,13 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertNotIn("séance(s)", student_lessons)
 
         start = JS.index("function lessons(){")
-        end = JS.index("\\nfunction ", start + 20)
+        end = JS.index("\nfunction ", start + 20)
         teacher_lessons = JS[start:end]
         self.assertIn("countLabel(occ.length,'créneau','créneaux')", teacher_lessons)
         self.assertNotIn("créneau(x)", teacher_lessons)
 
         start = JS.index("function settings(){")
-        end = JS.index("\\nasync function restoreZipBackup", start + 20)
+        end = JS.index("\nasync function restoreZipBackup", start + 20)
         settings = JS[start:end]
         self.assertIn("countLabel(db.students.length,'élève','élèves')", settings)
         self.assertIn("countLabel((db.auditLog||[]).length,'événement','événements')", settings)
