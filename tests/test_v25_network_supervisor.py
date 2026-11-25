@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import network_supervisor as supervisor
@@ -185,6 +186,33 @@ class NetworkSupervisorTests(unittest.TestCase):
             spawn=lambda command, **kwargs: DeadProcess(command, **kwargs),
         )
         self.assertEqual(result, 7)
+
+
+    def test_certificate_script_is_loaded_from_active_version_not_install_root(self):
+        processes = []
+        def spawn(command, **kwargs):
+            process = FakeProcess(command, **kwargs)
+            processes.append(process)
+            return process
+
+        with patch.object(supervisor, "ensure_certificate") as ensure:
+            result = supervisor.run_supervisor(
+                "/installation-root",
+                "/installation-root/data/program/versions/V25.0.25",
+                "/installation-root/data",
+                "/installation-root/data/program/versions/V25.0.25/.venv/bin/python",
+                stop_event=StopAfter(2),
+                detect_ip=lambda: "192.168.1.60",
+                cert_valid=lambda cert, host: True,
+                spawn=spawn,
+            )
+        self.assertEqual(result, 0)
+        ensure.assert_called_once_with(
+            Path("/installation-root/data/program/versions/V25.0.25"),
+            Path("/installation-root/data"),
+            "/installation-root/data/program/versions/V25.0.25/.venv/bin/python",
+            "192.168.1.60",
+        )
 
 
 if __name__ == "__main__":
