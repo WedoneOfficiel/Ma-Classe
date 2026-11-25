@@ -95,7 +95,7 @@ def main() -> None:
 
             with sync_playwright() as playwright:
                 browser = playwright.firefox.launch()
-                page = browser.new_page()
+                page = browser.new_page(locale='fr-FR', timezone_id='Europe/Paris')
                 page_errors: list[str] = []
                 browser_errors: list[str] = []
                 page.on("pageerror", lambda error: page_errors.append(str(error)))
@@ -280,7 +280,7 @@ def main() -> None:
                   if (!saved.ok) throw new Error('Teacher-linked mailbox seed failed: '+saved.status+' '+await saved.text());
                   return id;
                 }""")
-                teacher_context = browser.new_context()
+                teacher_context = browser.new_context(locale='fr-FR', timezone_id='Europe/Paris')
                 teacher_page = teacher_context.new_page()
                 teacher_page_errors: list[str] = []
                 teacher_page.on("pageerror", lambda error: teacher_page_errors.append(str(error)))
@@ -512,7 +512,7 @@ def main() -> None:
                   if (!response.ok) throw new Error('Student account creation failed: '+JSON.stringify(result));
                   return result.user.temporaryPassword;
                 }""")
-                student_context = browser.new_context()
+                student_context = browser.new_context(locale='fr-FR', timezone_id='Europe/Paris')
                 student_page = student_context.new_page()
                 student_page_errors: list[str] = []
                 student_console_errors: list[str] = []
