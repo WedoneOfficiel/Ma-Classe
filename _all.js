@@ -540,7 +540,7 @@ function openScheduleAssignmentDirectory(){
  const classes=[...new Set(slots.map(s=>String(s.classId||'')))].map(id=>cls(id)).filter(Boolean).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr'));
  openModal('Remplacements & co-enseignement',`<div class="notice">Retrouvez les créneaux sur lesquels vous pouvez gérer un remplacement de longue durée ou l’ajout d’un enseignant. Les droits restent limités aux créneaux que vous enseignez ; la Direction conserve une vue complète.</div>
  <div class="toolbar section">
-  <div class="field" style="min-width:180px;flex:1"><label for="scheduleAssignmentClassFilter">Classe</label><select id="scheduleAssignmentClassFilter" class="select" onchange="filterScheduleAssignmentRows()"><option value="">Toutes mes classes</option>${classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
+  <div class="field" style="min-width:180px;flex:1"><label for="scheduleAssignmentClassFilter">Classe</label><select id="scheduleAssignmentClassFilter" class="select" onchange="filterScheduleAssignmentRows()"><option value="">Toutes les classes accessibles</option>${classes.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
   <div class="field" style="min-width:220px;flex:2"><label for="scheduleAssignmentSearch">Rechercher un cours</label><input id="scheduleAssignmentSearch" class="input" type="search" placeholder="Matière, jour, horaire…" oninput="filterScheduleAssignmentRows()"></div>
  </div>
  <div class="tablewrap section"><table class="table"><thead><tr><th>Classe</th><th>Cours</th><th>Créneau</th><th>Affectations</th><th></th></tr></thead><tbody id="scheduleAssignmentRows">${slots.map(s=>{
