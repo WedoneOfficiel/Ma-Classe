@@ -97,7 +97,7 @@ class VisualConsistencyTests(unittest.TestCase):
 
     def test_student_cloud_is_reachable_from_the_sidebar(self):
         start = JS.index("function nav(){")
-        end = JS.index("\\nfunction v12AttentionCount", start + 10)
+        end = JS.index("\nfunction v12AttentionCount", start + 10)
         student_nav = JS[start:end]
         self.assertIn("['Ressources',['studentDocuments']]", student_nav)
         self.assertIn("studentDocuments:['☁','Cloud']", student_nav)
