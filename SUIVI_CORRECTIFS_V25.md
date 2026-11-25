@@ -2,6 +2,8 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
+> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `94b86d9`, CI complète #1727 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
 **Branche de travail :** `fix/v25-student-teacher-workflows`  
@@ -551,3 +553,37 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 41. **AMEL-U19 — échec du test macOS de mise à jour HTTPS de bout en bout.** Le run #1486 a passé l'installation Apple Silicon, la syntaxe et les tests JavaScript, mais le scénario réel launchd → serveur HTTPS → mise à jour → health-check n'a pas obtenu de réponse HTTP sur la version initiale. Le test launchd isolé passait. Le run #1489 a reproduit l'échec ; le test a été instrumenté pour journaliser le lanceur, l'état des processus et les sockets TCP, et son client HTTPS local utilise maintenant un opener sans proxy. Les jobs Linux et Firefox du run #1490 sont verts ; le job macOS a été annulé par les commits suivants. Un nouveau run #1492 est en attente. Ne pas déclarer la chaîne macOS validée avant réussite du test de bout en bout et de tous les tests Python macOS.
 
 42. **MIG-01 — migration initiale V25.0.19 non validée.** L'installation actuelle ne possède pas encore le gestionnaire supervisé. L'architecture cible utilise data/program/current, des versions isolées et un dossier data persistant. La préparation vérifie schemaVersion contre min_data_schema=25011 ; si le champ est absent ou trop ancien, elle bloque la mise à jour. Aucun script de migration complet n'a été testé sur une copie représentative. Le registre REGISTRE_BUGS_V25.md marque ce point bloquant avant toute procédure utilisateur : sauvegarde externe, vérification du schéma, préservation base/uploads/certificats, migration et rollback sur copie.
+
+
+## Campagne du 25 novembre 2026 — stabilisation produit et documentation
+
+**Branche :** `feat/v25.0.25-stabilisation-reseau-migrations`  
+**PR :** #13 (ouverte, non fusionnée)  
+**Tête CI vérifiée :** `94b86d9b8b85f15a9b78a0eeccd0905d5a82ad91` — workflow #1727, trois jobs réussis.
+
+### Correctifs applicatifs engagés
+
+1. **MAIL-02 — messagerie élève.** Projection serveur fondée sur le calcul central des enseignants accessibles (titulaires, co-enseignants, séances et affectations actives). L'interface ne filtre plus une seconde fois les destinataires. Tests de projection ajoutés.
+2. **BUL-03 — consultation PDF.** Contrôle serveur strict du statut officiel et de la propriété du bulletin. Les anciens bulletins validés et publiés restent téléchargeables même sans `publishedAt`. Tests d'autorisation et de compatibilité legacy ajoutés.
+3. **EDT-06 — couleurs matière.** Fusion contrôlée de `settings.subjectColors` côté serveur, limitée aux matières effectivement enseignées par le professeur. Test de refus des couleurs hors périmètre ajouté.
+4. **EDT-07 — thème sombre.** Remplacement explicite du dégradé blanc de la grille journalière par une surface sombre. Test visuel de non-régression ajouté.
+
+### Organisation documentaire
+
+- Création de `docs/HISTORIQUE_VERSIONS.md` : changelog V25 et notes V21.12 à V21.22 / correctif V21.11.3 repris intégralement.
+- Création des archives historiques d'audits, d'états, de guides antérieurs et de l'ancien README.
+- Nouveau guide d'installation V25, index documentaire et README racine recentré sur l'état courant.
+- Mise à jour des documents réseau, gestionnaire de mises à jour, audit produit et registres de bugs.
+
+### Résultat de validation
+
+La CI #1727 a passé les jobs Linux, macOS Apple Silicon et Firefox réel après correction d'une fixture de test qui partageait par erreur une référence Python au lieu de simuler la copie JSON reçue par le navigateur. Les échecs précédents du test n'étaient pas un défaut applicatif ; le scénario a été corrigé pour reproduire le vrai passage HTTP.
+
+### Recettes encore nécessaires
+
+- Confirmer MAIL-02 avec un vrai compte élève et un professeur remplaçant.
+- Ouvrir un bulletin officiel depuis le compte élève et un poste client différent du serveur.
+- Vérifier les couleurs de matières et le thème sombre sur le Mac et le PC Fedora, avec des emplois du temps fournis.
+- Tester la migration sur une copie de la base réelle, sans jamais prendre la base utilisateur comme fixture.
+- Tester l'accès HTTPS depuis plusieurs appareils, le pare-feu et l'approbation de l'autorité locale.
+- Décider et implémenter une signature/attestation de release avant de présenter l'update manager comme une chaîne de confiance complète.
