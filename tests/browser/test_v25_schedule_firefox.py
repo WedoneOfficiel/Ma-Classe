@@ -569,7 +569,7 @@ def main() -> None:
                 teacher_page.evaluate("setAppearanceTheme('light');page='schedule';appSpace='teacher';render();")
                 cloud_layout = teacher_page.evaluate("""() => {
                   const inspect = space => {
-                    setCloudSpace(space);
+                    page='documents';appSpace='teacher';setCloudSpace(space);
                     const layout=document.querySelector('.cloudLayout');
                     const side=layout?.querySelector(':scope > aside');
                     return {
@@ -590,7 +590,7 @@ def main() -> None:
                 }""")
                 for space in ("personal","shared"):
                     state=cloud_layout[space]
-                    if state["hasSidebar"] or len(state["columns"].split()) != 1:
+                    if state["actualSpace"] != space or (space != "class" and state["classContext"]) or state["hasSidebar"] or len(state["columns"].split()) != 1:
                         raise AssertionError(
                             "Cloud "+space+" doit utiliser toute la largeur sans colonne latérale vide : "
                             + repr(state)
