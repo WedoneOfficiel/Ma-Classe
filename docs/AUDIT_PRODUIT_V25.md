@@ -196,3 +196,16 @@ Le test de capture a été ajusté pour ne plus présenter ces alias comme des �
 Ce lot améliore le contrôle visuel, mais ne transforme pas les captures en validation fonctionnelle exhaustive. Les données de démonstration sont volontairement minimales ; les tableaux très remplis, les longues chaînes, les gros volumes Cloud, les conversations longues et les formulaires complexes doivent encore être parcourus avec des jeux de données plus denses. La recette responsive sur plusieurs largeurs, l'accessibilité clavier/lecteur d'écran et la vérification native des champs de date sur Firefox/macOS restent à poursuivre.
 
 Les tests interactifs Firefox couvrent déjà des parcours concrets (navigation et synchronisation de l'EDT, création de cours, séance avec pièce jointe et remise élève, messagerie avec reprise de brouillon et nouvel essai après échec réseau, et périmètre Cloud élève). Ils ne signifient pas que chaque action de chaque module a été testée. Les modules restent donc suivis individuellement dans le registre des anomalies et le plan PQA.
+
+
+### Correctifs UI complémentaires — même audit
+
+Le passage transversal a également relevé des libellés de quantité non accordés hors du tableau de bord : fiches professeurs, profil enseignant, appels, suivi du professeur principal, gestion des cours, restauration, import Cloud et arborescence documentaire. Ces affichages actifs utilisent maintenant le helper commun `countLabel`, avec les formes irrégulières françaises nécessaires (par exemple « travaux »).
+
+Le Cloud élève était présent comme écran et ses règles de lecture seule étaient couvertes par les tests serveur, mais il n'était pas exposé dans la navigation latérale. Une entrée « Cloud » est ajoutée dans la section « Ressources » de l'espace élève ; le test Firefox doit ouvrir cette page depuis le menu, pas seulement l'appeler directement.
+
+Les titres de dates du cahier de cours et du calendrier n'utilisent plus `text-transform: capitalize` sur toute la chaîne : seul le premier caractère du titre est capitalisé, les noms de mois restent en minuscules selon l'usage français.
+
+La nouvelle recette navigateur génère 48 captures de véritables états (14 écrans Direction/Professeur et 10 états élève, en clair et sombre). Elle vérifie aussi les écrans représentatifs aux largeurs de 900 et 390 px, les débordements horizontaux du document, le titre de page, l'application du thème sélectionné malgré un thème système opposé, et le comportement automatique lors du basculement système clair/sombre. Ces contrôles sont des garde-fous de mise en page, pas un test complet de chaque interaction responsive.
+
+**Validation en attente sur le dernier commit UI :** la précédente validation complète #1680 reste verte pour le lot V25.0.25 avant ces ajustements d'interface. Les corrections UI et les nouveaux contrôles doivent encore obtenir leur propre passage complet Linux, Firefox réel et macOS. Les captures de la nouvelle exécution devront être inspectées avant d'affirmer que le reflet sombre a disparu visuellement sur tous les écrans.
