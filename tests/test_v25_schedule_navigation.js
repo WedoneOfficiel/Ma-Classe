@@ -168,7 +168,7 @@ context.authUser=null;
 context.nav=()=>{};
 context.main={innerHTML:''};
 context.document={getElementById:()=>context.main};
-context.console={error:()=>{}};
+context.console={error:()=>{},warn:()=>{}};
 context.shell=()=>'<div class="top"></div>';
 context.window.messages=()=>'<div></div>';
 context.window.studentMessages=()=>'<div></div>';
