@@ -23,7 +23,7 @@ Le fichier `data/maclasse.json` est local et exclu de Git. Une installation neuv
 ## Principes techniques et de sécurité
 
 - Application web servie localement ; les appareils clients utilisent un navigateur.
-- Le serveur doit rester lié à `127.0.0.1` tant que les protections nécessaires au réseau local ne sont pas terminées.
+- Le mode local habituel reste lié à `127.0.0.1`. Le mode LAN est une activation explicite, réservée à une IPv4 privée et obligatoirement en HTTPS ; ne jamais utiliser `0.0.0.0` ni exposer le port sur Internet.
 - Pas de redirection de ports sur le routeur et pas d'exposition publique.
 - Les autorisations doivent être contrôlées **côté serveur**, jamais uniquement dans l'interface JavaScript.
 - Un enseignant ne doit accéder qu'aux classes, élèves, messages et documents qui lui sont autorisés.
@@ -64,7 +64,7 @@ Commits de cette reprise : `fe0b449` et `ffaf34b` (allowlist serveur et filtrage
 - [x] Le serveur refuse désormais tout démarrage sur une adresse LAN sans certificat TLS ; le mode réseau exige HTTPS avec TLS 1.2 minimum.
 - [x] Les cookies de session portent l'attribut Secure en HTTPS et les origines HTTP sont refusées sur un serveur HTTPS.
 - [ ] Finaliser la distribution et l'installation de l'autorité de certification sur tous les appareils clients, puis vérifier la confiance navigateur par navigateur.
-- [ ] Valider le pare-feu local et la procédure de réservation DHCP/adresse IP stable avant activation en établissement.
+- [ ] Valider le pare-feu local et la procédure de réservation DHCP/adresse IP stable avant activation en établissement. Le candidat V25.0.25 surveille maintenant les changements d'IP et relance le listener HTTPS automatiquement ; la recette multi-postes sur Wi-Fi réel reste à effectuer.
 - [ ] Ne configurer aucune redirection de ports sur la box.
 
 ### Fiabilité et validation
