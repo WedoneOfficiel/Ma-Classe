@@ -13,6 +13,18 @@ function classTrackingClasses(){
  const allowed=new Set([...teacherClasses(tid),...teacherPPClasses(tid)].map(c=>String(c.id)));
  return db.classes.filter(c=>allowed.has(String(c.id))).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'}));
 }
+function classTrackingCanSeeAllSubjects(c){
+ if(authUser?.role==='admin')return true;
+ const tid=String(currentTeacherProfile()?.id||authUser?.id||authUser?.teacherId||'');
+ return authUser?.role==='teacher'&&!!tid&&String(c?.principalTeacherId||'')===tid;
+}
+function classTrackingSubjectAllowed(c,record){
+ if(classTrackingCanSeeAllSubjects(c))return true;
+ if(authUser?.role!=='teacher'||typeof canEditEvaluation!=='function')return false;
+ const schedule=(db.schedule||[]).find(s=>String(s.id)===String(record?.scheduleId||''));
+ const subject=String(record?.subject||schedule?.subject||'');
+ return canEditEvaluation({classId:c.id,subject,date:String(record?.date||record?.homework?.due||iso(new Date()))});
+}
 function classTrackingData(classId,referenceDate=new Date()){
  const c=classTrackingClasses().find(x=>String(x.id)===String(classId));
  if(!c)return null;
@@ -23,11 +35,11 @@ function classTrackingData(classId,referenceDate=new Date()){
  const studentIds=new Set(students.map(s=>String(s.id)));
  const attendance=(db.attendance||[]).filter(a=>String(a.classId)===String(c.id)&&String(a.date||'')>=since&&String(a.date||'')<=today).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).map(a=>({record:a,absent:(a.rows||[]).filter(r=>r.status==='absent'&&studentIds.has(String(r.studentId))).length,late:(a.rows||[]).filter(r=>r.status==='retard'&&studentIds.has(String(r.studentId))).length}));
  const attendanceRows=attendance.flatMap(x=>(x.record.rows||[]).filter(r=>studentIds.has(String(r.studentId))).map(r=>({...r,date:x.record.date})));
- const lessons=(db.lessons||[]).filter(l=>String(l.classId)===String(c.id)&&l.homework?.requiresSubmission&&l.homework?.due&&(!l.group||students.some(s=>String(s.group||'')===String(l.group))));
+ const lessons=(db.lessons||[]).filter(l=>String(l.classId)===String(c.id)&&classTrackingSubjectAllowed(c,l)&&l.homework?.requiresSubmission&&l.homework?.due&&(!l.group||students.some(s=>String(s.group||'')===String(l.group))));
  const missingWorks=[];
  lessons.filter(l=>String(l.homework.due)<today).forEach(l=>students.filter(s=>!l.group||String(s.group||'')===String(l.group)).forEach(s=>{if(!studentSubmitted(l,s.id))missingWorks.push({lesson:l,student:s})}));
- const upcoming=(db.lessons||[]).filter(l=>String(l.classId)===String(c.id)&&l.homework?.due&&String(l.homework.due)>=today&&(!l.group||students.some(s=>String(s.group||'')===String(l.group)))).slice().sort((a,b)=>String(a.homework.due).localeCompare(String(b.homework.due))).slice(0,8);
- const recentEvaluations=(db.evaluations||[]).filter(e=>String(e.classId)===String(c.id)&&e.published===true&&String(e.date||'')<=today&&evaluationModelPublished(e,today)&&(!e.group||students.some(s=>String(s.group||'')===String(e.group)))).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,6).map(e=>{const targetIds=new Set(students.filter(s=>!e.group||String(s.group||'')===String(e.group)).map(s=>String(s.id)));return {evaluation:e,gradedCount:(e.grades||[]).filter(g=>targetIds.has(String(g.studentId))&&g.value!==''&&g.value!==null&&g.value!==undefined).length}});
+ const upcoming=(db.lessons||[]).filter(l=>String(l.classId)===String(c.id)&&classTrackingSubjectAllowed(c,l)&&l.homework?.due&&String(l.homework.due)>=today&&(!l.group||students.some(s=>String(s.group||'')===String(l.group)))).slice().sort((a,b)=>String(a.homework.due).localeCompare(String(b.homework.due))).slice(0,8);
+ const recentEvaluations=(db.evaluations||[]).filter(e=>String(e.classId)===String(c.id)&&e.published===true&&classTrackingSubjectAllowed(c,e)&&String(e.date||'')<=today&&evaluationModelPublished(e,today)&&(!e.group||students.some(s=>String(s.group||'')===String(e.group)))).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,6).map(e=>{const targetIds=new Set(students.filter(s=>!e.group||String(s.group||'')===String(e.group)).map(s=>String(s.id)));return {evaluation:e,gradedCount:(e.grades||[]).filter(g=>targetIds.has(String(g.studentId))&&g.value!==''&&g.value!==null&&g.value!==undefined).length}});
  const studentRows=students.map(s=>{const rows=attendanceRows.filter(r=>String(r.studentId)===String(s.id));return {student:s,absent:rows.filter(r=>r.status==='absent').length,late:rows.filter(r=>r.status==='retard').length,missing:missingWorks.filter(x=>String(x.student.id)===String(s.id)).length}});
  return {classroom:c,students:studentRows,attendance,missingWorks,upcoming,recentEvaluations,stats:{students:students.length,absent:attendance.reduce((n,x)=>n+x.absent,0),late:attendance.reduce((n,x)=>n+x.late,0),missing:missingWorks.length,upcoming:upcoming.length,since}};
 }
