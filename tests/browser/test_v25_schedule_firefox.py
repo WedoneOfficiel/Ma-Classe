@@ -396,7 +396,34 @@ def main() -> None:
                   });
                   if (!saved.ok) throw new Error('Teacher timetable update failed: '+saved.status+' '+await saved.text());
                 }""")
-                expect(student_calendar).to_contain_text("Sciences", timeout=15_000)
+                try:
+                    expect(student_calendar).to_contain_text("Sciences", timeout=15_000)
+                except AssertionError as failure:
+                    state = student_page.evaluate("""async () => {
+                      const [statusResponse,dataResponse] = await Promise.all([
+                        fetch('/api/sync-status',{cache:'no-store'}),
+                        fetch('/api/data',{cache:'no-store'})
+                      ]);
+                      const status = await statusResponse.json();
+                      const latest = await dataResponse.json();
+                      return {
+                        documentHidden:document.hidden,
+                        activeElement:document.activeElement?.outerHTML?.slice(0,500)||document.activeElement?.tagName,
+                        page,authUser,
+                        dataRevision,latestRevision:dataResponse.headers.get('X-MaClasse-Revision'),
+                        statusRevision:status.revision,
+                        liveSyncBusy,syncOnline,remoteChangePending,
+                        savePending,saveTimer:!!saveTimer,saveError:saveError?.message||null,
+                        hasLocalWork:syncHasLocalWork(),
+                        localSchedule:(db.schedule||[]).map(x=>({id:x.id,subject:x.subject,day:x.day})),
+                        serverSchedule:(latest.schedule||[]).map(x=>({id:x.id,subject:x.subject,day:x.day})),
+                        calendar:document.querySelector('.scheduleCalendarSurface')?.innerText||''
+                      };
+                    }""")
+                    raise AssertionError(
+                        "Synchronisation élève : le créneau Sciences n'est pas apparu. "
+                        + json.dumps(state,ensure_ascii=False) + " | " + str(failure)
+                    )
                 teacher_page.evaluate("""() => {
                   page='schedule';
                   appSpace='teacher';
