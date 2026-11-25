@@ -95,6 +95,25 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("countLabel((db.auditLog||[]).length,'événement','événements')", settings)
         self.assertNotIn("événement(s)", settings)
 
+    def test_french_counts_are_consistent_in_product_modules(self):
+        for fragment in (
+            "countLabel(cs.length,'classe','classes')",
+            "countLabel(taught.length,'classe','classes')",
+            "countLabel(pp.length,'classe','classes')",
+            "countLabel(stats.classes||0,'classe','classes')",
+            "countLabel(stats.students||0,'élève','élèves')",
+            "countLabel(stats.files||0,'fichier','fichiers')",
+            "countLabel(ok,'fichier','fichiers')",
+            "countLabel(items.length,'fichier','fichiers')",
+            "countLabel(w.files.length+w.studentFiles.length,'fichier','fichiers')",
+            "countLabel(sub.works.length,'travail','travaux')",
+            "countLabel(c.subjects.length,'matière','matières')",
+            "countLabel(missing.length,'travail','travaux')",
+            "countLabel(low.length,'élève','élèves')",
+            "countLabel(a.rows.filter(r=>r.status==='absent').length,'absence','absences')",
+        ):
+            self.assertIn(fragment, JS)
+
     def test_french_date_headings_keep_month_names_lowercase(self):
         self.assertIn("function formatFrenchDate(date,options)", JS)
         self.assertIn("formatFrenchDate(d,{weekday:'long',day:'numeric',month:'long',year:'numeric'})", JS)
