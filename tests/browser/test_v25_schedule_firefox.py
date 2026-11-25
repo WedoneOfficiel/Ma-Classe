@@ -79,6 +79,12 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
             page.wait_for_timeout(140)
             destination = output_dir / f"{role}-{theme}-{module}.png"
             page.screenshot(path=str(destination), full_page=True, animations="disabled")
+        if role == "student":
+            cloud_nav = page.locator("#nav button[onclick*='studentDocuments']")
+            if cloud_nav.count() != 1:
+                raise AssertionError("Le Cloud élève doit être accessible dans la navigation latérale.")
+            cloud_nav.click()
+            expect(page.locator("#main h1")).to_contain_text("Documents")
 
 def free_port() -> int:
     with socket.socket() as sock:
