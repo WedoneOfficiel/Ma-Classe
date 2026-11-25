@@ -46,6 +46,18 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
               const toast=document.getElementById('toast');
               if(toast){toast.classList.remove('show');toast.textContent='';}
               const card=document.querySelector('#main .card');
+              const main=document.querySelector('main.main');
+              const side=document.querySelector('.side');
+              const mainRect=main?.getBoundingClientRect();
+              const sideRect=side?.getBoundingClientRect();
+              const directSurfaces=[...(main?.children||[])]
+                .filter(el=>!el.classList.contains('top'))
+                .map(el=>el.getBoundingClientRect())
+                .filter(rect=>rect.width>0&&rect.height>0);
+              const contentRight=directSurfaces.length
+                ?Math.max(...directSurfaces.map(rect=>rect.right)):0;
+              const contentLeft=directSurfaces.length
+                ?Math.min(...directSurfaces.map(rect=>rect.left)):0;
               return {
                 actualPage,
                 theme:document.documentElement.dataset.mcTheme,
@@ -54,6 +66,16 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
                   document.documentElement.scrollWidth,
                   document.body.scrollWidth
                 )-window.innerWidth,
+                layout:{
+                  viewport:window.innerWidth,
+                  mainLeft:Math.round(mainRect?.left||0),
+                  mainRight:Math.round(mainRect?.right||0),
+                  mainWidth:Math.round(mainRect?.width||0),
+                  sideRight:Math.round(sideRect?.right||0),
+                  contentLeft:Math.round(contentLeft),
+                  contentRight:Math.round(contentRight),
+                  contentWidth:Math.round(contentRight-contentLeft)
+                },
                 cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none'
               };
             }""",
@@ -68,6 +90,11 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
         if state["horizontalOverflow"] > 2:
             raise AssertionError(
                 f"Débordement horizontal sur {role}/{module} à {viewport}px : {state!r}"
+            )
+        if viewport <= 650 and state["layout"]["contentRight"] < viewport - 24:
+            raise AssertionError(
+                f"Zone principale trop étroite ou partiellement masquée sur {role}/{module} "
+                f"à {viewport}px : {state['layout']!r}"
             )
         if theme == "dark" and state["cardBefore"] != "none":
             raise AssertionError(
