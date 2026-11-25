@@ -174,3 +174,24 @@ Le test de mise à jour compare maintenant aussi le digest SHA-256 de l'asset Gi
 
 
 CI du lot V25.0.25 : run GitHub Actions #1573 réussi sur Linux, macOS/launchd et Firefox réel. La validation sur le matériel physique reste ouverte.
+
+
+## Audit produit V25 — modules web et expérience utilisateur — 25/11/2026
+
+| Identifiant | Module / sujet | Constat initial | État et prochaine preuve attendue |
+|---|---|---|---|
+| PQA-EDT-01 | EDT élève — synchronisation distante | Un créneau ajouté côté serveur après l'ouverture de la session élève n'apparaît pas dans la vue élève du test Firefox, alors que la projection serveur inclut normalement les créneaux de la classe. | **Détecté — en investigation.** Le test collecte maintenant les révisions serveur/client, les créneaux projetés et l'état du navigateur. Ne pas affaiblir l'assertion « Sciences ». |
+| PQA-SYNC-01 | Synchronisation multi-modules | Le rafraîchissement automatique historique ne couvrait que l'EDT et quelques pages de cours/travaux. | Endpoint léger `/api/sync-status` et rafraîchissement global ajoutés dans la branche. Fusion indépendante et arbitrage de conflit implémentés en première version. **Non validé** tant que les tests ciblés et la recette Firefox ne sont pas verts. |
+| PQA-MAIL-01 | Messagerie élève et professeur | La boîte active est le moteur Mail V2, branché via `window.messages` et `window.studentMessages`. Un ancien placeholder « bientôt disponible » subsiste dans le code mais est écrasé à l'exécution. | Les tests de modèle, identité, permissions et pièces jointes sont présents. **Recette installation réelle requise** ; garder MAIL-02 ouvert tant que l'accès élève n'est pas confirmé sur la version de référence. |
+| PQA-MAIL-02 | Migration de l'ancien modèle de messagerie | `mailboxV2.resetPending` déclenche la remise à zéro des anciennes collections `conversations`, `messages` et `mailFolders` au premier affichage Mail V2. | Le comportement est confirmé et couvert par un test historique. Vérifier la portée sur les bases mises à niveau et la communication utilisateur avant de changer la migration ; ne pas supprimer la réinitialisation sans stratégie de sécurité/compatibilité. |
+| PQA-EVAL-01 | Évaluations — dette d'implémentation | Plusieurs déclarations historiques de `evaluations()` subsistent dans `_all.js` ; la dernière (moteur V21.17) est celle appelée à l'exécution. | **Dette confirmée, pas bug d'affichage démontré.** Consolider après recette, en vérifiant les dépendances et tests de chaque point d'entrée. |
+| PQA-BUL-01 | Bulletins — dette d'implémentation | Plusieurs déclarations historiques de `bulletins()` subsistent ; l'implémentation V21.09 est active. | **Dette confirmée.** Ne pas supprimer les anciennes fonctions avant cartographie des liens et tests PDF, permissions, validation et publication. |
+| PQA-THEME-01 | Apparence claire/sombre | Le thème utilisateur est appliqué par `data-mc-theme`. Les règles `prefers-color-scheme` relevées dans le code examiné appartiennent au document HTML temporaire d'impression du bulletin. | **Audit visuel incomplet.** Parcourir tous les modules en thème clair/sombre/automatique avec thème manuel opposé au thème système ; ne pas modifier les règles print comme correctif global. |
+| PQA-NAV-01 | Tableau de bord / Aujourd'hui / Centre d'activité | Plusieurs vues peuvent présenter des priorités et événements proches. | **Question produit, pas bug confirmé.** Mesurer les usages et dépendances avant toute fusion/suppression ; aucun module supprimé. |
+| PQA-UX-01 | Architecture UI | Le fichier `_all.js` contient les versions successives de plusieurs modules, ce qui augmente le risque de corriger une définition inactive. | **Dette confirmée.** Identifier les fonctions finales réellement utilisées, créer des tests de parcours puis planifier un découpage sans changement visuel non demandé. |
+
+### Règles de clôture PQA
+- Ne passer un module à « validé » qu'après un parcours navigateur réel dans les rôles concernés.
+- Ne déclarer le thème sombre complet qu'après une vérification écran par écran.
+- Ne supprimer ou fusionner un module qu'après inventaire de ses usages, liens et données.
+- Conserver les échecs de CI comme signaux de diagnostic : ne pas rendre les assertions moins strictes uniquement pour obtenir un feu vert.
