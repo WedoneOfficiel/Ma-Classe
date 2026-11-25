@@ -1815,7 +1815,19 @@ def _validate_cloud_item_changes(current,updated,user):
             if not _cloud_scope_allowed(user,after.get('space','personal'),owner_id=after.get('ownerId',''),class_id=after.get('classId',''),group=after.get('group',''),data=current,write=True): return False
         if after is not None and before is not None:
             # Empêcher le déplacement d'un élément vers un espace non autorisé.
-            if (after.get('space'),after.get('ownerId'),after.get('classId'),after.get('group')) != (before.get('space'),before.get('ownerId'),before.get('classId'),before.get('group')): return False
+            before_scope=(
+                str(before.get('space') or 'personal'),
+                str(before.get('ownerId') or ''),
+                str(before.get('classId') or ''),
+                str(before.get('group') or ''),
+            )
+            after_scope=(
+                str(after.get('space') or 'personal'),
+                str(after.get('ownerId') or ''),
+                str(after.get('classId') or ''),
+                str(after.get('group') or ''),
+            )
+            if after_scope!=before_scope: return False
     return True
 
 def _norm_text(x):
