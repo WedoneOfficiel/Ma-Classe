@@ -478,6 +478,15 @@ def main() -> None:
                         hasLocalWork:syncHasLocalWork(),
                         localSchedule:(db.schedule||[]).map(x=>({id:x.id,subject:x.subject,day:x.day})),
                         serverSchedule:(latest.schedule||[]).map(x=>({id:x.id,subject:x.subject,day:x.day})),
+                        selectedWeek:iso(selectedWeek),
+                        student:student(activeStudent()),
+                        targetSlot:(db.schedule||[]).find(x=>x.id==='firefox-live-student-course')||null,
+                        targetDates:weekDates().map(d=>({
+                          date:iso(d),
+                          recurring:recurring((db.schedule||[]).find(x=>x.id==='firefox-live-student-course'),d),
+                          dayOcc:dayOcc(d).filter(x=>x.id==='firefox-live-student-course').map(x=>({id:x.id,group:x.group,day:x.day})),
+                          studentOcc:studentScheduleOcc(student(activeStudent()),d).filter(x=>x.id==='firefox-live-student-course').map(x=>({id:x.id,group:x.group,day:x.day}))
+                        })),
                         calendar:document.querySelector('.scheduleCalendarSurface')?.innerText||''
                       };
                     }""")
