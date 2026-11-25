@@ -12,6 +12,8 @@ assert(start >= 0 && end > start, 'Les helpers de calendrier doivent être prés
 
 const context = {
   DAYS: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
+  countLabel(value, singular, plural) { const count=Math.max(0,Number(value)||0); return count+' '+(count===1?singular:(plural||singular+'s')); },
+  formatFrenchDate(date, options) { const value=date.toLocaleDateString('fr-FR',options); return value.charAt(0).toUpperCase()+value.slice(1); },
   selectedWeek: null,
   scheduleView: 'week',
   dataRevision: null,
