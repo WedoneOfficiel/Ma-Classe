@@ -122,6 +122,12 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn(".scheduleMonthAgendaDay b{", HTML)
         self.assertIn("text-transform:none!important;", HTML)
 
+    def test_teacher_and_student_lesson_headings_are_consistent(self):
+        self.assertIn("shell('Cahier de cours','Séances & leçons'", JS)
+        start = JS.index("function studentLessons(){")
+        end = JS.index("\\nfunction ", start + 20)
+        self.assertIn("Séances & leçons", JS[start:end])
+
     def test_student_cloud_is_reachable_from_the_sidebar(self):
         start = JS.index("function nav(){")
         end = JS.index("\nfunction v12AttentionCount", start + 10)
