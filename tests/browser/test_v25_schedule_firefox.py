@@ -577,7 +577,8 @@ def main() -> None:
                       hasError:text.includes('Une erreur a empêché l’affichage de cette page.'),
                       title:main?.querySelector('.top h1')?.innerText||'',
                       width:main?.scrollWidth||0,
-                      viewport:window.innerWidth
+                      viewport:window.innerWidth,
+                      lessonWeekHasSelectedDate:!['lessons','studentLessons'].includes(id)||!!main?.querySelector('.lessonWeek .dayBtn.active')
                     });
                   }
                   return results;
