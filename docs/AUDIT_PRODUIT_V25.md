@@ -283,3 +283,20 @@ Des tests vérifient le filtrage des couleurs par matière et l'apparence du fon
 - AFFECT-02 : découvrabilité et gestion des remplacements à reprendre.
 - UI-ADM-01, UI-SET-01 et UI-PROFIL-01 : contrôles de finition de l'interface à compléter.
 - Accessibilité clavier/lecteurs d'écran et écrans très denses : non certifiés par l'audit actuel.
+
+
+## 15. Accessibilité des remplacements et contrôles UI complémentaires — 25/11/2026
+
+### Remplacements / co-enseignement
+
+La gestion des affectations temporaires existait dans le détail du créneau EDT, avec contrôles par rôle et attribution du créateur. Son principal défaut était la découvrabilité. Un nouvel accès « Remplacements & co-enseignement » est ajouté à la barre d'actions de l'EDT. Il ouvre un répertoire filtrable des seuls créneaux autorisés, avec recherche par classe, matière, jour et horaire. Le bouton « Gérer » ouvre le gestionnaire existant, sans dupliquer les règles métier. Les exceptions ponctuelles restent dans le gestionnaire des exceptions.
+
+### Confidentialité Administration
+
+Le message d'information des comptes a été actualisé : il ne présente plus la messagerie et le Cloud élève comme désactivés. Il indique que les données, messages, pièces jointes et ressources restent filtrés côté serveur par identité et autorisations.
+
+### Contrôles supplémentaires
+
+- Le test de persistance des bulletins couvre la génération idempotente, l'attente de confirmation serveur et le rollback en cas d'échec.
+- Les tests UI vérifient les dimensions fixes de la navigation, la densité des paramètres, la séparation des champs de profil, la version partagée et la composition de la rubrique Vie scolaire.
+- Ces tests contrôlent la présence des règles et la logique des fonctions ; ils ne remplacent pas une inspection visuelle avec des données denses dans les trois espaces.
