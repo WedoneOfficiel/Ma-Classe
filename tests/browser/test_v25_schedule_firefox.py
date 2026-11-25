@@ -439,6 +439,21 @@ def main() -> None:
                 student_course = student_page.locator('[data-schedule-id="firefox-existing-course"]')
                 if "#123456" not in (student_course.get_attribute("style") or ""):
                     raise AssertionError("La couleur personnalisée de matière n'est pas transmise à l'EDT élève.")
+                # Trace every student-side render while the other account changes the timetable.
+                student_page.evaluate("""() => {
+                  window.__studentRenderTrace=[];
+                  const original=render;
+                  window.render=function(){
+                    const result=original.apply(this,arguments);
+                    window.__studentRenderTrace.push({
+                      page,
+                      revision:dataRevision,
+                      targetInDom:!!document.querySelector('[data-schedule-id="firefox-live-student-course"]'),
+                      targetInModel:(db.schedule||[]).some(x=>x.id==='firefox-live-student-course')
+                    });
+                    return result;
+                  };
+                }""")
                 # A teacher-side write must be picked up by the student's 5-second sync.
                 page.evaluate("""async () => {
                   const response = await fetch('/api/data', {cache:'no-store'});
@@ -494,6 +509,7 @@ def main() -> None:
                         weekRendererMarkup:scheduleWeek(weekDates(),d=>studentScheduleOcc(student(activeStudent()),d),true).includes('Sciences'),
                         eventMarkup:eventCard((db.schedule||[]).find(x=>x.id==='firefox-live-student-course'),new Date('2026-11-13T12:00:00'),true),
                         targetDomCount:document.querySelectorAll('[data-schedule-id="firefox-live-student-course"]').length,
+                        renderTrace:window.__studentRenderTrace||[],
                         calendarHtml:document.querySelector('.scheduleCalendarSurface')?.innerHTML.slice(0,15000)||'',
                         calendar:document.querySelector('.scheduleCalendarSurface')?.innerText||''
                       };
