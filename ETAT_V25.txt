@@ -338,3 +338,11 @@ MISE À JOUR DE SYNCHRONISATION — 25/11/2026 — V25.0.25 (candidat)
 - La suite macOS contient un parcours d'installation/rollback launchd + HTTPS et un test de migration d'une installation existante vers le service supervisé ; le fixture de migration est maintenant V25.0.19.
 - CI GitHub Actions #1573 réussie : Linux, macOS/launchd et Firefox réel. Aucune recette sur le Mac physique, le PC Fedora ou le Wi-Fi réel n'est revendiquée ici.
 - Le redémarrage automatique du service macOS lors d'un changement d'adresse DHCP n'est pas encore implémenté. Réserver une IP au niveau du routeur et redémarrer le service après modification demeure la mesure de précaution.
+
+
+MISE À JOUR — SUPERVISION DHCP ET REBINDING HTTPS — 25/11/2026
+- Ajout de network_supervisor.py, commun au service systemd Linux, au service launchd macOS et au lanceur réseau manuel macOS.
+- Surveillance toutes les cinq secondes de l'adresse IPv4 privée de l'interface par défaut. En cas de changement, le serveur HTTP est arrêté proprement, le certificat serveur est renouvelé pour la nouvelle IP sous la même autorité locale, puis le listener HTTPS est redémarré.
+- En cas de perte de l'interface ou de l'adresse, le listener est fermé ; le superviseur attend le retour du réseau avant de rouvrir l'accès. Les données, la CA et la clé privée du serveur restent dans le stockage persistant.
+- Le script de configuration des certificats respecte maintenant MACLASSE_DATA_DIR.
+- Tests automatisés ajoutés pour macOS/Linux, changement d'adresse, perte/retour du réseau et certificat SAN/expiration. La recette Wi-Fi sur les appareils physiques reste à effectuer.
