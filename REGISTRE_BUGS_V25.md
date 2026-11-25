@@ -37,6 +37,8 @@ Dernière mise à jour : 25 novembre 2026
 
 | UI-RENDER-01 | Écrans vides après consolidation de la page Aujourd'hui | Plusieurs modules peuvent ne plus s'afficher lorsque le rendu global est appelé. | L'entrée `today:today` restait dans la table de rendu alors que la fonction `today()` avait été retirée et que `go()` redirigeait déjà cette route vers `activity`. La construction de la table levait `ReferenceError: today is not defined`, bloquant aussi les pages sans rapport avec l'EDT. Un alias de compatibilité est maintenant défini avant `_all.js` et redirige vers le Centre d'activité. Diagnostic enrichi et test Firefox réel ajoutés. La CI Linux/macOS/Firefox a passé sur le commit `de2a0a8` ; la confirmation sur l'installation utilisateur reste nécessaire. | Supposé résolu |
 
+| UI-LESSON-01 | Semaine incohérente dans Séances & leçons | La date sélectionnée et la semaine proposée dans la navigation latérale peuvent être différentes. | `weekDates()` ignorait son argument et lisait toujours `selectedWeek`, alors que les vues professeur et élève lui transmettaient `lessonDay`. La fonction accepte désormais une date de référence optionnelle. Le mini-calendrier utilise aussi un libellé de mois abrégé pour éviter la troncature. Le test Firefox contrôle que la date sélectionnée appartient bien à la semaine affichée dans les deux espaces. Correctif en branche, CI à confirmer. | En cours de résolution |
+
 ## Demande d'amélioration hors registre des bugs
 
 | Identifiant | Demande | Description | État |
