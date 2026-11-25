@@ -1598,17 +1598,42 @@ const v207GradeTableDecorBase=gradeTable;gradeTable=function(e){let html=v207Gra
     if(!to.length&&!cc.length&&!bcc.length)return toast('Choisissez au moins un destinataire.');
     f.dataset.sending='1';const submit=f.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Envoi…'}
     try{
-      for(const file of [...(f.elements.mailV2Files?.files||[])])attachments.push(await upload(file,'mail-v2/'+me(role,sid)));
-      let sent;
-      if(source&&(mode==='reply'||mode==='replyAll')){
-        const msg={id:'',threadId:'',sender:{key:me(role,sid),role,id:role==='student'?sid:currentTeacherId(),name:role==='student'?`${student(sid)?.first||''} ${student(sid)?.last||''}`.trim():teacherName(teacherUser(currentTeacherId()))},to,cc,bcc,subject,body,attachments,sentAt:new Date().toISOString()};
-        sent=copyOriginalForReply(source,msg,{to,cc});
+      let sent=null;
+      const pendingId=f.dataset.pendingMessageId||'';
+      if(pendingId){
+        sent=store().messages.find(m=>m.id===pendingId);
+        if(!sent)throw new Error('Le message en attente est introuvable. Rechargez la boîte avant de recommencer.');
       }else{
-        const quoted=source&&mode==='forward'?{sender:source.sender.name,subject:source.subject,body:source.body,attachments:[]}:null;
-        sent=sendOne({role,sid,to,cc,bcc,subject,body,attachments,forwardedFrom:source&&mode==='forward'?source.id:'',quoted});
+        for(const file of [...(f.elements.mailV2Files?.files||[])])attachments.push(await upload(file,'mail-v2/'+me(role,sid)));
+        if(source&&(mode==='reply'||mode==='replyAll')){
+          const currentStudent=student(sid);
+          const senderName=role==='student'?[currentStudent?.first,currentStudent?.last].filter(Boolean).join(' '):teacherName(teacherUser(currentTeacherId()));
+          const msg={id:'',threadId:'',sender:{key:me(role,sid),role,id:role==='student'?sid:currentTeacherId(),name:senderName},to,cc,bcc,subject,body,attachments,sentAt:new Date().toISOString()};
+          sent=copyOriginalForReply(source,msg,{to,cc});
+        }else{
+          const quoted=source&&mode==='forward'?{sender:source.sender.name,subject:source.subject,body:source.body,attachments:[]}:null;
+          sent=sendOne({role,sid,to,cc,bcc,subject,body,attachments,forwardedFrom:source&&mode==='forward'?source.id:'',quoted});
+        }
+        const owner=me(role,sid),draftId=f.dataset.draftId;
+        if(draftId)store().drafts=store().drafts.filter(d=>!(d.id===draftId&&d.owner===owner));
+        f.dataset.pendingMessageId=sent.id;
       }
-      const owner=me(role,sid),draftId=f.dataset.draftId;if(draftId)store().drafts=store().drafts.filter(d=>!(d.id===draftId&&d.owner===owner));window.mailV2Selected=sent.id;window.mailV2Folder='sent';window.mailV2Search='';save();closeModal();render();toast('Message envoyé');
-    }catch(err){f.dataset.sending='0';if(submit){submit.disabled=false;submit.textContent='Envoyer'}toast(err.message||'Envoi impossible')}
+      window.mailV2Selected=sent.id;window.mailV2Folder='sent';window.mailV2Search='';
+      save();
+      await flushPendingSave();
+      delete f.dataset.pendingMessageId;
+      closeModal();render();toast('Message envoyé');
+    }catch(err){
+      f.dataset.sending='0';
+      if(submit){submit.disabled=false;submit.textContent=f.dataset.pendingMessageId?'Réessayer l’envoi':'Envoyer'}
+      if(f.dataset.pendingMessageId){
+        f.querySelectorAll('input,textarea,select,[contenteditable="true"]').forEach(x=>{
+          if(x.hasAttribute('contenteditable'))x.setAttribute('contenteditable','false');
+          else x.disabled=true;
+        });
+      }
+      toast(err.message||'Envoi impossible')
+    }
   };
   window.mailV2104Reply=function(id,mode='reply'){const role=page==='studentMessages'?'student':'teacher',sid=role==='student'?activeStudent():'',src=store().messages.find(m=>m.id===id);if(!src||!canSee(src,me(role,sid)))return;const to=mode==='forward'?[]:mode==='replyAll'?[...new Set([src.sender.key,...(src.to||[]),...(src.cc||[])])].filter(k=>k!==me(role,sid)):[src.sender.key].filter(k=>k!==me(role,sid));const quote=mode==='forward'?`<b>${h(src.sender.name)}</b><br><b>Objet :</b> ${h(src.subject)}<br><br>${h(src.body).replace(/\n/g,'<br>')}`:'';compose(role,sid,{mode,messageId:id,attachments:mode==='forward'?(src.attachments||[]):[],title:mode==='forward'?'Transférer le message':mode==='replyAll'?'Répondre à tous':'Répondre',subject:(mode==='forward'?'Fwd: ':'Re: ')+src.subject,to,quote,body:''})};
   window.mailV2104Open=function(id,role,sid=''){if(String(id).startsWith('draft:'))return window.mailV2104EditDraft(String(id).slice(6),role,sid);const m=store().messages.find(x=>x.id===id);if(!m||!canSee(m,me(role,sid)))return;window.mailV2Selected=id;for(const x of threadFor(m,role,sid))markRead(x,role,sid);render()};
