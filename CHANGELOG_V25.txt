@@ -304,3 +304,6 @@ Validation CI complémentaire — 12/11/2026
 - La recette de migration macOS couvre maintenant explicitement une installation historique V25.0.19, avec conservation de la base, des certificats, des pièces jointes et du lien de version active.
 - Version applicative, interface et VERSION.txt alignées sur V25.0.25.
 - Validation CI Linux, macOS/launchd et Firefox réel réussie sur le commit 46ef83f (run GitHub Actions #1573, 25/11/2026). La recette physique sur le Mac, le PC Fedora et le Wi-Fi reste distincte et n'est pas revendiquée.
+
+- Le serveur supervisé Linux/macOS surveille désormais l'IPv4 privée : il ferme le listener en cas de perte réseau, renouvelle le certificat serveur sous la même CA et rebinde automatiquement lors d'un changement DHCP. Les lanceurs manuels macOS utilisent le même superviseur.
+- Tests ajoutés pour la détection Linux/macOS, le rejet d'adresses non privées, la validité SAN/expiration, le changement d'adresse et la perte/retour du réseau.
