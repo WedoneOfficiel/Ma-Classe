@@ -366,6 +366,29 @@ class TeacherDataScopeTests(unittest.TestCase):
         saved=next(x for x in merged['attachments'] if x['id']=='att1')
         self.assertEqual((saved['classId'],saved['studentId'],saved['lessonId']),('c1','s1','l1'))
 
+    def test_teacher_can_persist_only_colors_for_subjects_they_teach(self):
+        data=copy.deepcopy(self.data)
+        data['schedule']=[
+            {'id':'slot-maths','classId':'c1','subject':'Maths','teacherId':'t1'},
+            {'id':'slot-french','classId':'c1','subject':'Français','teacherId':'t2'},
+            {'id':'slot-foreign','classId':'c2','subject':'Histoire','teacherId':'t2'},
+        ]
+        view=server._teacher_visible_data(data,self.user)
+        view['settings']['subjectColors'].update({
+            'maths':'#abcdef',
+            'francais':'#ff0000',
+            'histoire':'#00ff00',
+            'physique':'#0000ff',
+        })
+        view['settings']['schoolName']='Établissement falsifié'
+        merged=server._merge_teacher_data(data,view,self.user)
+        self.assertEqual(merged['settings']['subjectColors'],{
+            'francais':'#123456',
+            'maths':'#abcdef',
+        })
+        self.assertEqual(merged['settings']['schoolName'],'École test')
+        self.assertEqual(merged['settings'].get('termMode'),None)
+
     def test_teacher_cannot_modify_global_settings(self):
         view=server._teacher_visible_data(copy.deepcopy(self.data),self.user)
         view['settings']={'schoolName':'Falsifié'}
