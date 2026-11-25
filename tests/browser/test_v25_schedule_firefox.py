@@ -487,6 +487,14 @@ def main() -> None:
                           dayOcc:dayOcc(d).filter(x=>x.id==='firefox-live-student-course').map(x=>({id:x.id,group:x.group,day:x.day})),
                           studentOcc:studentScheduleOcc(student(activeStudent()),d).filter(x=>x.id==='firefox-live-student-course').map(x=>({id:x.id,group:x.group,day:x.day}))
                         })),
+                        scheduleView,
+                        weekDates:weekDates().map(iso),
+                        occFriday:studentScheduleOcc(student(activeStudent()),new Date('2026-11-13T12:00:00')).map(x=>({id:x.id,subject:x.subject})),
+                        weekMarkup:studentSchedule().includes('Sciences'),
+                        weekRendererMarkup:scheduleWeek(weekDates(),d=>studentScheduleOcc(student(activeStudent()),d),true).includes('Sciences'),
+                        eventMarkup:eventCard((db.schedule||[]).find(x=>x.id==='firefox-live-student-course'),new Date('2026-11-13T12:00:00'),true),
+                        targetDomCount:document.querySelectorAll('[data-schedule-id="firefox-live-student-course"]').length,
+                        calendarHtml:document.querySelector('.scheduleCalendarSurface')?.innerHTML.slice(0,15000)||'',
                         calendar:document.querySelector('.scheduleCalendarSurface')?.innerText||''
                       };
                     }""")
