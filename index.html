@@ -2071,6 +2071,132 @@ html[data-mc-theme="dark"] .bulletin::before{
 .scheduleMonthAgendaDay b{
   text-transform:none!important;
 }
+
+/* Mobile layout: place the compact navigation above the page instead of
+   reserving a desktop-width fixed sidebar and shrinking the content. */
+@media(max-width:800px){
+  .app{display:block!important;min-height:100vh}
+  .side,
+  body.sidebar-collapsed .side{
+    position:static!important;
+    inset:auto!important;
+    display:block!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:8px 12px 7px!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+    border-right:0!important;
+    border-bottom:1px solid var(--line)!important;
+    box-shadow:0 2px 12px rgba(0,0,0,.045)!important;
+    backdrop-filter:blur(18px) saturate(150%);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+  }
+  .brand,
+  body.sidebar-collapsed .brand{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
+    gap:9px!important;
+    min-height:42px!important;
+    padding:2px 2px 8px!important;
+  }
+  .brand .logo,
+  body.sidebar-collapsed .brand .logo{
+    display:grid!important;
+    flex:0 0 34px!important;
+    width:34px!important;
+    height:34px!important;
+  }
+  .brandText,
+  .brand>div:last-child,
+  body.sidebar-collapsed .brandText,
+  body.sidebar-collapsed .brand>div:last-child{
+    display:block!important;
+    min-width:0!important;
+  }
+  .sidebarToggle,
+  body.sidebar-collapsed .sidebarToggle{
+    position:static!important;
+    display:none!important;
+  }
+  .nav,
+  body.sidebar-collapsed .nav{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    gap:5px!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    padding:2px 0 5px!important;
+    scrollbar-width:thin;
+    -webkit-overflow-scrolling:touch;
+  }
+  .navSection,
+  body.sidebar-collapsed .navSection{
+    display:contents!important;
+  }
+  .navSectionLabel,
+  body.sidebar-collapsed .navSectionLabel,
+  .sidefoot,
+  body.sidebar-collapsed .sidefoot{
+    display:none!important;
+  }
+  .nav button,
+  .nav .navBtn,
+  body.sidebar-collapsed .nav button{
+    display:flex!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:0!important;
+    min-height:36px!important;
+    height:36px!important;
+    padding:6px 9px!important;
+    justify-content:flex-start!important;
+    gap:6px!important;
+    white-space:nowrap!important;
+    border-radius:9px!important;
+  }
+  .nav button span:not(.ico),
+  .nav button b,
+  body.sidebar-collapsed .nav button span:not(.ico),
+  body.sidebar-collapsed .nav button b{
+    display:inline!important;
+    overflow:visible!important;
+    max-width:none!important;
+  }
+  .nav button .ico,
+  body.sidebar-collapsed .nav button .ico{
+    display:inline-flex!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    margin:0!important;
+  }
+  .main,
+  body.sidebar-collapsed .main{
+    display:block!important;
+    margin:0!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    padding:14px 14px 42px!important;
+    box-sizing:border-box!important;
+    overflow-x:hidden!important;
+  }
+  .top{top:8px!important}
+}
+@media(max-width:520px){
+  .side,
+  body.sidebar-collapsed .side{padding-left:10px!important;padding-right:10px!important}
+  .main,
+  body.sidebar-collapsed .main{padding-left:12px!important;padding-right:12px!important}
+}
 </style>
 
 
