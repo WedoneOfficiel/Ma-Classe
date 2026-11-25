@@ -564,7 +564,7 @@ def main() -> None:
                   const modules=[
                     'studentHome','studentSchedule','studentLessons','studentWork',
                     'studentResults','studentLife','studentMessages','studentDocuments',
-                    'studentSettings','activity'
+                    'studentSettings','today','activity'
                   ];
                   const results=[];
                   for(const id of modules){
@@ -644,7 +644,7 @@ def main() -> None:
                 capture_product_screenshots(
                     student_page,
                     "student",
-                    ["studentHome","studentSchedule","studentLessons","studentWork","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
+                    ["studentHome","studentSchedule","studentLessons","studentWork","studentResults","studentMessages","studentLife","studentDocuments","studentSettings","today"],
                     Path("artifacts/browser-v25"),
                 )
                 student_page.evaluate("page='studentHome';appSpace='student';setAppearanceTheme('light');render();")
