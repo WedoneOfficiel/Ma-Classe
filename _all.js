@@ -667,7 +667,7 @@ function schedule(){
      </div>
      <div class="scheduleActions">
       <button class="btn" onclick="openAnnualSchedule()">Gestion annuelle</button>
-      ${(authUser?.role==='admin'||authUser?.role==='teacher')?'<button class="btn" onclick="openScheduleAssignmentDirectory()">Remplacements & co-enseignement</button>':''}
+      <button class="btn" onclick="openScheduleAssignmentDirectory()">Remplacements & co-enseignement</button>
       <button class="btn" onclick="openCourseManager()">Gérer les cours</button>
       <button class="btn" onclick="openPlanner()">✦ Organiser</button>
      </div>
