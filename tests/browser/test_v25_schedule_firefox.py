@@ -412,11 +412,29 @@ def main() -> None:
                     }
                   };
                   db.lessons.push(lesson);
-                  save(true);
-                  await flushPendingSave();
-                  return lesson.homework.files[0];
+                  const localCloud=JSON.parse(JSON.stringify(db.cloudItems||[]));
+                  const serverResponse=await fetch('/api/data',{cache:'no-store'});
+                  const serverData=await serverResponse.json();
+                  const serverCloud=serverData.cloudItems||[];
+                  try {
+                    save(true);
+                    await flushPendingSave();
+                  } catch(error) {
+                    return {
+                      saveError:String(error?.message||error),
+                      teacherId:authUser?.id,
+                      localCloud,
+                      serverCloud,
+                      localRevision:dataRevision,
+                      serverRevision:serverResponse.headers.get('X-MaClasse-Revision')
+                    };
+                  }
+                  return {file:lesson.homework.files[0],localCloud,serverCloud};
                 }""")
-                if not uploaded_homework or not uploaded_homework.get("url"):
+                if uploaded_homework and uploaded_homework.get("saveError"):
+                    raise AssertionError("Sauvegarde après partage Cloud refusée : "+json.dumps(uploaded_homework,ensure_ascii=False))
+                uploaded_homework_file=(uploaded_homework or {}).get("file")
+                if not uploaded_homework_file or not uploaded_homework_file.get("url"):
                     raise AssertionError("Teacher homework attachment was not uploaded: "+repr(uploaded_homework))
                 if teacher_page_errors:
                     raise AssertionError("Teacher Firefox page errors: "+" | ".join(teacher_page_errors))
