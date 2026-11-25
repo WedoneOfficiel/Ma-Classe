@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `b06f8ef`, CI complète #1763 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+> **État courant — 25/11/2026 :** candidat V25.1.0 sur la PR #13, tête vérifiée par la CI #1793, 3/3 jobs verts (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -674,3 +674,14 @@ Les nouveaux scénarios vérifient en plus :
 - compilation des trois scripts cryptographiques.
 
 Le commit courant a également corrigé la règle `.gitignore` pour le véritable nom du fichier de clé privée. La clé éditeur de production reste non provisionnée ; les tests utilisent des clés éphémères.
+
+
+## Campagne du 25 novembre 2026 — Suivi de classe, Cloud et validation finale
+
+- Création de la vue transversale Suivi de classe, accessible à la Direction et aux enseignants selon leurs affectations ; les professeurs principaux conservent la vue complète de leur classe.
+- Ajout des indicateurs factuels d'assiduité sur 30 jours, travaux non rendus, évaluations publiées, échéances et accès aux fiches élèves ; aucun classement ni score automatique.
+- Correction du chargement statique de `class_tracking.js` dans la liste blanche serveur et ajout d'un test dédié.
+- Correction du changement d'espace Cloud pour que les espaces personnels/partagés ne soient plus bloqués par un contexte de classe conservé.
+- Tests unitaires et Firefox réel couvrant permissions, groupes, publication, contexte Cloud et refus d'accès élève.
+- CI #1793 : 3/3 jobs réussis sur Linux, macOS Apple Silicon (installateur et launchd réels) et Firefox réel.
+- Restent hors CI : provisionnement de la clé Ed25519 de production, migration sur copie des données réelles et recette réseau multi-appareils.
