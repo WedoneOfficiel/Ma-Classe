@@ -51,7 +51,7 @@ class VisualConsistencyTests(unittest.TestCase):
 
     def test_dashboard_uses_natural_french_count_labels(self):
         start = JS.index("function dashboard(){")
-        end = JS.index("\\nfunction ", start + 20)
+        end = JS.index("\nfunction ", start + 20)
         dashboard = JS[start:end]
         self.assertIn("slotsLabel=", dashboard)
         self.assertIn("workLabel=", dashboard)
