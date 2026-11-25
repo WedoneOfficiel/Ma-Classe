@@ -110,15 +110,26 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
     # Automatic appearance must follow the operating-system preference too.
     page.emulate_media(color_scheme="light")
     page.evaluate("setAppearanceTheme('system')")
-    page.wait_for_timeout(30)
-    automatic_light = page.evaluate("document.documentElement.dataset.mcTheme")
-    if automatic_light != "light":
-        raise AssertionError(f"Le thème automatique devrait être clair ici, reçu : {automatic_light!r}")
+    page.wait_for_function("document.documentElement.dataset.mcTheme === 'light'", timeout=1500)
+    automatic_light = page.evaluate("""() => ({
+        theme:document.documentElement.dataset.mcTheme,
+        preference:document.documentElement.dataset.mcThemePreference,
+        mediaDark:window.matchMedia('(prefers-color-scheme: dark)').matches,
+        listenerInstalled:document.documentElement.dataset.mcThemeListener === '1'
+    })""")
+    if automatic_light["theme"] != "light" or automatic_light["mediaDark"]:
+        raise AssertionError(f"Le thème automatique devrait être clair ici : {automatic_light!r}")
     page.emulate_media(color_scheme="dark")
-    page.wait_for_timeout(30)
-    automatic_dark = page.evaluate("document.documentElement.dataset.mcTheme")
-    if automatic_dark != "dark":
-        raise AssertionError(f"Le thème automatique devrait être sombre ici, reçu : {automatic_dark!r}")
+    try:
+        page.wait_for_function("document.documentElement.dataset.mcTheme === 'dark'", timeout=1500)
+    except Exception as error:
+        automatic_dark = page.evaluate("""() => ({
+            theme:document.documentElement.dataset.mcTheme,
+            preference:document.documentElement.dataset.mcThemePreference,
+            mediaDark:window.matchMedia('(prefers-color-scheme: dark)').matches,
+            listenerInstalled:document.documentElement.dataset.mcThemeListener === '1'
+        })""")
+        raise AssertionError(f"Le thème automatique ne suit pas le mode sombre : {automatic_dark!r}") from error
     page.evaluate("setAppearanceTheme('light')")
 
 def free_port() -> int:
