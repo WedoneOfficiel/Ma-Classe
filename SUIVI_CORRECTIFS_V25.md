@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `94b86d9`, CI complète #1727 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `832d466`, CI complète #1747 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -605,3 +605,18 @@ Ces points sont désormais distingués entre implémentation présente dans la b
 Le premier test complet après l'ajout du bouton « Remplacements & co-enseignement » a révélé une dépendance inutile au global `authUser` pendant le rendu de `schedule()`. Le test de navigation EDT construit volontairement la page dans un contexte isolé sans session ; le bouton ne doit donc pas lire ce global à la construction. Le contrôle d'accès est maintenant concentré dans `openScheduleAssignmentDirectory()`, qui ne liste que les créneaux autorisés via `canManageScheduleAssignments()`. Le bouton est seulement un point d'entrée ; il ne donne aucun droit supplémentaire.
 
 **État :** correction committée dans `d66a78f`. Workflow #1742 a aussi passé Firefox réel ; les jobs Linux/macOS ont échoué sur cette erreur de test de rendu. Une nouvelle CI complète est attendue sur le commit corrigé.
+
+
+## Validation finale du candidat V25.0.25 — 25/11/2026
+
+**Commit testé :** `832d46647e8bcb0cb4b86de59e77da5216514728`  
+**Workflow :** [#1747](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45697822027)  
+**Résultat :** succès sur les trois jobs Linux, macOS Apple Silicon et Firefox réel.
+
+- Le test de navigation EDT qui échouait dans le workflow #1742 est maintenant vert : le bouton Remplacements ne lit plus `authUser` pendant la construction de la page ; le filtrage demeure appliqué dans `openScheduleAssignmentDirectory()`.
+- Le test de l'interface d'affectations est vert : accès central, filtrage par classe/recherche, rôle Direction/professeur et droits de retrait.
+- Les 24 assertions de cohérence visuelle sont vertes, en plus des tests de modèle, autorisations, persistance, serveur et mises à jour.
+- Le runner macOS a validé l'installateur Apple Silicon, les tests JavaScript, le superviseur launchd réel et tous les tests Python.
+- La régression EDT Firefox réel est verte et a produit un artefact de 74 captures.
+
+**À ne pas confondre avec une recette de livraison :** aucune publication ni fusion de la PR #13 n'a été effectuée. La base réelle, le réseau Wi-Fi physique et les comptes utilisateur restent à vérifier avant release.
