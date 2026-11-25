@@ -12,8 +12,13 @@ assert(start >= 0 && end > start, 'Les helpers de calendrier doivent être prés
 
 const context = {
   DAYS: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
+  countLabel(value, singular, plural) { const count=Math.max(0,Number(value)||0); return count+' '+(count===1?singular:(plural||singular+'s')); },
+  formatFrenchDate(date, options) { const value=date.toLocaleDateString('fr-FR',options); return value.charAt(0).toUpperCase()+value.slice(1); },
   selectedWeek: null,
   scheduleView: 'week',
+  dataRevision: null,
+  lastRenderedRevision: null,
+  lastRenderError: null,
   renderCount: 0,
   render() { this.renderCount += 1; },
   db: { schedule: [], classes: [] },
@@ -168,11 +173,12 @@ context.authUser=null;
 context.nav=()=>{};
 context.main={innerHTML:''};
 context.document={getElementById:()=>context.main};
-context.console={error:()=>{}};
+context.console={error:()=>{},warn:()=>{}};
 context.shell=()=>'<div class="top"></div>';
 context.window.messages=()=>'<div></div>';
 context.window.studentMessages=()=>'<div></div>';
 for(const name of ['dashboard','today','activity','notifications','teachersModule','lessons','studentsModule','evaluations','attendance','attendanceFollowup','bulletins','documents','classes','ppDashboard','settings','adminUsers','studentHome','studentLessons','studentResults','studentLife','studentDocuments'])context[name]=()=>'<div></div>';
+context.dataRevision??=null;context.lastRenderedRevision??=null;
 vm.runInContext(source.slice(renderStart,shellStart),context);
 context.page='schedule';
 context.scheduleView='week';
@@ -198,46 +204,105 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
 
 
 (async()=>{
-  const refreshStart=source.indexOf('async function refreshLiveScheduleData()');
+  const refreshStart=source.indexOf('async function refreshLiveScheduleData(force=false)');
   const refreshEnd=source.indexOf('function startLiveScheduleSync(',refreshStart);
   assert(refreshStart>=0&&refreshEnd>refreshStart,'La synchronisation automatique doit être présente.');
   context.authUser={role:'teacher'};
   context.page='schedule';
-  context.document={hidden:false};
+  context.document={hidden:false,activeElement:{matches:()=>false}};
   context.modalOpen=false;
   context.$=()=>context.modalOpen?{classList:{contains:()=>true}}:null;
-  context.savePending=false;context.saveTimer=null;context.saveError=null;context.liveSyncBusy=false;
-  context.dataRevision='rev1';
+  context.savePending=false;context.saveTimer=null;context.saveError=null;
+  context.conflictState=null;context.liveSyncBusy=false;context.saveGeneration=0;
+  context.copyData=value=>value==null?value:JSON.parse(JSON.stringify(value));
+  context.syncHasLocalWork=()=>context.modalOpen;
+  context.updateSyncBanner=()=>{};context.needsRenderAfterSync=false;
+  context.dataRevision='rev1';context.lastRenderedRevision='rev1';
   context.db={schedule:[{id:'local-draft'}]};
+  context.dataBase={schedule:[{id:'local-draft'}]};
   context.normalize=()=>{};
-  context.renderCount=0;context.render=()=>{context.renderCount++};
-  let resolveFetch;
-  context.fetch=()=>new Promise(resolve=>{resolveFetch=resolve});
+  context.renderCount=0;context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision;context.lastRenderError=null};
+  let resolveStatus;
+  context.fetch=url=>{
+    assert.strictEqual(url,'/api/sync-status');
+    return new Promise(resolve=>{resolveStatus=resolve});
+  };
   vm.runInContext(source.slice(refreshStart,refreshEnd),context);
-  const pendingRefresh=vm.runInContext('refreshLiveScheduleData()',context);
+  const pendingRefresh=vm.runInContext('refreshLiveScheduleData(true)',context);
   context.modalOpen=true;
-  resolveFetch({ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-copy'}]})});
+  resolveStatus({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev2'})});
   await pendingRefresh;
-  assert.strictEqual(context.db.schedule[0].id,'local-draft','Une réponse de synchronisation arrivée après l’ouverture d’un formulaire ne doit pas écraser les données locales.');
-  assert.strictEqual(context.dataRevision,'rev1','Une réponse ignorée ne doit pas avancer la révision locale.');
-  context.modalOpen=false;context.liveSyncBusy=false;context.fetch=async()=>({ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-update'}]})});
-  await vm.runInContext('refreshLiveScheduleData()',context);
-  assert.strictEqual(context.db.schedule[0].id,'server-update','Une synchronisation sans modification locale doit appliquer la nouvelle version serveur.');
+  assert.strictEqual(context.db.schedule[0].id,'local-draft',
+    'Une actualisation détectée pendant une modale ne doit pas écraser la saisie affichée.');
+  assert.strictEqual(context.dataRevision,'rev1',
+    'Une actualisation ignorée pendant une modale ne doit pas avancer la révision locale.');
+  assert.strictEqual(context.lastRenderedRevision,'rev1');
+  context.modalOpen=false;context.liveSyncBusy=false;
+  context.fetch=async url=>{
+    if(url==='/api/sync-status')return {ok:true,headers:{get:()=>null},json:async()=>({revision:'rev2'})};
+    assert.strictEqual(url,'/api/data');
+    return {ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-update'}]})};
+  };
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.db.schedule[0].id,'server-update',
+    'Une synchronisation sans modification locale doit appliquer la nouvelle version serveur.');
   assert.strictEqual(context.dataRevision,'rev2');
+  assert.strictEqual(context.lastRenderedRevision,'rev2');
   assert.strictEqual(context.renderCount,1);
-  // Une navigation effectuée pendant une requête doit invalider cette réponse,
-  // même si la page reste « schedule » et qu'aucune sauvegarde n'est en cours.
-  context.liveSyncBusy=false;context.dataRevision='rev2';context.db={schedule:[{id:'local-after-navigation'}]};
-  let resolveNavigationFetch;
-  context.fetch=()=>new Promise(resolve=>{resolveNavigationFetch=resolve});
-  const navigationRefresh=vm.runInContext('refreshLiveScheduleData()',context);
+
+  // Si l'utilisateur change de vue pendant le chargement des données, la réponse
+  // actualise le modèle et le rendu courant ; elle ne doit pas réinjecter l'ancienne vue.
+  context.liveSyncBusy=false;context.dataRevision='rev2';context.lastRenderedRevision='rev2';context.db={schedule:[{id:'local-after-navigation'}]};
+  let resolveData;
+  context.fetch=url=>{
+    if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev3'})});
+    assert.strictEqual(url,'/api/data');
+    return new Promise(resolve=>{resolveData=resolve});
+  };
+  const navigationRefresh=vm.runInContext('refreshLiveScheduleData(true)',context);
+  await new Promise(resolve=>setTimeout(resolve,0));
+  if(!resolveData)throw new Error('La requête /api/data doit démarrer après le sondage de révision.');
   context.scheduleView='month';context.selectedWeek=new Date(2026,11,1,12);
-  resolveNavigationFetch({ok:true,headers:{get:()=> 'rev3'},json:async()=>({schedule:[{id:'stale-server-copy'}]})});
+  resolveData({ok:true,headers:{get:()=> 'rev3'},json:async()=>({schedule:[{id:'fresh-server-copy'}]})});
   await navigationRefresh;
-  assert.strictEqual(context.db.schedule[0].id,'local-after-navigation','Une réponse commencée avant un changement de vue ne doit pas remplacer l’EDT affiché.');
-  assert.strictEqual(context.dataRevision,'rev2','Une réponse invalidée par la navigation ne doit pas avancer la révision.');
-  assert.strictEqual(context.renderCount,1,'Une réponse invalidée ne doit pas déclencher de rendu parasite.');
-  context.scheduleView='week';context.selectedWeek=new Date(2026,10,9,12);
+  assert.strictEqual(context.db.schedule[0].id,'fresh-server-copy',
+    'Une navigation sans saisie locale doit recevoir les nouvelles données serveur.');
+  assert.strictEqual(context.dataRevision,'rev3');
+  assert.strictEqual(context.lastRenderedRevision,'rev3');
+  assert.strictEqual(context.renderCount,2,'La vue courante doit être rendue après actualisation du modèle.');
+
+  // Même si un autre chemin a déjà actualisé le modèle local, une nouvelle
+  // révision doit reconstruire le DOM : l'ancien calendrier peut être périmé.
+  context.liveSyncBusy=false;context.dataRevision='rev4';context.lastRenderedRevision='rev3';
+  context.db={schedule:[{id:'already-in-memory'}]};
+  context.fetch=url=>{
+    if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev4'})});
+    return Promise.resolve({ok:true,headers:{get:()=> 'rev4'},json:async()=>({schedule:[{id:'already-in-memory'}]})});
+  };
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.renderCount,3,
+    'Une nouvelle révision serveur doit rafraîchir le DOM même si le modèle JSON semble identique.');
+  assert.strictEqual(context.dataRevision,'rev4');
+
+  // A failed page render must not mark the remote revision as visible;
+  // the next poll must retry the same server revision.
+  context.liveSyncBusy=false;context.dataRevision='rev4';context.lastRenderedRevision='rev4';
+  context.fetch=url=>{
+    if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev5'})});
+    return Promise.resolve({ok:true,headers:{get:()=> 'rev5'},json:async()=>({schedule:[{id:'retry-after-render-error'}]})});
+  };
+  context.render=()=>{context.renderCount++;context.lastRenderError=new Error('render test failure')};
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.lastRenderedRevision,'rev4',
+    'Un rendu en échec ne doit pas avancer la révision affichée.');
+  assert.strictEqual(context.syncOnline,false,
+    'Un échec de rendu doit rester visible comme erreur de synchronisation.');
+  context.liveSyncBusy=false;
+  context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision;context.lastRenderError=null};
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.lastRenderedRevision,'rev5',
+    'La synchronisation doit pouvoir reprendre après un échec de rendu.');
+  
   const saveStart=source.indexOf('async function saveSchedule(e,id)');
   const saveEnd=source.indexOf('async function deleteSchedule(',saveStart);
   assert(saveStart>=0&&saveEnd>saveStart,'La sauvegarde du créneau doit être présente.');
@@ -260,7 +325,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.closeModal=()=>{};
   context.refreshSchedulePage=()=>context.render();
   context.toast=message=>{context.lastToast=message};
-  context.render=()=>{context.renderCount++};
+  context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision;context.lastRenderError=null};
   context.db={schedule:[],classes:[{id:'class-1',name:'Classe 1'}],teachers:[],settings:{rooms:[]}};
   context.persistedSchedule=JSON.parse(JSON.stringify(context.db));
   vm.runInContext(source.slice(saveStart,saveEnd),context);

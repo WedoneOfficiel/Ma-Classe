@@ -5,6 +5,11 @@ import server
 
 
 def run():
+    # L'horodatage est une métadonnée d'affichage, pas une condition d'autorisation.
+    assert server._bulletin_pdf_is_official({'validated':True,'published':True})
+    assert not server._bulletin_pdf_is_official({'validated':True,'published':False})
+    assert not server._bulletin_pdf_is_official({'validated':False,'published':True})
+    assert not server._bulletin_pdf_is_official({'validated':1,'published':True})
     database={
         'classes':[{'id':'class-1','teacherIds':['teacher-1']}],
         'users':[{'id':'teacher-1','role':'teacher'}],
@@ -19,6 +24,7 @@ def run():
     assert not server._bulletin_pdf_access_allowed(database,{'role':'student','studentId':'student-1'}, {'id':'b3','classId':'class-1'})
     source=open(server.__file__,encoding='utf-8').read()
     assert "'/api/bulletin-pdf'" in source
+    assert "if not _bulletin_pdf_is_official(bulletin):" in source
     gate="allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf')"
     assert gate in source, 'student role must pass the generic POST gate for bulletin PDF only'
     early_gate="roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf')"

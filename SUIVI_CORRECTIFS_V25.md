@@ -2,6 +2,8 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
+> **État courant — 25/11/2026 :** candidat V25.1.0 sur la PR #13, tête vérifiée par la CI #1793, 3/3 jobs verts (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
 **Branche de travail :** `fix/v25-student-teacher-workflows`  
@@ -551,3 +553,135 @@ Ce fichier est le journal de référence des problèmes remontés, des vérifica
 41. **AMEL-U19 — échec du test macOS de mise à jour HTTPS de bout en bout.** Le run #1486 a passé l'installation Apple Silicon, la syntaxe et les tests JavaScript, mais le scénario réel launchd → serveur HTTPS → mise à jour → health-check n'a pas obtenu de réponse HTTP sur la version initiale. Le test launchd isolé passait. Le run #1489 a reproduit l'échec ; le test a été instrumenté pour journaliser le lanceur, l'état des processus et les sockets TCP, et son client HTTPS local utilise maintenant un opener sans proxy. Les jobs Linux et Firefox du run #1490 sont verts ; le job macOS a été annulé par les commits suivants. Un nouveau run #1492 est en attente. Ne pas déclarer la chaîne macOS validée avant réussite du test de bout en bout et de tous les tests Python macOS.
 
 42. **MIG-01 — migration initiale V25.0.19 non validée.** L'installation actuelle ne possède pas encore le gestionnaire supervisé. L'architecture cible utilise data/program/current, des versions isolées et un dossier data persistant. La préparation vérifie schemaVersion contre min_data_schema=25011 ; si le champ est absent ou trop ancien, elle bloque la mise à jour. Aucun script de migration complet n'a été testé sur une copie représentative. Le registre REGISTRE_BUGS_V25.md marque ce point bloquant avant toute procédure utilisateur : sauvegarde externe, vérification du schéma, préservation base/uploads/certificats, migration et rollback sur copie.
+
+
+## Campagne du 25 novembre 2026 — stabilisation produit et documentation
+
+**Branche :** `feat/v25.0.25-stabilisation-reseau-migrations`  
+**PR :** #13 (ouverte, non fusionnée)  
+**Tête CI vérifiée :** `94b86d9b8b85f15a9b78a0eeccd0905d5a82ad91` — workflow #1727, trois jobs réussis.
+
+### Correctifs applicatifs engagés
+
+1. **MAIL-02 — messagerie élève.** Projection serveur fondée sur le calcul central des enseignants accessibles (titulaires, co-enseignants, séances et affectations actives). L'interface ne filtre plus une seconde fois les destinataires. Tests de projection ajoutés.
+2. **BUL-03 — consultation PDF.** Contrôle serveur strict du statut officiel et de la propriété du bulletin. Les anciens bulletins validés et publiés restent téléchargeables même sans `publishedAt`. Tests d'autorisation et de compatibilité legacy ajoutés.
+3. **EDT-06 — couleurs matière.** Fusion contrôlée de `settings.subjectColors` côté serveur, limitée aux matières effectivement enseignées par le professeur. Test de refus des couleurs hors périmètre ajouté.
+4. **EDT-07 — thème sombre.** Remplacement explicite du dégradé blanc de la grille journalière par une surface sombre. Test visuel de non-régression ajouté.
+
+### Organisation documentaire
+
+- Création de `docs/HISTORIQUE_VERSIONS.md` : changelog V25 et notes V21.12 à V21.22 / correctif V21.11.3 repris intégralement.
+- Création des archives historiques d'audits, d'états, de guides antérieurs et de l'ancien README.
+- Nouveau guide d'installation V25, index documentaire et README racine recentré sur l'état courant.
+- Mise à jour des documents réseau, gestionnaire de mises à jour, audit produit et registres de bugs.
+
+### Résultat de validation
+
+La CI #1727 a passé les jobs Linux, macOS Apple Silicon et Firefox réel après correction d'une fixture de test qui partageait par erreur une référence Python au lieu de simuler la copie JSON reçue par le navigateur. Les échecs précédents du test n'étaient pas un défaut applicatif ; le scénario a été corrigé pour reproduire le vrai passage HTTP.
+
+### Recettes encore nécessaires
+
+- Confirmer MAIL-02 avec un vrai compte élève et un professeur remplaçant.
+- Ouvrir un bulletin officiel depuis le compte élève et un poste client différent du serveur.
+- Vérifier les couleurs de matières et le thème sombre sur le Mac et le PC Fedora, avec des emplois du temps fournis.
+- Tester la migration sur une copie de la base réelle, sans jamais prendre la base utilisateur comme fixture.
+- Tester l'accès HTTPS depuis plusieurs appareils, le pare-feu et l'approbation de l'autorité locale.
+- Décider et implémenter une signature/attestation de release avant de présenter l'update manager comme une chaîne de confiance complète.
+
+
+## Complément d'audit UI — découverte des remplacements et cohérence des espaces (25/11/2026)
+
+- **AFFECT-02 :** ajout d'un accès central « Remplacements & co-enseignement » dans la barre d'actions de l'EDT. Il liste les seuls créneaux que l'utilisateur peut gérer, permet de filtrer par classe et de rechercher une matière, un jour ou un horaire, puis ouvre l'éditeur existant. Les restrictions de rôle et la règle de suppression par créateur sont conservées.
+- **Administration :** correction du texte de confidentialité qui affirmait à tort que la messagerie et le Cloud élève étaient désactivés ; le message décrit maintenant le filtrage serveur des données, messages, pièces jointes et ressources.
+- **BUL-04 :** revue de `createAllBulletins` et du test `test_v25_bulletin_persistence.js` : génération idempotente, sauvegarde attendue avant confirmation, rechargement serveur, rollback local si la sauvegarde échoue.
+- **VIE-01 :** vérification du code actif `studentLife()` : la rubrique ne présente que les absences, avec états justifiées/non justifiées.
+- **UI-ADM-01 / UI-SET-01 / UI-PROFIL-01 / VER-01 :** règles CSS et affichage version partagés localisés dans le code actif ; tests de présence ajoutés dans `test_v25_visual_consistency.py`.
+
+Ces points sont désormais distingués entre implémentation présente dans la branche et recette réelle à faire. La CI #1727 valide la tête antérieure au présent complément ; une nouvelle CI est nécessaire sur le dernier commit.
+
+
+### Résultat de la première CI du répertoire de remplacements — workflow #1742
+
+Le premier test complet après l'ajout du bouton « Remplacements & co-enseignement » a révélé une dépendance inutile au global `authUser` pendant le rendu de `schedule()`. Le test de navigation EDT construit volontairement la page dans un contexte isolé sans session ; le bouton ne doit donc pas lire ce global à la construction. Le contrôle d'accès est maintenant concentré dans `openScheduleAssignmentDirectory()`, qui ne liste que les créneaux autorisés via `canManageScheduleAssignments()`. Le bouton est seulement un point d'entrée ; il ne donne aucun droit supplémentaire.
+
+**État :** correction committée dans `d66a78f`. Workflow #1742 a aussi passé Firefox réel ; les jobs Linux/macOS ont échoué sur cette erreur de test de rendu. Une nouvelle CI complète est attendue sur le commit corrigé.
+
+
+## Validation finale du candidat V25.0.25 — 25/11/2026
+
+**Commit testé :** `7c5f80b47e8bcb0cb4b86de59e77da5216514728`  
+**Workflow :** [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140)  
+**Résultat :** succès sur les trois jobs Linux, macOS Apple Silicon et Firefox réel.
+
+- Le test de navigation EDT qui échouait dans le workflow #1742 est maintenant vert : le bouton Remplacements ne lit plus `authUser` pendant la construction de la page ; le filtrage demeure appliqué dans `openScheduleAssignmentDirectory()`.
+- Le test de l'interface d'affectations est vert : accès central, filtrage par classe/recherche, rôle Direction/professeur et droits de retrait.
+- Les 24 assertions de cohérence visuelle sont vertes, en plus des tests de modèle, autorisations, persistance, serveur et mises à jour.
+- Le runner macOS a validé l'installateur Apple Silicon, les tests JavaScript, le superviseur launchd réel et tous les tests Python.
+- La régression EDT Firefox réel est verte et a produit un artefact de 74 captures.
+
+**À ne pas confondre avec une recette de livraison :** aucune publication ni fusion de la PR #13 n'a été effectuée. La base réelle, le réseau Wi-Fi physique et les comptes utilisateur restent à vérifier avant release.
+
+
+## Vérification de la tête finale après clarification du filtre — workflow #1754
+
+La tête `7c5f80b` est entièrement verte sur le workflow [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140) : tests Linux, Firefox réel et macOS Apple Silicon. Le dernier ajustement a remplacé le filtre « Toutes mes classes » par « Toutes les classes accessibles », libellé valable aussi bien pour la Direction que pour un professeur ; l'assertion associée est incluse dans cette exécution.
+
+
+## AUDIT-S2 — Signature Ed25519 du manifeste de mise à jour (25/11/2026)
+
+- Ajout de `release_signing.py` : décodage strict, clé publique Ed25519 épinglée dans `release-signing-public-key.txt`, vérification de la signature détachée sur les octets exacts du manifeste.
+- Le gestionnaire `update_manager.py` exige maintenant exactement un asset `maclasse-update.sig` et vérifie sa signature avant d'interpréter le manifeste, de vérifier le SHA-256 de l'archive ou de préparer une version. L'absence de signature ou de clé publique bloque la mise à jour.
+- Ajout de `scripts/generate_release_signing_key.py` : génération locale d'une paire ; clé privée créée hors du dépôt et permissions POSIX 0600 ; seule la clé publique est destinée à Git.
+- Ajout de `scripts/sign_release.py` : le workflow signe le manifeste avec le secret `MACLASSE_RELEASE_SIGNING_KEY_B64`, après comparaison de la clé privée dérivée avec la clé publique versionnée.
+- Le workflow de publication installe la dépendance cryptographique, signe le manifeste et publie l'asset de signature. Il échoue fermé si le secret n'est pas configuré.
+- Ajout de tests offline : signature valide, altération du manifeste, clé privée ne correspondant pas à la clé publique, signature absente/ambiguë/malformée et vérification côté client.
+
+**Limite opérationnelle :** la paire réelle et le secret ne peuvent pas être provisionnés par un commit de code. Il faut exécuter la génération sur un poste de confiance, committer la clé publique seulement et créer le secret dans les paramètres GitHub du dépôt. Tant que ce provisionnement n'est pas réalisé, aucune nouvelle release ne doit être publiée et le vérificateur refuse les nouvelles mises à jour.
+
+
+### CI #1758 — module Ed25519 absent du fixture launchd macOS
+
+Le workflow #1758 a passé les tests Linux, les nouveaux tests de signature Ed25519 et Firefox réel. Le job macOS a échoué dans `test_launchd_starts_real_maclasse_server_over_local_https` parce que son installation temporaire copiait `server.py` et `update_manager.py`, mais pas le nouveau module importé `release_signing.py`. Le serveur de test quittait donc immédiatement avec `ModuleNotFoundError`; le code de production était bien présent dans l'archive Git.
+
+**Correction :** le fixture copie maintenant aussi `release_signing.py` et vérifie sa présence avant de démarrer launchd. Ce diagnostic ne doit pas être confondu avec une erreur du superviseur ni avec une panne du service macOS réel. Nouvelle CI complète nécessaire sur le commit corrigé.
+
+
+## Validation complète de la signature Ed25519 et du service macOS — 25/11/2026
+
+**Commit testé :** `b3f44aa135b61a2334628f1c75cc4043371c49e8`  
+**Workflow :** [#1759](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45704572819)  
+**Résultat :** succès Linux, Firefox réel et macOS Apple Silicon.
+
+- Tests Linux : succès, dont tous les scénarios Ed25519 et les refus fail-closed.
+- Firefox réel : succès.
+- macOS : installateur Apple Silicon, syntaxe, tests JavaScript, démarrage HTTPS réel sous launchd et suite Python : succès.
+- Un premier run #1758 a échoué parce que le fixture launchd ne copiait pas `release_signing.py`. Le fixture a été corrigé pour reproduire le contenu complet de l'application ; aucun contrôle de sécurité n'a été supprimé.
+
+La clé publique et le secret GitHub ne sont pas encore provisionnés. Les tests utilisent une paire éphémère créée dans un répertoire temporaire ; cela prouve le mécanisme de signature, pas l'identité de la future clé éditeur.
+
+
+## Validation des outils de signature et synchronisation finale — 25/11/2026
+
+**Commit testé :** `b06f8ef1baa46f230d16220d2608b63678161a80`  
+**Workflow :** [#1763](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45706617681)  
+**Résultat :** 3 jobs sur 3 réussis : Linux, macOS Apple Silicon et Firefox réel.
+
+Les nouveaux scénarios vérifient en plus :
+- génération effective d'une paire Ed25519 dans un répertoire temporaire ;
+- conservation de la clé privée hors du dépôt et permissions POSIX `0600` ;
+- signature effective du manifeste par le script CLI puis vérification de cette signature ;
+- refus de signer lorsque le secret GitHub Actions est absent, sans création d'asset ;
+- compilation des trois scripts cryptographiques.
+
+Le commit courant a également corrigé la règle `.gitignore` pour le véritable nom du fichier de clé privée. La clé éditeur de production reste non provisionnée ; les tests utilisent des clés éphémères.
+
+
+## Campagne du 25 novembre 2026 — Suivi de classe, Cloud et validation finale
+
+- Création de la vue transversale Suivi de classe, accessible à la Direction et aux enseignants selon leurs affectations ; les professeurs principaux conservent la vue complète de leur classe.
+- Ajout des indicateurs factuels d'assiduité sur 30 jours, travaux non rendus, évaluations publiées, échéances et accès aux fiches élèves ; aucun classement ni score automatique.
+- Correction du chargement statique de `class_tracking.js` dans la liste blanche serveur et ajout d'un test dédié.
+- Correction du changement d'espace Cloud pour que les espaces personnels/partagés ne soient plus bloqués par un contexte de classe conservé.
+- Tests unitaires et Firefox réel couvrant permissions, groupes, publication, contexte Cloud et refus d'accès élève.
+- CI #1793 : 3/3 jobs réussis sur Linux, macOS Apple Silicon (installateur et launchd réels) et Firefox réel.
+- Restent hors CI : provisionnement de la clé Ed25519 de production, migration sur copie des données réelles et recette réseau multi-appareils.

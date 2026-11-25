@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 from html import escape as html_escape
 from html.parser import HTMLParser
 
-APP_VERSION='25.0.24'
+APP_VERSION='25.1.0'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
@@ -629,6 +629,11 @@ def _teacher_assignment_active(item, on_date=None):
 
 
 
+def _bulletin_pdf_is_official(bulletin):
+    """L'état publié/validé fait foi ; l'horodatage reste une métadonnée facultative."""
+    return isinstance(bulletin,dict) and bulletin.get('validated') is True and bulletin.get('published') is True
+
+
 def _bulletin_pdf_access_allowed(database,user,bulletin):
     """A PDF is readable by the direction, a teacher of its class, or its own student."""
     if not isinstance(user,dict) or not isinstance(bulletin,dict): return False
@@ -1209,7 +1214,7 @@ def _student_can_access_upload(user,relative,write=False):
             return False
         target=_safe_upload_path(rel)
         rel=_uploads_relative(target)
-        if not sid or rel.startswith('cloud/'):
+        if not sid:
             return False
         data=_load_database()
         student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
@@ -1337,9 +1342,9 @@ def _student_visible_data(data,user,now=None):
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
     schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
-    teacher_ids={str(x) for x in (class_record or {}).get('teacherIds',[]) or []}
-    teacher_ids.update(str(x.get('teacherId')) for x in out['schedule'] if x.get('teacherId'))
-    teacher_ids.update(str(x.get('teacherId')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and x.get('teacherId'))
+    # Même périmètre que la messagerie côté serveur : classe, co-enseignement,
+    # séances et affectations actives doivent tous apparaître dans les destinataires.
+    teacher_ids=_student_accessible_teacher_ids(data,student_record)
     out['teachers']=[{'id':str(x.get('id')),'first':x.get('first',''),'last':x.get('last','')} for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher' and str(x.get('id')) in teacher_ids]
     out['lessons']=[]
     for item in data.get('lessons',[]) or []:
@@ -1374,7 +1379,42 @@ def _student_visible_data(data,user,now=None):
     # Les conversations ne sont pas encore exposées aux comptes élèves : le modèle
     # historique ne permet pas de prouver proprement les droits message par message.
     out['conversations']=[]
-    out['cloudItems']=[]
+    # Cloud élève : uniquement les fichiers de sa classe/de son groupe,
+    # ceux de son espace personnel et les partages explicitement autorisés.
+    # Les métadonnées sont réduites au strict nécessaire et tous les droits
+    # exposés au navigateur sont ramenés à la lecture seule.
+    visible_cloud=[]
+    for item in data.get('cloudItems',[]) or []:
+        if not isinstance(item,dict) or not item.get('id'):
+            continue
+        space=str(item.get('space') or 'personal')
+        item_class=str(item.get('classId') or '')
+        item_group=str(item.get('group') or '')
+        class_item=space=='class' and item_class==class_id
+        group_item=space=='group' and item_class==class_id and item_group==str(student_record.get('group') or '')
+        personal_item=space=='personal' and str(item.get('ownerId') or '')==sid
+        shared_item=_cloud_grant(item,user,data,write=False)
+        if not (class_item or group_item or personal_item or shared_item):
+            continue
+        fields=('id','type','name','size','mime','url','space','classId','group','parentId','createdAt','serverName')
+        copy={k:item[k] for k in fields if k in item}
+        safe_shares=[]
+        for grant in item.get('shares',[]) or []:
+            if not isinstance(grant,dict):
+                continue
+            typ=str(grant.get('type') or '')
+            matches=(
+                (typ=='student' and str(grant.get('id') or '')==sid) or
+                (typ=='class' and str(grant.get('classId') or '')==class_id) or
+                (typ=='group' and str(grant.get('classId') or '')==class_id and str(grant.get('group') or '')==str(student_record.get('group') or ''))
+            )
+            if matches:
+                safe_grant={k:grant[k] for k in ('type','id','classId','group') if k in grant}
+                safe_grant['role']='view'
+                safe_shares.append(safe_grant)
+        copy['shares']=safe_shares
+        visible_cloud.append(copy)
+    out['cloudItems']=visible_cloud
     out['notifications']=[x for x in data.get('notifications',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid]
     out['mailFolders']=[]
     out['mailboxV2']=_student_visible_mailbox(data.get('mailboxV2',{}),user,data)
@@ -1656,7 +1696,40 @@ def _merge_teacher_data(current,incoming,user):
         merged[key]=result
     if 'mailboxV2' in current or 'mailboxV2' in incoming:
         merged['mailboxV2']=_teacher_merge_mailbox(current,incoming,user,current)
-    for key in ('subjects','users','settings','auditLog'):
+
+    # Les professeurs peuvent personnaliser la couleur des matières qu'ils enseignent,
+    # mais aucun autre réglage global (établissement, périodes, salles...) ne vient du client.
+    current_settings=current.get('settings') if isinstance(current.get('settings'),dict) else {}
+    incoming_settings=incoming.get('settings') if isinstance(incoming.get('settings'),dict) else {}
+    colors=current_settings.get('subjectColors') if isinstance(current_settings.get('subjectColors'),dict) else {}
+    incoming_colors=incoming_settings.get('subjectColors') if isinstance(incoming_settings.get('subjectColors'),dict) else {}
+    safe_colors=dict(colors)
+    allowed_color_keys=set()
+    for slot in merged.get('schedule',[]) or []:
+        if not isinstance(slot,dict): continue
+        class_id=str(slot.get('classId') or '')
+        subject=str(slot.get('subject') or '').strip()
+        key=_norm_text(subject)
+        if class_id in allowed and key and _teacher_can_teach_subject(merged,user,class_id,subject):
+            allowed_color_keys.add(key)
+    for assignment in merged.get('teacherAssignments',[]) or []:
+        if not isinstance(assignment,dict): continue
+        class_id=str(assignment.get('classId') or '')
+        subject=str(assignment.get('subject') or '').strip()
+        if (class_id in allowed and str(assignment.get('teacherId') or '')==tid
+                and subject and _teacher_assignment_active(assignment)):
+            allowed_color_keys.add(_norm_text(subject))
+    for raw_key,value in incoming_colors.items():
+        key=_norm_text(raw_key)
+        if key not in allowed_color_keys or not re.fullmatch(r'#[0-9a-fA-F]{6}',str(value or '')):
+            continue
+        safe_colors[key]=str(value).lower()
+    safe_settings=dict(current_settings)
+    if 'subjectColors' in current_settings or incoming_colors:
+        safe_settings['subjectColors']=safe_colors
+    merged['settings']=safe_settings
+
+    for key in ('subjects','users','auditLog'):
         if key in current: merged[key]=current[key]
     for key in list(merged):
         if key not in current and key not in scoped: merged.pop(key,None)
@@ -1664,7 +1737,13 @@ def _merge_teacher_data(current,incoming,user):
 
 def _cloud_grant(item,user,data,write=False):
     role=str(user.get('role') or '')
+    if role=='student' and write:
+        return False
     tid=str(user.get('id') or user.get('teacherId') or '')
+    sid=str(user.get('studentId') or '')
+    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id') or '')==sid),None)
+    student_class=str(student_record.get('classId') or '') if student_record else ''
+    student_group=str(student_record.get('group') or '') if student_record else ''
     by_id={str(x.get('id')):x for x in (data.get('cloudItems') or []) if isinstance(x,dict) and x.get('id')}
     current=item; seen=set()
     while isinstance(current,dict) and str(current.get('id')) not in seen:
@@ -1677,6 +1756,10 @@ def _cloud_grant(item,user,data,write=False):
             if typ=='teacher' and role=='teacher' and str(grant.get('id'))==tid: return True
             if typ=='class' and role=='teacher' and str(grant.get('classId')) in _teacher_class_ids(data,user): return True
             if typ=='group' and role=='teacher' and str(grant.get('classId')) in _teacher_class_ids(data,user): return True
+            if role=='student' and student_record:
+                if typ=='student' and str(grant.get('id') or '')==sid: return True
+                if typ=='class' and str(grant.get('classId') or '')==student_class: return True
+                if typ=='group' and str(grant.get('classId') or '')==student_class and str(grant.get('group') or '')==student_group: return True
         current=by_id.get(str(current.get('parentId') or ''))
     return False
 
@@ -1699,6 +1782,8 @@ def _cloud_path_allowed(user,relative,write=False):
         # Cette fonction ne valide que des chemins Cloud : tout autre espace
         # doit être refusé par défaut, jamais considéré comme autorisé.
         if not parts or parts[0]!='cloud': return False
+        if user.get('role')=='student':
+            return False if write else _student_can_access_upload(user,rel,write=False)
         if user.get('role')=='admin': return True
         data=_load_database(); items=data.get('cloudItems') if isinstance(data.get('cloudItems'),list) else []
         # Le dossier racine peut ne pas avoir de métadonnée : contrôler son espace.
@@ -1768,7 +1853,19 @@ def _validate_cloud_item_changes(current,updated,user):
             if not _cloud_scope_allowed(user,after.get('space','personal'),owner_id=after.get('ownerId',''),class_id=after.get('classId',''),group=after.get('group',''),data=current,write=True): return False
         if after is not None and before is not None:
             # Empêcher le déplacement d'un élément vers un espace non autorisé.
-            if (after.get('space'),after.get('ownerId'),after.get('classId'),after.get('group')) != (before.get('space'),before.get('ownerId'),before.get('classId'),before.get('group')): return False
+            before_scope=(
+                str(before.get('space') or 'personal'),
+                str(before.get('ownerId') or ''),
+                str(before.get('classId') or ''),
+                str(before.get('group') or ''),
+            )
+            after_scope=(
+                str(after.get('space') or 'personal'),
+                str(after.get('ownerId') or ''),
+                str(after.get('classId') or ''),
+                str(after.get('group') or ''),
+            )
+            if after_scope!=before_scope: return False
     return True
 
 def _norm_text(x):
@@ -2043,7 +2140,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return os.path.join(UPLOADS,'__invalid_upload_path__')
         return super().translate_path(path)
     def _safe_static_path(self,path):
-        if path in ('/','/index.html','/_all.js'):
+        if path in ('/','/index.html','/_all.js','/class_tracking.js'):
             return True
         return path.startswith('/data/uploads/')
     def _backup_dir(self):
@@ -2117,8 +2214,17 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance') or path.startswith('/data/uploads/') else ('admin','teacher')
+            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance','/api/sync-status') or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
+        if path=='/api/sync-status':
+            # Lightweight revision probe used by every open application module.
+            # No business data is returned; access follows /api/data authentication.
+            try:
+                with DATA_LOCK:
+                    revision=_database_revision()
+            except (OSError,ValueError):
+                return self._json({'error':'État des données indisponible.'},503)
+            return self._json({'revision':revision},headers={'X-MaClasse-Revision':revision})
         if path=='/api/admin/updates/check':
             user=self._require_auth(roles=('admin',))
             if not user: return
@@ -2653,7 +2759,7 @@ class Handler(SimpleHTTPRequestHandler):
                 database=_load_database()
                 bulletin=next((x for x in database.get('bulletins',[]) or [] if isinstance(x,dict) and str(x.get('id'))==bulletin_id),None)
                 if not bulletin: return self._json({'error':'Bulletin introuvable.'},404)
-                if bulletin.get('validated') is not True or bulletin.get('published') is not True or not bulletin.get('publishedAt'):
+                if not _bulletin_pdf_is_official(bulletin):
                     return self._json({'error':'Seul un bulletin validé et officiellement publié peut être exporté.'},403)
                 student_id=str(bulletin.get('studentId') or '')
                 class_id=str(bulletin.get('classId') or '')

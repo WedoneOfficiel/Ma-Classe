@@ -19,20 +19,52 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
+
+import release_signing
 from urllib.parse import urljoin, urlsplit
 
 OWNER = "WedoneOfficiel"
 REPOSITORY = "Ma-Classe"
 API_LATEST = f"https://api.github.com/repos/{OWNER}/{REPOSITORY}/releases/latest"
 MANIFEST_ASSET = "maclasse-update.json"
+SIGNATURE_ASSET = "maclasse-update.sig"
 USER_AGENT = "MaClasse-Updater/1"
 MAX_MANIFEST_BYTES = 256 * 1024
+MAX_SIGNATURE_BYTES = 16 * 1024
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 512 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 20000
 ALLOWED_DOWNLOAD_HOSTS = {"api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"}
 VERSION_RE = re.compile(r"^[vV]?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+
+
+def _verify_github_asset_metadata(asset: dict, label: str, max_bytes: int,
+                                  payload: bytes | None = None,
+                                  expected_sha256: str | None = None) -> bool:
+    """Verify GitHub release asset size/digest metadata when the API provides it."""
+    if not isinstance(asset, dict):
+        raise UpdateError(f"Métadonnées GitHub invalides pour {label}.")
+    size = asset.get("size")
+    if size is not None:
+        if type(size) is not int or size < 0:
+            raise UpdateError(f"Taille GitHub invalide pour {label}.")
+        if size > max_bytes:
+            raise UpdateError(f"{label.capitalize()} dépasse la taille autorisée.")
+        if payload is not None and len(payload) != size:
+            raise UpdateError(f"La taille téléchargée de {label} ne correspond pas à GitHub.")
+    digest = asset.get("digest")
+    if digest is None:
+        return False
+    match = re.fullmatch(r"sha256:([a-f0-9]{64})", digest) if isinstance(digest, str) else None
+    if not match:
+        raise UpdateError(f"Empreinte GitHub invalide pour {label}.")
+    actual = match.group(1)
+    if expected_sha256 is not None and actual != expected_sha256:
+        raise UpdateError(f"L’empreinte GitHub de {label} ne correspond pas au manifeste.")
+    if payload is not None and hashlib.sha256(payload).hexdigest() != actual:
+        raise UpdateError(f"Le contenu téléchargé de {label} ne correspond pas à son empreinte GitHub.")
+    return True
 
 
 class UpdateError(Exception):
@@ -123,9 +155,26 @@ def check_latest_release(current_version: str) -> dict:
     manifest_assets = [a for a in assets if isinstance(a, dict) and a.get("name") == MANIFEST_ASSET]
     if len(manifest_assets) != 1:
         raise UpdateError("Le manifeste de mise à jour est absent ou ambigu.")
-    manifest_url = manifest_assets[0].get("browser_download_url", "")
+    manifest_asset = manifest_assets[0]
+    manifest_url = manifest_asset.get("browser_download_url", "")
+    signature_assets = [a for a in assets if isinstance(a, dict) and a.get("name") == SIGNATURE_ASSET]
+    if len(signature_assets) != 1:
+        raise UpdateError("La signature Ed25519 de la release est absente ou ambiguë.")
+    signature_asset = signature_assets[0]
+    signature_url = signature_asset.get("browser_download_url", "")
     try:
-        manifest = json.loads(_request(manifest_url, MAX_MANIFEST_BYTES).decode("utf-8"))
+        manifest_payload = _request(manifest_url, MAX_MANIFEST_BYTES)
+        manifest_asset_digest_verified = _verify_github_asset_metadata(
+            manifest_asset, "manifeste", MAX_MANIFEST_BYTES, payload=manifest_payload
+        )
+        signature_payload = _request(signature_url, MAX_SIGNATURE_BYTES)
+        signature_asset_digest_verified = _verify_github_asset_metadata(
+            signature_asset, "signature", MAX_SIGNATURE_BYTES, payload=signature_payload
+        )
+        release_signing.verify_manifest_signature(manifest_payload, signature_payload)
+        manifest = json.loads(manifest_payload.decode("utf-8"))
+    except release_signing.ReleaseSignatureError as exc:
+        raise UpdateError(f"Signature de release invalide : {exc}") from exc
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise UpdateError("Le manifeste de mise à jour est illisible.") from exc
 
@@ -149,9 +198,12 @@ def check_latest_release(current_version: str) -> dict:
     archive_assets = [a for a in assets if isinstance(a, dict) and a.get("name") == archive_name]
     if len(archive_assets) != 1:
         raise UpdateError("Archive de la version absente ou ambiguë.")
-    archive_url = archive_assets[0].get("browser_download_url", "")
-    if not isinstance(archive_url, str) or not archive_url.startswith("https://"):
-        raise UpdateError("URL de téléchargement invalide.")
+    archive_asset = archive_assets[0]
+    archive_asset_digest_verified = _verify_github_asset_metadata(
+        archive_asset, "archive", MAX_ARCHIVE_BYTES, expected_sha256=manifest["sha256"]
+    )
+    archive_url = archive_asset.get("browser_download_url", "")
+    _validate_github_url(archive_url)
 
     return {
         "available": True,
@@ -163,6 +215,11 @@ def check_latest_release(current_version: str) -> dict:
         "min_data_schema": manifest["min_data_schema"],
         "archive_name": archive_name,
         "archive_url": archive_url,
+        "archive_size": archive_asset.get("size") if type(archive_asset.get("size")) is int else None,
+        "manifest_asset_digest_verified": manifest_asset_digest_verified,
+        "signature_verified": True,
+        "signature_asset_digest_verified": signature_asset_digest_verified,
+        "archive_asset_digest_verified": archive_asset_digest_verified,
         "sha256": manifest["sha256"],
     }
 
@@ -183,6 +240,9 @@ def prepare_release(release: dict, staging_root: str | Path) -> Path:
     staging_root = Path(staging_root).resolve()
     staging_root.mkdir(parents=True, exist_ok=True)
     raw = _request(release["archive_url"], MAX_ARCHIVE_BYTES)
+    expected_size = release.get("archive_size")
+    if expected_size is not None and (type(expected_size) is not int or len(raw) != expected_size):
+        raise UpdateError("La taille téléchargée de l’archive ne correspond pas aux métadonnées GitHub.")
     if hashlib.sha256(raw).hexdigest() != release["sha256"]:
         raise UpdateError("L'empreinte de l'archive ne correspond pas au manifeste.")
     version_parts = _version_tuple(release.get("version", ""))

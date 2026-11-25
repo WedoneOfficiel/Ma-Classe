@@ -22,6 +22,152 @@ from playwright.sync_api import sync_playwright, expect
 SOURCE_ROOT = Path(__file__).resolve().parents[2]
 
 
+
+def capture_product_screenshots(page, role: str, modules: list[str], output_dir: Path) -> None:
+    """Capture real module states and check layout in light/dark and narrow viewports."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    original_viewport = page.viewport_size or {"width": 1280, "height": 720}
+
+    def render_state(module: str, theme: str) -> dict:
+        return page.evaluate(
+            """({role,module,theme}) => {
+              const isStudentState = role === 'student' &&
+                ['studentHomework','studentTodo'].includes(module);
+              const actualPage = isStudentState ? 'studentLessons' : module;
+              if(role === 'student') {
+                if(module === 'studentLessons') lessonTab = 'done';
+                if(module === 'studentHomework') lessonTab = 'work';
+                if(module === 'studentTodo') lessonTab = 'upcoming';
+              }
+              setAppearanceTheme(theme);
+              appSpace=role;
+              page=actualPage;
+              render();
+              const toast=document.getElementById('toast');
+              if(toast){toast.classList.remove('show');toast.textContent='';}
+              const card=document.querySelector('#main .card');
+              const main=document.querySelector('main.main');
+              const side=document.querySelector('.side');
+              const mainRect=main?.getBoundingClientRect();
+              const sideRect=side?.getBoundingClientRect();
+              const directSurfaces=[...(main?.children||[])]
+                .filter(el=>!el.classList.contains('top'))
+                .map(el=>el.getBoundingClientRect())
+                .filter(rect=>rect.width>0&&rect.height>0);
+              const contentRight=directSurfaces.length
+                ?Math.max(...directSurfaces.map(rect=>rect.right)):0;
+              const contentLeft=directSurfaces.length
+                ?Math.min(...directSurfaces.map(rect=>rect.left)):0;
+              return {
+                actualPage,
+                theme:document.documentElement.dataset.mcTheme,
+                heading:document.querySelector('#main h1')?.textContent?.trim()||'',
+                horizontalOverflow:Math.max(
+                  document.documentElement.scrollWidth,
+                  document.body.scrollWidth
+                )-window.innerWidth,
+                layout:{
+                  viewport:window.innerWidth,
+                  mainLeft:Math.round(mainRect?.left||0),
+                  mainRight:Math.round(mainRect?.right||0),
+                  mainWidth:Math.round(mainRect?.width||0),
+                  sideRight:Math.round(sideRect?.right||0),
+                  contentLeft:Math.round(contentLeft),
+                  contentRight:Math.round(contentRight),
+                  contentWidth:Math.round(contentRight-contentLeft)
+                },
+                cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none'
+              };
+            }""",
+            {"role": role, "module": module, "theme": theme},
+        )
+
+    def assert_state(module: str, theme: str, state: dict, viewport: int) -> None:
+        if state["theme"] != theme or not state["heading"]:
+            raise AssertionError(
+                f"Écran {role}/{module} : thème ou en-tête absent à {viewport}px ({state!r})"
+            )
+        if state["horizontalOverflow"] > 2:
+            raise AssertionError(
+                f"Débordement horizontal sur {role}/{module} à {viewport}px : {state!r}"
+            )
+        if viewport <= 650 and state["layout"]["contentRight"] < viewport - 24:
+            raise AssertionError(
+                f"Zone principale trop étroite ou partiellement masquée sur {role}/{module} "
+                f"à {viewport}px : {state['layout']!r}"
+            )
+        if theme == "dark" and state["cardBefore"] != "none":
+            raise AssertionError(
+                f"Reflet clair indésirable sur les cartes sombres ({role}/{module}) : {state!r}"
+            )
+
+    responsive_modules = (
+        ["studentHome","studentSchedule","studentLessons","studentHomework",
+         "studentMessages","studentDocuments","studentSettings"]
+        if role == "student"
+        else ["dashboard","schedule","lessons","students","messages","documents","settings"]
+    )
+    mobile_visual_modules = (
+        {"studentHome","studentSchedule","studentLessons","studentMessages","studentDocuments","studentSettings"}
+        if role == "student"
+        else {"dashboard","schedule","lessons","messages","documents","settings"}
+    )
+
+    for theme in ("light", "dark"):
+        system_theme = "dark" if theme == "light" else "light"
+        page.emulate_media(color_scheme=system_theme)
+        page.set_viewport_size(original_viewport)
+        for module in modules:
+            state = render_state(module, theme)
+            assert_state(module, theme, state, original_viewport["width"])
+            page.wait_for_timeout(140)
+            destination = output_dir / f"{role}-{theme}-{module}.png"
+            page.screenshot(path=str(destination), full_page=True, animations="disabled")
+
+        if role == "student":
+            cloud_nav = page.locator("#nav button[onclick*='studentDocuments']")
+            if cloud_nav.count() != 1:
+                raise AssertionError("Le Cloud élève doit être accessible dans la navigation latérale.")
+            cloud_nav.click()
+            expect(page.locator("#main h1")).to_contain_text("documents")
+
+        for width in (900, 390):
+            page.set_viewport_size({"width": width, "height": 900})
+            for module in responsive_modules:
+                state = render_state(module, theme)
+                assert_state(module, theme, state, width)
+                if width == 390 and module in mobile_visual_modules:
+                    page.wait_for_timeout(80)
+                    destination = output_dir / f"{role}-{theme}-{module}-390px.png"
+                    page.screenshot(path=str(destination), full_page=True, animations="disabled")
+
+        page.set_viewport_size(original_viewport)
+
+    # Automatic appearance must follow the operating-system preference too.
+    page.emulate_media(color_scheme="light")
+    page.evaluate("setAppearanceTheme('system')")
+    page.wait_for_function("document.documentElement.dataset.mcTheme === 'light'", timeout=1500)
+    automatic_light = page.evaluate("""() => ({
+        theme:document.documentElement.dataset.mcTheme,
+        preference:document.documentElement.dataset.mcThemePreference,
+        mediaDark:window.matchMedia('(prefers-color-scheme: dark)').matches,
+        listenerInstalled:document.documentElement.dataset.mcThemeListener === '1'
+    })""")
+    if automatic_light["theme"] != "light" or automatic_light["mediaDark"]:
+        raise AssertionError(f"Le thème automatique devrait être clair ici : {automatic_light!r}")
+    page.emulate_media(color_scheme="dark")
+    try:
+        page.wait_for_function("document.documentElement.dataset.mcTheme === 'dark'", timeout=1500)
+    except Exception as error:
+        automatic_dark = page.evaluate("""() => ({
+            theme:document.documentElement.dataset.mcTheme,
+            preference:document.documentElement.dataset.mcThemePreference,
+            mediaDark:window.matchMedia('(prefers-color-scheme: dark)').matches,
+            listenerInstalled:document.documentElement.dataset.mcThemeListener === '1'
+        })""")
+        raise AssertionError(f"Le thème automatique ne suit pas le mode sombre : {automatic_dark!r}") from error
+    page.evaluate("setAppearanceTheme('light')")
+
 def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -68,12 +214,19 @@ def main() -> None:
 
             with sync_playwright() as playwright:
                 browser = playwright.firefox.launch()
-                page = browser.new_page()
+                page = browser.new_page(locale='fr-FR', timezone_id='Europe/Paris')
                 page_errors: list[str] = []
                 browser_errors: list[str] = []
                 page.on("pageerror", lambda error: page_errors.append(str(error)))
                 page.on("console", lambda message: browser_errors.append(message.text) if message.type == "error" else None)
                 page.goto(url, wait_until="networkidle")
+                browser_locale = page.evaluate("""() => ({
+                  language:navigator.language,
+                  timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
+                })""")
+                if browser_locale.get("language") != "fr-FR" or browser_locale.get("timezone") != "Europe/Paris":
+                    raise AssertionError("Le navigateur de recette doit utiliser fr-FR / Europe-Paris : "
+                                         +repr(browser_locale))
 
                 # Create a disposable administrator in the temporary app.
                 expect(page.locator('input[name="first"]')).to_be_visible()
@@ -124,7 +277,36 @@ def main() -> None:
                 )
 
                 existing = page.locator('[data-schedule-id="firefox-existing-course"]')
-                expect(existing).to_be_visible()
+                try:
+                    expect(existing).to_be_visible(timeout=5_000)
+                except AssertionError as failure:
+                    initial_state=page.evaluate("""({pageErrors,browserErrors}) => {
+                      const target=(db.schedule||[]).find(x=>x.id==='firefox-existing-course');
+                      const dates=weekDates();
+                      const main=document.getElementById('main');
+                      const surface=main?.querySelector('.scheduleCalendarSurface');
+                      return {
+                        page,appSpace,authUser,authReady,scheduleView,
+                        selectedWeek:iso(selectedWeek),
+                        weekDates:dates.map(iso),
+                        target,
+                        targetRecurring:target?recurring(target,dates[4]):null,
+                        fridayOccurrences:dayOcc(dates[4]).map(x=>({id:x.id,subject:x.subject,time:x.time})),
+                        computedMarkup:scheduleWeek(dates,d=>dayOcc(d),false).includes('Français'),
+                        lastRenderError:lastRenderError?String(lastRenderError.stack||lastRenderError):null,
+                        mainExists:!!main,
+                        mainHtml:main?.innerHTML.slice(0,12000)||'',
+                        calendarExists:!!surface,
+                        calendarText:surface?.innerText||'',
+                        calendarHtml:surface?.innerHTML.slice(0,8000)||'',
+                        revision:{dataRevision,lastRenderedRevision},
+                        pageErrors,browserErrors
+                      };
+                    }""", {"pageErrors":page_errors,"browserErrors":browser_errors})
+                    raise AssertionError(
+                        "Le premier créneau EDT ne s'affiche pas : "
+                        +json.dumps(initial_state,ensure_ascii=False)+" | "+str(failure)
+                    )
                 if "#123456" not in (existing.get_attribute("style") or ""):
                     raise AssertionError("La couleur personnalisée de matière n'est pas appliquée à l'EDT professeur.")
 
@@ -224,7 +406,7 @@ def main() -> None:
                   if (!saved.ok) throw new Error('Teacher-linked mailbox seed failed: '+saved.status+' '+await saved.text());
                   return id;
                 }""")
-                teacher_context = browser.new_context()
+                teacher_context = browser.new_context(locale='fr-FR', timezone_id='Europe/Paris')
                 teacher_page = teacher_context.new_page()
                 teacher_page_errors: list[str] = []
                 teacher_page.on("pageerror", lambda error: teacher_page_errors.append(str(error)))
@@ -248,6 +430,183 @@ def main() -> None:
                 }""")
                 if teacher_state.get("role") != "teacher" or teacher_state.get("id") != teacher_id:
                     raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
+                shared_cloud = teacher_page.evaluate("""async () => {
+                  const folder='cloud/personal/users/'+authUser.id;
+                  const shared=await upload(new File(
+                    ['Fichier de révision partagé avec un élève.'],
+                    'Fiche partagée.txt',{type:'text/plain'}
+                  ),folder);
+                  const privateFile=await upload(new File(
+                    ['Document strictement privé.'],
+                    'Document privé.txt',{type:'text/plain'}
+                  ),folder);
+                  const data=await api('/api/data');
+                  data.cloudItems??=[];
+                  data.cloudItems.push(
+                    {
+                      id:'firefox-student-shared-cloud-file',type:'file',
+                      name:'Fiche partagée.txt',size:shared.size,mime:'text/plain',
+                      url:shared.url,serverName:shared.name,space:'personal',
+                      ownerId:authUser.id,parentId:'',
+                      shares:[{type:'student',id:'firefox-student',role:'edit'}],
+                      createdAt:new Date().toISOString()
+                    },
+                    {
+                      id:'firefox-student-private-cloud-file',type:'file',
+                      name:'Document privé.txt',size:privateFile.size,mime:'text/plain',
+                      url:privateFile.url,serverName:privateFile.name,space:'personal',
+                      ownerId:authUser.id,parentId:'',shares:[],
+                      createdAt:new Date().toISOString()
+                    }
+                  );
+                  await api('/api/save',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','If-Match':dataRevision||''},
+                    body:JSON.stringify(data)
+                  });
+                  // Keep the live teacher model aligned with the newly committed Cloud metadata.
+                  db=await api('/api/data');normalize();
+                  return {sharedUrl:shared.url,privateUrl:privateFile.url};
+                }""")
+                # The active evaluation page must agree with the selected class immediately.
+                teacher_page.evaluate("""() => {
+                  window.classContext='deleted-class';
+                  page='evaluations';appSpace='teacher';render();
+                }""")
+                expect(teacher_page.locator('#evalClassFilter')).to_have_value('firefox-class')
+                expect(teacher_page.locator('#evalStats')).not_to_contain_text(
+                    "Sélectionne une classe pour afficher les évaluations."
+                )
+                teacher_page.evaluate("window.classContext='';page='schedule';appSpace='teacher';render();")
+                # Product smoke pass: render each visible teacher module in the real browser.
+                module_smoke = teacher_page.evaluate("""() => {
+                  const modules=[
+                    'dashboard','today','activity','notifications','schedule',
+                    'lessons','students','evaluations','attendance',
+                    'attendanceFollowup','bulletins','messages','documents',
+                    'teachers','classes','ppDashboard','settings'
+                  ];
+                  const results=[];
+                  for(const id of modules){
+                    page=id;appSpace='teacher';render();
+                    const main=document.getElementById('main');
+                    const text=main?.innerText||'';
+                    results.push({
+                      id,
+                      hasTitle:!!main?.querySelector('.top h1'),
+                      hasError:text.includes('Une erreur a empêché l’affichage de cette page.'),
+                      title:main?.querySelector('.top h1')?.innerText||'',
+                      width:main?.scrollWidth||0,
+                      viewport:window.innerWidth,
+                      lessonWeekHasSelectedDate:!['lessons','studentLessons'].includes(id)||!!main?.querySelector('.lessonWeek .dayBtn.active')
+                    });
+                  }
+                  return results;
+                }""")
+                broken_modules = [item for item in module_smoke if item["hasError"] or not item["hasTitle"]]
+                if broken_modules:
+                    raise AssertionError("Des modules professeur ne se rendent pas correctement : "
+                                         + json.dumps(broken_modules,ensure_ascii=False))
+                misaligned_teacher_lessons = [
+                    item for item in module_smoke
+                    if item["id"] == "lessons" and not item["lessonWeekHasSelectedDate"]
+                ]
+                if misaligned_teacher_lessons:
+                    raise AssertionError(
+                        "La semaine affichée dans Leçons & séances ne contient pas la date sélectionnée : "
+                        + json.dumps(misaligned_teacher_lessons,ensure_ascii=False)
+                    )
+
+                tracking_state = teacher_page.evaluate("""() => {
+                  window.classContext='';
+                  page='ppDashboard';appSpace='teacher';render();
+                  const card=[...document.querySelectorAll('.ppQuick')].find(x=>(x.innerText||'').includes('6e A'));
+                  if(!card)throw new Error('La classe accessible doit apparaître dans le Suivi de classe.');
+                  card.click();
+                  const main=document.getElementById('main');
+                  return {
+                    title:main?.querySelector('.top h1')?.innerText||'',
+                    hasStudents:(main?.innerText||'').includes('Élèves'),
+                    hasAttendance:(main?.innerText||'').includes('Assiduité récente'),
+                    hasUpcoming:(main?.innerText||'').includes('Prochaines échéances'),
+                    hasError:(main?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
+                  };
+                }""")
+                if tracking_state["title"] != "Suivi de classe" or tracking_state["hasError"] or not tracking_state["hasStudents"] or not tracking_state["hasAttendance"] or not tracking_state["hasUpcoming"]:
+                    raise AssertionError("Le Suivi de classe ne s'affiche pas correctement dans Firefox : "+repr(tracking_state))
+
+                # Manual theme choices must override the operating-system preference.
+                teacher_page.emulate_media(color_scheme="light")
+                dark_theme = teacher_page.evaluate("""() => {
+                  setAppearanceTheme('dark');
+                  const style=getComputedStyle(document.documentElement);
+                  return {
+                    preference:document.documentElement.dataset.mcThemePreference,
+                    theme:document.documentElement.dataset.mcTheme,
+                    colorScheme:style.colorScheme,
+                    background:style.getPropertyValue('--ui-bg').trim(),
+                    text:style.getPropertyValue('--ui-text').trim()
+                  };
+                }""")
+                if dark_theme["theme"] != "dark" or dark_theme["colorScheme"] != "dark":
+                    raise AssertionError("Le thème sombre manuel ne s'impose pas au thème système clair : "
+                                         + repr(dark_theme))
+                teacher_page.emulate_media(color_scheme="dark")
+                light_theme = teacher_page.evaluate("""() => {
+                  setAppearanceTheme('light');
+                  const style=getComputedStyle(document.documentElement);
+                  return {
+                    preference:document.documentElement.dataset.mcThemePreference,
+                    theme:document.documentElement.dataset.mcTheme,
+                    colorScheme:style.colorScheme,
+                    background:style.getPropertyValue('--ui-bg').trim(),
+                    text:style.getPropertyValue('--ui-text').trim()
+                  };
+                }""")
+                if light_theme["theme"] != "light" or light_theme["colorScheme"] != "light":
+                    raise AssertionError("Le thème clair manuel ne s'impose pas au thème système sombre : "
+                                         + repr(light_theme))
+                teacher_page.evaluate("setAppearanceTheme('light');page='schedule';appSpace='teacher';render();")
+                cloud_layout = teacher_page.evaluate("""() => {
+                  const inspect = space => {
+                    page='documents';appSpace='teacher';setCloudSpace(space);
+                    const layout=document.querySelector('.cloudLayout');
+                    const side=layout?.querySelector(':scope > aside');
+                    return {
+                      space,
+                      actualSpace:window.cloudSpace,
+                      classContext:window.classContext||'',
+                      hasSidebar:!!side,
+                      columns:getComputedStyle(layout).gridTemplateColumns,
+                      sectionWidth:Math.round(layout?.querySelector(':scope > section')?.getBoundingClientRect().width||0),
+                      mainWidth:Math.round(layout?.getBoundingClientRect().width||0)
+                    };
+                  };
+                  return {
+                    personal:inspect('personal'),
+                    shared:inspect('shared'),
+                    class:inspect('class')
+                  };
+                }""")
+                for space in ("personal","shared"):
+                    state=cloud_layout[space]
+                    if state["actualSpace"] != space or (space != "class" and state["classContext"]) or state["hasSidebar"] or len(state["columns"].split()) != 1:
+                        raise AssertionError(
+                            "Cloud "+space+" doit utiliser toute la largeur sans colonne latérale vide : "
+                            + repr(state)
+                        )
+                class_state=cloud_layout["class"]
+                if class_state["actualSpace"] != "class" or not class_state["hasSidebar"] or len(class_state["columns"].split()) != 2:
+                    raise AssertionError(
+                        "Cloud Classe doit conserver sa navigation latérale : "+repr(class_state)
+                    )
+                teacher_page.evaluate("window.cloudSpace='personal';page='schedule';appSpace='teacher';render();")
+                capture_product_screenshots(
+                    teacher_page,
+                    "teacher",
+                    ["dashboard","activity","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","ppDashboard","settings"],
+                    Path("artifacts/browser-v25"),
+                )
                 uploaded_homework = teacher_page.evaluate("""async () => {
                   db=await api('/api/data');
                   normalize();
@@ -272,11 +631,29 @@ def main() -> None:
                     }
                   };
                   db.lessons.push(lesson);
-                  save(true);
-                  await flushPendingSave();
-                  return lesson.homework.files[0];
+                  const localCloud=JSON.parse(JSON.stringify(db.cloudItems||[]));
+                  const serverResponse=await fetch('/api/data',{cache:'no-store'});
+                  const serverData=await serverResponse.json();
+                  const serverCloud=serverData.cloudItems||[];
+                  try {
+                    save(true);
+                    await flushPendingSave();
+                  } catch(error) {
+                    return {
+                      saveError:String(error?.message||error),
+                      teacherId:authUser?.id,
+                      localCloud,
+                      serverCloud,
+                      localRevision:dataRevision,
+                      serverRevision:serverResponse.headers.get('X-MaClasse-Revision')
+                    };
+                  }
+                  return {file:lesson.homework.files[0],localCloud,serverCloud};
                 }""")
-                if not uploaded_homework or not uploaded_homework.get("url"):
+                if uploaded_homework and uploaded_homework.get("saveError"):
+                    raise AssertionError("Sauvegarde après partage Cloud refusée : "+json.dumps(uploaded_homework,ensure_ascii=False))
+                uploaded_homework_file=(uploaded_homework or {}).get("file")
+                if not uploaded_homework_file or not uploaded_homework_file.get("url"):
                     raise AssertionError("Teacher homework attachment was not uploaded: "+repr(uploaded_homework))
                 if teacher_page_errors:
                     raise AssertionError("Teacher Firefox page errors: "+" | ".join(teacher_page_errors))
@@ -290,10 +667,12 @@ def main() -> None:
                   if (!response.ok) throw new Error('Student account creation failed: '+JSON.stringify(result));
                   return result.user.temporaryPassword;
                 }""")
-                student_context = browser.new_context()
+                student_context = browser.new_context(locale='fr-FR', timezone_id='Europe/Paris')
                 student_page = student_context.new_page()
                 student_page_errors: list[str] = []
+                student_console_errors: list[str] = []
                 student_page.on("pageerror", lambda error: student_page_errors.append(str(error)))
+                student_page.on("console", lambda message: student_console_errors.append(message.text) if message.type == "error" else None)
                 student_page.goto(url, wait_until="networkidle")
                 student_state = student_page.evaluate("""async (password) => {
                   const response = await fetch('/api/auth/login', {
@@ -319,6 +698,106 @@ def main() -> None:
                 }""", account)
                 if student_state.get("role") != "student" or student_state.get("studentId") != "firefox-student":
                     raise AssertionError("Student session not initialized: "+repr(student_state))
+                student_module_smoke = student_page.evaluate("""() => {
+                  const modules=[
+                    'studentHome','studentSchedule','studentLessons','studentWork',
+                    'studentResults','studentLife','studentMessages','studentDocuments',
+                    'studentSettings','today','activity'
+                  ];
+                  const results=[];
+                  for(const id of modules){
+                    page=id;appSpace='student';render();
+                    const main=document.getElementById('main');
+                    const text=main?.innerText||'';
+                    results.push({
+                      id,
+                      hasTitle:!!main?.querySelector('.top h1'),
+                      hasError:text.includes('Une erreur a empêché l’affichage de cette page.'),
+                      title:main?.querySelector('.top h1')?.innerText||'',
+                      width:main?.scrollWidth||0,
+                      viewport:window.innerWidth,
+                      lessonWeekHasSelectedDate:!['lessons','studentLessons'].includes(id)||!!main?.querySelector('.lessonWeek .dayBtn.active')
+                    });
+                  }
+                  return results;
+                }""")
+                broken_student_modules = [
+                    item for item in student_module_smoke
+                    if item["hasError"] or not item["hasTitle"]
+                ]
+                if broken_student_modules:
+                    raise AssertionError(
+                        "Des modules de l'espace élève ne se rendent pas correctement : "
+                        + json.dumps(broken_student_modules,ensure_ascii=False)
+                    )
+                misaligned_student_lessons = [
+                    item for item in student_module_smoke
+                    if item["id"] == "studentLessons" and not item["lessonWeekHasSelectedDate"]
+                ]
+                if misaligned_student_lessons:
+                    raise AssertionError(
+                        "La semaine affichée dans Séances & leçons élève ne contient pas la date sélectionnée : "
+                        + json.dumps(misaligned_student_lessons,ensure_ascii=False)
+                    )
+                student_tracking_state = student_page.evaluate("""() => {
+                  page='ppDashboard';appSpace='teacher';render();
+                  const main=document.getElementById('main');
+                  return {
+                    title:main?.querySelector('.top h1')?.innerText||'',
+                    hasClassCards:!!main?.querySelector('.ppQuick'),
+                    hasError:(main?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
+                  };
+                }""")
+                if student_tracking_state["title"] == "Suivi de classe" or student_tracking_state["hasClassCards"] or student_tracking_state["hasError"]:
+                    raise AssertionError("Un compte élève ne doit pas accéder au Suivi de classe : "+repr(student_tracking_state))
+                # The student can read an explicitly shared Cloud file, but cannot
+                # see the teacher's private sibling or write to the Cloud.
+                student_page.evaluate("""() => {
+                  page='studentDocuments';appSpace='student';
+                  window.cloudSpace='shared';window.cloudPath=[];window.cloudSelected='';
+                  render();
+                }""")
+                expect(student_page.locator('.top')).to_contain_text("Mes documents")
+                expect(student_page.locator('.cloudName')).to_contain_text("Fiche partagée.txt")
+                if "Document privé.txt" in student_page.locator('#main').inner_text():
+                    raise AssertionError("Un document Cloud privé de l'enseignant apparaît chez l'élève.")
+                cloud_access = student_page.evaluate("""async ({sharedUrl,privateUrl}) => {
+                  const sharedItem=db.cloudItems.find(x=>x.id==='firefox-student-shared-cloud-file');
+                  const privateItem=db.cloudItems.find(x=>x.id==='firefox-student-private-cloud-file');
+                  const [sharedResponse,privateResponse,writeResponse]=await Promise.all([
+                    fetch(sharedUrl,{cache:'no-store'}),
+                    fetch(privateUrl,{cache:'no-store'}),
+                    fetch('/api/upload',{
+                      method:'POST',
+                      headers:{'X-Filename':'utf8:tentative.txt','X-Upload-Folder':'cloud/class/classes/firefox-class'},
+                      body:new Blob(['tentative'],{type:'text/plain'})
+                    })
+                  ]);
+                  return {
+                    sharedStatus:sharedResponse.status,
+                    sharedContent:await sharedResponse.text(),
+                    privateStatus:privateResponse.status,
+                    visibleShared:!!sharedItem,
+                    visiblePrivate:!!privateItem,
+                    sharedRole:sharedItem?.shares?.[0]?.role||null,
+                    canWrite:cloudCanWrite('student',activeStudent(),sharedItem),
+                    uploadStatus:writeResponse.status
+                  };
+                }""", shared_cloud)
+                if cloud_access["sharedStatus"] != 200 or cloud_access["sharedContent"] != "Fichier de révision partagé avec un élève.":
+                    raise AssertionError("Le fichier Cloud partagé n'est pas lisible par l'élève : "+repr(cloud_access))
+                if cloud_access["privateStatus"] != 403 or cloud_access["visiblePrivate"]:
+                    raise AssertionError("Un fichier Cloud privé n'est pas correctement cloisonné : "+repr(cloud_access))
+                if not cloud_access["visibleShared"] or cloud_access["sharedRole"] != "view" or cloud_access["canWrite"] or cloud_access["uploadStatus"] != 403:
+                    raise AssertionError("Le Cloud élève doit être strictement en lecture seule : "+repr(cloud_access))
+                student_page.evaluate("page='studentHome';appSpace='student';render();")
+                capture_product_screenshots(
+                    student_page,
+                    "student",
+                    ["studentHome","studentSchedule","studentLessons","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
+                    Path("artifacts/browser-v25"),
+                )
+                student_page.evaluate("page='studentHome';appSpace='student';setAppearanceTheme('light');render();")
                 student_page.evaluate("""() => {
                   page='studentMessages';
                   appSpace='student';
@@ -365,6 +844,143 @@ def main() -> None:
                 if mailbox.locator('.v2104Row').count() == 0:
                     raise AssertionError("Student mailbox has no message row: "+json.dumps(mailbox_state,ensure_ascii=False))
                 expect(mailbox.locator('.v2104Row')).to_contain_text("Message de test élève")
+                # End-to-end Mail V2: compose, save a draft, reload, resume, send and receive.
+                teacher_page.evaluate("""() => {
+                  page='messages';appSpace='teacher';window.mailV2Folder='inbox';
+                  window.mailV2Selected='';render();window.mailV2104Compose('teacher','');
+                }""")
+                composer = teacher_page.locator('#modal .v2104Compose')
+                expect(composer).to_be_visible()
+                composer_layout = teacher_page.evaluate("""() => {
+                  const modal=document.getElementById('modal');
+                  const form=modal?.querySelector('.v2104Compose');
+                  const rect=form?.getBoundingClientRect();
+                  return {
+                    viewportWidth:window.innerWidth,
+                    modalClientWidth:modal?.clientWidth||0,
+                    modalScrollWidth:modal?.scrollWidth||0,
+                    formLeft:rect?.left||0,
+                    formRight:rect?.right||0,
+                    formWidth:rect?.width||0,
+                    recipientPickerCount:form?.querySelectorAll('.v2104Recipients').length||0
+                  };
+                }""")
+                if (
+                    composer_layout["formWidth"] <= 0
+                    or composer_layout["formLeft"] < 0
+                    or composer_layout["formRight"] > composer_layout["viewportWidth"]
+                    or composer_layout["modalScrollWidth"] > composer_layout["modalClientWidth"] + 1
+                ):
+                    raise AssertionError(
+                        "La fenêtre de rédaction Mail déborde horizontalement : "+repr(composer_layout)
+                    )
+                screenshot_dir = Path("artifacts/browser-v25")
+                screenshot_dir.mkdir(parents=True,exist_ok=True)
+                for theme in ("light","dark"):
+                    teacher_page.emulate_media(color_scheme="dark" if theme=="light" else "light")
+                    teacher_page.evaluate("""theme => {
+                      setAppearanceTheme(theme);
+                      const toast=document.getElementById('toast');
+                      if(toast){toast.classList.remove('show');toast.textContent='';}
+                    }""",theme)
+                    teacher_page.wait_for_timeout(140)
+                    teacher_page.screenshot(
+                        path=str(screenshot_dir/f"teacher-{theme}-mail-compose.png"),
+                        full_page=True,animations="disabled"
+                    )
+                teacher_page.evaluate("""() => {
+                  setAppearanceTheme('light');
+                  const toast=document.getElementById('toast');
+                  if(toast){toast.classList.remove('show');toast.textContent='';}
+                }""")
+                recipient = composer.locator('input[name="to"][value="student:firefox-student"]')
+                if recipient.count() != 1:
+                    people = teacher_page.evaluate("peopleOptions('teacher','')")
+                    raise AssertionError(
+                        "Le professeur ne peut pas sélectionner son élève dans la messagerie : "
+                        + json.dumps(people,ensure_ascii=False)
+                    )
+                recipient.check()
+                composer.locator('#v2104Subject').fill("Test de rédaction persistante")
+                composer.locator('#v2104BodyEditor').fill("Message conservé après réouverture du brouillon.")
+                composer.get_by_role("button",name="Enregistrer le brouillon").click()
+                teacher_page.evaluate("""async () => {
+                  await flushPendingSave();
+                  await load();
+                  page='messages';appSpace='teacher';window.mailV2Folder='drafts';
+                  window.mailV2Selected='';render();
+                }""")
+                drafts = teacher_page.locator('.v2104Row')
+                expect(drafts).to_have_count(1)
+                expect(drafts.first).to_contain_text("Test de rédaction persistante")
+                drafts.first.click()
+                resumed = teacher_page.locator('#modal .v2104Compose')
+                expect(resumed).to_be_visible()
+                expect(resumed.locator('#v2104Subject')).to_have_value("Test de rédaction persistante")
+                expect(resumed.locator('#v2104BodyEditor')).to_contain_text(
+                    "Message conservé après réouverture du brouillon."
+                )
+                resumed.locator('#v2104BodyEditor').fill(
+                    "Message envoyé depuis le brouillon repris."
+                )
+                teacher_page.evaluate("flushPendingSave()")
+                mail_save_attempts = {"count": 0}
+                def fail_first_mail_save(route):
+                    if route.request.url.endswith("/api/save") and mail_save_attempts["count"] == 0:
+                        mail_save_attempts["count"] += 1
+                        route.fulfill(
+                            status=503,
+                            content_type="application/json",
+                            body=json.dumps({"error":"Panne réseau simulée pendant l'envoi."})
+                        )
+                    else:
+                        route.continue_()
+                teacher_page.route("**/api/save",fail_first_mail_save)
+                resumed.get_by_role("button",name="Envoyer").click()
+                retry_send = resumed.locator('button[type="submit"]')
+                expect(retry_send).to_have_text("Réessayer l’envoi",timeout=10_000)
+                if mail_save_attempts["count"] != 1:
+                    raise AssertionError("La panne réseau simulée n'a pas intercepté une seule sauvegarde.")
+                # Retry the same pending message after removing the simulated outage.
+                teacher_page.unroute("**/api/save",fail_first_mail_save)
+                retry_send.click()
+                expect(teacher_page.locator('#modalback')).not_to_have_class("open",timeout=10_000)
+                teacher_page.evaluate("""async () => {
+                  await flushPendingSave();
+                  await load();
+                  page='messages';appSpace='teacher';window.mailV2Folder='sent';
+                  render();
+                }""")
+                sent_rows = teacher_page.locator('.v2104Row').filter(
+                    has_text="Test de rédaction persistante"
+                )
+                expect(sent_rows).to_have_count(1)
+                sent_rows.click()
+                expect(teacher_page.locator('.v2104Thread')).to_contain_text(
+                    "Message envoyé depuis le brouillon repris."
+                )
+                mail_delivery = teacher_page.evaluate("""() => ({
+                  draftCount:db.mailboxV2.drafts.filter(d=>d.owner==='teacher:'+currentTeacherId()).length,
+                  sent:db.mailboxV2.messages.filter(m=>
+                    m.subject==='Test de rédaction persistante' &&
+                    m.to.includes('student:firefox-student')
+                  ).length
+                })""")
+                if mail_delivery["draftCount"] != 0 or mail_delivery["sent"] != 1:
+                    raise AssertionError("État final du brouillon/envoi incorrect : "+repr(mail_delivery))
+                student_page.evaluate("""async () => {
+                  await load();
+                  page='studentMessages';appSpace='student';window.mailV2Folder='inbox';
+                  render();
+                }""")
+                student_mail_row = student_page.locator('.v2104Row').filter(
+                    has_text="Test de rédaction persistante"
+                )
+                expect(student_mail_row).to_have_count(1)
+                student_mail_row.click()
+                expect(student_page.locator('.v2104Thread')).to_contain_text(
+                    "Message envoyé depuis le brouillon repris."
+                )
                 student_page.evaluate("""() => {
                   closeModal();
                   page='studentSchedule';
@@ -378,6 +994,38 @@ def main() -> None:
                 student_course = student_page.locator('[data-schedule-id="firefox-existing-course"]')
                 if "#123456" not in (student_course.get_attribute("style") or ""):
                     raise AssertionError("La couleur personnalisée de matière n'est pas transmise à l'EDT élève.")
+                # Trace every student-side render while the other account changes the timetable.
+                student_page.evaluate("""() => {
+                  window.__studentRenderTrace=[];
+                  window.__studentSyncTrace=[];
+                  window.__studentTraceStartRevision=lastRenderedRevision;
+                  window.__studentTraceStartDataRevision=dataRevision;
+                  const originalRender=render;
+                  render=function(){
+                    window.__studentRenderTrace.push({
+                      page,revision:dataRevision,
+                      targetInDomBefore:!!document.querySelector('[data-schedule-id="firefox-live-student-course"]'),
+                      targetInModel:(db.schedule||[]).some(x=>x.id==='firefox-live-student-course')
+                    });
+                    const result=originalRender.apply(this,arguments);
+                    window.__studentRenderTrace[window.__studentRenderTrace.length-1].targetInDomAfter=
+                      !!document.querySelector('[data-schedule-id="firefox-live-student-course"]');
+                    return result;
+                  };
+                  const originalSync=refreshLiveScheduleData;
+                  refreshLiveScheduleData=async function(force=false){
+                    window.__studentSyncTrace.push({
+                      stage:'start',force,revision:dataRevision,lastRenderedRevision,page,localWork:syncHasLocalWork(),
+                      hidden:document.hidden
+                    });
+                    try{return await originalSync.call(this,force)}
+                    finally{window.__studentSyncTrace.push({
+                      stage:'end',revision:dataRevision,lastRenderedRevision,page,localWork:syncHasLocalWork(),
+                      targetInModel:(db.schedule||[]).some(x=>x.id==='firefox-live-student-course'),
+                      targetInDom:!!document.querySelector('[data-schedule-id="firefox-live-student-course"]')
+                    })}
+                  };
+                }""")
                 # A teacher-side write must be picked up by the student's 5-second sync.
                 page.evaluate("""async () => {
                   const response = await fetch('/api/data', {cache:'no-store'});
@@ -396,7 +1044,56 @@ def main() -> None:
                   });
                   if (!saved.ok) throw new Error('Teacher timetable update failed: '+saved.status+' '+await saved.text());
                 }""")
-                expect(student_calendar).to_contain_text("Sciences", timeout=15_000)
+                try:
+                    expect(student_calendar).to_contain_text("Sciences", timeout=15_000)
+                except AssertionError as failure:
+                    state = student_page.evaluate("""async () => {
+                      const [statusResponse,dataResponse] = await Promise.all([
+                        fetch('/api/sync-status',{cache:'no-store'}),
+                        fetch('/api/data',{cache:'no-store'})
+                      ]);
+                      const status = await statusResponse.json();
+                      const latest = await dataResponse.json();
+                      return {
+                        documentHidden:document.hidden,
+                        activeElement:document.activeElement?.outerHTML?.slice(0,500)||document.activeElement?.tagName,
+                        page,authUser,
+                        dataRevision,lastRenderedRevision,traceStartRevision:window.__studentTraceStartRevision,traceStartDataRevision:window.__studentTraceStartDataRevision,latestRevision:dataResponse.headers.get('X-MaClasse-Revision'),
+                        statusRevision:status.revision,
+                        liveSyncBusy,syncOnline,syncLastError,remoteChangePending,
+                        savePending,saveTimer:!!saveTimer,saveError:saveError?.message||null,
+                        hasLocalWork:syncHasLocalWork(),
+                        localSchedule:(db.schedule||[]).map(x=>({id:x.id,subject:x.subject,day:x.day})),
+                        serverSchedule:(latest.schedule||[]).map(x=>({id:x.id,subject:x.subject,day:x.day})),
+                        selectedWeek:iso(selectedWeek),
+                        student:student(activeStudent()),
+                        targetSlot:(db.schedule||[]).find(x=>x.id==='firefox-live-student-course')||null,
+                        targetDates:weekDates().map(d=>({
+                          date:iso(d),
+                          recurring:recurring((db.schedule||[]).find(x=>x.id==='firefox-live-student-course'),d),
+                          dayOcc:dayOcc(d).filter(x=>x.id==='firefox-live-student-course').map(x=>({id:x.id,group:x.group,day:x.day})),
+                          studentOcc:studentScheduleOcc(student(activeStudent()),d).filter(x=>x.id==='firefox-live-student-course').map(x=>({id:x.id,group:x.group,day:x.day}))
+                        })),
+                        scheduleView,
+                        weekDates:weekDates().map(iso),
+                        occFriday:studentScheduleOcc(student(activeStudent()),new Date('2026-11-13T12:00:00')).map(x=>({id:x.id,subject:x.subject})),
+                        weekMarkup:studentSchedule().includes('Sciences'),
+                        weekRendererMarkup:scheduleWeek(weekDates(),d=>studentScheduleOcc(student(activeStudent()),d),true).includes('Sciences'),
+                        eventMarkup:eventCard((db.schedule||[]).find(x=>x.id==='firefox-live-student-course'),new Date('2026-11-13T12:00:00'),true),
+                        targetDomCount:document.querySelectorAll('[data-schedule-id="firefox-live-student-course"]').length,
+                        renderTrace:window.__studentRenderTrace||[],
+                        syncTrace:window.__studentSyncTrace||[],
+                        calendarHtml:document.querySelector('.scheduleCalendarSurface')?.innerHTML.slice(0,15000)||'',
+                        calendar:document.querySelector('.scheduleCalendarSurface')?.innerText||''
+                      };
+                    }""")
+                    raise AssertionError(
+                        "Synchronisation élève : le créneau Sciences n'est pas apparu. "
+                        + json.dumps(state,ensure_ascii=False)
+                        + " | page errors=" + repr(student_page_errors)
+                        + " | console errors=" + repr(student_console_errors)
+                        + " | " + str(failure)
+                    )
                 teacher_page.evaluate("""() => {
                   page='schedule';
                   appSpace='teacher';

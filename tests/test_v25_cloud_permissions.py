@@ -89,6 +89,26 @@ class CloudPermissionTests(unittest.TestCase):
         updated['cloudItems'][0]['serverName'] = 'cloud/personal/users/t2/stolen.pdf'
         self.assertFalse(server._validate_cloud_item_changes(self.data, updated, self.t1))
 
+    def test_legacy_missing_group_is_equivalent_to_normalized_empty_group(self):
+        current={'cloudItems':[{
+            'id':'legacy-personal-file','type':'file','space':'personal',
+            'ownerId':'t1','name':'Fiche.txt',
+            'serverName':'cloud/personal/users/t1/Fiche.txt',
+            'url':'/data/uploads/cloud/personal/users/t1/Fiche.txt',
+            'shares':[]
+        }]}
+        updated={'cloudItems':[{
+            **current['cloudItems'][0],
+            'group':''
+        }]}
+        self.assertTrue(server._validate_cloud_item_changes(current,updated,self.t1))
+
+        moved={'cloudItems':[{
+            **current['cloudItems'][0],
+            'group':'Groupe A'
+        }]}
+        self.assertFalse(server._validate_cloud_item_changes(current,moved,self.t1))
+
     def test_teacher_can_create_in_assigned_class_only(self):
         allowed = {'cloudItems': [{'id': 'new', 'space': 'class', 'ownerId': 't1', 'classId': 'c1', 'serverName': 'cloud/class/classes/c1/new.pdf'}]}
         denied = {'cloudItems': [{'id': 'new', 'space': 'class', 'ownerId': 't1', 'classId': 'c2', 'serverName': 'cloud/class/classes/c2/new.pdf'}]}

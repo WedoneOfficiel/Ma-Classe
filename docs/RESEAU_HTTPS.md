@@ -1,5 +1,7 @@
 # Réseau local HTTPS — MaClasse V25
 
+**État au 25/11/2026 :** le superviseur réseau est commun à Linux et macOS. La CI #1727 valide les tests Linux, macOS Apple Silicon et Firefox réel. La vérification sur un vrai réseau Wi-Fi, le pare-feu Fedora et les appareils clients reste à effectuer sur le matériel cible.
+
 ## Principe
 
 Un seul ordinateur héberge le serveur MaClasse. Les autres ordinateurs ouvrent son adresse HTTPS dans Firefox ou un autre navigateur, sur le même réseau privé. Il ne faut pas rediriger le port 8765 depuis Internet.
@@ -24,7 +26,7 @@ Lance le mode réseau :
 ./Lancer-MaClasse-Reseau.sh
 ```
 
-Le script détecte l'adresse IPv4 de l'interface par défaut, crée une autorité de certification locale et un certificat serveur pour cette adresse, puis démarre MaClasse en HTTPS.
+Le superviseur détecte l'adresse IPv4 privée de l'interface par défaut, crée l'autorité locale et démarre MaClasse en HTTPS. Il surveille ensuite le réseau toutes les cinq secondes : une perte de connexion ferme le listener, et un changement d'adresse régénère le certificat serveur puis relance le listener automatiquement.
 
 Pour installer le premier service systemd utilisateur expérimental (démarrage automatique et redémarrage après incident), après cette initialisation, exécute depuis le compte Linux qui possède le dossier MaClasse :
 
@@ -80,10 +82,10 @@ Ce code signifie que Firefox ne reconnaît pas l'autorité qui a signé le certi
 
 ## Adresse IP, pare-feu et renouvellement
 
-- Réserve une adresse IP stable au serveur dans le DHCP de la box. Si l'adresse change, relance le lanceur : il régénère le certificat serveur avec la nouvelle adresse en conservant la même autorité locale.
+- Une réservation DHCP reste recommandée pour conserver une URL stable. Si l'adresse change malgré tout, le superviseur la détecte automatiquement, arrête proprement le listener HTTPS, renouvelle le certificat serveur puis redémarre sur la nouvelle adresse. En cas de perte du Wi-Fi ou du câble, le listener est arrêté jusqu'au retour d'une IPv4 privée.
 - Sur Fedora, vérifie la zone active de firewalld. N'autorise TCP/8765 que sur un profil de réseau privé de confiance ; ne l'ouvre pas sur une zone publique.
 - N'active aucune redirection de port sur le routeur.
-- Le certificat serveur est renouvelé à chaque démarrage ; l'autorité racine est conservée dans `data/tls`.
+- Le certificat serveur est renouvelé au changement d'adresse ou lorsqu'il approche de l'expiration ; l'autorité racine et la clé privée du serveur sont conservées dans `data/tls`. Les postes clients n'ont pas à réinstaller `ca.crt`, mais doivent ouvrir la nouvelle URL HTTPS.
 - Les sauvegardes MaClasse ne contiennent volontairement pas les clés TLS. Conserve une copie chiffrée hors ligne de `ca.key` et `ca.crt` si tu dois pouvoir restaurer l'identité HTTPS du serveur. Ne place jamais `ca.key` dans un partage Cloud ou sur un appareil client.
 
 ## Mise à jour
@@ -96,4 +98,4 @@ Les deux scripts refusent les modifications Git locales et les branches divergen
 
 ## État de validation
 
-Les tests automatisés couvrent le démarrage TLS, les cookies Secure, le rejet d'une origine HTTP sur le listener HTTPS et le refus du démarrage LAN sans certificat. Cela ne remplace pas la validation réelle sur le PC Fedora cible et les appareils clients : installation de l'autorité, pare-feu, adresse DHCP stable, accès simultanés, redémarrage, sauvegardes/restaurations et recette fonctionnelle complète restent obligatoires avant des données scolaires réelles.
+Les tests automatisés couvrent le démarrage TLS, les cookies Secure, le rejet d'une origine HTTP sur le listener HTTPS, le refus du démarrage LAN sans certificat et la simulation d'un changement DHCP/perte puis retour du réseau. Cela ne remplace pas la validation réelle sur le PC Fedora cible et les appareils clients : installation de l'autorité, pare-feu, adresse DHCP stable, accès simultanés, redémarrage, sauvegardes/restaurations et recette fonctionnelle complète restent obligatoires avant des données scolaires réelles.

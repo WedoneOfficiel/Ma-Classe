@@ -11,3 +11,7 @@ __pycache__/
 
 # Système
 .DS_Store
+
+# Clé privée de signature des releases : secret hors du dépôt
+release-signing-private-key.b64
+maclasse-release-signing-private-key.b64

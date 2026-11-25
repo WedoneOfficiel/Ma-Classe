@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-cd "$(dirname "$0")"
+ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+cd "$ROOT"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "Ce lanceur réseau est réservé à macOS."
@@ -88,9 +89,16 @@ echo "Pour arrêter le serveur : Ctrl+C."
 echo "============================================================"
 echo
 
-MACLASSE_LAN_MODE=1 MACLASSE_HOST="$LAN_IP" MACLASSE_PORT=8765 MACLASSE_TLS_CERT="$TLS_CERT" MACLASSE_TLS_KEY="$TLS_KEY" .venv/bin/python server.py &
+export MACLASSE_ROOT="$ROOT"
+export MACLASSE_APP_ROOT="$ROOT"
+export MACLASSE_DATA_DIR="$ROOT/data"
+export MACLASSE_PYTHON="$ROOT/.venv/bin/python"
+export MACLASSE_LAN_MODE=1
+export MACLASSE_PORT=8765
+unset MACLASSE_HOST MACLASSE_TLS_CERT MACLASSE_TLS_KEY
+"$ROOT/.venv/bin/python" "$ROOT/network_supervisor.py" &
 SERVER_PID=$!
-cleanup() { kill "$SERVER_PID" >/dev/null 2>&1 || true; wait "$SERVER_PID" 2>/dev/null || true; }
+cleanup() { kill -TERM "$SERVER_PID" >/dev/null 2>&1 || true; wait "$SERVER_PID" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
 READY=0

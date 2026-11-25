@@ -5,4 +5,13 @@ assert(js.includes("String(s.teacherId||'')===tid||(s.teacherIds||[]).map(String
 assert(js.includes("if(!s||!canManageScheduleAssignments(s))return;"),'the assignment editor must enforce the same scope');
 assert(js.includes("...(authUser?.role==='teacher'?{createdBy:String(currentTeacherProfile()?.id||authUser.id||'')}: {})"),'teacher-created assignments must be attributed to their creator');
 assert(js.includes("String(a.createdBy||'')!==String(currentTeacherProfile()?.id||'')? 'disabled" )||js.includes('Seul le créateur ou la Direction peut retirer cette affectation'),'the UI must not offer removal of another user\'s assignment');
-console.log('OK — interface affectations : Direction et professeur titulaire, suppression attribuée au créateur.');
+assert(js.includes("function openScheduleAssignmentDirectory(){"),'the schedule must expose a central assignment directory');
+assert(js.includes("filter(s=>canManageScheduleAssignments(s))"),'the directory must respect the same per-slot permissions');
+assert(js.includes('id="scheduleAssignmentClassFilter"'),'the directory must filter by class');
+assert(js.includes('Toutes les classes accessibles'),'the class filter label must be accurate for both teachers and Direction');
+assert(js.includes('id="scheduleAssignmentSearch"'),'the directory must offer a subject/day search');
+assert(js.includes('onclick="openScheduleAssignmentDirectory()"'),'the timetable toolbar must expose the directory');
+assert(js.includes('Remplacements & co-enseignement'),'the action must have an explicit French label');
+assert(js.includes('Chaque compte élève ne reçoit que les informations de sa propre fiche. Les messages, pièces jointes et ressources consultables sont filtrés côté serveur'),'the admin notice must reflect the current student access model');
+assert(!js.includes('La messagerie et le Cloud élève restent désactivés'),'the admin notice must not describe active student modules as disabled');
+console.log('OK — interface affectations : Direction et professeur titulaire, suppression attribuée au créateur, accès central filtrable et message de confidentialité à jour.');

@@ -52,7 +52,16 @@ def run():
         admin=headers.get('Set-Cookie').split(';')[0]
         assert json.loads(call(base,'/api/auth/setup-status')[2])['setupRequired'] is False
         assert call(base,'/api/auth/setup','POST',{'name':'Autre','username':'autre','password':'unAutreMotDePasseTresSolide!'})[0]==409
-        assert call(base,'/api/data',cookie=admin)[0]==200
+        data_status,data_headers,data_body=call(base,'/api/data',cookie=admin)
+        assert data_status==200
+        sync_status,sync_headers,sync_body=call(base,'/api/sync-status',cookie=admin)
+        assert sync_status==200
+        sync_payload=json.loads(sync_body)
+        assert sync_payload['revision']==sync_headers.get('X-MaClasse-Revision')
+        assert sync_headers.get('X-MaClasse-Revision')==data_headers.get('X-MaClasse-Revision')
+        assert 'students' not in sync_payload and 'users' not in sync_payload
+        assert call(base,'/api/sync-status')[0]==401
+
         maintenance_status,_,maintenance_body=call(base,'/api/update-maintenance',cookie=admin)
         assert maintenance_status==200 and json.loads(maintenance_body)['scheduled'] is False
         saved=json.loads((app/'data'/'maclasse.json').read_text())

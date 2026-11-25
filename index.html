@@ -5,7 +5,7 @@
 <script id="mc-appearance-bootstrap">
 try{const t=localStorage.getItem('maclasse_appearance_theme');const v=['system','light','dark'].includes(t)?t:'system',dark=window.matchMedia('(prefers-color-scheme: dark)').matches,r=document.documentElement;r.dataset.mcThemePreference=v;r.dataset.mcTheme=v==='system'&&!dark?'light':v;r.style.colorScheme=v==='system'?(dark?'dark':'light'):v}catch(e){document.documentElement.dataset.mcThemePreference='system';document.documentElement.dataset.mcTheme='light';document.documentElement.style.colorScheme='light'}
 </script>
-<title>MaClasse V25.0.18</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
+<title>MaClasse V25.1.0</title><!-- MaClasse V21.22 — MaClasse 27 Liquid UI -->
 <!-- Compatibility markers for historical regression tests: MaClasse V21.21 -->
 
 
@@ -1171,7 +1171,8 @@ html[data-mc-theme="dark"] .btn.primary,html[data-mc-theme="dark"] .tab.active,h
 html[data-mc-theme="dark"] .table th,html[data-mc-theme="dark"] .field label,html[data-mc-theme="dark"] .muted,html[data-mc-theme="dark"] .hint,html[data-mc-theme="dark"] .pageSub,html[data-mc-theme="dark"] .dayBtn .count{color:#b5b5bc!important}
 
 
-html[data-mc-theme="dark"] .daycol,html[data-mc-theme="dark"] .daycolHeader,html[data-mc-theme="dark"] .dayname,html[data-mc-theme="dark"] .dayrow,html[data-mc-theme="dark"] .hours,html[data-mc-theme="dark"] .hour{background-color:#29292c!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.12)!important}
+html[data-mc-theme="dark"] .daycol{background:repeating-linear-gradient(to bottom,#29292c 0,#29292c 71px,#3c3c40 72px)!important}
+html[data-mc-theme="dark"] .daycolHeader,html[data-mc-theme="dark"] .dayname,html[data-mc-theme="dark"] .dayrow,html[data-mc-theme="dark"] .hours,html[data-mc-theme="dark"] .hour{background-color:#29292c!important;color:#f5f5f7!important;border-color:rgba(255,255,255,.12)!important}
 
 html[data-mc-theme="dark"] .course b,html[data-mc-theme="dark"] .course small,html[data-mc-theme="dark"] .event b,html[data-mc-theme="dark"] .event small{color:#e8f2ff!important}
 
@@ -2055,6 +2056,148 @@ html[data-mc-theme="light"] .event b,
 html[data-mc-theme="dark"] .event b{color:var(--event-accent,var(--ui-text))!important}
 html[data-mc-theme="light"] .event small,
 html[data-mc-theme="dark"] .event small{color:var(--ui-text-2,var(--muted))!important}
+.cloudLayout.singleColumn{grid-template-columns:minmax(0,1fr)!important}.cloudLayout.singleColumn>section{min-width:0;width:100%}
+
+/* Audit UI — le reflet des surfaces claires ne doit pas traverser le thème sombre. */
+html[data-mc-theme="dark"] .card::before,
+html[data-mc-theme="dark"] .bulletin::before{
+  background:none!important;
+  opacity:0!important;
+}
+
+/* Dates françaises : les mois restent en minuscules même dans les titres. */
+.monthNav strong,
+.lessonCalendarWide .monthNav strong,
+.scheduleCurrentRange strong,
+.scheduleMonthAgendaDay b{
+  text-transform:none!important;
+}
+
+/* Mobile layout: place the compact navigation above the page instead of
+   reserving a desktop-width fixed sidebar and shrinking the content. */
+@media(max-width:800px){
+  .app{display:block!important;min-height:100vh}
+  .side,
+  body.sidebar-collapsed .side{
+    position:static!important;
+    inset:auto!important;
+    display:block!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:8px 12px 7px!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+    border-right:0!important;
+    border-bottom:1px solid var(--line)!important;
+    box-shadow:0 2px 12px rgba(0,0,0,.045)!important;
+    backdrop-filter:blur(18px) saturate(150%);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+  }
+  .brand,
+  body.sidebar-collapsed .brand{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
+    gap:9px!important;
+    min-height:42px!important;
+    padding:2px 2px 8px!important;
+  }
+  .brand .logo,
+  body.sidebar-collapsed .brand .logo{
+    display:grid!important;
+    flex:0 0 34px!important;
+    width:34px!important;
+    height:34px!important;
+  }
+  .brandText,
+  .brand>div:last-child,
+  body.sidebar-collapsed .brandText,
+  body.sidebar-collapsed .brand>div:last-child{
+    display:block!important;
+    min-width:0!important;
+  }
+  .sidebarToggle,
+  body.sidebar-collapsed .sidebarToggle{
+    position:static!important;
+    display:none!important;
+  }
+  .nav,
+  body.sidebar-collapsed .nav{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    gap:5px!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    padding:2px 0 5px!important;
+    scrollbar-width:thin;
+    -webkit-overflow-scrolling:touch;
+  }
+  .navSection,
+  body.sidebar-collapsed .navSection{
+    display:contents!important;
+  }
+  .navSectionLabel,
+  body.sidebar-collapsed .navSectionLabel,
+  .sidefoot,
+  body.sidebar-collapsed .sidefoot{
+    display:none!important;
+  }
+  .nav button,
+  .nav .navBtn,
+  body.sidebar-collapsed .nav button{
+    display:flex!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:0!important;
+    min-height:36px!important;
+    height:36px!important;
+    padding:6px 9px!important;
+    justify-content:flex-start!important;
+    gap:6px!important;
+    white-space:nowrap!important;
+    border-radius:9px!important;
+  }
+  .nav button span:not(.ico),
+  .nav button b,
+  body.sidebar-collapsed .nav button span:not(.ico),
+  body.sidebar-collapsed .nav button b{
+    display:inline!important;
+    overflow:visible!important;
+    max-width:none!important;
+  }
+  .nav button .ico,
+  body.sidebar-collapsed .nav button .ico{
+    display:inline-flex!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    margin:0!important;
+  }
+  .main,
+  body.sidebar-collapsed .main{
+    display:block!important;
+    margin:0!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    padding:14px 14px 42px!important;
+    box-sizing:border-box!important;
+    overflow-x:hidden!important;
+  }
+  .top{top:8px!important}
+}
+@media(max-width:520px){
+  .side,
+  body.sidebar-collapsed .side{padding-left:10px!important;padding-right:10px!important}
+  .main,
+  body.sidebar-collapsed .main{padding-left:12px!important;padding-right:12px!important}
+}
 </style>
 
 
@@ -2064,6 +2207,7 @@ html[data-mc-theme="dark"] .event small{color:var(--ui-text-2,var(--muted))!impo
 <div class="modalback" id="modalback"><div class="modal" id="modal"></div></div><div class="toast" id="toast"></div>
 
 <script src="_all.js"></script>
+<script src="class_tracking.js"></script>
 
 
 <script id="v218-ui-runtime">

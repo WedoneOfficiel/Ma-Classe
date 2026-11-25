@@ -21,6 +21,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Installer Python et les dépendances de signature
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances Python
+        run: python -m pip install -r requirements.txt
+
       - name: Vérifier la cohérence du tag et de VERSION.txt
         id: version
         shell: bash
@@ -67,6 +75,13 @@ jobs:
           )
           PY
 
+      - name: Signer le manifeste avec la clé éditeur
+        env:
+          MACLASSE_RELEASE_SIGNING_KEY_B64: ${{ secrets.MACLASSE_RELEASE_SIGNING_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          python scripts/sign_release.py --manifest dist/maclasse-update.json --signature dist/maclasse-update.sig
+
       - name: Publier ou compléter la release stable
         env:
           GH_TOKEN: ${{ github.token }}
@@ -74,8 +89,8 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/maclasse-update.zip dist/maclasse-update.json --clobber
+            gh release upload "$TAG" dist/maclasse-update.zip dist/maclasse-update.json dist/maclasse-update.sig --clobber
             gh release edit "$TAG" --notes-file dist/release-notes.md
           else
-            gh release create "$TAG" dist/maclasse-update.zip dist/maclasse-update.json --notes-file dist/release-notes.md
+            gh release create "$TAG" dist/maclasse-update.zip dist/maclasse-update.json dist/maclasse-update.sig --notes-file dist/release-notes.md
           fi

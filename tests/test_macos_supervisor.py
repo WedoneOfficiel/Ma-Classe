@@ -36,7 +36,11 @@ class MacOSSupervisorTests(unittest.TestCase):
             with self.subTest(script=name):
                 source = (ROOT / name).read_text(encoding="utf-8")
                 guard = source.index('launchctl print "gui/$(id -u)/fr.maclasse.server"')
-                start = source.index(".venv/bin/python server.py")
+                starts = [
+                    source.find(".venv/bin/python server.py"),
+                    source.find("network_supervisor.py"),
+                ]
+                start = min(position for position in starts if position >= 0)
                 self.assertLess(guard, start)
                 self.assertIn("partagerait la même base de données", source)
 
@@ -49,11 +53,9 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn('MACLASSE_ROOT="$ROOT"', runner)
         self.assertIn('MACLASSE_DATA_DIR="$DATA"', runner)
         self.assertIn('SCRIPT_DIR/../../../..', runner)
+        self.assertIn('MACLASSE_APP_ROOT="$PROGRAM"', runner)
         self.assertIn('MACLASSE_SUPERVISED=launchd', runner)
-        self.assertIn('MACLASSE_TLS_KEY="$KEY"', runner)
-        self.assertIn("/sbin/route -n get default", runner)
-        self.assertIn("/usr/sbin/ipconfig getifaddr", runner)
-        self.assertIn("Configurer-MaClasse-Reseau.sh", runner)
+        self.assertIn("network_supervisor.py", runner)
 
 
 
@@ -132,6 +134,8 @@ class MacOSSupervisorTests(unittest.TestCase):
             (root / ".venv" / "bin" / "python").symlink_to(sys.executable)
             shutil.copy2(ROOT / "server.py", root / "server.py")
             shutil.copy2(ROOT / "update_manager.py", root / "update_manager.py")
+            shutil.copy2(ROOT / "release_signing.py", root / "release_signing.py")
+            self.assertTrue((root / "release_signing.py").is_file())
             (data / "maclasse.json").write_text(
                 json.dumps({"schemaVersion": 25011, "users": [], "classes": [], "students": []}),
                 encoding="utf-8"
@@ -791,24 +795,27 @@ assert server._update_apply_service_active() is False
         self.assertIn("os.fsync(stream.fileno())", script)
 
     @unittest.skipUnless(sys.platform == "darwin", "La migration d'installation nécessite macOS.")
-    def test_v25_0_22_existing_install_migrates_to_managed_launchd_without_touching_data(self):
-        """Reproduces the user's V25.0.22 layout before enabling the updater supervisor."""
+    def test_v25_0_19_existing_install_migrates_to_managed_launchd_without_touching_data(self):
+        """Reproduces the pre-supervisor V25.0.19 layout before enabling the updater."""
         import os
         import tempfile
         import shutil
         import json
         import plistlib
 
-        with tempfile.TemporaryDirectory(prefix="maclasse-v2522-migration-") as temp:
+        with tempfile.TemporaryDirectory(prefix="maclasse-v2519-migration-") as temp:
             base = Path(temp)
             root = base / "MaClasse"
             data = root / "data"
             (root / ".venv" / "bin").mkdir(parents=True)
             (data / "tls").mkdir(parents=True)
+            (data / "uploads" / "travaux").mkdir(parents=True)
+            (root / "VERSION.txt").write_text("V25.0.19" + chr(10), encoding="utf-8")
+            (data / "uploads" / "travaux" / "échantillon.txt").write_text("rendu conservé", encoding="utf-8")
             (root / ".venv" / "bin" / "python").symlink_to(sys.executable)
             for name in SCRIPTS:
                 shutil.copy2(ROOT / name, root / name)
-            # Representative persistent V25.0.22 installation data.
+            # Representative persistent V25.0.19 installation data.
             database = {"schemaVersion": 25011, "school": "École de test",
                         "users": [{"username": "admin"}], "classes": [{"name": "6e A"}],
                         "students": [{"name": "Élève témoin"}]}
@@ -835,6 +842,8 @@ assert server._update_apply_service_active() is False
             self.assertEqual(json.loads((data / "maclasse.json").read_text(encoding="utf-8")), database)
             for name in ("server.crt", "server.key", "ca.crt"):
                 self.assertEqual((data / "tls" / name).read_text(encoding="utf-8"), "fixture-" + name)
+            self.assertEqual((data / "uploads" / "travaux" / "échantillon.txt").read_text(encoding="utf-8"), "rendu conservé")
+            self.assertEqual((root / "VERSION.txt").read_text(encoding="utf-8"), "V25.0.19" + chr(10))
             current = data / "program" / "current"
             self.assertTrue(current.is_symlink())
             self.assertEqual(current.resolve(), root.resolve())

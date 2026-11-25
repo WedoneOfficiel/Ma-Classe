@@ -58,6 +58,78 @@ class StudentScopeTests(unittest.TestCase):
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
 
+    def test_student_cloud_projection_limits_class_group_and_explicit_shares(self):
+        self.data['students'][0]['group']='A'
+        self.data['cloudItems']=[
+            {'id':'class-file','type':'file','space':'class','ownerId':'t1','classId':'c1',
+             'name':'Cours.pdf','serverName':'cloud/class/classes/c1/Cours.pdf',
+             'url':'/data/uploads/cloud/class/classes/c1/Cours.pdf','shares':[]},
+            {'id':'group-a-file','type':'file','space':'group','ownerId':'t1','classId':'c1','group':'A',
+             'name':'Groupe A.pdf','serverName':'cloud/group/classes/c1/groups/A/Groupe-A.pdf',
+             'url':'/data/uploads/cloud/group/classes/c1/groups/A/Groupe-A.pdf','shares':[]},
+            {'id':'group-b-file','type':'file','space':'group','ownerId':'t1','classId':'c1','group':'B',
+             'name':'Groupe B.pdf','serverName':'cloud/group/classes/c1/groups/B/Groupe-B.pdf',
+             'url':'/data/uploads/cloud/group/classes/c1/groups/B/Groupe-B.pdf','shares':[]},
+            {'id':'other-class-file','type':'file','space':'class','ownerId':'t2','classId':'c2',
+             'name':'Autre classe.pdf','serverName':'cloud/class/classes/c2/Autre-classe.pdf','shares':[]},
+            {'id':'private-file','type':'file','space':'personal','ownerId':'t1',
+             'name':'Privé.pdf','serverName':'cloud/personal/users/t1/Privé.pdf','shares':[]},
+            {'id':'direct-share','type':'file','space':'personal','ownerId':'t1',
+             'name':'Fiche partagée.txt','serverName':'cloud/personal/users/t1/Fiche-partagée.txt',
+             'url':'/data/uploads/cloud/personal/users/t1/Fiche-partagée.txt',
+             'shares':[{'type':'student','id':'s1','role':'edit'},{'type':'student','id':'s2','role':'view'}]},
+            {'id':'shared-folder','type':'folder','space':'personal','ownerId':'t1',
+             'name':'Ressources','serverName':'cloud/personal/users/t1/Ressources',
+             'shares':[{'type':'student','id':'s1','role':'edit'}]},
+            {'id':'nested-file','type':'file','space':'personal','ownerId':'t1','parentId':'shared-folder',
+             'name':'Annexe.pdf','serverName':'cloud/personal/users/t1/Ressources/Annexe.pdf','shares':[]},
+        ]
+        view=server._student_visible_data(self.data,self.user)
+        by_id={x['id']:x for x in view['cloudItems']}
+        self.assertEqual(
+            set(by_id),
+            {'class-file','group-a-file','direct-share','shared-folder','nested-file'}
+        )
+        self.assertEqual(by_id['direct-share']['shares'],[
+            {'type':'student','id':'s1','role':'view'}
+        ])
+        self.assertEqual(by_id['shared-folder']['shares'],[
+            {'type':'student','id':'s1','role':'view'}
+        ])
+        self.assertNotIn('ownerId',by_id['direct-share'])
+        self.assertNotIn('shares',by_id['private-file'] if 'private-file' in by_id else {})
+
+    def test_student_cloud_files_are_read_only_and_checked_against_visible_projection(self):
+        cloud_dir=os.path.join(server.UPLOADS,'cloud','class','classes','c1')
+        os.makedirs(cloud_dir)
+        with open(os.path.join(cloud_dir,'Cours.pdf'),'wb') as f:
+            f.write(b'%PDF-1.4 test')
+        personal_dir=os.path.join(server.UPLOADS,'cloud','personal','users','t1')
+        os.makedirs(personal_dir)
+        with open(os.path.join(personal_dir,'Prive.pdf'),'wb') as f:
+            f.write(b'%PDF-1.4 private')
+        self.data['cloudItems']=[
+            {'id':'class-file','type':'file','space':'class','ownerId':'t1','classId':'c1',
+             'name':'Cours.pdf','serverName':'cloud/class/classes/c1/Cours.pdf',
+             'url':'/data/uploads/cloud/class/classes/c1/Cours.pdf','shares':[]},
+            {'id':'private-file','type':'file','space':'personal','ownerId':'t1',
+             'name':'Prive.pdf','serverName':'cloud/personal/users/t1/Prive.pdf','shares':[]},
+        ]
+        with open(server.DATA_FILE,'w',encoding='utf-8') as f:
+            json.dump(self.data,f)
+        self.assertTrue(server._cloud_path_allowed(
+            self.user,'cloud/class/classes/c1/Cours.pdf',write=False
+        ))
+        self.assertFalse(server._cloud_path_allowed(
+            self.user,'cloud/class/classes/c1/Cours.pdf',write=True
+        ))
+        self.assertFalse(server._cloud_path_allowed(
+            self.user,'cloud/personal/users/t1/Prive.pdf',write=False
+        ))
+        self.assertFalse(server._cloud_grant(
+            self.data['cloudItems'][0],self.user,self.data,write=True
+        ))
+
     def test_student_mail_attachments_are_confined_to_own_mail_folders(self):
         own='mail-v2/student:s1/attachment.txt'
         draft='mail-v2-drafts/student:s1/draft.txt'
@@ -139,6 +211,21 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual(mailbox['states']['student:s1'],{'incoming':{'read':True}})
         self.assertEqual(mailbox['states']['student:s2'],{'keep':'private'})
         self.assertEqual([x['id'] for x in mailbox['drafts']],['own'])
+
+    def test_student_projection_includes_co_teachers_and_active_assignments_in_mail_recipients(self):
+        self.data['users'].extend([
+            {'id':'t3','role':'teacher','first':'Prof','last':'C'},
+            {'id':'t4','role':'teacher','first':'Prof','last':'D'},
+        ])
+        self.data['schedule'][0]['teacherIds']=['t3']
+        self.data['teacherAssignments']=[
+            {'id':'replacement-1','teacherId':'t4','classId':'c1','type':'replacement',
+             'startDate':'2000-01-01','endDate':'2999-12-31'}
+        ]
+        view=server._student_visible_data(self.data,self.user)
+        visible={x['id'] for x in view['teachers']}
+        self.assertEqual(visible,{'t1','t3','t4'})
+        self.assertNotIn('t2',visible)
 
     def test_student_projection_hides_future_scheduled_evaluation_until_publish_time(self):
         now=datetime.datetime.now(datetime.timezone.utc)

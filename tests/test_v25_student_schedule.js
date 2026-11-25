@@ -13,7 +13,9 @@ const renderedStudentCard=vm.runInContext("studentEventCard({id:'slot-1'},'2026-
 assert.strictEqual(renderedStudentCard.isStudent,true,'Le composant élève doit déléguer au rendu partagé en mode élève.');
 assert(source.includes('function studentScheduleWeek(ds,occ){return scheduleWeek(ds,occ,true)}'));
 assert(source.includes('function studentScheduleDay(d,occ){return scheduleDay(d,occ,true)}'));
-assert(source.includes('window.setInterval(refreshLiveScheduleData,5000)'));
+assert(source.includes('liveSyncTimer=window.setInterval(()=>refreshLiveScheduleData(false),5000)'));
+assert(source.includes("window.addEventListener('online'"));
+assert(source.includes("document.addEventListener('visibilitychange'"));
 assert(source.includes('Le serveur n’a pas confirmé l’enregistrement'));
 assert(source.includes('Le serveur n’a pas confirmé l’envoi du travail'));
 
@@ -41,6 +43,8 @@ assert(source.includes('closeModal();refreshSchedulePage();window.scrollTo(0,scr
 assert(source.includes("catch(err){db=JSON.parse(before);normalize();toast('Échec de sauvegarde : '+(err.message||'réessaie.'))}"), 'En cas d’échec, le formulaire reste ouvert pour permettre une correction ou une nouvelle tentative.');
 
 const context = {
+  countLabel: (value,singular,plural) => { const count=Math.max(0,Number(value)||0); return count+' '+(count===1?singular:(plural||singular+'s')); },
+  formatFrenchDate: (date,options) => { const value=date.toLocaleDateString('fr-FR',options); return value.charAt(0).toUpperCase()+value.slice(1); },
   activeStudent: () => 'student-1',
   student: id => ({id, first:'Alice', classId:'class-1'}),
   studentClass: () => ({name:'6A'}),

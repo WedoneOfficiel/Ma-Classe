@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import unittest
 import shutil
 from pathlib import Path
@@ -14,8 +15,20 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         self.assertIn("workflow_call:", tests)
         self.assertIn("uses: ./.github/workflows/tests.yml", release)
         self.assertIn("needs: validate", release)
+        self.assertIn("scripts/sign_release.py", release)
+        self.assertIn("MACLASSE_RELEASE_SIGNING_KEY_B64", release)
+        self.assertIn("dist/maclasse-update.sig", release)
         self.assertIn("macos-validation:", tests)
         self.assertIn("firefox-schedule-regression:", tests)
+
+    def test_release_signing_cli_scripts_compile(self):
+        for path in (
+            ROOT / "release_signing.py",
+            ROOT / "scripts" / "generate_release_signing_key.py",
+            ROOT / "scripts" / "sign_release.py",
+        ):
+            with self.subTest(path=path.name):
+                subprocess.run([sys.executable, "-m", "py_compile", str(path)], check=True)
 
     def test_both_update_scripts_are_valid_shell(self):
         for name in ("Mettre-A-Jour-MaClasse.command", "Mettre-A-Jour-MaClasse-Linux.sh"):

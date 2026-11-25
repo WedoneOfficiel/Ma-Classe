@@ -1,3 +1,13 @@
+# Guides MaClasse des versions antérieures — archive
+
+> **Archives historiques — ne pas suivre comme procédure actuelle.** Ces textes décrivent des distributions V21/V24/V25.0.7 antérieures. Ils peuvent contenir des identifiants de test, des consignes HTTP ou des limites qui ne sont plus valides. Pour toute installation actuelle, utiliser exclusivement [`docs/INSTALLATION.md`](../INSTALLATION.md) et [`docs/RESEAU_HTTPS.md`](../RESEAU_HTTPS.md). Les contenus originaux sont conservés ci-dessous pour l'historique.
+
+---
+
+## Source originale : `LISEZ-MOI.txt`
+
+Contenu original conservé :
+
 MaClasse V24.1 — intégration d’ArIA Core 2.0
 ================================================
 
@@ -223,3 +233,57 @@ de macOS (en dehors du dossier MaClasse). Le présent paquet ne supprime pas ces
 caches personnels automatiquement, afin de ne pas effacer d'autres modèles ou
 données d'autres applications. Le lanceur V24.2 arrête uniquement les anciens
 processus ArIA MaClasse dont il retrouve les fichiers PID connus.
+
+
+---
+
+## Source originale : `INSTALLATION_MAC_V25.txt`
+
+Contenu original conservé :
+
+MaClasse V25.0.7 — installation native sur Mac Apple Silicon
+
+CIBLE
+- Mac avec puce Apple Silicon (M1/M2/M3/M4/M5), dont macOS 27.
+- Terminal et Python doivent fonctionner nativement en arm64, sans Rosetta.
+- Firefox est ouvert automatiquement s'il est installé ; sinon le navigateur par défaut est utilisé.
+
+PRÉREQUIS
+- Python 3.10 minimum ; Python 3.12 est recommandé.
+- Connexion Internet pendant l'installation des dépendances Python.
+- Dossier MaClasse situé dans un emplacement où ton compte macOS peut écrire.
+
+INSTALLATION
+1. Télécharge l'archive ZIP du dépôt MaClasse et décompresse-la dans le dossier choisi.
+2. Ouvre le dossier décompressé.
+3. Double-clique sur Installer-MaClasse.command.
+4. Si macOS bloque le premier lancement, fais clic droit > Ouvrir et confirme. Ne contourne pas Gatekeeper pour un fichier dont tu ne connais pas la provenance.
+5. À la fin, double-clique sur Lancer-MaClasse.command.
+6. Firefox s'ouvre sur http://127.0.0.1:8765 si Firefox est installé.
+
+UTILISATION
+- Laisse la fenêtre Terminal du serveur ouverte pendant l'utilisation.
+- Pour arrêter proprement le serveur, reviens dans cette fenêtre et fais Ctrl+C.
+- Pour relancer MaClasse, double-clique à nouveau sur Lancer-MaClasse.command.
+- Données : data/maclasse.json ; pièces jointes : data/uploads/ ; sauvegardes : data/backups/.
+
+PREMIÈRE CONNEXION
+- Direction : admin / admin
+- Professeur : enseignant / enseignant
+Le mot de passe provisoire doit être remplacé au premier accès par un mot de passe personnel d'au moins 12 caractères. Ne réutilise pas ces identifiants ailleurs.
+
+SÉCURITÉ ET LIMITES ACTUELLES
+- Le lanceur habituel reste strictement limité à 127.0.0.1.
+- Pour un essai ponctuel sur une box privée isolée, utilise Lancer-MaClasse-Reseau.command : il lie le serveur à l'IPv4 privée précise du Mac, sans écouter sur toutes les interfaces. Le lanceur refuse de démarrer tant que les mots de passe initiaux admin/admin et enseignant/enseignant fonctionnent encore : connecte-toi d'abord en local et change les deux.
+- HTTP sur le LAN n'est pas chiffré : données fictives uniquement, jamais de vrais dossiers scolaires, mots de passe réutilisés ou réseau partagé. N'utilise pas ce mode sur le réseau de l'établissement et ne configure aucune redirection de ports.
+- Les comptes élèves individuels sont disponibles en première tranche : la direction peut les créer depuis Administration → Utilisateurs. Le portail affiche les données personnelles, l'emploi du temps, les cours, les résultats publiés, la vie scolaire et permet les rendus de devoirs. La messagerie et le Cloud élève restent désactivés.
+- Le mode LAN est expérimental ; HTTP n'est pas chiffré. HTTPS, pare-feu, audit complet des autorisations, messagerie/Cloud élève et tests multi-appareils restent à valider avant toute utilisation réelle.
+
+SAUVEGARDE AVANT MISE À JOUR
+1. Arrête le serveur avec Ctrl+C.
+2. Copie le dossier data/ complet vers un emplacement sûr et protégé.
+3. Mets à jour le code sans remplacer ton dossier data/.
+4. Redémarre et vérifie les données avant de reprendre le travail.
+Ne partage jamais le dossier data/ : il peut contenir des informations personnelles et scolaires.
+
+
