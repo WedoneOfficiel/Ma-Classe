@@ -44,6 +44,13 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("const headerMeta={dashboard:", JS)
         self.assertIn("content.includes('class=\"top\"')?content:shell(meta[0],meta[1],meta[2])+content", JS)
 
+    def test_legacy_today_route_compatibility_loads_before_application(self):
+        compatibility = HTML.index('<script id="mc-render-compatibility">')
+        application = HTML.index('<script src="_all.js">')
+        self.assertLess(compatibility, application)
+        self.assertIn("var today = function(){ return window.activity(); };", HTML)
+        self.assertIn("if(p==='today'||p==='notifications')p='activity'", JS)
+
     def test_appearance_is_a_visual_three_way_choice(self):
         self.assertIn('class="themeChoices"', JS)
         for theme in ("light", "dark", "system"):
