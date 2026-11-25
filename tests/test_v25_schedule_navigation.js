@@ -261,6 +261,19 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
     'Une navigation sans saisie locale doit recevoir les nouvelles données serveur.');
   assert.strictEqual(context.dataRevision,'rev3');
   assert.strictEqual(context.renderCount,2,'La vue courante doit être rendue après actualisation du modèle.');
+
+  // Même si un autre chemin a déjà actualisé le modèle local, une nouvelle
+  // révision doit reconstruire le DOM : l'ancien calendrier peut être périmé.
+  context.liveSyncBusy=false;context.dataRevision='rev3';
+  context.db={schedule:[{id:'already-in-memory'}]};
+  context.fetch=url=>{
+    if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev4'})});
+    return Promise.resolve({ok:true,headers:{get:()=> 'rev4'},json:async()=>({schedule:[{id:'already-in-memory'}]})});
+  };
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.renderCount,3,
+    'Une nouvelle révision serveur doit rafraîchir le DOM même si le modèle JSON semble identique.');
+  assert.strictEqual(context.dataRevision,'rev4');
   const saveStart=source.indexOf('async function saveSchedule(e,id)');
   const saveEnd=source.indexOf('async function deleteSchedule(',saveStart);
   assert(saveStart>=0&&saveEnd>saveStart,'La sauvegarde du créneau doit être présente.');
