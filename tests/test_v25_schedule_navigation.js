@@ -16,6 +16,7 @@ const context = {
   scheduleView: 'week',
   dataRevision: null,
   lastRenderedRevision: null,
+  lastRenderError: null,
   renderCount: 0,
   render() { this.renderCount += 1; },
   db: { schedule: [], classes: [] },
@@ -218,7 +219,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.db={schedule:[{id:'local-draft'}]};
   context.dataBase={schedule:[{id:'local-draft'}]};
   context.normalize=()=>{};
-  context.renderCount=0;context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision};
+  context.renderCount=0;context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision;context.lastRenderError=null};
   let resolveStatus;
   context.fetch=url=>{
     assert.strictEqual(url,'/api/sync-status');
@@ -280,6 +281,26 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   assert.strictEqual(context.renderCount,3,
     'Une nouvelle révision serveur doit rafraîchir le DOM même si le modèle JSON semble identique.');
   assert.strictEqual(context.dataRevision,'rev4');
+
+  // A failed page render must not mark the remote revision as visible;
+  // the next poll must retry the same server revision.
+  context.liveSyncBusy=false;context.dataRevision='rev4';context.lastRenderedRevision='rev4';
+  context.fetch=url=>{
+    if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev5'})});
+    return Promise.resolve({ok:true,headers:{get:()=> 'rev5'},json:async()=>({schedule:[{id:'retry-after-render-error'}]})});
+  };
+  context.render=()=>{context.renderCount++;context.lastRenderError=new Error('render test failure')};
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.lastRenderedRevision,'rev4',
+    'Un rendu en échec ne doit pas avancer la révision affichée.');
+  assert.strictEqual(context.syncOnline,false,
+    'Un échec de rendu doit rester visible comme erreur de synchronisation.');
+  context.liveSyncBusy=false;
+  context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision;context.lastRenderError=null};
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.lastRenderedRevision,'rev5',
+    'La synchronisation doit pouvoir reprendre après un échec de rendu.');
+  
   const saveStart=source.indexOf('async function saveSchedule(e,id)');
   const saveEnd=source.indexOf('async function deleteSchedule(',saveStart);
   assert(saveStart>=0&&saveEnd>saveStart,'La sauvegarde du créneau doit être présente.');
@@ -302,7 +323,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.closeModal=()=>{};
   context.refreshSchedulePage=()=>context.render();
   context.toast=message=>{context.lastToast=message};
-  context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision};
+  context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision;context.lastRenderError=null};
   context.db={schedule:[],classes:[{id:'class-1',name:'Classe 1'}],teachers:[],settings:{rooms:[]}};
   context.persistedSchedule=JSON.parse(JSON.stringify(context.db));
   vm.runInContext(source.slice(saveStart,saveEnd),context);
