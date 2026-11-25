@@ -380,6 +380,38 @@ def main() -> None:
                 }""", account)
                 if student_state.get("role") != "student" or student_state.get("studentId") != "firefox-student":
                     raise AssertionError("Student session not initialized: "+repr(student_state))
+                student_module_smoke = student_page.evaluate("""() => {
+                  const modules=[
+                    'studentHome','studentSchedule','studentLessons','studentWork',
+                    'studentResults','studentLife','studentMessages','studentDocuments',
+                    'studentSettings','activity'
+                  ];
+                  const results=[];
+                  for(const id of modules){
+                    page=id;appSpace='student';render();
+                    const main=document.getElementById('main');
+                    const text=main?.innerText||'';
+                    results.push({
+                      id,
+                      hasTitle:!!main?.querySelector('.top h1'),
+                      hasError:text.includes('Une erreur a empêché l’affichage de cette page.'),
+                      title:main?.querySelector('.top h1')?.innerText||'',
+                      width:main?.scrollWidth||0,
+                      viewport:window.innerWidth
+                    });
+                  }
+                  return results;
+                }""")
+                broken_student_modules = [
+                    item for item in student_module_smoke
+                    if item["hasError"] or not item["hasTitle"]
+                ]
+                if broken_student_modules:
+                    raise AssertionError(
+                        "Des modules de l'espace élève ne se rendent pas correctement : "
+                        + json.dumps(broken_student_modules,ensure_ascii=False)
+                    )
+                student_page.evaluate("page='studentHome';appSpace='student';render();")
                 student_page.evaluate("""() => {
                   page='studentMessages';
                   appSpace='student';
