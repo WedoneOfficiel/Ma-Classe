@@ -4,7 +4,7 @@
 **Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
 **Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
 **Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
-**Validation automatisée :** workflow [#1759](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45704572819) vert sur la tête vérifiée (`b3f44aa`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
+**Validation automatisée :** workflow [#1763](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45706617681) vert sur la tête vérifiée (`b06f8ef`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
 
 Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
 
@@ -373,3 +373,10 @@ Le workflow #1758 avait échoué uniquement parce que le test launchd copiait le
 - parcours complets avec comptes Direction, Professeur, Élève et remplaçant sur les appareils de référence.
 
 Les tests CI s'appuient sur une clé éphémère uniquement. La clé publique d'éditeur du dépôt reste volontairement non configurée tant que son propriétaire n'a pas procédé au provisionnement.
+
+
+## 19. Validation finale des outils Ed25519 — workflow #1763
+
+Le commit `b06f8ef` a passé les trois jobs Linux, macOS Apple Silicon et Firefox réel. En plus de vérifier la cryptographie, les tests exécutent maintenant le générateur de paire de clés et le script de signature en sous-processus : permissions de la clé privée, signature valide, refus lorsque le secret manque et absence de fichier de signature en cas de refus. Les secrets ne sont pas affichés et les clés de test restent temporaires.
+
+Le fichier public épinglé par MaClasse demeure volontairement à l'état non configuré. Le mécanisme est donc testé, mais l'authenticité d'une future release réelle dépend encore du provisionnement de la paire éditeur et du secret GitHub Actions.

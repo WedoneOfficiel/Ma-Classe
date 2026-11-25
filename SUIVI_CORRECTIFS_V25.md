@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `b3f44aa`, CI complète #1759 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `b06f8ef`, CI complète #1763 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -658,3 +658,19 @@ Le workflow #1758 a passé les tests Linux, les nouveaux tests de signature Ed25
 - Un premier run #1758 a échoué parce que le fixture launchd ne copiait pas `release_signing.py`. Le fixture a été corrigé pour reproduire le contenu complet de l'application ; aucun contrôle de sécurité n'a été supprimé.
 
 La clé publique et le secret GitHub ne sont pas encore provisionnés. Les tests utilisent une paire éphémère créée dans un répertoire temporaire ; cela prouve le mécanisme de signature, pas l'identité de la future clé éditeur.
+
+
+## Validation des outils de signature et synchronisation finale — 25/11/2026
+
+**Commit testé :** `b06f8ef1baa46f230d16220d2608b63678161a80`  
+**Workflow :** [#1763](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45706617681)  
+**Résultat :** 3 jobs sur 3 réussis : Linux, macOS Apple Silicon et Firefox réel.
+
+Les nouveaux scénarios vérifient en plus :
+- génération effective d'une paire Ed25519 dans un répertoire temporaire ;
+- conservation de la clé privée hors du dépôt et permissions POSIX `0600` ;
+- signature effective du manifeste par le script CLI puis vérification de cette signature ;
+- refus de signer lorsque le secret GitHub Actions est absent, sans création d'asset ;
+- compilation des trois scripts cryptographiques.
+
+Le commit courant a également corrigé la règle `.gitignore` pour le véritable nom du fichier de clé privée. La clé éditeur de production reste non provisionnée ; les tests utilisent des clés éphémères.
