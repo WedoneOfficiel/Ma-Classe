@@ -307,6 +307,8 @@ def main() -> None:
                     headers:{'Content-Type':'application/json','If-Match':dataRevision||''},
                     body:JSON.stringify(data)
                   });
+                  // Keep the live teacher model aligned with the newly committed Cloud metadata.
+                  db=await api('/api/data');normalize();
                   return {sharedUrl:shared.url,privateUrl:privateFile.url};
                 }""")
                 # The active evaluation page must agree with the selected class immediately.
