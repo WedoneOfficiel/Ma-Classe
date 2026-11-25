@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-cd "$(dirname "$0")"
+ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+cd "$ROOT"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "Ce lanceur réseau est réservé à macOS."
