@@ -53,7 +53,6 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn('MACLASSE_ROOT="$ROOT"', runner)
         self.assertIn('MACLASSE_DATA_DIR="$DATA"', runner)
         self.assertIn('SCRIPT_DIR/../../../..', runner)
-        self.assertIn('MACLASSE_SUPERVISED=launchd', runner)
         self.assertIn('MACLASSE_APP_ROOT="$PROGRAM"', runner)
         self.assertIn('MACLASSE_SUPERVISED=launchd', runner)
         self.assertIn("network_supervisor.py", runner)
