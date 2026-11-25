@@ -645,6 +645,21 @@ Le lot de stabilisation V25.0.25 part du commit c8e5576 (V25.0.24) et aligne les
 - Le gestionnaire de mises à jour vérifie maintenant, en plus du SHA-256 déclaré dans le manifeste, les métadonnées de taille et de digest SHA-256 des assets GitHub lorsqu'elles existent. Les assets historiques sans digest restent acceptés, mais ne sont pas présentés comme signés.
 - Le scénario macOS de migration de l'installation historique est exécuté à partir d'un fixture V25.0.19 ; le test contrôle que la base, les certificats et le lien actif restent intacts après l'installation du service launchd.
 - Le test macOS de bout en bout couvrant mise à jour HTTPS, health-check et rollback est déjà présent dans tests/test_macos_supervisor.py. Il a réussi dans la CI GitHub Actions #1573 (Linux, macOS/launchd et Firefox réel) ; ce succès sur des runners hébergés ne remplace pas la recette physique sur le Mac cible.
-- La détection d'un changement d'adresse DHCP pendant que le serveur macOS reste actif n'est pas encore automatisée. Réserver une IP dans le DHCP et redémarrer le service après changement reste nécessaire.
+- `network_supervisor.py` surveille désormais l'IPv4 privée Linux/macOS, arrête le listener en cas de perte réseau et le relance après changement DHCP en renouvelant le certificat serveur sous la même autorité locale. La réservation DHCP reste recommandée pour conserver une URL stable ; les essais Wi-Fi physiques restent à effectuer.
 - Les releases ne possèdent toujours pas de signature éditeur indépendante. Le digest fourni par GitHub et le SHA-256 du manifeste sont des contrôles d'intégrité, pas une preuve cryptographique de l'identité de l'éditeur.
 - Le fonctionnement Wi-Fi entre appareils physiques, le pare-feu Fedora, l'installation de l'autorité dans Firefox et la restauration sur un autre poste restent à valider sur le matériel réel.
+
+
+## Audit produit — modules et interface (25/11/2026)
+
+Un audit distinct du déploiement réseau est désormais maintenu dans [docs/AUDIT_PRODUIT_V25.md](docs/AUDIT_PRODUIT_V25.md). Il couvre les modules Évaluations, Bulletins, Messagerie, Cloud, Emploi du temps, Séances, Appels, Profils, Paramètres et les espaces Direction/Professeur/Élève.
+
+Premiers constats issus de la lecture du code :
+- La messagerie V21.04 active bien une boîte élève et une boîte professeur ; un ancien écran « bientôt disponible » reste présent dans le code historique, mais il est remplacé à l'exécution. La recette sur une installation réelle reste nécessaire.
+- Le module Évaluations s'appuie sur le moteur V21.17 ; plusieurs anciennes définitions de fonctions restent dans le fichier JavaScript et doivent être consolidées sans supprimer de chemin actif.
+- Le module Bulletins V21.09 et ses parcours de validation/PDF disposent de tests dédiés ; une recette fonctionnelle complète reste à faire.
+- Le test Firefox de l'EDT couvre déjà les vues jour/semaine/mois et la parité structurelle professeur/élève. Il signale maintenant un défaut de propagation d'un créneau vers le calendrier élève, en cours d'investigation.
+- Le thème utilisateur est piloté par le marqueur `data-mc-theme`. La parité visuelle de tous les modules en clair et sombre n'est pas encore certifiée.
+- La rationalisation des modules (tableau de bord, Centre d'activité, Aujourd'hui) reste une question d'audit ; aucune suppression n'est engagée sans mesurer l'usage et les dépendances.
+
+Les correctifs réseau et synchronisation applicative déjà développés dans la branche sont conservés. La synchronisation multi-modules et la gestion des conflits ne sont pas encore considérées comme validées tant que les parcours Firefox et les tests ciblés ne sont pas tous passés.
