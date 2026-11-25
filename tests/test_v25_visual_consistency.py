@@ -65,6 +65,36 @@ class VisualConsistencyTests(unittest.TestCase):
             self.assertIn(f"setAppearanceTheme('{theme}')", JS)
         self.assertIn(".themePreviewSystem{", HTML)
 
+
+    def test_dark_cards_do_not_keep_the_light_glass_highlight(self):
+        self.assertIn('html[data-mc-theme="dark"] .card::before,', HTML)
+        self.assertIn('html[data-mc-theme="dark"] .bulletin::before{', HTML)
+        self.assertIn('background:none!important;', HTML)
+        self.assertIn('opacity:0!important;', HTML)
+
+    def test_visible_screens_use_french_singular_and_plural_counts(self):
+        self.assertIn("function countLabel(value,singular,plural)", JS)
+        start = JS.index("function studentLessons(){")
+        end = JS.index("\\nfunction ", start + 20)
+        student_lessons = JS[start:end]
+        self.assertIn("countLabel(occ(d).length,'créneau','créneaux')", student_lessons)
+        self.assertIn("countLabel(items.filter(l=>l.date===lessonDay).length,'séance','séances')", student_lessons)
+        self.assertNotIn("créneau(x)", student_lessons)
+        self.assertNotIn("séance(s)", student_lessons)
+
+        start = JS.index("function lessons(){")
+        end = JS.index("\\nfunction ", start + 20)
+        teacher_lessons = JS[start:end]
+        self.assertIn("countLabel(occ.length,'créneau','créneaux')", teacher_lessons)
+        self.assertNotIn("créneau(x)", teacher_lessons)
+
+        start = JS.index("function settings(){")
+        end = JS.index("\\nasync function restoreZipBackup", start + 20)
+        settings = JS[start:end]
+        self.assertIn("countLabel(db.students.length,'élève','élèves')", settings)
+        self.assertIn("countLabel((db.auditLog||[]).length,'événement','événements')", settings)
+        self.assertNotIn("événement(s)", settings)
+
     def test_dark_theme_does_not_add_extra_background_effects(self):
         self.assertIn('html[data-mc-theme="dark"] body{background:var(--bg)!important}', HTML)
         self.assertIn('html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .bulletin{background:var(--paper)!important', HTML)
