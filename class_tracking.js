@@ -56,7 +56,7 @@ function classTracking(){
  if(!available.length)return shell('Pilotage','Suivi de classe','Les classes auxquelles vous avez accès apparaîtront ici.')+'<div class="card section"><div class="empty">Aucune classe accessible pour le moment.</div></div>';
  const selected=available.find(c=>String(c.id)===String(window.classContext||''));
  if(!selected){
-  const cards=available.map(c=>{const d=classTrackingData(c.id);return '<button class="card ppQuick" style="text-align:left" onclick="openClassTracking('+jsArg(c.id)+')"><span><b>'+esc(c.name)+'</b><small>'+esc(classLevelLabel(c))+' · '+countLabel(d.stats.students,'élève','élèves')+'</small><small>'+countLabel(d.stats.absent,'absence','absences')+' · '+countLabel(d.stats.missing,'travail non rendu','travaux non rendus')+'</small></span><span>›</span></button>'}).join('');
+  const cards=available.map(c=>{const d=classTrackingData(c.id);return '<button class="card ppQuick" style="text-align:left" onclick="openClassTracking('+jsArg(c.id)+')"><span class="ppQuickIcon">▣</span><span><b>'+esc(c.name)+'</b><small>'+esc(classLevelLabel(c))+' · '+countLabel(d.stats.students,'élève','élèves')+'</small><small>'+countLabel(d.stats.absent,'absence','absences')+' · '+countLabel(d.stats.missing,'travail non rendu','travaux non rendus')+'</small></span><span>›</span></button>'}).join('');
   return shell('Pilotage','Suivi de classe','Retrouvez les informations essentielles de vos classes.')+'<div class="grid g3 section">'+cards+'</div>';
  }
  const d=classTrackingData(selected.id);
