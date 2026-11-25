@@ -101,6 +101,13 @@ def main() -> None:
                 page.on("pageerror", lambda error: page_errors.append(str(error)))
                 page.on("console", lambda message: browser_errors.append(message.text) if message.type == "error" else None)
                 page.goto(url, wait_until="networkidle")
+                browser_locale = page.evaluate("""() => ({
+                  language:navigator.language,
+                  timezone:Intl.DateTimeFormat().resolvedOptions().timeZone
+                })""")
+                if browser_locale.get("language") != "fr-FR" or browser_locale.get("timezone") != "Europe/Paris":
+                    raise AssertionError("Le navigateur de recette doit utiliser fr-FR / Europe-Paris : "
+                                         +repr(browser_locale))
 
                 # Create a disposable administrator in the temporary app.
                 expect(page.locator('input[name="first"]')).to_be_visible()
