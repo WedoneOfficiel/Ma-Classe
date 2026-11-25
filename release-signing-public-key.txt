@@ -1,3 +1,3 @@
 # Clé publique Ed25519 de l'éditeur, encodée en Base64 (32 octets bruts).
-# Générer la paire avec : python scripts/generate_release_signing_key.py --force
-# Seule cette clé publique doit être commitée ; la clé privée reste dans le coffre GitHub Actions.
+# Seule cette clé publique est commitée ; la clé privée reste hors du dépôt.
+fRXaV6EjBD4+9ZUusQ0U0GjQVwNFgjz/Su8AuBH1sFE=
