@@ -1,9 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et rendu
 
-**État : audit en cours — 25 novembre 2026**  
+**État : audit produit poursuivi — 25 novembre 2026**  
 **Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
 **Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
-**Référence actuelle :** PR #13, non fusionnée.
+**Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
+**Validation automatisée :** workflow #1727 vert sur le dernier commit vérifié (`94b86d9`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
 
 Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
 
@@ -247,3 +248,38 @@ Le run #1717 a produit et publié 74 captures PNG ; les 24 captures à 390 px et
 - Les données de capture restent peu volumineuses : les listes très longues, les textes exceptionnellement longs, les gros dossiers Cloud et les conversations massives demandent une recette avec des données plus denses.
 - L'accessibilité complète au clavier et aux lecteurs d'écran n'est pas certifiée par les captures et reste à auditer.
 - Le passage CI sur un runner macOS Apple Silicon ne remplace pas une installation/recette finale sur le Mac cible et ses données historiques.
+
+
+## 14. Corrections produit complémentaires — 25/11/2026
+
+### Messagerie élève — cohérence des destinataires
+
+La projection serveur de l'élève construit maintenant la liste des enseignants joignables à partir des droits réellement calculés par `_student_accessible_teacher_ids` : titulaires, co-enseignants, enseignants des séances et affectations actives. L'interface élève ne réduit plus une seconde fois cette liste aux seuls titulaires. Un test Python couvre l'inclusion des enseignants autorisés et l'exclusion d'un enseignant hors périmètre.
+
+**État :** correctif dans la branche et tests CI verts ; la connexion et l'envoi d'un message depuis un vrai compte élève de l'installation de référence restent à confirmer.
+
+### Bulletins — cohérence entre publication et export PDF
+
+Le contrôle de lecture du PDF utilise maintenant le statut officiel strict (`validated is True` et `published is True`) sans exiger la présence d'un horodatage `publishedAt`. Cette date reste une métadonnée d'affichage ; son absence sur un ancien bulletin ne doit pas annuler une publication déjà validée. La page Résultats ne propose que les bulletins officiellement publiés et validés.
+
+**État :** tests de propriété du bulletin, de refus des bulletins non officiels et de compatibilité des données anciennes passés en CI ; recette depuis un compte élève réel et un poste client reste nécessaire. BUL-02/BUL-03 ne sont donc pas clos.
+
+### Emploi du temps — couleurs et thème sombre
+
+Deux causes concrètes ont été corrigées :
+- la fusion des sauvegardes professeur restaurait l'objet `settings` du serveur et annulait les nouvelles couleurs ; `subjectColors` est désormais fusionné côté serveur, uniquement pour les matières que le professeur est autorisé à enseigner ;
+- le fond blanc de la grille journalière venait d'un `background-image` répétitif qui n'était pas remplacé par l'ancienne règle `background-color` du thème sombre ; la grille reçoit maintenant un dégradé sombre explicite.
+
+Des tests vérifient le filtrage des couleurs par matière et l'apparence du fond sombre.
+
+**État :** code et tests verts ; rendu sur des données denses, semaine/jour/mois et couleurs personnalisées à confirmer sur le Mac et le PC Fedora.
+
+### Limites toujours suivies
+
+- BUL-02 : accès PDF depuis un poste client du réseau à valider physiquement.
+- BUL-03 : parcours complet d'ouverture d'un bulletin depuis le compte élève à valider physiquement.
+- MAIL-02 : accès élève à confirmer avec un vrai compte sur l'installation de référence.
+- BUL-04 : persistance et réouverture des campagnes/bulletins à auditer.
+- AFFECT-02 : découvrabilité et gestion des remplacements à reprendre.
+- UI-ADM-01, UI-SET-01 et UI-PROFIL-01 : contrôles de finition de l'interface à compléter.
+- Accessibilité clavier/lecteurs d'écran et écrans très denses : non certifiés par l'audit actuel.
