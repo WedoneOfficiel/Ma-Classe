@@ -380,3 +380,33 @@ Les tests CI s'appuient sur une clé éphémère uniquement. La clé publique d'
 Le commit `b06f8ef` a passé les trois jobs Linux, macOS Apple Silicon et Firefox réel. En plus de vérifier la cryptographie, les tests exécutent maintenant le générateur de paire de clés et le script de signature en sous-processus : permissions de la clé privée, signature valide, refus lorsque le secret manque et absence de fichier de signature en cas de refus. Les secrets ne sont pas affichés et les clés de test restent temporaires.
 
 Le fichier public épinglé par MaClasse demeure volontairement à l'état non configuré. Le mécanisme est donc testé, mais l'authenticité d'une future release réelle dépend encore du provisionnement de la paire éditeur et du secret GitHub Actions.
+
+
+## 10. Nouvelle vue « Suivi de classe » — 25/11/2026
+
+La vue transversale est implémentée dans `class_tracking.js` et réutilise la route historique `ppDashboard` afin de conserver les liens déjà présents dans les profils et les classes.
+
+### Accès et cloisonnement
+
+- Direction : toutes les classes disponibles dans son espace.
+- Professeur : classes issues des affectations pédagogiques actives et classes dont il est professeur principal.
+- Élève : aucun accès à cette vue.
+- La sélection d'une classe est revalidée contre la liste accessible avant affichage.
+- Les raccourcis vers les modules conservent le contexte de classe.
+
+### Informations affichées
+
+- Effectif de la classe.
+- Absences et retards sur les 30 derniers jours.
+- Travaux nécessitant un dépôt dont l'échéance est passée et pour lesquels aucun dépôt n'a été reçu.
+- Dernières évaluations effectivement publiées, avec le nombre de notes publiées dans le périmètre de la classe ou du groupe.
+- Prochaines échéances.
+- Tableau des élèves avec accès direct à leur fiche et à leur suivi individuel.
+
+Aucun score de risque, classement ou seuil automatique n'est calculé. Les nombres affichés sont des décomptes factuels, avec une période explicitement indiquée pour l'assiduité. Les évaluations non publiées, programmées dans le futur et les notes d'un autre groupe sont exclues des indicateurs.
+
+### Tests et validation
+
+- `tests/test_v25_class_tracking.js` couvre le périmètre Direction/Professeur/Élève, la fenêtre de 30 jours, les groupes, les travaux rendus, les échéances et la publication des évaluations.
+- Le parcours Firefox réel vérifie l'ouverture du module, la sélection d'une classe accessible et le rendu des panneaux principaux.
+- La validation CI de cette nouvelle tête et l'inspection visuelle des captures restent nécessaires avant de déclarer la fonctionnalité validée.
