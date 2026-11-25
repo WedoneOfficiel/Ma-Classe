@@ -357,3 +357,11 @@ MISE À JOUR — AUDIT PRODUIT ET SYNCHRONISATION APPLICATIVE — 25/11/2026
 - Ajout d'une fusion à trois versions des changements indépendants et d'un état de conflit explicite. Les tests dédiés et la régression Firefox doivent encore être stabilisés.
 - Le test Firefox révèle un défaut de propagation d'un créneau ajouté à distance vers l'EDT élève. Cette anomalie est conservée comme point ouvert ; aucune affirmation de synchronisation générale validée.
 - Les correctifs de supervision DHCP, d'intégrité des mises à jour et de migration V25.0.19 restent conservés sur la même branche.
+
+
+MISE À JOUR — RENDU EDT ÉLÈVE — 25/11/2026
+- Diagnostic Firefox : l'endpoint de révision et la lecture serveur fonctionnent ; le modèle élève contient le créneau Sciences ; recurring(), dayOcc() et studentScheduleOcc() le renvoient ; studentSchedule() et scheduleWeek() produisent le HTML attendu.
+- Le DOM de .scheduleCalendarSurface restait cependant sur l'ancien HTML et ne contenait aucun élément du nouveau créneau. Le défaut était donc un rendu navigateur obsolète, et non un problème de projection serveur ou de récurrence.
+- Correction candidate : toute nouvelle révision adoptée déclenche maintenant render() lorsque l'écran ne contient pas de saisie locale active, même si le JSON local est déjà égal au payload reçu.
+- Un test unitaire couvre maintenant précisément le cas modèle déjà identique / DOM périmé. Résultat CI du dernier commit à confirmer ; aucune clôture définitive tant que Firefox réel ne passe pas.
+- La suite navigateur inclut un smoke pass des 16 pages enseignant et des vérifications du thème manuel sombre sous OS clair et clair sous OS sombre ; l'audit visuel détaillé reste ouvert.
