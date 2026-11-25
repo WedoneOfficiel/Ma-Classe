@@ -569,12 +569,13 @@ def main() -> None:
                 teacher_page.evaluate("setAppearanceTheme('light');page='schedule';appSpace='teacher';render();")
                 cloud_layout = teacher_page.evaluate("""() => {
                   const inspect = space => {
-                    window.cloudSpace=space;window.cloudPath=[];window.cloudSelected='';
-                    page='documents';appSpace='teacher';render();
+                    setCloudSpace(space);
                     const layout=document.querySelector('.cloudLayout');
                     const side=layout?.querySelector(':scope > aside');
                     return {
                       space,
+                      actualSpace:window.cloudSpace,
+                      classContext:window.classContext||'',
                       hasSidebar:!!side,
                       columns:getComputedStyle(layout).gridTemplateColumns,
                       sectionWidth:Math.round(layout?.querySelector(':scope > section')?.getBoundingClientRect().width||0),
@@ -595,7 +596,7 @@ def main() -> None:
                             + repr(state)
                         )
                 class_state=cloud_layout["class"]
-                if not class_state["hasSidebar"] or len(class_state["columns"].split()) != 2:
+                if class_state["actualSpace"] != "class" or not class_state["hasSidebar"] or len(class_state["columns"].split()) != 2:
                     raise AssertionError(
                         "Cloud Classe doit conserver sa navigation latérale : "+repr(class_state)
                     )
