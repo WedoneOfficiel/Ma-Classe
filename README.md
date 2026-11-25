@@ -8,13 +8,13 @@ MaClasse est une application web de gestion scolaire destinée à un établissem
 |---|---|
 | Dernière release GitHub publiée | **V25.0.23** (`v25.0.23`, 16/11/2026) |
 | Branche `main` | **V25.0.24** |
-| Candidat de stabilisation | **V25.0.25**, [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), ouverte et non fusionnée |
-| CI du dernier commit vérifié | **Verte** — Linux, macOS Apple Silicon et Firefox réel, workflow [#1763](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45706617681) |
-| Publication V25.0.25 | Pas encore effectuée |
+| Candidat de stabilisation | **V25.1.0**, [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), ouverte et non fusionnée |
+| CI du dernier commit vérifié | **Verte (3/3)** — Linux, macOS Apple Silicon et Firefox réel, workflow [#1793](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45713179841) |
+| Publication V25.1.0 | Pas encore effectuée |
 
-La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remplace pas les recettes sur le Mac, le PC Fedora et les appareils clients réels. La V25.0.25 n'est pas à installer depuis la branche de développement sur une base scolaire réelle.
+La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remplace pas les recettes sur le Mac, le PC Fedora et les appareils clients réels. La V25.1.0 n'est pas à installer depuis la branche de développement sur une base scolaire réelle.
 
-### Changements récents du candidat V25.0.25
+### Changements récents du candidat V25.1.0
 
 - Intégrité des archives de mise à jour : contrôles de taille et de digest SHA-256 lorsque GitHub fournit ces métadonnées.
 - Superviseur réseau commun Linux/macOS : fermeture du listener lors d'une perte réseau et renouvellement du certificat serveur lors d'un changement d'IPv4 privée.
@@ -23,6 +23,10 @@ La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remp
 - Bulletins : statut de publication et autorisations PDF cohérents, y compris pour les bulletins anciens sans horodatage de publication.
 - Emploi du temps : persistance contrôlée des couleurs de matières, fond de grille adapté au thème sombre et accès central filtrable aux remplacements/co-enseignements.
 - Administration : message de confidentialité aligné sur le filtrage serveur des comptes élèves, messages, pièces jointes et ressources.
+
+La vue Suivi de classe est intégrée pour la Direction et les enseignants autorisés : absences/retards, travaux non rendus, évaluations publiées, échéances et accès aux fiches élèves. Les enseignants non PP restent limités aux matières accessibles par leurs affectations ; les PP disposent de la vue transversale. Aucun classement ni score de risque n'est calculé.
+- Le contexte Cloud est réinitialisé lors du passage vers les espaces personnels, partagés et documentaires, sans perdre le raccourci de classe lorsqu'on reste dans l'espace Classe.
+- La ressource JavaScript du nouveau module est explicitement autorisée par le serveur et couverte par un test de liste blanche.
 
 La signature Ed25519 du manifeste est maintenant implémentée côté client et dans le workflow de publication. La génération de la paire de clés et la configuration du secret GitHub Actions restent à effectuer avant toute release ; tant que cette étape n'est pas terminée, les nouvelles mises à jour sont refusées par le vérificateur.
 
@@ -80,6 +84,7 @@ Les anciens guides, états et audits ont été déplacés dans [docs/archives](d
 |---|---|
 | `server.py` | Serveur HTTP/HTTPS, authentification, autorisations, données et API |
 | `index.html` | Structure et styles de l'application |
+| `class_tracking.js` | Vue de suivi de classe et synthèse des données autorisées |
 | `_all.js` | Navigation, modules métier et interactions |
 | `update_manager.py` | Vérification et préparation des mises à jour |
 | `network_supervisor.py` | Supervision du listener HTTPS et changements réseau |
