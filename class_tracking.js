@@ -50,6 +50,10 @@ function openClassTracking(classId){
  window.classGroupContext='';
  appSpace='teacher';page='ppDashboard';render();
 }
+function showClassTrackingList(){
+ window.classContext='';window.classGroupContext='';
+ appSpace='teacher';page='ppDashboard';render();
+}
 function classTracking(){
  if(authUser?.role!=='admin'&&authUser?.role!=='teacher')return studentHome();
  const available=classTrackingClasses();
@@ -70,7 +74,7 @@ function classTracking(){
  const students=d.students.map(x=>'<tr><td><div class="person"><div class="avatar">'+esc(initials(x.student))+'</div><div><b>'+esc((x.student.last||'').toUpperCase())+' '+esc(x.student.first||'')+'</b><small>'+esc(x.student.group||'Classe entière')+'</small></div></div></td><td>'+x.absent+'</td><td>'+x.late+'</td><td>'+x.missing+'</td><td><button class="btn small" onclick="openStudentProfile('+jsArg(x.student.id)+')">Fiche élève</button><button class="btn small" onclick="openStudentActivity('+jsArg(x.student.id)+')">Suivi</button></td></tr>').join('');
  return shell('Pilotage','Suivi de classe',esc(selected.name)+' · '+esc(classLevelLabel(selected)),'<select class="select" style="max-width:220px" aria-label="Choisir une classe" onchange="openClassTracking(this.value)">'+options+'</select>')+
  scopeNotice+'<div class="gradeStats section"><div class="metric"><small>Effectif</small><b>'+d.stats.students+'</b></div><div class="metric"><small>Absences · 30 jours</small><b>'+d.stats.absent+'</b></div><div class="metric"><small>Retards · 30 jours</small><b>'+d.stats.late+'</b></div><div class="metric"><small>Travaux non rendus</small><b>'+d.stats.missing+'</b></div></div>'+
- '<div class="actions section"><button class="btn" onclick="goClassModule(\'schedule\','+jsArg(selected.id)+')">Emploi du temps</button><button class="btn" onclick="goClassModule(\'attendance\','+jsArg(selected.id)+')">Appels</button><button class="btn" onclick="goClassModule(\'evaluations\','+jsArg(selected.id)+')">Évaluations</button><button class="btn" onclick="goClassModule(\'lessons\','+jsArg(selected.id)+')">Séances & leçons</button></div>'+
+ '<div class="actions section"><button class="btn" onclick="showClassTrackingList()">Toutes mes classes</button><button class="btn" onclick="goClassModule(\'schedule\','+jsArg(selected.id)+')">Emploi du temps</button><button class="btn" onclick="goClassModule(\'attendance\','+jsArg(selected.id)+')">Appels</button><button class="btn" onclick="goClassModule(\'evaluations\','+jsArg(selected.id)+')">Évaluations</button><button class="btn" onclick="goClassModule(\'lessons\','+jsArg(selected.id)+')">Séances & leçons</button></div>'+
  '<div class="grid g2 section"><section class="card"><div class="sectionhead"><div><h2>Assiduité récente</h2><div class="muted">Appels des 30 derniers jours</div></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Date</th><th>Créneau</th><th>Abs.</th><th>Ret.</th></tr></thead><tbody>'+(attendanceRows||'<tr><td colspan="4"><div class="empty">Aucun appel récent.</div></td></tr>')+'</tbody></table></div></section>'+
  '<section class="card"><div class="sectionhead"><div><h2>Évaluations publiées</h2><div class="muted">Dernières évaluations visibles par les élèves</div></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Évaluation</th><th>Date</th><th>Notes</th></tr></thead><tbody>'+(evalRows||'<tr><td colspan="3"><div class="empty">Aucune évaluation publiée récemment.</div></td></tr>')+'</tbody></table></div></section></div>'+
  '<div class="grid g2 section"><section class="card"><div class="sectionhead"><div><h2>Travaux non rendus</h2><div class="muted">Échéance dépassée et aucun dépôt reçu</div></div></div><div class="tablewrap"><table class="table"><thead><tr><th>Élève</th><th>Travail</th><th>Échéance</th></tr></thead><tbody>'+(workRows||'<tr><td colspan="3"><div class="empty">Aucun travail non rendu.</div></td></tr>')+'</tbody></table></div>'+(d.missingWorks.length>12?'<div class="hint">12 situations affichées. Consultez le module Séances & leçons pour la liste complète.</div>':'')+'</section>'+
@@ -80,6 +84,7 @@ function classTracking(){
 window.classTrackingClasses=classTrackingClasses;
 window.classTrackingData=classTrackingData;
 window.openClassTracking=openClassTracking;
+window.showClassTrackingList=showClassTrackingList;
 window.ppDashboard=classTracking;
 window.openPPDashboard=function(classId){
  const c=cls(classId),tid=String(currentTeacherProfile()?.id||'');
