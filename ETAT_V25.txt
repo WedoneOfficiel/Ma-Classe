@@ -1,4 +1,4 @@
-ÉTAT DE CONSTRUCTION — MaClasse V25.0.15 (alpha sécurité)
+ÉTAT DE CONSTRUCTION — MaClasse V25.0.25 (candidat de stabilisation, 25/11/2026)
 
 Base de travail indépendante issue de V24.2. La V24.2 d'origine n'est pas modifiée.
 
@@ -329,3 +329,12 @@ MISE À JOUR — V25.0.15 — COMPTES ÉLÈVES CANONIQUES ET MATIÈRES ENSEIGNAN
 - CI complète Ubuntu + macOS Apple Silicon réussie pour le code : tests JavaScript, compilation Python, tests HTTP et tests Python.
 - À faire avant validation utilisateur : recette manuelle dans Firefox sur Mac, création d'élève depuis l'espace professeur, attribution du code provisoire, première connexion élève et changement du mot de passe.
 - Le mode réseau local expérimental reste hors périmètre de cette correction et n'est pas déclaré prêt pour des données réelles.
+
+
+MISE À JOUR DE SYNCHRONISATION — 25/11/2026 — V25.0.25 (candidat)
+- Le dépôt de référence contient V25.0.24 sur main ; la branche de stabilisation passe les marqueurs applicatifs et VERSION.txt à V25.0.25.
+- Le gestionnaire vérifie désormais les tailles et digests SHA-256 de l'API GitHub pour le manifeste et l'archive lorsqu'ils sont exposés ; la vérification SHA-256 du manifeste reste obligatoire pour l'archive téléchargée.
+- Ces digests sont des contrôles d'intégrité fournis par GitHub et ne remplacent pas une signature Ed25519 ou une attestation de provenance vérifiée par le client. La signature éditeur reste un point ouvert.
+- La suite macOS contient un parcours d'installation/rollback launchd + HTTPS et un test de migration d'une installation existante vers le service supervisé ; le fixture de migration est maintenant V25.0.19.
+- La CI de la branche doit être consultée avant fusion ; aucune recette sur le Mac réel, le PC Fedora ou le Wi-Fi physique n'est revendiquée ici.
+- Le redémarrage automatique du service macOS lors d'un changement d'adresse DHCP n'est pas encore implémenté. Réserver une IP au niveau du routeur et redémarrer le service après modification demeure la mesure de précaution.

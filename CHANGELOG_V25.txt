@@ -295,3 +295,12 @@ Validation CI complémentaire — 12/11/2026
 - Autorise les professeurs à gérer les affectations temporaires uniquement sur leurs propres créneaux, avec contrôles serveur et protection des affectations de la Direction.
 - Simplifie la Vie scolaire côté élève et corrige plusieurs problèmes d’affichage : couleurs de matières, fond de l’EDT, navigation Direction, paramètres, profils et numéro de version commun.
 - Validations automatisées Linux, macOS Apple Silicon et Firefox réel réussies sur le code candidat.
+
+
+25/11/2026 — V25.0.25 : fiabilisation du gestionnaire de mises à jour
+- Le gestionnaire compare désormais les tailles et empreintes SHA-256 indépendantes fournies par l'API GitHub pour le manifeste et l'archive, lorsqu'elles sont disponibles.
+- Une empreinte GitHub mal formée ou différente de celle du manifeste bloque la préparation ; l'archive téléchargée est également contrôlée contre sa taille annoncée et son SHA-256.
+- Les releases historiques sans métadonnées de digest restent compatibles : le contrôle SHA-256 du manifeste continue de s'appliquer. Ce mécanisme renforce l'intégrité des fichiers mais ne constitue pas une signature cryptographique de l'éditeur.
+- La recette de migration macOS couvre maintenant explicitement une installation historique V25.0.19, avec conservation de la base, des certificats, des pièces jointes et du lien de version active.
+- Version applicative, interface et VERSION.txt alignées sur V25.0.25.
+- Validation CI Linux, macOS/launchd et Firefox réel à effectuer sur cette branche avant fusion ou publication.

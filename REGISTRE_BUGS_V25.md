@@ -156,3 +156,18 @@ Ces points ne sont **pas des bugs confirmés**. Ils sont ajoutés à la recette 
 4. **Évolution des droits** : AFFECT-01, après définition du périmètre et des garde-fous.
 5. **Diagnostic indépendant** : EXT-01, à isoler avant toute modification de MaClasse.
 
+
+
+## Synchronisation de l'audit — 25/11/2026 — branche V25.0.25
+
+Cette note complète les constats historiques ci-dessus après relecture du code de main (commit c8e5576, V25.0.24). Les états « corrigé » restent réservés à la confirmation explicite de l'utilisateur.
+
+| Point | État après relecture du dépôt | Limite restante |
+|---|---|---|
+| AMEL-U19 — mise à jour macOS de bout en bout | Le test d'intégration launchd + HTTPS + mise à jour + rollback existe dans tests/test_macos_supervisor.py. Le run de référence 44059980942 a exécuté avec succès le job macOS. | La CI n'est pas une recette sur le Mac de l'installation réelle ; revalider la migration et le rollback sur une copie physique avant activation. |
+| MIG-01 — migration d'une installation existante | Le test macOS d'installation d'un ancien dossier vers le service supervisé vérifie la préservation de data/maclasse.json, des certificats, des pièces jointes et du lien data/program/current. La branche V25.0.25 étend le scénario au fixture V25.0.19. | La CI de cette branche doit encore confirmer le nouveau fixture ; les données réelles et l'ancien dossier de l'utilisateur ne sont pas disponibles dans GitHub Actions. |
+| AUDIT-S2 — signature des releases | Toujours ouvert. V25.0.25 ajoute la comparaison des tailles et digests SHA-256 exposés par l'API GitHub avec le contenu reçu et le SHA-256 du manifeste. | Les digests GitHub et le manifeste ne prouvent pas l'identité de l'éditeur. Une signature Ed25519 ou une attestation de provenance avec vérification côté client reste nécessaire. |
+| AUDIT-U4 — changement DHCP macOS | Toujours ouvert. Le lanceur renouvelle le certificat au démarrage si l'adresse détectée a changé. | Un changement d'IP pendant que le service reste en fonctionnement n'entraîne pas encore de rebinding automatique. Réservation DHCP et redémarrage restent requis. |
+| Réseau physique | Tests automatisés HTTPS et permissions présents. | Connexion depuis un second ordinateur, certificat approuvé dans Firefox, pare-feu Fedora et charge réelle restent à tester sur le matériel cible. |
+
+Le test de mise à jour compare maintenant aussi le digest SHA-256 de l'asset GitHub, quand l'API le fournit. Les anciennes releases sans champ digest restent compatibles ; elles continuent d'utiliser le SHA-256 indiqué dans le manifeste. Cette évolution ne doit jamais être décrite comme une signature cryptographique.

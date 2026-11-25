@@ -9,12 +9,12 @@ Application web de gestion scolaire, pensée pour centraliser les outils du quot
 ## État du projet
 
 **Branche de référence :** `main`  
-**Version de travail :** V25.0.22 (alpha)  
+**Version de travail :** V25.0.25 (candidate sur branche dédiée)  
 **Statut :** développement et sécurisation en cours — **pas prête pour une utilisation multi-postes sur le réseau local**.
 
 ### Point de synchronisation GitHub
 
-Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative actuelle est **V25.0.22** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
+Le commit d'import `a2e83ef` contient bien le code applicatif et les ressources de MaClasse : `server.py`, `index.html`, `_all.js`, les scripts macOS, les documents de version et les tests. La version applicative de la branche de travail est **V25.0.25** ; `VERSION.txt` et les lanceurs affichent la version du dépôt. Le dépôt a été inspecté directement ; le constat précédent selon lequel il ne contenait que le README était erroné.
 
 Le fichier `data/maclasse.json` est local et exclu de Git. Une installation neuve démarre sans aucun compte : l'assistant de première configuration crée uniquement le compte direction. Aucun mot de passe ou compte enseignant universel n'existe.
 
@@ -636,3 +636,15 @@ Une fois les contrôles terminés, l'utilisateur peut ouvrir MaClasse et lancer 
 
 **Règle de continuité :** lors d'une prochaine session de développement ou de publication, lire cette section avant de créer ou modifier une release. Le format du titre, la structure de description et les contrôles de livraison ci-dessus constituent la procédure standard du projet.
 
+
+
+## Synchronisation de l'audit — 25/11/2026
+
+La branche de stabilisation V25.0.25 part du commit c8e5576 (V25.0.24). Elle ne modifie pas main.
+
+- Le gestionnaire de mises à jour vérifie maintenant, en plus du SHA-256 déclaré dans le manifeste, les métadonnées de taille et de digest SHA-256 des assets GitHub lorsqu'elles existent. Les assets historiques sans digest restent acceptés, mais ne sont pas présentés comme signés.
+- Le scénario macOS de migration de l'installation historique est exécuté à partir d'un fixture V25.0.19 ; le test contrôle que la base, les certificats et le lien actif restent intacts après l'installation du service launchd.
+- Le test macOS de bout en bout couvrant mise à jour HTTPS, health-check et rollback est déjà présent dans tests/test_macos_supervisor.py. Il doit réussir dans la CI de la présente branche ; son succès sur une machine GitHub ne remplace pas la recette physique sur le Mac cible.
+- La détection d'un changement d'adresse DHCP pendant que le serveur macOS reste actif n'est pas encore automatisée. Réserver une IP dans le DHCP et redémarrer le service après changement reste nécessaire.
+- Les releases ne possèdent toujours pas de signature éditeur indépendante. Le digest fourni par GitHub et le SHA-256 du manifeste sont des contrôles d'intégrité, pas une preuve cryptographique de l'identité de l'éditeur.
+- Le fonctionnement Wi-Fi entre appareils physiques, le pare-feu Fedora, l'installation de l'autorité dans Firefox et la restauration sur un autre poste restent à valider sur le matériel réel.
