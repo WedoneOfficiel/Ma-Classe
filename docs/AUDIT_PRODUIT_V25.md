@@ -150,7 +150,7 @@ Le diagnostic Firefox conserve désormais dans le message d'échec l'état d'aut
 
 Le workflow Firefox génère des captures de modules en thème clair et sombre, en plaçant volontairement le thème système à l'opposé du thème MaClasse choisi. Les contrôles examinés comprennent notamment l'accueil, le Centre d'activité, l'EDT, les séances, les évaluations, les bulletins, la messagerie, le Cloud, les paramètres, les pages élève et les écrans de vie scolaire.
 
-Une première inspection des captures disponibles ne révèle pas de rupture générale du thème sombre ni de défaut structurel majeur sur les écrans représentatifs. L'EDT élève et professeur conserve la même structure de calendrier ; l'interface élève ne présente pas les commandes d'édition du professeur.
+L'inspection des captures confirme que les thèmes clair et sombre sont appliqués même lorsque le thème système est volontairement inversé. Elle a toutefois révélé un défaut précis : un pseudo-élément blanc hérité des surfaces vitrées restait visible au-dessus des cartes en mode sombre. Ce reflet éclaircissait les cartes de manière irrégulière. Le rendu est corrigé dans la branche en supprimant ce reflet uniquement en thème sombre. La comparaison de l'EDT professeur/élève confirme la même structure de calendrier et l'absence des commandes d'édition côté élève.
 
 **Limites à conserver :** les captures reposent sur des données de test minimales et ne valident pas tous les états chargés d'un établissement réel. Les contextes Firefox sont maintenant créés et contrôlés en \`fr-FR\`, fuseau \`Europe/Paris\`. Malgré cela, les champs natifs \`input[type=date]\` apparaissent encore au format \`mm/dd/yyyy\` dans les captures Linux CI ; leur présentation dépend du moteur et de l'environnement graphique. Le format devra être confirmé sur Firefox/macOS en français avant de conclure sur l'affichage des dates.
 
@@ -170,3 +170,29 @@ La relecture du tableau de bord a révélé des libellés de compteurs généré
 
 Un contrôle de cohérence statique empêche le retour des marqueurs de pluriel entre parenthèses. Cette correction améliore la lisibilité sans modifier les calculs ni les données.
 
+## 12. Audit visuel approfondi — 25/11/2026
+
+### Inspection réelle des captures
+
+L'archive de captures Firefox précédant ce lot contient 54 images : pages de l'espace professeur et de l'espace élève, chacune en clair et sombre. La préférence MaClasse a été placée à l'opposé du thème système pour détecter les styles CSS qui dépendraient à tort de `prefers-color-scheme`.
+
+Constats :
+- Les surfaces principales, la barre latérale, les tableaux, les formulaires, la messagerie et les pages élève suivent globalement le thème choisi.
+- Le calendrier reste lisible dans les deux thèmes ; les cours conservent leurs couleurs de matière. L'espace élève n'expose pas les commandes de modification du professeur.
+- Le thème sombre avait un reflet blanc diagonal sur les cartes et les bulletins, provenant de `::before`. Le correctif neutralise ce reflet seulement en sombre, sans modifier les finitions du thème clair.
+- Plusieurs compteurs métier affichaient des accords de développement (« créneau(x) », « séance(s) », « 1 élèves », « événement(s) »). Un helper `countLabel` produit désormais les formes françaises singulier/pluriel sur les écrans Emploi du temps, Séances & leçons et Paramètres.
+
+### Fiabilité du contrôle des écrans
+
+La relecture du test a également montré que certaines captures portaient le nom d'une page qui n'était pas réellement distincte :
+- `today` et `notifications` redirigent vers le Centre d'activité.
+- `studentWork` est un alias de `studentLessons` ; le travail à faire est présenté comme un onglet de ce module, pas comme une page autonome.
+- Le parcours élève propose trois états distincts dans Séances & leçons : contenu de séance, devoir à la maison et travaux à faire.
+
+Le test de capture a été ajusté pour ne plus présenter ces alias comme des écrans supplémentaires. Il capture les états réels du module élève et contrôle maintenant la présence d'un titre, le thème effectivement appliqué, l'absence de débordement horizontal au viewport de recette et la disparition du reflet sur les cartes sombres.
+
+### Périmètre restant
+
+Ce lot améliore le contrôle visuel, mais ne transforme pas les captures en validation fonctionnelle exhaustive. Les données de démonstration sont volontairement minimales ; les tableaux très remplis, les longues chaînes, les gros volumes Cloud, les conversations longues et les formulaires complexes doivent encore être parcourus avec des jeux de données plus denses. La recette responsive sur plusieurs largeurs, l'accessibilité clavier/lecteur d'écran et la vérification native des champs de date sur Firefox/macOS restent à poursuivre.
+
+Les tests interactifs Firefox couvrent déjà des parcours concrets (navigation et synchronisation de l'EDT, création de cours, séance avec pièce jointe et remise élève, messagerie avec reprise de brouillon et nouvel essai après échec réseau, et périmètre Cloud élève). Ils ne signifient pas que chaque action de chaque module a été testée. Les modules restent donc suivis individuellement dans le registre des anomalies et le plan PQA.
