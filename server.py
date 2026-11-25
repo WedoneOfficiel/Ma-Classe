@@ -2117,8 +2117,17 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance') or path.startswith('/data/uploads/') else ('admin','teacher')
+            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance','/api/sync-status') or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
+        if path=='/api/sync-status':
+            # Lightweight revision probe used by every open application module.
+            # No business data is returned; access follows /api/data authentication.
+            try:
+                with DATA_LOCK:
+                    revision=_database_revision()
+            except (OSError,ValueError):
+                return self._json({'error':'État des données indisponible.'},503)
+            return self._json({'revision':revision},headers={'X-MaClasse-Revision':revision})
         if path=='/api/admin/updates/check':
             user=self._require_auth(roles=('admin',))
             if not user: return
