@@ -51,6 +51,16 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("var today = function(){ return window.activity(); };", HTML)
         self.assertIn("if(p==='today'||p==='notifications')p='activity'", JS)
 
+    def test_dashboard_uses_natural_french_count_labels(self):
+        start = JS.index("function dashboard(){")
+        end = JS.index("\\nfunction ", start + 20)
+        dashboard = JS[start:end]
+        self.assertIn("slotsLabel=", dashboard)
+        self.assertIn("workLabel=", dashboard)
+        self.assertNotIn("créneau(x)", dashboard)
+        self.assertNotIn("travail(aux)", dashboard)
+        self.assertIn("</b> <small class=\"muted\">", dashboard)
+
     def test_appearance_is_a_visual_three_way_choice(self):
         self.assertIn('class="themeChoices"', JS)
         for theme in ("light", "dark", "system"):
