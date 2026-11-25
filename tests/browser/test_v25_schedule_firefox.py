@@ -24,67 +24,88 @@ SOURCE_ROOT = Path(__file__).resolve().parents[2]
 
 
 def capture_product_screenshots(page, role: str, modules: list[str], output_dir: Path) -> None:
-    """Capture actual module layouts under explicit light/dark choices.
-
-    The operating-system color scheme is deliberately set opposite to the
-    selected MaClasse theme to catch accidental prefers-color-scheme styling.
-    """
+    """Capture real module states and check layout in light/dark and narrow viewports."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    original_viewport = page.viewport_size or {"width": 1280, "height": 720}
+
+    def render_state(module: str, theme: str) -> dict:
+        return page.evaluate(
+            """({role,module,theme}) => {
+              const isStudentState = role === 'student' &&
+                ['studentHomework','studentTodo'].includes(module);
+              const actualPage = isStudentState ? 'studentLessons' : module;
+              if(role === 'student') {
+                if(module === 'studentLessons') lessonTab = 'done';
+                if(module === 'studentHomework') lessonTab = 'work';
+                if(module === 'studentTodo') lessonTab = 'upcoming';
+              }
+              setAppearanceTheme(theme);
+              appSpace=role;
+              page=actualPage;
+              render();
+              const toast=document.getElementById('toast');
+              if(toast){toast.classList.remove('show');toast.textContent='';}
+              const card=document.querySelector('#main .card');
+              return {
+                actualPage,
+                theme:document.documentElement.dataset.mcTheme,
+                heading:document.querySelector('#main h1')?.textContent?.trim()||'',
+                horizontalOverflow:Math.max(
+                  document.documentElement.scrollWidth,
+                  document.body.scrollWidth
+                )-window.innerWidth,
+                cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none'
+              };
+            }""",
+            {"role": role, "module": module, "theme": theme},
+        )
+
+    def assert_state(module: str, theme: str, state: dict, viewport: int) -> None:
+        if state["theme"] != theme or not state["heading"]:
+            raise AssertionError(
+                f"Écran {role}/{module} : thème ou en-tête absent à {viewport}px ({state!r})"
+            )
+        if state["horizontalOverflow"] > 2:
+            raise AssertionError(
+                f"Débordement horizontal sur {role}/{module} à {viewport}px : {state!r}"
+            )
+        if theme == "dark" and state["cardBefore"] != "none":
+            raise AssertionError(
+                f"Reflet clair indésirable sur les cartes sombres ({role}/{module}) : {state!r}"
+            )
+
+    responsive_modules = (
+        ["studentHome","studentSchedule","studentLessons","studentHomework",
+         "studentMessages","studentDocuments","studentSettings"]
+        if role == "student"
+        else ["dashboard","schedule","lessons","students","messages","documents","settings"]
+    )
+
     for theme in ("light", "dark"):
         system_theme = "dark" if theme == "light" else "light"
         page.emulate_media(color_scheme=system_theme)
+        page.set_viewport_size(original_viewport)
         for module in modules:
-            state = page.evaluate(
-                """({role,module,theme}) => {
-                  const isStudentState = role === 'student' &&
-                    ['studentHomework','studentTodo'].includes(module);
-                  const actualPage = isStudentState ? 'studentLessons' : module;
-                  if(role === 'student') {
-                    if(module === 'studentLessons') lessonTab = 'done';
-                    if(module === 'studentHomework') lessonTab = 'work';
-                    if(module === 'studentTodo') lessonTab = 'upcoming';
-                  }
-                  setAppearanceTheme(theme);
-                  appSpace=role;
-                  page=actualPage;
-                  render();
-                  const toast=document.getElementById('toast');
-                  if(toast){toast.classList.remove('show');toast.textContent='';}
-                  const card=document.querySelector('#main .card');
-                  return {
-                    actualPage,
-                    theme:document.documentElement.dataset.mcTheme,
-                    heading:document.querySelector('#main h1')?.textContent?.trim()||'',
-                    horizontalOverflow:Math.max(
-                      document.documentElement.scrollWidth,
-                      document.body.scrollWidth
-                    )-window.innerWidth,
-                    cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none'
-                  };
-                }""",
-                {"role": role, "module": module, "theme": theme},
-            )
-            if state["theme"] != theme or not state["heading"]:
-                raise AssertionError(
-                    f"Écran {role}/{module} : thème ou en-tête absent ({state!r})"
-                )
-            if state["horizontalOverflow"] > 2:
-                raise AssertionError(
-                    f"Débordement horizontal sur {role}/{module} : {state!r}"
-                )
-            if theme == "dark" and state["cardBefore"] != "none":
-                raise AssertionError(
-                    f"Reflet clair indésirable sur les cartes sombres ({role}/{module}) : {state!r}"
-                )
+            state = render_state(module, theme)
+            assert_state(module, theme, state, original_viewport["width"])
             page.wait_for_timeout(140)
             destination = output_dir / f"{role}-{theme}-{module}.png"
             page.screenshot(path=str(destination), full_page=True, animations="disabled")
+
         if role == "student":
             cloud_nav = page.locator("#nav button[onclick*='studentDocuments']")
             if cloud_nav.count() != 1:
                 raise AssertionError("Le Cloud élève doit être accessible dans la navigation latérale.")
             cloud_nav.click()
             expect(page.locator("#main h1")).to_contain_text("Documents")
+
+        for width in (900, 390):
+            page.set_viewport_size({"width": width, "height": 900})
+            for module in responsive_modules:
+                state = render_state(module, theme)
+                assert_state(module, theme, state, width)
+
+        page.set_viewport_size(original_viewport)
 
 def free_port() -> int:
     with socket.socket() as sock:
