@@ -248,6 +248,67 @@ def main() -> None:
                 }""")
                 if teacher_state.get("role") != "teacher" or teacher_state.get("id") != teacher_id:
                     raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
+                # Product smoke pass: render each visible teacher module in the real browser.
+                module_smoke = teacher_page.evaluate("""() => {
+                  const modules=[
+                    'dashboard','today','activity','notifications','schedule',
+                    'lessons','students','evaluations','attendance',
+                    'attendanceFollowup','bulletins','messages','documents',
+                    'teachers','classes','settings'
+                  ];
+                  const results=[];
+                  for(const id of modules){
+                    page=id;appSpace='teacher';render();
+                    const main=document.getElementById('main');
+                    const text=main?.innerText||'';
+                    results.push({
+                      id,
+                      hasTitle:!!main?.querySelector('.top h1'),
+                      hasError:text.includes('Une erreur a empêché l’affichage de cette page.'),
+                      title:main?.querySelector('.top h1')?.innerText||'',
+                      width:main?.scrollWidth||0,
+                      viewport:window.innerWidth
+                    });
+                  }
+                  return results;
+                }""")
+                broken_modules = [item for item in module_smoke if item["hasError"] or not item["hasTitle"]]
+                if broken_modules:
+                    raise AssertionError("Des modules professeur ne se rendent pas correctement : "
+                                         + json.dumps(broken_modules,ensure_ascii=False))
+
+                # Manual theme choices must override the operating-system preference.
+                teacher_page.emulate_media(color_scheme="light")
+                dark_theme = teacher_page.evaluate("""() => {
+                  setAppearanceTheme('dark');
+                  const style=getComputedStyle(document.documentElement);
+                  return {
+                    preference:document.documentElement.dataset.mcThemePreference,
+                    theme:document.documentElement.dataset.mcTheme,
+                    colorScheme:style.colorScheme,
+                    background:style.getPropertyValue('--ui-bg').trim(),
+                    text:style.getPropertyValue('--ui-text').trim()
+                  };
+                }""")
+                if dark_theme["theme"] != "dark" or dark_theme["colorScheme"] != "dark":
+                    raise AssertionError("Le thème sombre manuel ne s'impose pas au thème système clair : "
+                                         + repr(dark_theme))
+                teacher_page.emulate_media(color_scheme="dark")
+                light_theme = teacher_page.evaluate("""() => {
+                  setAppearanceTheme('light');
+                  const style=getComputedStyle(document.documentElement);
+                  return {
+                    preference:document.documentElement.dataset.mcThemePreference,
+                    theme:document.documentElement.dataset.mcTheme,
+                    colorScheme:style.colorScheme,
+                    background:style.getPropertyValue('--ui-bg').trim(),
+                    text:style.getPropertyValue('--ui-text').trim()
+                  };
+                }""")
+                if light_theme["theme"] != "light" or light_theme["colorScheme"] != "light":
+                    raise AssertionError("Le thème clair manuel ne s'impose pas au thème système sombre : "
+                                         + repr(light_theme))
+                teacher_page.evaluate("setAppearanceTheme('light');page='schedule';appSpace='teacher';render();")
                 uploaded_homework = teacher_page.evaluate("""async () => {
                   db=await api('/api/data');
                   normalize();
