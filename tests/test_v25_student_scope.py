@@ -59,6 +59,7 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
 
     def test_student_cloud_projection_limits_class_group_and_explicit_shares(self):
+        self.data['students'][0]['group']='A'
         self.data['cloudItems']=[
             {'id':'class-file','type':'file','space':'class','ownerId':'t1','classId':'c1',
              'name':'Cours.pdf','serverName':'cloud/class/classes/c1/Cours.pdf',
