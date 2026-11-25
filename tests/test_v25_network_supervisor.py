@@ -198,9 +198,9 @@ class NetworkSupervisorTests(unittest.TestCase):
         with patch.object(supervisor, "ensure_certificate") as ensure:
             result = supervisor.run_supervisor(
                 "/installation-root",
-                "/installation-root/data/program/versions/V25.0.25",
+                "/installation-root/data/program/versions/V25.1.0",
                 "/installation-root/data",
-                "/installation-root/data/program/versions/V25.0.25/.venv/bin/python",
+                "/installation-root/data/program/versions/V25.1.0/.venv/bin/python",
                 stop_event=StopAfter(2),
                 detect_ip=lambda: "192.168.1.60",
                 cert_valid=lambda cert, host: True,
@@ -208,9 +208,9 @@ class NetworkSupervisorTests(unittest.TestCase):
             )
         self.assertEqual(result, 0)
         ensure.assert_called_once_with(
-            Path("/installation-root/data/program/versions/V25.0.25"),
+            Path("/installation-root/data/program/versions/V25.1.0"),
             Path("/installation-root/data"),
-            "/installation-root/data/program/versions/V25.0.25/.venv/bin/python",
+            "/installation-root/data/program/versions/V25.1.0/.venv/bin/python",
             "192.168.1.60",
         )
 
