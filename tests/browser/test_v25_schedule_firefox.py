@@ -746,8 +746,11 @@ def main() -> None:
                   page='messages';appSpace='teacher';window.mailV2Folder='sent';
                   render();
                 }""")
-                sent_rows = teacher_page.locator('.v2104Row')
-                expect(sent_rows).to_contain_text("Test de rédaction persistante")
+                sent_rows = teacher_page.locator('.v2104Row').filter(
+                    has_text="Test de rédaction persistante"
+                )
+                expect(sent_rows).to_have_count(1)
+                sent_rows.click()
                 expect(teacher_page.locator('.v2104Thread')).to_contain_text(
                     "Message envoyé depuis le brouillon repris."
                 )
