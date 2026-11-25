@@ -32,6 +32,14 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn(".bulletinFilters{", HTML)
         self.assertIn(".bulletinTabs{margin-top:14px", HTML)
 
+    def test_admin_user_notice_matches_student_access_model(self):
+        admin_start = JS.index("function adminUsers(){")
+        admin_end = JS.index("\\nfunction openStudentAccountEditor", admin_start)
+        admin_users = JS[admin_start:admin_end]
+        self.assertIn("Chaque compte élève ne reçoit que les informations de sa propre fiche", admin_users)
+        self.assertIn("filtrés côté serveur", admin_users)
+        self.assertNotIn("La messagerie et le Cloud élève restent désactivés", admin_users)
+
     def test_schedule_is_wrapped_and_full_width(self):
         p = JS.index("function schedule(){")
         q = JS.index("\nfunction ", p + 20)
