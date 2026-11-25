@@ -474,16 +474,31 @@ def main() -> None:
                 # Trace every student-side render while the other account changes the timetable.
                 student_page.evaluate("""() => {
                   window.__studentRenderTrace=[];
-                  const original=render;
-                  window.render=function(){
-                    const result=original.apply(this,arguments);
+                  window.__studentSyncTrace=[];
+                  const originalRender=render;
+                  render=function(){
                     window.__studentRenderTrace.push({
-                      page,
-                      revision:dataRevision,
-                      targetInDom:!!document.querySelector('[data-schedule-id="firefox-live-student-course"]'),
+                      page,revision:dataRevision,
+                      targetInDomBefore:!!document.querySelector('[data-schedule-id="firefox-live-student-course"]'),
                       targetInModel:(db.schedule||[]).some(x=>x.id==='firefox-live-student-course')
                     });
+                    const result=originalRender.apply(this,arguments);
+                    window.__studentRenderTrace[window.__studentRenderTrace.length-1].targetInDomAfter=
+                      !!document.querySelector('[data-schedule-id="firefox-live-student-course"]');
                     return result;
+                  };
+                  const originalSync=refreshLiveScheduleData;
+                  refreshLiveScheduleData=async function(force=false){
+                    window.__studentSyncTrace.push({
+                      stage:'start',force,revision:dataRevision,page,localWork:syncHasLocalWork(),
+                      hidden:document.hidden
+                    });
+                    try{return await originalSync.call(this,force)}
+                    finally{window.__studentSyncTrace.push({
+                      stage:'end',revision:dataRevision,page,localWork:syncHasLocalWork(),
+                      targetInModel:(db.schedule||[]).some(x=>x.id==='firefox-live-student-course'),
+                      targetInDom:!!document.querySelector('[data-schedule-id="firefox-live-student-course"]')
+                    })}
                   };
                 }""")
                 # A teacher-side write must be picked up by the student's 5-second sync.
@@ -542,6 +557,7 @@ def main() -> None:
                         eventMarkup:eventCard((db.schedule||[]).find(x=>x.id==='firefox-live-student-course'),new Date('2026-11-13T12:00:00'),true),
                         targetDomCount:document.querySelectorAll('[data-schedule-id="firefox-live-student-course"]').length,
                         renderTrace:window.__studentRenderTrace||[],
+                        syncTrace:window.__studentSyncTrace||[],
                         calendarHtml:document.querySelector('.scheduleCalendarSurface')?.innerHTML.slice(0,15000)||'',
                         calendar:document.querySelector('.scheduleCalendarSurface')?.innerText||''
                       };
