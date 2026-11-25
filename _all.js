@@ -155,7 +155,7 @@ async function checkForUpdates(silent=false){
  finally{updateCheckBusy=false;render()}
 }
 
-async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');dataBase=copyData(db);const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=(notice?.scheduled||notice?.in_progress)?notice:null}else{db=blank();dataBase=null;maintenanceNotice=null}}catch(e){offline=true;db=blank();dataBase=null;authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
+async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');dataBase=copyData(db);const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=(notice?.scheduled||notice?.in_progress)?notice:null}else{db=blank();dataBase=null;maintenanceNotice=null}}catch(e){offline=true;db=blank();dataBase=null;authUser=null};normalize();if(authUser)dataBase=copyData(db);applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
 function copyData(value){return value==null?value:JSON.parse(JSON.stringify(value))}
 function isPlainObject(value){return !!value&&typeof value==='object'&&!Array.isArray(value)}
 const MC_SYNC_MISSING=Symbol('MaClasseSyncMissing');
@@ -208,7 +208,7 @@ function applicationSyncBannerMarkup(){
  if(!authUser)return '';
  if(conflictState){
   const paths=conflictState.conflicts.slice(0,5).map(x=>esc(x)).join(' · ');
-  return '<div id="mcSyncBanner" class="notice warn" style="margin-bottom:14px"><b>Conflit de modifications à arbitrer</b><p>Certains champs ont été modifiés sur plusieurs postes. Aucune version n’a été écrasée. Télécharge les deux copies avant de choisir celle à recharger.</p>'+(paths?'<small style="display:block;margin-top:5px">Champs concernés : '+paths+'</small>':'')+'<div class="actions" style="margin-top:9px"><button class="btn small" onclick="downloadSyncConflict(\\'local\\')">Télécharger ma saisie</button><button class="btn small" onclick="downloadSyncConflict(\\'server\\')">Télécharger la version serveur</button><button class="btn small danger" onclick="reloadServerAfterConflict()">Recharger la version serveur</button></div></div>';
+  return '<div id="mcSyncBanner" class="notice warn" style="margin-bottom:14px"><b>Conflit de modifications à arbitrer</b><p>Certains champs ont été modifiés sur plusieurs postes. Aucune version n’a été écrasée. Télécharge les deux copies avant de choisir celle à recharger.</p>'+(paths?'<small style="display:block;margin-top:5px">Champs concernés : '+paths+'</small>':'')+'<div class="actions" style="margin-top:9px"><button class="btn small" onclick="downloadSyncConflict(\'local\')">Télécharger ma saisie</button><button class="btn small" onclick="downloadSyncConflict(\'server\')">Télécharger la version serveur</button><button class="btn small danger" onclick="reloadServerAfterConflict()">Recharger la version serveur</button></div></div>';
  }
  if(!syncOnline)return '<div id="mcSyncBanner" class="notice warn" style="margin-bottom:14px"><b>Connexion au serveur interrompue</b><p>Ta saisie reste dans cette page. MaClasse réessaiera automatiquement dès que le serveur sera joignable.</p><button class="btn small" onclick="refreshLiveScheduleData(true)">Réessayer maintenant</button></div>';
  if(saveError)return '<div id="mcSyncBanner" class="notice warn" style="margin-bottom:14px"><b>Enregistrement non confirmé</b><p>Les modifications locales sont conservées dans cette page. Vérifie la connexion avant de quitter.</p><button class="btn small" onclick="retryPendingSave()">Réessayer l’enregistrement</button></div>';
@@ -283,9 +283,9 @@ async function refreshLiveScheduleData(force=false){
   if(!response.ok)throw Error('Actualisation des données impossible ('+response.status+').');
   const latest=await response.json(),receivedRevision=response.headers.get('X-MaClasse-Revision')||latestRevision;
   if(observedRevision!==dataRevision||observedGeneration!==saveGeneration||syncHasLocalWork())return;
-  dataRevision=receivedRevision;dataBase=copyData(latest);
+  dataRevision=receivedRevision;
   const changed=JSON.stringify(db)!==JSON.stringify(latest);
-  db=latest;normalize();remoteChangePending=false;syncLastError='';
+  db=latest;normalize();dataBase=copyData(db);remoteChangePending=false;syncLastError='';
   if(changed||needsRenderAfterSync){needsRenderAfterSync=false;render()}
   else updateSyncBanner();
  }catch(error){
@@ -1257,7 +1257,7 @@ body:after{content:"";position:fixed;z-index:-2;pointer-events:none;width:900px;
  .card,.profile360Card,.bulletin,.activityCard{box-shadow:0 10px 30px rgba(18,43,70,.055),inset 0 1px rgba(255,255,255,.72)!important}
  .btn.primary,.tab.active,.profileTab.active,.profile360Tab.active{box-shadow:0 5px 16px rgba(10,132,255,.24),inset 0 1px rgba(255,255,255,.34)!important}
  .stat:after{background:radial-gradient(circle,rgba(10,132,255,.18),rgba(10,132,255,.045) 65%,transparent 72%)!important;filter:blur(2px)}
-;db.messages??=[];db.messages=[]}
+}
 @media(prefers-color-scheme:dark){
  body:before{background:radial-gradient(circle,rgba(10,132,255,.14) 0%,rgba(10,132,255,.065) 32%,transparent 72%)}
  body:after{background:radial-gradient(circle,rgba(10,132,255,.11) 0%,rgba(10,132,255,.04) 34%,transparent 72%)}
