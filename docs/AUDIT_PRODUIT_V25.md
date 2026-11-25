@@ -206,6 +206,11 @@ Le Cloud élève était présent comme écran et ses règles de lecture seule é
 
 Les titres de dates du cahier de cours et du calendrier n'utilisent plus `text-transform: capitalize` sur toute la chaîne : seul le premier caractère du titre est capitalisé, les noms de mois restent en minuscules selon l'usage français.
 
-La nouvelle recette navigateur génère 48 captures de véritables états (14 écrans Direction/Professeur et 10 états élève, en clair et sombre). Elle vérifie aussi les écrans représentatifs aux largeurs de 900 et 390 px, les débordements horizontaux du document, le titre de page, l'application du thème sélectionné malgré un thème système opposé, et le comportement automatique lors du basculement système clair/sombre. Ces contrôles sont des garde-fous de mise en page, pas un test complet de chaque interaction responsive.
+La nouvelle recette navigateur génère 48 captures desktop de véritables états (14 écrans Direction/Professeur et 10 états élève, en clair et sombre), auxquelles s'ajoutent 24 captures mobiles à 390 px sur les écrans représentatifs (6 par rôle et par thème). Elle vérifie aussi les écrans représentatifs à 900 px et 390 px, les débordements horizontaux du document, le titre de page, l'application du thème sélectionné malgré un thème système opposé, et le comportement automatique lors du basculement système clair/sombre. Ces contrôles sont des garde-fous de mise en page, pas un test complet de chaque interaction responsive.
 
 **Validation en attente sur le dernier commit UI :** la précédente validation complète #1680 reste verte pour le lot V25.0.25 avant ces ajustements d'interface. Les corrections UI et les nouveaux contrôles doivent encore obtenir leur propre passage complet Linux, Firefox réel et macOS. Les captures de la nouvelle exécution devront être inspectées avant d'affirmer que le reflet sombre a disparu visuellement sur tous les écrans.
+
+
+### Champs de date natifs — limite identifiée
+
+Sur le runner Firefox Linux, les champs `input[type=date]` des périodes scolaires s'affichent au format natif américain malgré le contexte navigateur `fr-FR` et le document `lang="fr"`. Le stockage et la valeur ISO restent corrects, mais la présentation peut prêter à confusion pour un utilisateur français. Le format natif dépend aussi de la plateforme et des paramètres régionaux : l'affichage doit être contrôlé sur Firefox/macOS du Mac cible avant de décider s'il faut conserver le champ natif ou construire un contrôle de date localisé. Aucun format n'est changé arbitrairement à ce stade.
