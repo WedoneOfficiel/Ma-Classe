@@ -24,7 +24,7 @@ const safeRichHtml=value=>{
   walk(tpl.content);return tpl.innerHTML
 };
 const uid=()=>globalThis.crypto?.randomUUID?globalThis.crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2); const iso=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
-let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let updateCheckTimer=null;let maintenanceEditMode=false;let setupRequired=false;let dataRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let dataBase=null;let saveGeneration=0;let liveSyncTimer=null,liveSyncBusy=false,syncOnline=typeof navigator==='undefined'||navigator.onLine!==false,remoteChangePending=false,syncConflictBusy=false,conflictState=null,needsRenderAfterSync=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
+let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let updateCheckTimer=null;let maintenanceEditMode=false;let setupRequired=false;let dataRevision=null;let lastRenderedRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let dataBase=null;let saveGeneration=0;let liveSyncTimer=null,liveSyncBusy=false,syncOnline=typeof navigator==='undefined'||navigator.onLine!==false,remoteChangePending=false,syncConflictBusy=false,conflictState=null,needsRenderAfterSync=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
 function blank(){return {evaluationTemplates:[],competencyLibrary:[],settings:{rooms:[],termMode:'trimestres',terms:[{id:uid(),name:'Trimestre 1',start:'2026-09-01',end:'2026-12-18'},{id:uid(),name:'Trimestre 2',start:'2027-01-04',end:'2027-03-31'},{id:uid(),name:'Trimestre 3',start:'2027-04-01',end:'2027-07-02'}]},classes:[],students:[],teachers:[],subjects:[],schedule:[],teacherAssignments:[],lessons:[],evaluations:[],attendance:[],bulletins:[],attachments:[],submissions:[],conversations:[],cloudItems:[],mailFolders:[],users:[],notifications:[],auditLog:[]}}
 async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='/api/data'||path==='/api/save')){const rev=r.headers.get('X-MaClasse-Revision');if(rev)dataRevision=rev}if(!r.ok){let detail=await r.text(),parsedError=null;try{const parsed=JSON.parse(detail);parsedError=parsed;if(parsed.code==='REVISION_CONFLICT'||parsed.code==='REVISION_REQUIRED')detail='Les données ont changé sur le serveur. MaClasse tente de fusionner les modifications indépendantes sans écraser les saisies.';else detail=parsed.error||detail}catch{}const error=Error(detail);error.status=r.status;if(parsedError?.code)error.code=parsedError.code;throw error}return r.json()}
 function formatMaintenanceDate(timestamp){return new Date(Number(timestamp)*1000).toLocaleString()}
@@ -155,7 +155,7 @@ async function checkForUpdates(silent=false){
  finally{updateCheckBusy=false;render()}
 }
 
-async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');dataBase=copyData(db);const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=(notice?.scheduled||notice?.in_progress)?notice:null}else{db=blank();dataBase=null;maintenanceNotice=null}}catch(e){offline=true;db=blank();dataBase=null;authUser=null};normalize();if(authUser)dataBase=copyData(db);applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
+async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');dataBase=copyData(db);const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=(notice?.scheduled||notice?.in_progress)?notice:null}else{db=blank();dataBase=null;maintenanceNotice=null}}catch(e){offline=true;db=blank();dataBase=null;authUser=null};normalize();if(authUser)dataBase=copyData(db);applyAppearanceTheme();authReady=true;render();lastRenderedRevision=dataRevision;if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
 function copyData(value){return value==null?value:JSON.parse(JSON.stringify(value))}
 function isPlainObject(value){return !!value&&typeof value==='object'&&!Array.isArray(value)}
 const MC_SYNC_MISSING=Symbol('MaClasseSyncMissing');
@@ -275,19 +275,20 @@ async function refreshLiveScheduleData(force=false){
   if(!statusResponse.ok)throw Error('Synchronisation indisponible ('+statusResponse.status+').');
   const status=await statusResponse.json();syncOnline=true;
   const latestRevision=status.revision||statusResponse.headers.get('X-MaClasse-Revision');
-  if(!latestRevision||latestRevision===dataRevision){if(!saveError&&!conflictState)remoteChangePending=false;updateSyncBanner();return}
+  // dataRevision is updated by general API calls, which do not necessarily
+  // repaint the current module. Track the revision actually reflected in the DOM
+  // separately so a helper request cannot make a stale screen look synchronized.
+  if(!latestRevision||latestRevision===lastRenderedRevision){if(!saveError&&!conflictState)remoteChangePending=false;updateSyncBanner();return}
   remoteChangePending=true;updateSyncBanner();
   if(syncHasLocalWork())return;
-  const observedRevision=dataRevision,observedGeneration=saveGeneration;
+  const observedRenderedRevision=lastRenderedRevision,observedGeneration=saveGeneration;
   const response=await fetch('/api/data',{cache:'no-store'});
   if(!response.ok)throw Error('Actualisation des données impossible ('+response.status+').');
   const latest=await response.json(),receivedRevision=response.headers.get('X-MaClasse-Revision')||latestRevision;
-  if(observedRevision!==dataRevision||observedGeneration!==saveGeneration||syncHasLocalWork())return;
+  if(observedRenderedRevision!==lastRenderedRevision||observedGeneration!==saveGeneration||syncHasLocalWork())return;
   dataRevision=receivedRevision;
-  // A fresh server revision must repaint the current module even when the
-  // in-memory JSON already matches. A prior local refresh or module-specific
-  // helper may have updated the model without refreshing the visible DOM.
   db=latest;normalize();dataBase=copyData(db);remoteChangePending=false;syncLastError='';
+  lastRenderedRevision=receivedRevision;
   needsRenderAfterSync=false;
   render();
  }catch(error){
