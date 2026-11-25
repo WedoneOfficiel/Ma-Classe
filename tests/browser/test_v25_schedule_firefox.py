@@ -738,6 +738,17 @@ def main() -> None:
                         "La semaine affichée dans Séances & leçons élève ne contient pas la date sélectionnée : "
                         + json.dumps(misaligned_student_lessons,ensure_ascii=False)
                     )
+                student_tracking_state = student_page.evaluate("""() => {
+                  page='ppDashboard';appSpace='teacher';render();
+                  const main=document.getElementById('main');
+                  return {
+                    title:main?.querySelector('.top h1')?.innerText||'',
+                    hasClassCards:!!main?.querySelector('.ppQuick'),
+                    hasError:(main?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
+                  };
+                }""")
+                if student_tracking_state["title"] == "Suivi de classe" or student_tracking_state["hasClassCards"] or student_tracking_state["hasError"]:
+                    raise AssertionError("Un compte élève ne doit pas accéder au Suivi de classe : "+repr(student_tracking_state))
                 # The student can read an explicitly shared Cloud file, but cannot
                 # see the teacher's private sibling or write to the Cloud.
                 student_page.evaluate("""() => {
