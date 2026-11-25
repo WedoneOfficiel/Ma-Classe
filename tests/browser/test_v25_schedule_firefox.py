@@ -22,6 +22,31 @@ from playwright.sync_api import sync_playwright, expect
 SOURCE_ROOT = Path(__file__).resolve().parents[2]
 
 
+
+def capture_product_screenshots(page, role: str, modules: list[str], output_dir: Path) -> None:
+    """Capture actual module layouts under explicit light/dark choices.
+
+    The operating-system color scheme is deliberately set opposite to the
+    selected MaClasse theme to catch accidental prefers-color-scheme styling.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for theme in ("light", "dark"):
+        system_theme = "dark" if theme == "light" else "light"
+        page.emulate_media(color_scheme=system_theme)
+        for module in modules:
+            page.evaluate(
+                """({role,module,theme}) => {
+                  setAppearanceTheme(theme);
+                  appSpace=role;
+                  page=module;
+                  render();
+                }""",
+                {"role": role, "module": module, "theme": theme},
+            )
+            page.wait_for_timeout(80)
+            destination = output_dir / f"{role}-{theme}-{module}.png"
+            page.screenshot(path=str(destination), full_page=True, animations="disabled")
+
 def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -309,6 +334,12 @@ def main() -> None:
                     raise AssertionError("Le thème clair manuel ne s'impose pas au thème système sombre : "
                                          + repr(light_theme))
                 teacher_page.evaluate("setAppearanceTheme('light');page='schedule';appSpace='teacher';render();")
+                capture_product_screenshots(
+                    teacher_page,
+                    "teacher",
+                    ["dashboard","schedule","lessons","evaluations","bulletins","messages","documents","settings"],
+                    Path("artifacts/browser-v25"),
+                )
                 uploaded_homework = teacher_page.evaluate("""async () => {
                   db=await api('/api/data');
                   normalize();
@@ -414,6 +445,13 @@ def main() -> None:
                         + json.dumps(broken_student_modules,ensure_ascii=False)
                     )
                 student_page.evaluate("page='studentHome';appSpace='student';render();")
+                capture_product_screenshots(
+                    student_page,
+                    "student",
+                    ["studentHome","studentSchedule","studentWork","studentResults","studentMessages","studentDocuments"],
+                    Path("artifacts/browser-v25"),
+                )
+                student_page.evaluate("page='studentHome';appSpace='student';setAppearanceTheme('light');render();")
                 student_page.evaluate("""() => {
                   page='studentMessages';
                   appSpace='student';
