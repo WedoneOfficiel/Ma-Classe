@@ -44,12 +44,10 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("const headerMeta={dashboard:", JS)
         self.assertIn("content.includes('class=\"top\"')?content:shell(meta[0],meta[1],meta[2])+content", JS)
 
-    def test_legacy_today_route_compatibility_loads_before_application(self):
-        compatibility = HTML.index('<script id="mc-render-compatibility">')
-        application = HTML.index('<script src="_all.js">')
-        self.assertLess(compatibility, application)
-        self.assertIn("var today = function(){ return window.activity(); };", HTML)
+    def test_legacy_today_route_uses_role_aware_activity_renderer(self):
+        self.assertIn("today:authUser?.role==='student'?studentActivityCenter:activity", JS)
         self.assertIn("if(p==='today'||p==='notifications')p='activity'", JS)
+        self.assertNotIn("today:today,activity:", JS)
 
     def test_dashboard_uses_natural_french_count_labels(self):
         start = JS.index("function dashboard(){")
