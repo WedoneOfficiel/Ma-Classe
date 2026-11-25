@@ -2,6 +2,29 @@
 
 > Registre historique consolidé le 25 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
 
+## Candidat V25.1.0 — stabilisation, sécurité et suivi de classe (25/11/2026)
+
+**Statut : candidat non publié**, porté par la PR #13. La CI complète #1793 est verte (Linux, macOS Apple Silicon et Firefox réel). Les recettes physiques, le provisionnement de la clé éditeur et la publication restent à effectuer.
+
+### Stabilisation et sécurité
+- Renforcement du gestionnaire de mises à jour : verrous d'installation, prévention des processus concurrents, sauvegardes atomiques, contrôle des services et rollback plus sûr.
+- Supervision réseau Linux/macOS : fermeture du listener en cas de perte réseau, renouvellement du certificat serveur lors d'un changement d'IPv4 privée et redémarrage contrôlé.
+- Signature Ed25519 détachée des manifestes, vérification côté client et tests du signataire. Le code est prêt ; la clé publique de production et le secret GitHub Actions restent à provisionner.
+- Durcissement XSS, identifiants, pièces jointes, téléversements, tailles de requêtes et permissions des parcours élèves/enseignants.
+- Corrections de la messagerie élève, des bulletins PDF, de la publication des notes, des affectations et remplacements enseignants, de l'emploi du temps et des thèmes.
+
+### Évolution fonctionnelle et interface
+- Nouvelle vue **Suivi de classe** pour la Direction et les enseignants autorisés : effectif, absences et retards sur 30 jours, travaux non rendus, évaluations publiées, échéances à venir et accès aux fiches élèves.
+- Les enseignants non PP sont limités aux matières accessibles par leurs affectations ; les professeurs principaux disposent d'une vue transversale de leur classe. Aucun classement ni score de risque automatique.
+- Correction du contexte Cloud : passage possible vers les espaces personnels et partagés après consultation d'une classe, sans perdre le contexte lorsqu'on reste dans l'espace Classe.
+- Autorisation serveur et tests dédiés du nouveau fichier JavaScript du suivi de classe.
+
+### Validation et réserves
+- Workflow #1793 : 3/3 jobs réussis, dont installateur Linux, installateur macOS Apple Silicon, launchd réel, tests Python/JavaScript et Firefox réel avec captures clair/sombre.
+- La migration doit encore être répétée sur une copie représentative des données réelles.
+- La recette réseau multi-appareils doit encore être réalisée sur le Mac, le PC Fedora et les appareils clients.
+- La paire Ed25519 permanente et le secret `MACLASSE_RELEASE_SIGNING_KEY_B64` doivent être provisionnés avant toute release.
+
 ## Journal V25
 
 Source : `CHANGELOG_V25.txt` (contenu conservé intégralement).
