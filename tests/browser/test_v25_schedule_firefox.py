@@ -34,17 +34,48 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
         system_theme = "dark" if theme == "light" else "light"
         page.emulate_media(color_scheme=system_theme)
         for module in modules:
-            page.evaluate(
+            state = page.evaluate(
                 """({role,module,theme}) => {
+                  const isStudentState = role === 'student' &&
+                    ['studentHomework','studentTodo'].includes(module);
+                  const actualPage = isStudentState ? 'studentLessons' : module;
+                  if(role === 'student') {
+                    if(module === 'studentLessons') lessonTab = 'done';
+                    if(module === 'studentHomework') lessonTab = 'work';
+                    if(module === 'studentTodo') lessonTab = 'upcoming';
+                  }
                   setAppearanceTheme(theme);
                   appSpace=role;
-                  page=module;
+                  page=actualPage;
                   render();
                   const toast=document.getElementById('toast');
                   if(toast){toast.classList.remove('show');toast.textContent='';}
+                  const card=document.querySelector('#main .card');
+                  return {
+                    actualPage,
+                    theme:document.documentElement.dataset.mcTheme,
+                    heading:document.querySelector('#main h1')?.textContent?.trim()||'',
+                    horizontalOverflow:Math.max(
+                      document.documentElement.scrollWidth,
+                      document.body.scrollWidth
+                    )-window.innerWidth,
+                    cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none'
+                  };
                 }""",
                 {"role": role, "module": module, "theme": theme},
             )
+            if state["theme"] != theme or not state["heading"]:
+                raise AssertionError(
+                    f"Écran {role}/{module} : thème ou en-tête absent ({state!r})"
+                )
+            if state["horizontalOverflow"] > 2:
+                raise AssertionError(
+                    f"Débordement horizontal sur {role}/{module} : {state!r}"
+                )
+            if theme == "dark" and state["cardBefore"] != "none":
+                raise AssertionError(
+                    f"Reflet clair indésirable sur les cartes sombres ({role}/{module}) : {state!r}"
+                )
             page.wait_for_timeout(140)
             destination = output_dir / f"{role}-{theme}-{module}.png"
             page.screenshot(path=str(destination), full_page=True, animations="disabled")
@@ -466,7 +497,7 @@ def main() -> None:
                 capture_product_screenshots(
                     teacher_page,
                     "teacher",
-                    ["dashboard","today","activity","notifications","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","settings"],
+                    ["dashboard","activity","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","settings"],
                     Path("artifacts/browser-v25"),
                 )
                 uploaded_homework = teacher_page.evaluate("""async () => {
@@ -645,7 +676,7 @@ def main() -> None:
                 capture_product_screenshots(
                     student_page,
                     "student",
-                    ["studentHome","studentSchedule","studentLessons","studentWork","studentResults","studentMessages","studentLife","studentDocuments","studentSettings","today"],
+                    ["studentHome","studentSchedule","studentLessons","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
                     Path("artifacts/browser-v25"),
                 )
                 student_page.evaluate("page='studentHome';appSpace='student';setAppearanceTheme('light');render();")
