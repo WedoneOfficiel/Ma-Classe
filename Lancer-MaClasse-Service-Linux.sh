@@ -36,10 +36,11 @@ PYTHON="$APP_ROOT/.venv/bin/python"
 # Le certificat et les données restent dans data/, hors du répertoire de programme versionné.
 cd "$ROOT"
 "$PYTHON" - <<'PY'
-import json, sys
+import json, os, sys
 from pathlib import Path
 try:
-    users=json.loads(Path("data/maclasse.json").read_text(encoding="utf-8")).get("users", [])
+    database=Path(os.environ.get("MACLASSE_DATA_DIR", "data")) / "maclasse.json"
+    users=json.loads(database.read_text(encoding="utf-8")).get("users", [])
 except Exception:
     sys.exit("Initialise d'abord MaClasse en local et crée un compte direction.")
 def valid(user):
