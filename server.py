@@ -1374,7 +1374,40 @@ def _student_visible_data(data,user,now=None):
     # Les conversations ne sont pas encore exposées aux comptes élèves : le modèle
     # historique ne permet pas de prouver proprement les droits message par message.
     out['conversations']=[]
-    out['cloudItems']=[]
+    # Cloud élève : uniquement les fichiers de sa classe/de son groupe,
+    # ceux de son espace personnel et les partages explicitement autorisés.
+    # Les métadonnées sont réduites au strict nécessaire et tous les droits
+    # exposés au navigateur sont ramenés à la lecture seule.
+    visible_cloud=[]
+    for item in data.get('cloudItems',[]) or []:
+        if not isinstance(item,dict) or not item.get('id'):
+            continue
+        space=str(item.get('space') or 'personal')
+        item_class=str(item.get('classId') or '')
+        item_group=str(item.get('group') or '')
+        class_item=space=='class' and item_class==class_id
+        group_item=space=='group' and item_class==class_id and item_group==str(student_record.get('group') or '')
+        personal_item=space=='personal' and str(item.get('ownerId') or '')==sid
+        shared_item=_cloud_grant(item,user,data,write=False)
+        if not (class_item or group_item or personal_item or shared_item):
+            continue
+        fields=('id','type','name','size','mime','url','space','classId','group','parentId','createdAt','serverName')
+        copy={k:item[k] for k in fields if k in item}
+        safe_shares=[]
+        for grant in item.get('shares',[]) or []:
+            if not isinstance(grant,dict):
+                continue
+            typ=str(grant.get('type') or '')
+            matches=(
+                (typ=='student' and str(grant.get('id') or '')==sid) or
+                (typ=='class' and str(grant.get('classId') or '')==class_id) or
+                (typ=='group' and str(grant.get('classId') or '')==class_id and str(grant.get('group') or '')==str(student_record.get('group') or ''))
+            )
+            if matches:
+                safe_shares.append({k:grant[k] for k in ('type','id','classId','group') if k in grant} | {'role':'view'})
+        copy['shares']=safe_shares
+        visible_cloud.append(copy)
+    out['cloudItems']=visible_cloud
     out['notifications']=[x for x in data.get('notifications',[]) or [] if isinstance(x,dict) and str(x.get('studentId') or '')==sid]
     out['mailFolders']=[]
     out['mailboxV2']=_student_visible_mailbox(data.get('mailboxV2',{}),user,data)
@@ -1664,7 +1697,13 @@ def _merge_teacher_data(current,incoming,user):
 
 def _cloud_grant(item,user,data,write=False):
     role=str(user.get('role') or '')
+    if role=='student' and write:
+        return False
     tid=str(user.get('id') or user.get('teacherId') or '')
+    sid=str(user.get('studentId') or '')
+    student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id') or '')==sid),None)
+    student_class=str(student_record.get('classId') or '') if student_record else ''
+    student_group=str(student_record.get('group') or '') if student_record else ''
     by_id={str(x.get('id')):x for x in (data.get('cloudItems') or []) if isinstance(x,dict) and x.get('id')}
     current=item; seen=set()
     while isinstance(current,dict) and str(current.get('id')) not in seen:
@@ -1677,6 +1716,10 @@ def _cloud_grant(item,user,data,write=False):
             if typ=='teacher' and role=='teacher' and str(grant.get('id'))==tid: return True
             if typ=='class' and role=='teacher' and str(grant.get('classId')) in _teacher_class_ids(data,user): return True
             if typ=='group' and role=='teacher' and str(grant.get('classId')) in _teacher_class_ids(data,user): return True
+            if role=='student' and student_record:
+                if typ=='student' and str(grant.get('id') or '')==sid: return True
+                if typ=='class' and str(grant.get('classId') or '')==student_class: return True
+                if typ=='group' and str(grant.get('classId') or '')==student_class and str(grant.get('group') or '')==student_group: return True
         current=by_id.get(str(current.get('parentId') or ''))
     return False
 
@@ -1699,6 +1742,8 @@ def _cloud_path_allowed(user,relative,write=False):
         # Cette fonction ne valide que des chemins Cloud : tout autre espace
         # doit être refusé par défaut, jamais considéré comme autorisé.
         if not parts or parts[0]!='cloud': return False
+        if user.get('role')=='student':
+            return False if write else _student_can_access_upload(user,rel,write=False)
         if user.get('role')=='admin': return True
         data=_load_database(); items=data.get('cloudItems') if isinstance(data.get('cloudItems'),list) else []
         # Le dossier racine peut ne pas avoir de métadonnée : contrôler son espace.
