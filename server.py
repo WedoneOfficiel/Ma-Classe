@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 from html import escape as html_escape
 from html.parser import HTMLParser
 
-APP_VERSION='25.0.25'
+APP_VERSION='25.1.0'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
