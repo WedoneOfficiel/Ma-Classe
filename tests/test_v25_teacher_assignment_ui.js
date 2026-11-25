@@ -8,6 +8,7 @@ assert(js.includes("String(a.createdBy||'')!==String(currentTeacherProfile()?.id
 assert(js.includes("function openScheduleAssignmentDirectory(){"),'the schedule must expose a central assignment directory');
 assert(js.includes("filter(s=>canManageScheduleAssignments(s))"),'the directory must respect the same per-slot permissions');
 assert(js.includes('id="scheduleAssignmentClassFilter"'),'the directory must filter by class');
+assert(js.includes('Toutes les classes accessibles'),'the class filter label must be accurate for both teachers and Direction');
 assert(js.includes('id="scheduleAssignmentSearch"'),'the directory must offer a subject/day search');
 assert(js.includes('onclick="openScheduleAssignmentDirectory()"'),'the timetable toolbar must expose the directory');
 assert(js.includes('Remplacements & co-enseignement'),'the action must have an explicit French label');
