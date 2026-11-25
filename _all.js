@@ -24,9 +24,9 @@ const safeRichHtml=value=>{
   walk(tpl.content);return tpl.innerHTML
 };
 const uid=()=>globalThis.crypto?.randomUUID?globalThis.crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2); const iso=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`};
-let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let updateCheckTimer=null;let maintenanceEditMode=false;let setupRequired=false;let dataRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
+let db=null;let updateCheckResult=null;let updateCheckBusy=false;let maintenanceNotice=null;let maintenanceNoticeTimer=null;let updateCheckTimer=null;let maintenanceEditMode=false;let setupRequired=false;let dataRevision=null;let saveTimer=null;let saveQueue=Promise.resolve();let saveError=null;let savePending=false;let dataBase=null;let saveGeneration=0;let liveSyncTimer=null,liveSyncBusy=false,syncOnline=typeof navigator==='undefined'||navigator.onLine!==false,remoteChangePending=false,syncConflictBusy=false,conflictState=null,needsRenderAfterSync=false;let activeConversationId='';let page='dashboard';let activityFilter='all';let appSpace='teacher';let authUser=null;let authReady=false;let studentId=null;let studentWorkFilter='todo';let scheduleView='week';let selectedWeek=startWeek(new Date());let modalState={};let lessonDraft=null;let lessonMediaTarget=null;let lessonDay=iso(new Date());let lessonTab='done';
 function blank(){return {evaluationTemplates:[],competencyLibrary:[],settings:{rooms:[],termMode:'trimestres',terms:[{id:uid(),name:'Trimestre 1',start:'2026-09-01',end:'2026-12-18'},{id:uid(),name:'Trimestre 2',start:'2027-01-04',end:'2027-03-31'},{id:uid(),name:'Trimestre 3',start:'2027-04-01',end:'2027-07-02'}]},classes:[],students:[],teachers:[],subjects:[],schedule:[],teacherAssignments:[],lessons:[],evaluations:[],attendance:[],bulletins:[],attachments:[],submissions:[],conversations:[],cloudItems:[],mailFolders:[],users:[],notifications:[],auditLog:[]}}
-async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='/api/data'||path==='/api/save')){const rev=r.headers.get('X-MaClasse-Revision');if(rev)dataRevision=rev}if(!r.ok){let detail=await r.text();try{const parsed=JSON.parse(detail);if(parsed.code==='REVISION_CONFLICT'||parsed.code==='REVISION_REQUIRED')detail='Les données ont changé sur le serveur. Recharge la page avant de continuer pour éviter d’écraser le travail d’un autre utilisateur.';else detail=parsed.error||detail}catch{}const error=Error(detail);error.status=r.status;throw error}return r.json()}
+async function api(path,opt={}){const r=await fetch(path,opt);if(r.ok&&(path==='/api/data'||path==='/api/save')){const rev=r.headers.get('X-MaClasse-Revision');if(rev)dataRevision=rev}if(!r.ok){let detail=await r.text(),parsedError=null;try{const parsed=JSON.parse(detail);parsedError=parsed;if(parsed.code==='REVISION_CONFLICT'||parsed.code==='REVISION_REQUIRED')detail='Les données ont changé sur le serveur. MaClasse tente de fusionner les modifications indépendantes sans écraser les saisies.';else detail=parsed.error||detail}catch{}const error=Error(detail);error.status=r.status;if(parsedError?.code)error.code=parsedError.code;throw error}return r.json()}
 function formatMaintenanceDate(timestamp){return new Date(Number(timestamp)*1000).toLocaleString()}
 function maintenanceBanner(){
  const notice=typeof maintenanceNotice!=='undefined'?maintenanceNotice:null;
@@ -155,34 +155,182 @@ async function checkForUpdates(silent=false){
  finally{updateCheckBusy=false;render()}
 }
 
-async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=(notice?.scheduled||notice?.in_progress)?notice:null}else{db=blank();maintenanceNotice=null}}catch(e){offline=true;db=blank();authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
-let liveSyncTimer=null,liveSyncBusy=false;
-async function refreshLiveScheduleData(){
- if(liveSyncBusy||!authUser||!['schedule','studentSchedule','lessons','studentLessons','studentWork'].includes(page)||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open'))return;
- const previous=dataRevision,requestedPage=page,requestedView=scheduleView,requestedWeek=iso(selectedWeek),requestedFilter=window.scheduleClassFilterValue||'';
+async function load(){let offline=false,mustChange=false;try{const status=await api('/api/auth/setup-status');setupRequired=!!status.setupRequired;const session=await api('/api/auth/session');mustChange=!!(session.authenticated&&session.user?.mustChangePassword);authUser=session.authenticated&&!mustChange?session.user:null;if(authUser){db=await api('/api/data');dataBase=copyData(db);const notice=await api('/api/update-maintenance').catch(()=>null);maintenanceNotice=(notice?.scheduled||notice?.in_progress)?notice:null}else{db=blank();dataBase=null;maintenanceNotice=null}}catch(e){offline=true;db=blank();dataBase=null;authUser=null};normalize();applyAppearanceTheme();authReady=true;render();if(mustChange)openInitialPasswordModal();if(offline)toast('Impossible de joindre le serveur MaClasse. Vérifie qu’il est lancé.');startLiveScheduleSync();startMaintenanceNoticeSync();startUpdateCheckSync();if(authCanManage())checkForUpdates(true)}
+function copyData(value){return value==null?value:JSON.parse(JSON.stringify(value))}
+function isPlainObject(value){return !!value&&typeof value==='object'&&!Array.isArray(value)}
+const MC_SYNC_MISSING=Symbol('MaClasseSyncMissing');
+function mergeConcurrentNode(base,local,remote,path,conflicts){
+ const missing=MC_SYNC_MISSING;
+ const same=(a,b)=>a===missing||b===missing?a===b:JSON.stringify(a)===JSON.stringify(b);
+ if(same(local,base))return remote;
+ if(same(remote,base)||same(local,remote))return local;
+ if(isPlainObject(base)&&isPlainObject(local)&&isPlainObject(remote)){
+  const result={},keys=new Set([...Object.keys(base),...Object.keys(local),...Object.keys(remote)]);
+  for(const key of keys){
+   const b=Object.prototype.hasOwnProperty.call(base,key)?base[key]:missing;
+   const l=Object.prototype.hasOwnProperty.call(local,key)?local[key]:missing;
+   const r=Object.prototype.hasOwnProperty.call(remote,key)?remote[key]:missing;
+   const value=mergeConcurrentNode(b,l,r,path?path+'.'+key:key,conflicts);
+   if(value!==missing)result[key]=value;
+  }
+  return result;
+ }
+ if(Array.isArray(base)||Array.isArray(local)||Array.isArray(remote)){
+  const ba=Array.isArray(base)?base:[],la=Array.isArray(local)?local:[],ra=Array.isArray(remote)?remote:[];
+  const all=[...ba,...la,...ra];
+  const candidates=/\.(?:grades|rows)$/.test(path)?['studentId','id']:['id','key','studentId'];
+  const identity=candidates.find(key=>all.every(item=>isPlainObject(item)&&item[key]!==undefined&&item[key]!==null&&item[key]!=='')&&[ba,la,ra].every(items=>new Set(items.map(item=>String(item[key]))).size===items.length));
+  if(identity){
+   const map=items=>new Map(items.map(item=>[String(item[identity]),item]));
+   const bm=map(ba),lm=map(la),rm=map(ra),order=[...ra,...la,...ba].map(item=>String(item[identity]));
+   const result=[],seen=new Set();
+   for(const key of order){
+    if(seen.has(key))continue;seen.add(key);
+    const value=mergeConcurrentNode(bm.has(key)?bm.get(key):missing,lm.has(key)?lm.get(key):missing,rm.has(key)?rm.get(key):missing,path+'['+identity+'='+key+']',conflicts);
+    if(value!==missing)result.push(value);
+   }
+   return result;
+  }
+ }
+ conflicts.push(path||'$');
+ return local;
+}
+function mergeConcurrentData(base,local,remote){
+ const conflicts=[];
+ const value=mergeConcurrentNode(base,local,remote,'',conflicts);
+ return {value,conflicts:[...new Set(conflicts)]};
+}
+function syncHasLocalWork(){
+ const active=document.activeElement;
+ return !!(savePending||saveTimer||saveError||conflictState||$('#modalback')?.classList.contains('open')||active?.matches?.('input,textarea,select,[contenteditable="true"]'));
+}
+function applicationSyncBannerMarkup(){
+ if(!authUser)return '';
+ if(conflictState){
+  const paths=conflictState.conflicts.slice(0,5).map(x=>esc(x)).join(' · ');
+  return '<div id="mcSyncBanner" class="notice warn" style="margin-bottom:14px"><b>Conflit de modifications à arbitrer</b><p>Certains champs ont été modifiés sur plusieurs postes. Aucune version n’a été écrasée. Télécharge les deux copies avant de choisir celle à recharger.</p>'+(paths?'<small style="display:block;margin-top:5px">Champs concernés : '+paths+'</small>':'')+'<div class="actions" style="margin-top:9px"><button class="btn small" onclick="downloadSyncConflict(\\'local\\')">Télécharger ma saisie</button><button class="btn small" onclick="downloadSyncConflict(\\'server\\')">Télécharger la version serveur</button><button class="btn small danger" onclick="reloadServerAfterConflict()">Recharger la version serveur</button></div></div>';
+ }
+ if(!syncOnline)return '<div id="mcSyncBanner" class="notice warn" style="margin-bottom:14px"><b>Connexion au serveur interrompue</b><p>Ta saisie reste dans cette page. MaClasse réessaiera automatiquement dès que le serveur sera joignable.</p><button class="btn small" onclick="refreshLiveScheduleData(true)">Réessayer maintenant</button></div>';
+ if(saveError)return '<div id="mcSyncBanner" class="notice warn" style="margin-bottom:14px"><b>Enregistrement non confirmé</b><p>Les modifications locales sont conservées dans cette page. Vérifie la connexion avant de quitter.</p><button class="btn small" onclick="retryPendingSave()">Réessayer l’enregistrement</button></div>';
+ if(remoteChangePending)return '<div id="mcSyncBanner" class="notice" style="margin-bottom:14px"><b>Nouvelles données disponibles</b><p>Un autre utilisateur a modifié MaClasse. L’actualisation attend la fin de ta saisie en cours.</p><button class="btn small" onclick="refreshLiveScheduleData(true)">Actualiser maintenant</button></div>';
+ return '';
+}
+function updateSyncBanner(){
+ const main=document.getElementById('main');if(!main)return;
+ const markup=applicationSyncBannerMarkup(),existing=document.getElementById('mcSyncBanner');
+ if(existing){if(markup)existing.outerHTML=markup;else existing.remove()}
+ else if(markup)main.insertAdjacentHTML('afterbegin',markup);
+}
+function downloadSyncConflict(which){
+ if(!conflictState)return;
+ const value=which==='server'?conflictState.remote:conflictState.local;
+ const name=which==='server'?'serveur':'ma-saisie';
+ downloadText('maclasse-conflit-'+name+'-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json',JSON.stringify(value,null,2),'application/json;charset=utf-8');
+}
+function reloadServerAfterConflict(){
+ if(!conflictState)return;
+ confirmModal('Cette action remplacera les données affichées par la version du serveur. Télécharge ta saisie locale avant de confirmer si tu souhaites la conserver.','Recharger la version serveur',async()=>{
+  try{
+   const response=await fetch('/api/data',{cache:'no-store'});if(!response.ok)throw Error('Rechargement impossible ('+response.status+').');
+   const latest=await response.json();dataRevision=response.headers.get('X-MaClasse-Revision')||dataRevision;dataBase=copyData(latest);db=latest;normalize();
+   conflictState=null;saveError=null;savePending=false;remoteChangePending=false;needsRenderAfterSync=false;render();toast('Version du serveur rechargée.');
+  }catch(error){toast(error.message||'Rechargement impossible.')}
+ });
+}
+async function retryPendingSave(){
+ if(!authUser)return;
+ if(conflictState)return toast('Télécharge les deux versions puis arbitre le conflit avant de réessayer.');
+ if(saveError){saveError=null;savePending=true;save(true)}
+}
+async function recoverConcurrentChanges(){
+ if(syncConflictBusy||!dataBase)return false;
+ syncConflictBusy=true;
+ try{
+  const response=await fetch('/api/data',{cache:'no-store'});if(!response.ok)throw Error('Lecture de la version serveur impossible ('+response.status+').');
+  const remote=await response.json(),revision=response.headers.get('X-MaClasse-Revision');
+  if(!revision)throw Error('Révision serveur absente ; fusion annulée par sécurité.');
+  const local=copyData(db),result=mergeConcurrentData(dataBase,local,remote);
+  if(result.conflicts.length){
+   conflictState={local,remote,conflicts:result.conflicts,revision};
+   saveError=Object.assign(Error('Conflit sur des champs modifiés simultanément.'),{status:409,code:'REVISION_CONFLICT'});
+   savePending=true;remoteChangePending=true;updateSyncBanner();
+   toast('Conflit sur certains champs : tes deux versions ont été conservées.');
+   return false;
+  }
+  db=result.value;normalize();dataBase=copyData(remote);dataRevision=revision;
+  saveError=null;savePending=true;remoteChangePending=false;needsRenderAfterSync=true;
+  toast('Modifications indépendantes fusionnées. Enregistrement…');
+  save(true);
+  return true;
+ }catch(error){
+  saveError=error;savePending=true;remoteChangePending=true;
+  console.error('MaClasse recovery failed',error);updateSyncBanner();return false;
+ }finally{syncConflictBusy=false;updateSyncBanner()}
+}
+async function refreshLiveScheduleData(force=false){
+ if(liveSyncBusy||!authUser||(!force&&document.hidden))return;
  liveSyncBusy=true;
  try{
+  const statusResponse=await fetch('/api/sync-status',{cache:'no-store'});
+  if(!statusResponse.ok)throw Error('Synchronisation indisponible ('+statusResponse.status+').');
+  const status=await statusResponse.json();syncOnline=true;
+  const latestRevision=status.revision||statusResponse.headers.get('X-MaClasse-Revision');
+  if(!latestRevision||latestRevision===dataRevision){if(!saveError&&!conflictState)remoteChangePending=false;updateSyncBanner();return}
+  remoteChangePending=true;updateSyncBanner();
+  if(syncHasLocalWork())return;
+  const observedRevision=dataRevision,observedGeneration=saveGeneration;
   const response=await fetch('/api/data',{cache:'no-store'});
-  if(!response.ok)throw Error('Actualisation du planning indisponible ('+response.status+').');
-  const latestRevision=response.headers.get('X-MaClasse-Revision');
-  const latest=await response.json();
-  // Ne jamais appliquer une réponse démarrée avant une interaction de calendrier :
-  // elle pourrait repeindre l'EDT au milieu d'un changement de vue/semaine/filtre.
-  if(page!==requestedPage||scheduleView!==requestedView||iso(selectedWeek)!==requestedWeek||(window.scheduleClassFilterValue||'')!==requestedFilter||savePending||saveTimer||saveError||document.hidden||$('#modalback')?.classList.contains('open')||dataRevision!==previous)return;
-  if(previous&&latestRevision&&latestRevision!==previous){
-   const projection=data=>JSON.stringify({schedule:data.schedule||[],classes:data.classes||[],students:data.students||[],teachers:data.teachers||[],settings:data.settings||{}});
-   const scheduleChanged=projection(db)!==projection(latest);
-   dataRevision=latestRevision;db=latest;normalize();
-   // Une modification sans rapport avec le planning ne doit pas provoquer un rendu
-   // complet de l'EDT : on conserve le DOM et l'état visuel en place.
-   if(scheduleChanged)render();
-  }
- }catch(err){console.warn('MaClasse actualisation en direct impossible',err)}
- finally{liveSyncBusy=false}
+  if(!response.ok)throw Error('Actualisation des données impossible ('+response.status+').');
+  const latest=await response.json(),receivedRevision=response.headers.get('X-MaClasse-Revision')||latestRevision;
+  if(observedRevision!==dataRevision||observedGeneration!==saveGeneration||syncHasLocalWork())return;
+  dataRevision=receivedRevision;dataBase=copyData(latest);
+  const changed=JSON.stringify(db)!==JSON.stringify(latest);
+  db=latest;normalize();remoteChangePending=false;syncLastError='';
+  if(changed||needsRenderAfterSync){needsRenderAfterSync=false;render()}
+  else updateSyncBanner();
+ }catch(error){
+  syncOnline=false;syncLastError=error?.message||'Serveur indisponible';
+  console.warn('MaClasse synchronisation indisponible',error);updateSyncBanner();
+ }finally{liveSyncBusy=false}
 }
-function startLiveScheduleSync(){if(liveSyncTimer)return;liveSyncTimer=window.setInterval(refreshLiveScheduleData,5000)}
-function save(silent=false){clearTimeout(saveTimer);savePending=true;saveTimer=setTimeout(()=>{saveTimer=null;const snapshot=JSON.stringify(db);saveQueue=saveQueue.catch(()=>{}).then(()=>api('/api/save',{method:'POST',headers:{'Content-Type':'application/json','If-Match':dataRevision||''},body:snapshot})).then(()=>{saveError=null;savePending=false;document.querySelectorAll('[data-bulletin-save]').forEach(el=>{if(el.textContent==='Enregistrement…')el.textContent='Enregistré'});if(!silent)toast('Enregistré')}).catch(e=>{saveError=e;savePending=true;console.error('MaClasse save failed',e);if(!silent)toast(e.message||'Erreur de sauvegarde');document.querySelectorAll('[data-bulletin-save]').forEach(el=>{if(el.textContent==='Enregistrement…')el.textContent='Échec — réessayer'})})},180)}
-async function flushPendingSave(){if(saveTimer){clearTimeout(saveTimer);saveTimer=null;const snapshot=JSON.stringify(db);saveQueue=saveQueue.catch(()=>{}).then(()=>api('/api/save',{method:'POST',headers:{'Content-Type':'application/json','If-Match':dataRevision||''},body:snapshot})).then(()=>{saveError=null}).catch(e=>{saveError=e;savePending=true;throw e})}await saveQueue;if(saveError)throw saveError;savePending=false}
+function startLiveScheduleSync(){
+ if(liveSyncTimer)return;
+ liveSyncTimer=window.setInterval(()=>refreshLiveScheduleData(false),5000);
+ window.addEventListener('online',()=>{syncOnline=true;refreshLiveScheduleData(true)});
+ window.addEventListener('offline',()=>{syncOnline=false;updateSyncBanner()});
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLiveScheduleData(true)});
+ refreshLiveScheduleData(true);
+}
+function save(silent=false){
+ clearTimeout(saveTimer);const generation=++saveGeneration;savePending=true;updateSyncBanner();
+ saveTimer=setTimeout(()=>{
+  saveTimer=null;const snapshot=JSON.stringify(db);
+  saveQueue=saveQueue.catch(()=>{}).then(()=>api('/api/save',{method:'POST',headers:{'Content-Type':'application/json','If-Match':dataRevision||''},body:snapshot})).then(()=>{
+   dataBase=JSON.parse(snapshot);saveError=null;if(generation===saveGeneration&&!saveTimer)savePending=false;updateSyncBanner();
+   document.querySelectorAll('[data-bulletin-save]').forEach(el=>{if(el.textContent==='Enregistrement…')el.textContent='Enregistré'});
+   if(!silent)toast('Enregistré');
+  }).catch(async e=>{
+   saveError=e;savePending=true;console.error('MaClasse save failed',e);
+   if(e.code==='REVISION_CONFLICT')await recoverConcurrentChanges();else if(!silent)toast(e.message||'Erreur de sauvegarde');
+   updateSyncBanner();document.querySelectorAll('[data-bulletin-save]').forEach(el=>{if(el.textContent==='Enregistrement…')el.textContent='Échec — réessayer'});
+  })
+ },180)
+}
+async function flushPendingSave(){
+ if(saveTimer){
+  clearTimeout(saveTimer);saveTimer=null;const snapshot=JSON.stringify(db),generation=saveGeneration;
+  saveQueue=saveQueue.catch(()=>{}).then(()=>api('/api/save',{method:'POST',headers:{'Content-Type':'application/json','If-Match':dataRevision||''},body:snapshot})).then(()=>{
+   dataBase=JSON.parse(snapshot);saveError=null;if(generation===saveGeneration)savePending=false;updateSyncBanner();
+  }).catch(async e=>{
+   saveError=e;savePending=true;if(e.code==='REVISION_CONFLICT')await recoverConcurrentChanges();else updateSyncBanner();
+   if(!saveTimer)throw e;
+  })
+ }
+ await saveQueue;
+ if(saveTimer&&!conflictState)return flushPendingSave();
+ if(saveError)throw saveError;
+ savePending=false;updateSyncBanner();
+}
 function nowLabel(){return new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}function cls(id){return db.classes.find(x=>x.id===id)}function student(id){return (Array.isArray(db?.students)?db.students:[]).find(x=>x&&x.id===id)}function subject(id){return db.subjects.find(x=>x.id===id)}function initials(s){return s?(((s.first||'?')[0]+(s.last||'?')[0]).toUpperCase()):'É'}function fmtDate(x){if(!x)return '—';return new Date(x+'T12:00:00').toLocaleDateString('fr-FR')}function time(v){return String(v||'').slice(0,5)}function messageTime(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}function messageDateTime(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' · '+messageTime(v)}function monday(d){let x=new Date(d);let n=x.getDay();x.setDate(x.getDate()-(n===0?6:n-1));x.setHours(12,0,0,0);return x}function startWeek(d){return monday(d)}function scheduleLocalDate(value){if(value instanceof Date)return new Date(value.getFullYear(),value.getMonth(),value.getDate(),12);const parts=String(value||'').split('-').map(Number);return parts.length===3&&parts.every(Number.isFinite)?new Date(parts[0],parts[1]-1,parts[2],12):new Date(value)}function setScheduleDate(value){const d=scheduleLocalDate(value);if(!Number.isFinite(d.getTime()))return;selectedWeek=scheduleView==='week'?startWeek(d):d;render()}function weekDates(){const mondayDate=startWeek(selectedWeek);return DAYS.map((_,i)=>{let d=new Date(mondayDate);d.setDate(d.getDate()+i);return d})}function weekKey(d){return iso(monday(d))}
 function dayDistance(a,b){return Math.round((new Date(a+'T12:00:00')-new Date(b+'T12:00:00'))/86400000)} function scheduleDayIndex(slot){return Math.max(0,Math.min(6,Number(slot?.day)||0))}
 function scheduleFirstOccurrence(slot){const d=scheduleLocalDate(slot?.startDate||'1900-01-01'),day=scheduleDayIndex(slot),offset=(day-(d.getDay()+6)%7+7)%7;d.setDate(d.getDate()+offset);return d}
@@ -274,7 +422,7 @@ function markConversationRead(id,role,sid=''){const c=db.conversations.find(x=>x
 
 function openStudentTodo(){lessonTab='upcoming';page='studentLessons';render()}
 function go(p){if(p==='today'||p==='notifications')p='activity';if(!['students','evaluations','attendance','bulletins','lessons','messages','documents','ppDashboard','teachers','classes'].includes(p))clearClassContext();if(p==='students')activeConversationId='';if(p==='studentWork')p='studentLessons';const studentPages=['studentHome','studentSchedule','studentLessons','studentWork','studentResults','studentLife','studentMessages','studentDocuments','studentSettings'];if(studentPages.includes(p)){appSpace='student';page=p}else if(p==='activity'){page='activity';if(authUser?.role==='student')appSpace='student'}else{appSpace='teacher';page=p}render()}
-function goTeacher(p){appSpace='teacher';page=p;render()}function render(){if(!authGuard())return;try{nav();const map={dashboard:dashboard,today:today,activity:authUser?.role==='student'?studentActivityCenter:activity,notifications:notifications,teachers:teachersModule,schedule:schedule,lessons:lessons,students:studentsModule,evaluations:evaluations,attendance:attendance,attendanceFollowup:attendanceFollowup,bulletins:bulletins,messages:window.messages,documents:documents,classes:classes,ppDashboard:ppDashboard,settings:settings,adminUsers:adminUsers,studentHome:studentHome,studentSchedule:studentSchedule,studentLessons:studentLessons,studentWork:studentLessons,studentResults:studentResults,studentLife:studentLife,studentMessages:window.studentMessages,studentDocuments:studentDocuments,studentSettings:studentSettings};const view=map[page];if(typeof view!=='function')throw new Error('Module indisponible : '+page);const content=view();const headerMeta={dashboard:['Accueil','Tableau de bord','Vue d’ensemble de votre activité.'],today:['Accueil','Aujourd’hui','Votre journée et les priorités à venir.'],activity:['Pilotage','Centre d’activité','Suivi des actions et des événements récents.'],notifications:['Communication','Notifications','Les informations importantes de MaClasse.'],teachers:['Scolarité','Professeurs','Gestion de l’équipe pédagogique.'],schedule:['Planning','Emploi du temps','Organisation des cours et des créneaux.'],lessons:['Pédagogie','Séances & leçons','Préparation et suivi des séances.'],students:['Scolarité','Élèves','Dossiers et suivi des élèves.'],evaluations:['Évaluations','Évaluations','Notes, compétences et résultats.'],attendance:['Scolarité','Appels','Présences, absences et retards.'],attendanceFollowup:['Scolarité','Suivi des absences','Suivi collectif des absences et retards.'],bulletins:['Évaluation','Bulletins','Préparation, vérification et publication.'],messages:['Communication','Messagerie','Échanges et conversations.'],documents:['Ressources','Cloud','Documents et fichiers partagés.'],classes:['Scolarité','Classes','Groupes et organisation des classes.'],ppDashboard:['Pilotage','Professeur principal','Suivi de votre classe.'],settings:['Configuration','Paramètres','Personnalisez MaClasse et gérez vos données.'],adminUsers:['Administration','Utilisateurs','Gestion des comptes et des accès.'],studentHome:['Espace élève','Accueil','Votre scolarité, vos cours et votre travail.'],studentSchedule:['Espace élève','Emploi du temps','Vos cours et vos horaires.'],studentLessons:['Espace élève','Séances & leçons','Cours et ressources pédagogiques.'],studentWork:['Espace élève','Travail à faire','Vos devoirs et activités.'],studentResults:['Espace élève','Résultats','Vos notes et vos progrès.'],studentLife:['Espace élève','Vie scolaire','Informations et suivi de la vie scolaire.'],studentMessages:['Espace élève','Messagerie','Vos échanges avec l’établissement.'],studentDocuments:['Espace élève','Documents','Vos documents et ressources.'],studentSettings:['Mon compte','Paramètres','Votre profil et vos préférences.']};const meta=headerMeta[page]||['MaClasse',page,''];document.getElementById('main').innerHTML=(typeof maintenanceBanner==='function'?maintenanceBanner():'')+(content.includes('class="top"')?content:shell(meta[0],meta[1],meta[2])+content);}catch(err){console.error(err);document.getElementById('main').innerHTML=`<div class="card"><h2>Une erreur a empêché l’affichage de cette page.</h2><p class="muted">Les données ne sont pas supprimées. Recharge la page ou reviens au tableau de bord.</p><pre style="white-space:pre-wrap;font-size:11px;color:#8f2635">${esc(err?.message||String(err))}</pre></div>`;}}
+function goTeacher(p){appSpace='teacher';page=p;render()}function render(){if(!authGuard())return;try{nav();const map={dashboard:dashboard,today:today,activity:authUser?.role==='student'?studentActivityCenter:activity,notifications:notifications,teachers:teachersModule,schedule:schedule,lessons:lessons,students:studentsModule,evaluations:evaluations,attendance:attendance,attendanceFollowup:attendanceFollowup,bulletins:bulletins,messages:window.messages,documents:documents,classes:classes,ppDashboard:ppDashboard,settings:settings,adminUsers:adminUsers,studentHome:studentHome,studentSchedule:studentSchedule,studentLessons:studentLessons,studentWork:studentLessons,studentResults:studentResults,studentLife:studentLife,studentMessages:window.studentMessages,studentDocuments:studentDocuments,studentSettings:studentSettings};const view=map[page];if(typeof view!=='function')throw new Error('Module indisponible : '+page);const content=view();const headerMeta={dashboard:['Accueil','Tableau de bord','Vue d’ensemble de votre activité.'],today:['Accueil','Aujourd’hui','Votre journée et les priorités à venir.'],activity:['Pilotage','Centre d’activité','Suivi des actions et des événements récents.'],notifications:['Communication','Notifications','Les informations importantes de MaClasse.'],teachers:['Scolarité','Professeurs','Gestion de l’équipe pédagogique.'],schedule:['Planning','Emploi du temps','Organisation des cours et des créneaux.'],lessons:['Pédagogie','Séances & leçons','Préparation et suivi des séances.'],students:['Scolarité','Élèves','Dossiers et suivi des élèves.'],evaluations:['Évaluations','Évaluations','Notes, compétences et résultats.'],attendance:['Scolarité','Appels','Présences, absences et retards.'],attendanceFollowup:['Scolarité','Suivi des absences','Suivi collectif des absences et retards.'],bulletins:['Évaluation','Bulletins','Préparation, vérification et publication.'],messages:['Communication','Messagerie','Échanges et conversations.'],documents:['Ressources','Cloud','Documents et fichiers partagés.'],classes:['Scolarité','Classes','Groupes et organisation des classes.'],ppDashboard:['Pilotage','Professeur principal','Suivi de votre classe.'],settings:['Configuration','Paramètres','Personnalisez MaClasse et gérez vos données.'],adminUsers:['Administration','Utilisateurs','Gestion des comptes et des accès.'],studentHome:['Espace élève','Accueil','Votre scolarité, vos cours et votre travail.'],studentSchedule:['Espace élève','Emploi du temps','Vos cours et vos horaires.'],studentLessons:['Espace élève','Séances & leçons','Cours et ressources pédagogiques.'],studentWork:['Espace élève','Travail à faire','Vos devoirs et activités.'],studentResults:['Espace élève','Résultats','Vos notes et vos progrès.'],studentLife:['Espace élève','Vie scolaire','Informations et suivi de la vie scolaire.'],studentMessages:['Espace élève','Messagerie','Vos échanges avec l’établissement.'],studentDocuments:['Espace élève','Documents','Vos documents et ressources.'],studentSettings:['Mon compte','Paramètres','Votre profil et vos préférences.']};const meta=headerMeta[page]||['MaClasse',page,''];document.getElementById('main').innerHTML=applicationSyncBannerMarkup()+(typeof maintenanceBanner==='function'?maintenanceBanner():'')+(content.includes('class="top"')?content:shell(meta[0],meta[1],meta[2])+content);}catch(err){console.error(err);document.getElementById('main').innerHTML=`<div class="card"><h2>Une erreur a empêché l’affichage de cette page.</h2><p class="muted">Les données ne sont pas supprimées. Recharge la page ou reviens au tableau de bord.</p><pre style="white-space:pre-wrap;font-size:11px;color:#8f2635">${esc(err?.message||String(err))}</pre></div>`;}}
 function shell(ey,title,sub,actions=''){return `<div class="top"><div class="pageContext"><div class="eyebrow">${ey}</div><div class="pageTitleRow"><h1>${title}</h1><span class="pageSub">${sub}</span></div></div><div class="actions"><button type="button" class="btn globalSearchOpen" onclick="openCommand()"><span aria-hidden="true">⌕</span> Rechercher <kbd>⌘ K</kbd></button>${actions}</div></div>`}
 function globalSearch(q,targetId='globalResults'){const box=document.getElementById(targetId);if(!box)return;q=String(q||'').trim().toLowerCase();if(!q){box.classList.remove('open');box.innerHTML='';return}const out=[];db.students.filter(s=>(s.first+' '+s.last+' '+(s.email||'')).toLowerCase().includes(q)).slice(0,5).forEach(s=>out.push(`<div class="searchResult" onclick="closeGlobalSearch();openStudentProfile(${jsArg(s.id)})"><div class="avatar">${initials(s)}</div><div><b>${esc(s.last.toUpperCase())} ${esc(s.first)}</b><small class="muted">Élève · ${esc(cls(s.classId)?.name||'')}</small></div></div>`));db.schedule.filter(o=>(o.subject+' '+(cls(o.classId)?.name||'')+' '+(o.group||'')).toLowerCase().includes(q)).slice(0,4).forEach(o=>out.push(`<div class="searchResult" onclick="closeGlobalSearch();openSchedule(${jsArg(o.id)})"><div class="avatar">EDT</div><div><b>${esc(o.subject)}</b><small class="muted">${esc(cls(o.classId)?.name||'')} · ${esc(o.time)}</small></div></div>`));db.evaluations.filter(e=>(e.title+' '+e.subject+' '+(cls(e.classId)?.name||'')).toLowerCase().includes(q)).slice(0,4).forEach(e=>out.push(`<div class="searchResult" onclick="closeGlobalSearch();openEvaluation(${jsArg(e.id)})"><div class="avatar">✓</div><div><b>${esc(e.title)}</b><small class="muted">Évaluation · ${esc(e.subject||'')} · ${esc(cls(e.classId)?.name||'')}</small></div></div>`));db.lessons.filter(l=>(l.homework?.title||'').toLowerCase().includes(q)||(l.subject||'').toLowerCase().includes(q)).slice(0,4).forEach(l=>out.push(`<div class="searchResult" onclick="closeGlobalSearch();go('lessons')"><div class="avatar">▤</div><div><b>${esc(l.homework?.title||'Séance')}</b><small class="muted">Travail · ${esc(l.subject||'')} · ${fmtDate(l.homework?.due||l.date)}</small></div></div>`));db.conversations.filter(c=>JSON.stringify(c).toLowerCase().includes(q)).slice(0,3).forEach(c=>out.push(`<div class="searchResult" onclick="closeGlobalSearch();openConversation(${jsArg(c.id)})"><div class="avatar">✉</div><div><b>${esc(conversationTitle(c))}</b><small class="muted">Conversation · ${messageDateTime(lastConversationMessage(c)?.date)}</small></div></div>`));documentInventory().filter(x=>JSON.stringify(x).toLowerCase().includes(q)).slice(0,3).forEach(x=>out.push(`<div class="searchResult" onclick="closeGlobalSearch();go('documents')"><div class="avatar">▤</div><div><b>${esc(x.file?.name||x.title||'Document')}</b><small class="muted">${esc(x.kind)} · ${esc(x.title||'')}</small></div></div>`));if(!out.length)out.push('<div class="empty" style="padding:18px">Aucun résultat.</div>');box.innerHTML=out.join('');box.classList.add('open')}
 function closeGlobalSearch(){document.querySelectorAll('.searchResults,.v12CommandResults').forEach(x=>x.classList.remove('open'));closeCommand()}document.addEventListener('click',e=>{const target=e.target&&e.target.nodeType===1?e.target:e.target?.parentElement;if(!target?.closest?.('.searchWrap'))closeGlobalSearch()});
@@ -946,7 +1094,7 @@ function runDataCheck(){
 }
 function confirmModal(message,yesText='Supprimer',onYes=()=>{}){openModal('Confirmation',`<div class="notice warn">${esc(message)}</div><div class="modalfoot"><button class="btn" type="button" onclick="closeModal()">Annuler</button><button class="btn danger" type="button" id="confirmYes">${esc(yesText)}</button></div>`);$('#confirmYes').onclick=()=>{closeModal();onYes()}}
 function resetData(){confirmModal('Toutes les classes, élèves, emplois du temps, séances, évaluations, appels, bulletins et messages seront supprimés.', 'Tout effacer', async()=>{try{const result=await api('/api/reset');clearTimeout(saveTimer);db=blank();normalize();render();toast(result?.backup?'Données effacées · copie de sécurité créée':'Données effacées')}catch(e){toast(e?.message||'Réinitialisation refusée : aucune donnée effacée')}})}
-function openModal(title,body){$('#modal').innerHTML=`<div class="modalhead"><div><h2>${title}</h2></div><button class="close" onclick="closeModal()">×</button></div>${body}`;$('#modalback').classList.add('open')}function closeModal(){$('#modalback').classList.remove('open');attDraft=null}function toast(t){const x=$('#toast');x.textContent=t;x.classList.add('show');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('show'),1600)}$('#modalback').addEventListener('click',e=>{if(e.target.id==='modalback')closeModal()});function normalize(){const b=blank();if(!db||typeof db!=='object')db=blank();db.settings??={};for(const k of Object.keys(b))if(db[k]===undefined||db[k]===null)db[k]=b[k];db.students=Array.isArray(db.students)?db.students.filter(Boolean):[];db.classes=Array.isArray(db.classes)?db.classes.filter(Boolean):[];db.lessons=Array.isArray(db.lessons)?db.lessons.filter(Boolean):[];db.evaluations=Array.isArray(db.evaluations)?db.evaluations.filter(Boolean):[];db.attendance=Array.isArray(db.attendance)?db.attendance.filter(Boolean):[];db.submissions=Array.isArray(db.submissions)?db.submissions.filter(Boolean):[];for(const k of ['schedule','teacherAssignments','bulletins','attachments','conversations','teachers','subjects','cloudItems','mailFolders','users','notifications','auditLog','messages'])db[k]=Array.isArray(db[k])?db[k]:[];db.teachers=db.users.filter(u=>u&&u.role==='teacher').map(u=>{u.teacherId=u.id;return u});db.classes.forEach(c=>{c.teacherIds=Array.isArray(c.teacherIds)?c.teacherIds.filter(id=>db.teachers.some(t=>t.id===id)):[];c.doubleLevel=!!c.doubleLevel;c.levels=Array.isArray(c.levels)?c.levels:(c.doubleLevel&&c.level?String(c.level).split('/').map(x=>x.trim()).filter(Boolean):[]);c.groups=Array.isArray(c.groups)?c.groups:[]});db.teacherAssignments=Array.isArray(db.teacherAssignments)?db.teacherAssignments.filter(Boolean):[];db.schedule.forEach(x=>{x.teacherId??='';x.teacherIds=Array.isArray(x.teacherIds)?[...new Set([...x.teacherIds.map(String),...(x.teacherId?[String(x.teacherId)]:[])])]:x.teacherId?[String(x.teacherId)]:[];x.courseId=[x.classId,x.subject,x.teacherId||'',x.group||''].join('|');x.color??='';x.pattern??='none';x.endTime??=addHour(x.time||'08:00');x.recurrence??='weekly';x.exceptions=Array.isArray(x.exceptions)?x.exceptions:[];x.overrides??={}});db.settings??={};db.settings.rooms=Array.isArray(db.settings.rooms)?db.settings.rooms:[];if(!db.settings.terms?.length)db.settings.terms=b.settings.terms;db.lessons.forEach(l=>{l.files??=[];if(l.homework){l.homework.files??=[];l.homework.submissionFolder??=l.homework.requiresSubmission?{id:uid(),name:'Rendus — '+(l.homework.title||'Travail'),createdAt:new Date().toISOString()}:null}});db.classes.forEach(c=>{c.attendanceMode??='hour';c.periodMode??=db.settings.termMode;c.name??='Classe';c.level??='';c.group??='';c.principalTeacherId??=''});syncTeacherClassLinks();db.evaluations.forEach(e=>{e.grades??=[];e.coefficient=Number(e.coefficient||1);e.competencies=Array.isArray(e.competencies)?e.competencies.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()):[];e.grades.forEach(g=>{g.competencyRatings=g.competencyRatings&&typeof g.competencyRatings==='object'&&!Array.isArray(g.competencyRatings)?g.competencyRatings:{}})});db.attendance.forEach(a=>{a.mode??=cls(a.classId)?.attendanceMode||'halfday';a.slotId??='';a.partOfDay??='';a.time??='';a.rows??=[]});db.bulletins.forEach(b=>{b.subjectData??={};b.overall??=''});window.cloudPath=Array.isArray(window.cloudPath)?window.cloudPath:[];window.cloudView??='grid';db.cloudItems.forEach(x=>{x.shares=Array.isArray(x.shares)?x.shares:[];x.space??=(x.classId?'class':'personal');x.ownerId??=(x.space==='personal'?(authUser?.id||''):'');x.parentId=x.parentId||'';x.group??='';x.createdAt??=new Date().toISOString()});db.cloudItems.forEach(x=>{if(x.parentId){const p=db.cloudItems.find(q=>q.id===x.parentId);if(!p||p.space!==x.space||String(p.classId||'')!==String(x.classId||'')||String(p.group||'')!==String(x.group||''))x.parentId=''}});db.submissions.forEach(x=>{x.corrected??=false;x.correctionComment??='';x.status??=(x.submittedAt?'submitted':'draft');if(!Array.isArray(x.files))x.files=x.file?[x.file]:[];x.files=x.files.filter(Boolean);x.file??=x.files[0]||null;x.correctionFiles??=[]});db.evaluationTemplates=Array.isArray(db.evaluationTemplates)?db.evaluationTemplates.filter(t=>t&&typeof t==='object'&&Array.isArray(t.competencies)):[];db.evaluationCriteriaLibrary=Array.isArray(db.evaluationCriteriaLibrary)?db.evaluationCriteriaLibrary.filter(c=>c&&c.name):[];db.evaluationTemplates.forEach(t=>(t.criteria||[]).forEach(c=>{if(!db.evaluationCriteriaLibrary.some(x=>x.name===c.name&&Number(x.maxPoints)===Math.max(0,...(c.levels||[0]).map(Number))))db.evaluationCriteriaLibrary.push({...c,maxPoints:Math.max(0,...(c.levels||[0]).map(Number))})}));db.competencyLibrary=Array.isArray(db.competencyLibrary)?[...new Set(db.competencyLibrary.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()))]:[];db.evaluations.forEach(e=>(e.competencies||[]).forEach(c=>{if(!db.competencyLibrary.includes(c))db.competencyLibrary.push(c)}));db.messages??=[];db.messages=[];}
+function openModal(title,body){$('#modal').innerHTML=`<div class="modalhead"><div><h2>${title}</h2></div><button class="close" onclick="closeModal()">×</button></div>${body}`;$('#modalback').classList.add('open')}function closeModal(){$('#modalback').classList.remove('open');attDraft=null;if(needsRenderAfterSync&&!savePending&&!saveTimer&&!saveError)refreshLiveScheduleData(true)}function toast(t){const x=$('#toast');x.textContent=t;x.classList.add('show');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('show'),1600)}$('#modalback').addEventListener('click',e=>{if(e.target.id==='modalback')closeModal()});function normalize(){const b=blank();if(!db||typeof db!=='object')db=blank();db.settings??={};for(const k of Object.keys(b))if(db[k]===undefined||db[k]===null)db[k]=b[k];db.students=Array.isArray(db.students)?db.students.filter(Boolean):[];db.classes=Array.isArray(db.classes)?db.classes.filter(Boolean):[];db.lessons=Array.isArray(db.lessons)?db.lessons.filter(Boolean):[];db.evaluations=Array.isArray(db.evaluations)?db.evaluations.filter(Boolean):[];db.attendance=Array.isArray(db.attendance)?db.attendance.filter(Boolean):[];db.submissions=Array.isArray(db.submissions)?db.submissions.filter(Boolean):[];for(const k of ['schedule','teacherAssignments','bulletins','attachments','conversations','teachers','subjects','cloudItems','mailFolders','users','notifications','auditLog','messages'])db[k]=Array.isArray(db[k])?db[k]:[];db.teachers=db.users.filter(u=>u&&u.role==='teacher').map(u=>{u.teacherId=u.id;return u});db.classes.forEach(c=>{c.teacherIds=Array.isArray(c.teacherIds)?c.teacherIds.filter(id=>db.teachers.some(t=>t.id===id)):[];c.doubleLevel=!!c.doubleLevel;c.levels=Array.isArray(c.levels)?c.levels:(c.doubleLevel&&c.level?String(c.level).split('/').map(x=>x.trim()).filter(Boolean):[]);c.groups=Array.isArray(c.groups)?c.groups:[]});db.teacherAssignments=Array.isArray(db.teacherAssignments)?db.teacherAssignments.filter(Boolean):[];db.schedule.forEach(x=>{x.teacherId??='';x.teacherIds=Array.isArray(x.teacherIds)?[...new Set([...x.teacherIds.map(String),...(x.teacherId?[String(x.teacherId)]:[])])]:x.teacherId?[String(x.teacherId)]:[];x.courseId=[x.classId,x.subject,x.teacherId||'',x.group||''].join('|');x.color??='';x.pattern??='none';x.endTime??=addHour(x.time||'08:00');x.recurrence??='weekly';x.exceptions=Array.isArray(x.exceptions)?x.exceptions:[];x.overrides??={}});db.settings??={};db.settings.rooms=Array.isArray(db.settings.rooms)?db.settings.rooms:[];if(!db.settings.terms?.length)db.settings.terms=b.settings.terms;db.lessons.forEach(l=>{l.files??=[];if(l.homework){l.homework.files??=[];l.homework.submissionFolder??=l.homework.requiresSubmission?{id:uid(),name:'Rendus — '+(l.homework.title||'Travail'),createdAt:new Date().toISOString()}:null}});db.classes.forEach(c=>{c.attendanceMode??='hour';c.periodMode??=db.settings.termMode;c.name??='Classe';c.level??='';c.group??='';c.principalTeacherId??=''});syncTeacherClassLinks();db.evaluations.forEach(e=>{e.grades??=[];e.coefficient=Number(e.coefficient||1);e.competencies=Array.isArray(e.competencies)?e.competencies.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()):[];e.grades.forEach(g=>{g.competencyRatings=g.competencyRatings&&typeof g.competencyRatings==='object'&&!Array.isArray(g.competencyRatings)?g.competencyRatings:{}})});db.attendance.forEach(a=>{a.mode??=cls(a.classId)?.attendanceMode||'halfday';a.slotId??='';a.partOfDay??='';a.time??='';a.rows??=[]});db.bulletins.forEach(b=>{b.subjectData??={};b.overall??=''});window.cloudPath=Array.isArray(window.cloudPath)?window.cloudPath:[];window.cloudView??='grid';db.cloudItems.forEach(x=>{x.shares=Array.isArray(x.shares)?x.shares:[];x.space??=(x.classId?'class':'personal');x.ownerId??=(x.space==='personal'?(authUser?.id||''):'');x.parentId=x.parentId||'';x.group??='';x.createdAt??=new Date().toISOString()});db.cloudItems.forEach(x=>{if(x.parentId){const p=db.cloudItems.find(q=>q.id===x.parentId);if(!p||p.space!==x.space||String(p.classId||'')!==String(x.classId||'')||String(p.group||'')!==String(x.group||''))x.parentId=''}});db.submissions.forEach(x=>{x.corrected??=false;x.correctionComment??='';x.status??=(x.submittedAt?'submitted':'draft');if(!Array.isArray(x.files))x.files=x.file?[x.file]:[];x.files=x.files.filter(Boolean);x.file??=x.files[0]||null;x.correctionFiles??=[]});db.evaluationTemplates=Array.isArray(db.evaluationTemplates)?db.evaluationTemplates.filter(t=>t&&typeof t==='object'&&Array.isArray(t.competencies)):[];db.evaluationCriteriaLibrary=Array.isArray(db.evaluationCriteriaLibrary)?db.evaluationCriteriaLibrary.filter(c=>c&&c.name):[];db.evaluationTemplates.forEach(t=>(t.criteria||[]).forEach(c=>{if(!db.evaluationCriteriaLibrary.some(x=>x.name===c.name&&Number(x.maxPoints)===Math.max(0,...(c.levels||[0]).map(Number))))db.evaluationCriteriaLibrary.push({...c,maxPoints:Math.max(0,...(c.levels||[0]).map(Number))})}));db.competencyLibrary=Array.isArray(db.competencyLibrary)?[...new Set(db.competencyLibrary.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()))]:[];db.evaluations.forEach(e=>(e.competencies||[]).forEach(c=>{if(!db.competencyLibrary.includes(c))db.competencyLibrary.push(c)}));db.messages??=[];db.messages=[];}
 
 function v10MissingGrades(){return db.evaluations.reduce((n,e)=>n+(e.grades||[]).filter(g=>g.value==='').length,0)}
 function v10Upcoming(){const today=iso(new Date());return db.lessons.filter(l=>l.homework?.due&&l.homework.due>=today).sort((a,b)=>a.homework.due.localeCompare(b.homework.due))}
