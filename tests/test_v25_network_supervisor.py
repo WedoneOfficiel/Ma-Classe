@@ -179,7 +179,7 @@ class NetworkSupervisorTests(unittest.TestCase):
 
         result = supervisor.run_supervisor(
             "/tmp/root", "/tmp/app", "/tmp/data", "/usr/bin/python3",
-            stop_event=StopAfter(1),
+            stop_event=StopAfter(2),
             detect_ip=lambda: "192.168.1.10",
             ensure_cert=lambda host: None,
             spawn=lambda command, **kwargs: DeadProcess(command, **kwargs),
