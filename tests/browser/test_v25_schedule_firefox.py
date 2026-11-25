@@ -80,6 +80,11 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
         if role == "student"
         else ["dashboard","schedule","lessons","students","messages","documents","settings"]
     )
+    mobile_visual_modules = (
+        {"studentHome","studentSchedule","studentLessons","studentMessages","studentDocuments","studentSettings"}
+        if role == "student"
+        else {"dashboard","schedule","lessons","messages","documents","settings"}
+    )
 
     for theme in ("light", "dark"):
         system_theme = "dark" if theme == "light" else "light"
@@ -104,6 +109,10 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
             for module in responsive_modules:
                 state = render_state(module, theme)
                 assert_state(module, theme, state, width)
+                if width == 390 and module in mobile_visual_modules:
+                    page.wait_for_timeout(80)
+                    destination = output_dir / f"{role}-{theme}-{module}-390px.png"
+                    page.screenshot(path=str(destination), full_page=True, animations="disabled")
 
         page.set_viewport_size(original_viewport)
 
