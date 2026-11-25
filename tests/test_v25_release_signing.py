@@ -112,7 +112,7 @@ class ReleaseSigningTests(unittest.TestCase):
                 "--manifest", str(manifest), "--signature", str(missing_signature)
             ], env=absent_secret_env, capture_output=True, text=True, timeout=20)
             self.assertEqual(result.returncode, 2)
-            self.assertIn("secret GitHub Actions absent", result.stderr)
+            self.assertIn("Secret GitHub Actions absent", result.stderr)
             self.assertFalse(missing_signature.exists())
 
     def test_malformed_and_invalid_signatures_are_rejected(self):
