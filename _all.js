@@ -284,10 +284,12 @@ async function refreshLiveScheduleData(force=false){
   const latest=await response.json(),receivedRevision=response.headers.get('X-MaClasse-Revision')||latestRevision;
   if(observedRevision!==dataRevision||observedGeneration!==saveGeneration||syncHasLocalWork())return;
   dataRevision=receivedRevision;
-  const changed=JSON.stringify(db)!==JSON.stringify(latest);
+  // A fresh server revision must repaint the current module even when the
+  // in-memory JSON already matches. A prior local refresh or module-specific
+  // helper may have updated the model without refreshing the visible DOM.
   db=latest;normalize();dataBase=copyData(db);remoteChangePending=false;syncLastError='';
-  if(changed||needsRenderAfterSync){needsRenderAfterSync=false;render()}
-  else updateSyncBanner();
+  needsRenderAfterSync=false;
+  render();
  }catch(error){
   syncOnline=false;syncLastError=error?.message||'Serveur indisponible';
   console.warn('MaClasse synchronisation indisponible',error);updateSyncBanner();
