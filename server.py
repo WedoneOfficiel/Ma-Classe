@@ -1404,7 +1404,9 @@ def _student_visible_data(data,user,now=None):
                 (typ=='group' and str(grant.get('classId') or '')==class_id and str(grant.get('group') or '')==str(student_record.get('group') or ''))
             )
             if matches:
-                safe_shares.append({k:grant[k] for k in ('type','id','classId','group') if k in grant} | {'role':'view'})
+                safe_grant={k:grant[k] for k in ('type','id','classId','group') if k in grant}
+                safe_grant['role']='view'
+                safe_shares.append(safe_grant)
         copy['shares']=safe_shares
         visible_cloud.append(copy)
     out['cloudItems']=visible_cloud
