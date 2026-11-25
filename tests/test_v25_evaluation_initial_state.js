@@ -1,7 +1,7 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const source=fs.readFileSync('_all.js','utf8');
 const pageStart=source.indexOf('window.evaluations=function()');
-const pageEnd=source.indexOf('\n  window.openEvaluation',pageStart);
+const pageEnd=source.indexOf('\n window.openEvaluation',pageStart);
 assert(pageStart>=0&&pageEnd>pageStart,
   'Le point d’entrée Évaluations réellement utilisé doit être présent.');
 
