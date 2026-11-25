@@ -49,21 +49,16 @@ if not any(isinstance(u,dict) and u.get("role")=="admin" and valid(u) for u in u
     sys.exit("Aucun compte direction sécurisé : initialise MaClasse avant d'activer le service réseau.")
 PY
 
-IFACE="$(ip -4 route show default 2>/dev/null | awk 'NR==1 {for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')"
-[[ -n "$IFACE" ]] || { echo "Interface réseau par défaut introuvable."; exit 1; }
-LAN_IP="$(ip -4 -o addr show dev "$IFACE" scope global | awk 'NR==1 {split($4,a,"/"); print a[1]}')"
-[[ -n "$LAN_IP" ]] || { echo "Adresse IPv4 introuvable sur $IFACE."; exit 1; }
-"$APP_ROOT/.venv/bin/python" -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert a.is_private and not a.is_loopback and not a.is_link_local' "$LAN_IP" || { echo "Adresse réseau refusée : $LAN_IP"; exit 1; }
-
-./Configurer-MaClasse-Reseau.sh "$LAN_IP"
+# The Python supervisor follows DHCP changes and keeps the HTTPS listener bound
+# only to the current private address. If the interface disappears, it closes
+# the listener and waits for a usable address before serving again.
 export MACLASSE_LAN_MODE=1
-export MACLASSE_HOST="$LAN_IP"
 export MACLASSE_PORT=8765
 export MACLASSE_ROOT="$ROOT"
+export MACLASSE_APP_ROOT="$APP_ROOT"
 export MACLASSE_DATA_DIR="$DATA_ROOT"
-export MACLASSE_TLS_CERT="$DATA_ROOT/tls/server.crt"
-export MACLASSE_TLS_KEY="$DATA_ROOT/tls/server.key"
+export MACLASSE_PYTHON="$PYTHON"
+unset MACLASSE_HOST MACLASSE_TLS_CERT MACLASSE_TLS_KEY
 cd "$APP_ROOT"
-echo "MaClasse HTTPS démarre sur https://$LAN_IP:8765"
-if [[ "${MACLASSE_SUPERVISED:-}" != "systemd" ]] && command -v xdg-open >/dev/null 2>&1; then (sleep 2; xdg-open "https://$LAN_IP:8765") >/dev/null 2>&1 & fi
-exec "$PYTHON" "$APP_ROOT/server.py"
+echo "MaClasse HTTPS — surveillance automatique de l'adresse réseau."
+exec "$PYTHON" "$APP_ROOT/network_supervisor.py"
