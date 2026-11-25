@@ -1,48 +1,59 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const source=fs.readFileSync('_all.js','utf8');
-const dashboardStart=source.indexOf('function v217EvaluationDashboard(');
-const pageStart=source.indexOf('function evaluations()',dashboardStart);
-const pageEnd=source.indexOf('\nfunction renderEvalList()',pageStart);
-assert(dashboardStart>=0&&pageStart>dashboardStart&&pageEnd>pageStart,
-  'Le moteur Évaluations et sa page doivent être présents');
+const pageStart=source.indexOf('window.evaluations=function()');
+const pageEnd=source.indexOf('\n  window.openEvaluation',pageStart);
+assert(pageStart>=0&&pageEnd>pageStart,
+  'Le point d’entrée Évaluations réellement utilisé doit être présent.');
 
+const dashboardCalls=[];
 const context={
   window:{classContext:''},
-  db:{classes:[{id:'class-1',name:'6e A'}],evaluations:[]},
-  $:()=>null, // The page is rendered before its select elements exist in the DOM.
+  db:{
+    classes:[{id:'class-1',name:'6e A'},{id:'class-2',name:'5e B'}],
+    evaluations:[
+      {id:'e1',classId:'class-1',subject:'Français'},
+      {id:'e2',classId:'class-2',subject:'Mathématiques'}
+    ]
+  },
   shell:(section,title,description,actions='')=>'<header>'+String(actions||'')+'</header>',
   esc:value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])),
   jsArg:value=>JSON.stringify(String(value??'')),
-  evaluationModelDashboardStats:()=>({all:0,entered:0,average:null,students:1}),
-  evaluationModelMaxScore:()=>20,
-  evalAverage:()=>0,
-  fmtDate:value=>String(value??'')
+  v217EvaluationDashboard:(classId,subject)=>{
+    dashboardCalls.push([String(classId||''),String(subject||'')]);
+    return classId?'Statistiques de '+classId:'Sélectionne une classe pour afficher les évaluations.';
+  }
 };
 vm.createContext(context);
-vm.runInContext(source.slice(dashboardStart,pageEnd),context);
+vm.runInContext(source.slice(pageStart,pageEnd),context);
 
-let html=context.evaluations();
+let html=context.window.evaluations();
 assert(html.includes('<option value="class-1" selected>6e A</option>'),
-  'La classe par défaut doit être sélectionnée dans le filtre visible.');
-assert(html.includes('Aucune évaluation.'),
-  'Une classe sélectionnée sans évaluation doit afficher son véritable état vide.');
+  'La première classe doit être sélectionnée dès la création du filtre.');
+assert(html.includes('Statistiques de class-1'),
+  'Le tableau de bord doit recevoir explicitement la classe initiale, sans lire un select qui n’existe pas encore.');
 assert(!html.includes('Sélectionne une classe pour afficher les évaluations.'),
-  'La page ne doit pas afficher le message de sélection quand la classe est déjà sélectionnée.');
+  'La page ne doit pas afficher un message contradictoire quand une classe est déjà sélectionnée.');
+assert.deepStrictEqual(dashboardCalls.pop(),['class-1','']);
 
-context.window.classContext='class-1';
-html=context.evaluations();
-assert(html.includes('<option value="class-1" selected>6e A</option>'),
-  'Le contexte de classe courant doit être respecté à l’ouverture.');
-assert(!html.includes('Sélectionne une classe pour afficher les évaluations.'));
+context.window.classContext='class-2';
+html=context.window.evaluations();
+assert(html.includes('<option value="class-2" selected>5e B</option>'),
+  'Le contexte de classe valide doit être conservé à l’ouverture.');
+assert(html.includes('Statistiques de class-2'));
+assert.deepStrictEqual(dashboardCalls.pop(),['class-2','']);
 
 context.window.classContext='deleted-class';
-html=context.evaluations();
+html=context.window.evaluations();
 assert(html.includes('<option value="class-1" selected>6e A</option>'),
   'Un ancien contexte devenu invalide doit retomber sur la première classe disponible.');
-assert(html.includes('Aucune évaluation.'));
+assert(html.includes('Statistiques de class-1'));
+assert.deepStrictEqual(dashboardCalls.pop(),['class-1','']);
 
 context.db.classes=[];
-html=context.evaluations();
+context.window.classContext='';
+html=context.window.evaluations();
+assert(html.includes('Choisir une classe'));
 assert(html.includes('Sélectionne une classe pour afficher les évaluations.'),
-  'Le message de sélection doit rester lorsque l’établissement ne contient aucune classe.');
-console.log('OK — Évaluations : classe initiale cohérente avec le tableau de bord, filtre invalide et établissement sans classe.');
+  'Le message doit rester lorsque l’établissement ne contient aucune classe.');
+assert.deepStrictEqual(dashboardCalls.pop(),['','']);
+console.log('OK — Évaluations actives : classe initiale et statistiques cohérentes, contexte invalide et établissement sans classe.');
