@@ -768,12 +768,11 @@ def main() -> None:
                   page='studentMessages';appSpace='student';window.mailV2Folder='inbox';
                   render();
                 }""")
-                expect(student_page.locator('.v2104Row')).to_contain_text(
-                    "Test de rédaction persistante"
-                )
-                student_page.locator('.v2104Row').filter(
+                student_mail_row = student_page.locator('.v2104Row').filter(
                     has_text="Test de rédaction persistante"
-                ).click()
+                )
+                expect(student_mail_row).to_have_count(1)
+                student_mail_row.click()
                 expect(student_page.locator('.v2104Thread')).to_contain_text(
                     "Message envoyé depuis le brouillon repris."
                 )
