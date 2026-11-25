@@ -5,11 +5,9 @@ import signal
 import subprocess
 import sys
 import tempfile
-import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import network_supervisor as supervisor
