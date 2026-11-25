@@ -252,7 +252,8 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
     return new Promise(resolve=>{resolveData=resolve});
   };
   const navigationRefresh=vm.runInContext('refreshLiveScheduleData(true)',context);
-  await Promise.resolve();
+  await new Promise(resolve=>setTimeout(resolve,0));
+  if(!resolveData)throw new Error('La requête /api/data doit démarrer après le sondage de révision.');
   context.scheduleView='month';context.selectedWeek=new Date(2026,11,1,12);
   resolveData({ok:true,headers:{get:()=> 'rev3'},json:async()=>({schedule:[{id:'fresh-server-copy'}]})});
   await navigationRefresh;
