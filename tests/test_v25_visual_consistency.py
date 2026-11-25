@@ -140,7 +140,7 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn(".app{display:block!important;min-height:100vh}", HTML)
         self.assertIn("body.sidebar-collapsed .side{", HTML)
         self.assertIn("width:100%!important;", HTML)
-        self.assertIn(".navSection{", HTML)
+        self.assertIn(".navSection,", HTML)
         self.assertIn("display:contents!important;", HTML)
         self.assertIn(".nav{", HTML)
         self.assertIn("overflow-x:auto!important;", HTML)
