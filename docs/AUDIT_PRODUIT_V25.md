@@ -162,7 +162,7 @@ Les captures ont révélé un décalage entre la date sélectionnée dans le cah
 
 La cause était une fonction \`weekDates()\` qui lisait toujours la variable globale \`selectedWeek\`, alors que les vues professeur et élève lui transmettaient déjà la date \`lessonDay\`. L'argument était donc ignoré. La fonction accepte désormais une date de référence optionnelle et calcule la semaine correspondante. Le libellé du mini-calendrier utilise également le mois abrégé pour éviter la troncature dans la colonne étroite.
 
-Un contrôle Firefox supplémentaire vérifie que la semaine affichée contient la date sélectionnée dans les deux espaces. Le correctif reste en attente de la réussite du workflow sur le dernier commit.
+Un contrôle Firefox supplémentaire vérifie que la semaine affichée contient la date sélectionnée dans les deux espaces. Le workflow #1679, sur le commit `7380a1c`, a passé les trois jobs : tests Linux, régression Firefox réelle et validation macOS (installateur Apple Silicon, service `launchd` et tests Python). La correction est donc validée par la CI ; la recette sur l'installation physique reste nécessaire.
 
 ## 11. Finition du tableau de bord — 25/11/2026
 
