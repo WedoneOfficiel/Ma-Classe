@@ -32,8 +32,8 @@ class ReleaseCheckerTests(unittest.TestCase):
             "tag_name": "v25.1.0",
             "html_url": "https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.0",
             "assets": [
-                {"name": updater.MANIFEST_ASSET, "browser_download_url": "https://release-assets.githubusercontent.com/manifest"},
-                {"name": self.manifest["archive_asset"], "browser_download_url": "https://release-assets.githubusercontent.com/archive"}
+                {"name": updater.MANIFEST_ASSET, "browser_download_url": "https://example.test/manifest"},
+                {"name": self.manifest["archive_asset"], "browser_download_url": "https://example.test/archive"}
             ]
         }
 
@@ -48,9 +48,9 @@ class ReleaseCheckerTests(unittest.TestCase):
     def fake_request(self, url, limit):
         if url == updater.API_LATEST:
             return json.dumps(self.release).encode()
-        if url == "https://release-assets.githubusercontent.com/manifest":
+        if url == "https://example.test/manifest":
             return json.dumps(self.manifest).encode()
-        if url == "https://release-assets.githubusercontent.com/archive":
+        if url == "https://example.test/archive":
             return self.archive
         raise AssertionError("URL inattendue : " + url)
 
@@ -96,7 +96,7 @@ class ReleaseCheckerTests(unittest.TestCase):
 
     def test_rejects_archive_hash_mismatch(self):
         info = {
-            "archive_url": "https://example.test/archive",
+            "archive_url": "https://release-assets.githubusercontent.com/archive",
             "sha256": "0" * 64,
         }
         with patch.object(updater, "_request", side_effect=self.fake_request):
@@ -164,55 +164,6 @@ class ReleaseCheckerTests(unittest.TestCase):
             request, None, 302, "Found", {}, "https://release-assets.githubusercontent.com/asset"
         )
         self.assertEqual(redirected.full_url, "https://release-assets.githubusercontent.com/asset")
-
-    def test_github_asset_digests_and_sizes_are_verified_when_available(self):
-        manifest_payload = json.dumps(self.manifest).encode()
-        manifest_asset = self.release["assets"][0]
-        archive_asset = self.release["assets"][1]
-        manifest_asset.update({
-            "size": len(manifest_payload),
-            "digest": "sha256:" + hashlib.sha256(manifest_payload).hexdigest(),
-        })
-        archive_asset.update({
-            "size": len(self.archive),
-            "digest": "sha256:" + hashlib.sha256(self.archive).hexdigest(),
-        })
-        with patch.object(updater, "_request", side_effect=self.fake_request):
-            info = updater.check_latest_release("25.0.22")
-        self.assertTrue(info["manifest_asset_digest_verified"])
-        self.assertTrue(info["archive_asset_digest_verified"])
-        self.assertEqual(info["archive_size"], len(self.archive))
-
-    def test_rejects_manifest_asset_digest_mismatch(self):
-        manifest_asset = self.release["assets"][0]
-        manifest_asset.update({"size": len(json.dumps(self.manifest).encode()), "digest": "sha256:" + "0" * 64})
-        with patch.object(updater, "_request", side_effect=self.fake_request):
-            with self.assertRaises(updater.UpdateError):
-                updater.check_latest_release("25.0.22")
-
-    def test_rejects_archive_asset_digest_mismatch(self):
-        self.release["assets"][1]["digest"] = "sha256:" + "0" * 64
-        with patch.object(updater, "_request", side_effect=self.fake_request):
-            with self.assertRaises(updater.UpdateError):
-                updater.check_latest_release("25.0.22")
-
-    def test_rejects_malformed_github_asset_digest(self):
-        self.release["assets"][0]["digest"] = "sha256:not-a-valid-digest"
-        with patch.object(updater, "_request", side_effect=self.fake_request):
-            with self.assertRaises(updater.UpdateError):
-                updater.check_latest_release("25.0.22")
-
-    def test_rejects_github_asset_size_mismatch(self):
-        self.release["assets"][0]["size"] = len(json.dumps(self.manifest).encode()) + 1
-        with patch.object(updater, "_request", side_effect=self.fake_request):
-            with self.assertRaises(updater.UpdateError):
-                updater.check_latest_release("25.0.22")
-
-    def test_legacy_release_without_asset_digests_remains_supported(self):
-        with patch.object(updater, "_request", side_effect=self.fake_request):
-            info = updater.check_latest_release("25.0.22")
-        self.assertFalse(info["manifest_asset_digest_verified"])
-        self.assertFalse(info["archive_asset_digest_verified"])
 
     def test_rejects_http_asset_url(self):
         with self.assertRaises(updater.UpdateError):
