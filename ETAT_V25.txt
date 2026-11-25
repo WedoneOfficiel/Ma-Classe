@@ -346,3 +346,14 @@ MISE À JOUR — SUPERVISION DHCP ET REBINDING HTTPS — 25/11/2026
 - En cas de perte de l'interface ou de l'adresse, le listener est fermé ; le superviseur attend le retour du réseau avant de rouvrir l'accès. Les données, la CA et la clé privée du serveur restent dans le stockage persistant.
 - Le script de configuration des certificats respecte maintenant MACLASSE_DATA_DIR.
 - Tests automatisés ajoutés pour macOS/Linux, changement d'adresse, perte/retour du réseau et certificat SAN/expiration. La recette Wi-Fi sur les appareils physiques reste à effectuer.
+
+
+MISE À JOUR — AUDIT PRODUIT ET SYNCHRONISATION APPLICATIVE — 25/11/2026
+- Un dossier dédié docs/AUDIT_PRODUIT_V25.md inventorie les modules actifs Direction/Professeur/Élève et le plan de recette : navigation, apparence claire/sombre, EDT, évaluations, bulletins, messagerie, séances/devoirs, Cloud, appels, profils et rationalisation.
+- La messagerie active est le moteur V21.04 Mail V2 via window.messages et window.studentMessages. Les tests de cloisonnement, d'identité, d'état par boîte et de pièces jointes existent ; la recette avec un compte élève sur l'installation de référence reste ouverte. Un ancien écran placeholder est du code mort remplacé par le point d'entrée actif.
+- Le moteur actif d'Évaluations est V21.17 ; plusieurs anciennes définitions restent dans _all.js. Bulletins V21.09 est également actif. Une consolidation future devra conserver les parcours réellement utilisés.
+- Le thème est appliqué via html[data-mc-theme]. Les règles prefers-color-scheme relevées dans le document d'impression du bulletin ne pilotent pas l'interface principale ; la parité visuelle complète n'est pas encore vérifiée.
+- Ajout de GET /api/sync-status (révision uniquement, sans données métier) et d'une surveillance globale du navigateur toutes les cinq secondes ; la récupération attend la fin des saisies locales.
+- Ajout d'une fusion à trois versions des changements indépendants et d'un état de conflit explicite. Les tests dédiés et la régression Firefox doivent encore être stabilisés.
+- Le test Firefox révèle un défaut de propagation d'un créneau ajouté à distance vers l'EDT élève. Cette anomalie est conservée comme point ouvert ; aucune affirmation de synchronisation générale validée.
+- Les correctifs de supervision DHCP, d'intégrité des mises à jour et de migration V25.0.19 restent conservés sur la même branche.
