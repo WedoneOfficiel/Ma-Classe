@@ -1,10 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et rendu
 
-**État : audit produit poursuivi — 25 novembre 2026**  
+**État : audit produit poursuivi — candidat V25.1.0 — 25 novembre 2026**  
 **Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
 **Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
 **Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
-**Validation automatisée :** workflow [#1763](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45706617681) vert sur la tête vérifiée (`b06f8ef`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
+**Validation automatisée :** workflow [#1793](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45713179841) vert (3/3) : Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
 
 Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
 
@@ -25,7 +25,7 @@ Les états utilisés dans le registre sont : **confirmé** (défaut reproduit ou
 
 ### Espace Direction / Professeur
 
-La navigation principale déclare actuellement 13 entrées :
+La navigation principale déclare actuellement 14 entrées :
 
 | Module | Identifiant de page | Périmètre principal | État de l'audit |
 |---|---|---|---|
