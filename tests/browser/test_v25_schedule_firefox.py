@@ -739,7 +739,28 @@ def main() -> None:
                 # Retry the same pending message after removing the simulated outage.
                 teacher_page.unroute("**/api/save",fail_first_mail_save)
                 retry_send.click()
-                expect(teacher_page.locator('#modal .v2104Compose')).to_have_count(0,timeout=10_000)
+                try:
+                    expect(teacher_page.locator('#modal .v2104Compose')).to_have_count(0,timeout=10_000)
+                except AssertionError as failure:
+                    retry_state=teacher_page.evaluate("""() => {
+                      const form=document.querySelector('#modal .v2104Compose');
+                      const submit=form?.querySelector('button[type="submit"]');
+                      const owner='teacher:'+currentTeacherId();
+                      return {
+                        pendingMessageId:form?.dataset.pendingMessageId||null,
+                        sending:form?.dataset.sending||null,
+                        submitText:submit?.textContent||null,
+                        submitDisabled:!!submit?.disabled,
+                        draftCount:db.mailboxV2?.drafts?.filter(d=>d.owner===owner).length,
+                        matchingMessages:db.mailboxV2?.messages?.filter(m=>m.subject==='Test de rédaction persistante').map(m=>({id:m.id,to:m.to,body:m.body})),
+                        savePending,saveTimer:!!saveTimer,saveError:saveError?.message||null,
+                        saveQueueState:String(saveQueue),dataRevision,
+                        banner:document.getElementById('mcSyncBanner')?.innerText||'',
+                        toast:document.getElementById('toast')?.innerText||''
+                      };
+                    }""")
+                    raise AssertionError("La reprise Mail n'a pas finalisé l'envoi : "
+                                         +json.dumps(retry_state,ensure_ascii=False)+" | "+str(failure))
                 teacher_page.evaluate("""async () => {
                   await flushPendingSave();
                   await load();
