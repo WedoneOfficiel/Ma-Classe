@@ -21,20 +21,25 @@ const db={
  ],
  submissions:[{lessonId:'l1',studentId:'s1',status:'submitted'}],
  evaluations:[
-  {id:'e1',classId:'c1',date:'2026-11-18',published:true,grades:[{studentId:'s1',value:'15'},{studentId:'s2',value:'12'}]},
-  {id:'e2',classId:'c1',date:'2026-11-19',published:false,grades:[{studentId:'s1',value:'18'}]},
-  {id:'e3',classId:'c1',date:'2026-12-01',published:true,grades:[{studentId:'s1',value:'19'}]},
+  {id:'e1',classId:'c1',date:'2026-11-18',subject:'Français',published:true,grades:[{studentId:'s1',value:'15'},{studentId:'s2',value:'12'}]},
+  {id:'e2',classId:'c1',date:'2026-11-19',subject:'Français',published:false,grades:[{studentId:'s1',value:'18'}]},
+  {id:'e3',classId:'c1',date:'2026-12-01',subject:'Français',published:true,grades:[{studentId:'s1',value:'19'}]},
   {id:'e4',classId:'c2',date:'2026-11-18',published:true,grades:[{studentId:'s3',value:'14'}]},
-  {id:'e5',classId:'c1',group:'A',date:'2026-11-17',published:true,grades:[{studentId:'s1',value:'16'},{studentId:'s2',value:'11'}]}
+  {id:'e5',classId:'c1',group:'A',date:'2026-11-17',subject:'Français',published:true,grades:[{studentId:'s1',value:'16'},{studentId:'s2',value:'11'}]}
  ]
 };
 const context={db,authUser:{role:'admin'},window:{},currentTeacherProfile:()=>({id:'t1'}),teacherClasses:()=>[db.classes[0]],teacherPPClasses:()=>[db.classes[1]],iso:d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')},studentSubmitted:(l,id)=>db.submissions.some(x=>x.lessonId===l.id&&x.studentId===id&&(x.status==='submitted'||!!x.submittedAt)),evaluationModelPublished:(e,today)=>!e.publishAt||e.publishAt<=today};
+context.canEditEvaluation=e=>context.authUser.role==='admin'||e.subject==='Français';
 vm.createContext(context);
 vm.runInContext(source.slice(start,end),context);
 assert.deepStrictEqual(Array.from(context.classTrackingClasses(),x=>x.id),['c3','c2','c1'],'La Direction doit voir toutes les classes.');
 context.authUser={role:'teacher',id:'t1'};
 assert.deepStrictEqual(Array.from(context.classTrackingClasses(),x=>x.id),['c2','c1'],'Un professeur ne voit que ses classes enseignées ou dont il est PP.');
 assert.strictEqual(context.classTrackingData('c3',fixed),null,'Un professeur ne doit pas pouvoir ouvrir une classe non attribuée.');
+const teacherData=context.classTrackingData('c1',fixed);
+assert.strictEqual(teacherData.stats.missing,0,'Un professeur ne voit pas les travaux des matières qu’il n’enseigne pas.');
+assert.strictEqual(teacherData.stats.upcoming,0,'Les échéances doivent respecter les matières accessibles.');
+assert.strictEqual(context.classTrackingData('c2',fixed).stats.missing,1,'Le professeur principal conserve la vue transversale de sa classe.');
 context.authUser={role:'student',id:'s1'};
 assert.strictEqual(context.classTrackingClasses().length,0,'Un élève ne doit pas accéder au suivi de classe.');
 assert.strictEqual(context.classTrackingData('c1',fixed),null,'Un élève ne doit pas pouvoir lire les données du suivi de classe.');
