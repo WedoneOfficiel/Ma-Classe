@@ -187,8 +187,10 @@ def run_supervisor(
     detect_ip = detect_ip or detect_lan_ipv4
     cert_path = data_dir / "tls" / "server.crt"
     key_path = data_dir / "tls" / "server.key"
+    # The helper script must come from the active application version, not
+    # the immutable installation root. This matters after atomic version swaps.
     ensure_cert = ensure_cert or (
-        lambda host: ensure_certificate(root, data_dir, python, host)
+        lambda host: ensure_certificate(app_root, data_dir, python, host)
     )
     cert_valid = cert_valid or certificate_matches_host
 
