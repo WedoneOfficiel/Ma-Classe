@@ -17,7 +17,7 @@ const context={
   jsObjectArg:value=>JSON.stringify(value??null),
   esc:value=>String(value??''),
   fmtDate:value=>String(value??''),
-  shell:()=>'<div class="shell"></div>',
+  shell:(section,title,description,actions='')=>'<div class="shell">'+String(actions||'')+'</div>',
   time:value=>String(value??'').slice(0,5),
   unreadConversationCount:()=>0
 };
