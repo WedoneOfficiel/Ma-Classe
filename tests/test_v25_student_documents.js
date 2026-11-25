@@ -22,7 +22,7 @@ vm.createContext(context);
 vm.runInContext(source.slice(start,end),context);
 const result=context.documentInventory();
 assert.strictEqual(result.length,2,'Tous les fichiers d’un rendu doivent être ajoutés au catalogue, pas seulement sub.file.');
-assert.deepStrictEqual(result.map(x=>x.file.name).sort(),['annexe.txt','reponse.pdf']);
+assert.strictEqual(JSON.stringify(Array.from(result,x=>x.file.name).sort()),JSON.stringify(['annexe.txt','reponse.pdf']));
 assert.ok(result.every(x=>x.kind==='Rendu élève'&&x.classId==='class-1'));
 assert.notStrictEqual(result[0].key,result[1].key,'Chaque pièce jointe doit garder une identité distincte dans l’arborescence.');
 console.log('OK — Documents : toutes les pièces jointes de chaque rendu sont inventoriées séparément.');
