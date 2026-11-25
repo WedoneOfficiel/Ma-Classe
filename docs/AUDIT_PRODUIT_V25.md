@@ -142,7 +142,7 @@ Le premier scénario Firefox V25.0.25 échouait avant même l'affichage du calen
 
 La route \`today\` avait été redirigée vers le Centre d'activité dans \`go()\`, mais une ancienne entrée \`today:today\` subsistait dans la table de rendu alors que la fonction \`today()\` avait été retirée. Comme cette table est construite à chaque rendu, l'erreur bloquait aussi les pages qui n'avaient aucun rapport avec l'écran Aujourd'hui.
 
-**Correction candidate dans la branche :** un alias de compatibilité \`today\` est défini avant le chargement de \`_all.js\` et redirige vers \`window.activity()\`. Le test Firefox confirme à nouveau le rendu, la navigation jour/semaine/mois, la création d'un créneau, l'enregistrement, la synchronisation inter-comptes et la parité structurelle de l'EDT élève/professeur.
+**Correction candidate dans la branche :** l'entrée \`today\` de la table de rendu pointe désormais vers \`studentActivityCenter\` pour un élève et vers \`activity\` pour les autres rôles, comme la route \`activity\`. La compatibilité est ainsi gérée au niveau du moteur, sans alias global dans \`index.html\`. Le test Firefox confirme à nouveau le rendu, la navigation jour/semaine/mois, la création d'un créneau, l'enregistrement, la synchronisation inter-comptes et la parité structurelle de l'EDT élève/professeur.
 
 Le diagnostic Firefox conserve désormais dans le message d'échec l'état d'authentification, \`lastRenderError\`, le HTML réel de \`#main\`, les révisions de synchronisation et les vraies erreurs JavaScript/console collectées par Playwright. Cela évite de confondre une erreur de rendu générale avec un défaut de calendrier.
 
@@ -163,4 +163,10 @@ Les captures ont révélé un décalage entre la date sélectionnée dans le cah
 La cause était une fonction \`weekDates()\` qui lisait toujours la variable globale \`selectedWeek\`, alors que les vues professeur et élève lui transmettaient déjà la date \`lessonDay\`. L'argument était donc ignoré. La fonction accepte désormais une date de référence optionnelle et calcule la semaine correspondante. Le libellé du mini-calendrier utilise également le mois abrégé pour éviter la troncature dans la colonne étroite.
 
 Un contrôle Firefox supplémentaire vérifie que la semaine affichée contient la date sélectionnée dans les deux espaces. Le correctif reste en attente de la réussite du workflow sur le dernier commit.
+
+## 11. Finition du tableau de bord — 25/11/2026
+
+La relecture du tableau de bord a révélé des libellés de compteurs générés sous la forme « créneau(x) » et « travail(aux) », ainsi qu'un manque d'espacement entre l'intitulé du cours et le nom de la classe. Les compteurs utilisent maintenant des formulations françaises accordées au nombre et les informations du cours sont visuellement séparées.
+
+Un contrôle de cohérence statique empêche le retour des marqueurs de pluriel entre parenthèses. Cette correction améliore la lisibilité sans modifier les calculs ni les données.
 
