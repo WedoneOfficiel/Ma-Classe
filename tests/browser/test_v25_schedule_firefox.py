@@ -477,6 +477,8 @@ def main() -> None:
                 student_page.evaluate("""() => {
                   window.__studentRenderTrace=[];
                   window.__studentSyncTrace=[];
+                  window.__studentTraceStartRevision=lastRenderedRevision;
+                  window.__studentTraceStartDataRevision=dataRevision;
                   const originalRender=render;
                   render=function(){
                     window.__studentRenderTrace.push({
@@ -492,12 +494,12 @@ def main() -> None:
                   const originalSync=refreshLiveScheduleData;
                   refreshLiveScheduleData=async function(force=false){
                     window.__studentSyncTrace.push({
-                      stage:'start',force,revision:dataRevision,page,localWork:syncHasLocalWork(),
+                      stage:'start',force,revision:dataRevision,lastRenderedRevision,page,localWork:syncHasLocalWork(),
                       hidden:document.hidden
                     });
                     try{return await originalSync.call(this,force)}
                     finally{window.__studentSyncTrace.push({
-                      stage:'end',revision:dataRevision,page,localWork:syncHasLocalWork(),
+                      stage:'end',revision:dataRevision,lastRenderedRevision,page,localWork:syncHasLocalWork(),
                       targetInModel:(db.schedule||[]).some(x=>x.id==='firefox-live-student-course'),
                       targetInDom:!!document.querySelector('[data-schedule-id="firefox-live-student-course"]')
                     })}
@@ -535,7 +537,7 @@ def main() -> None:
                         documentHidden:document.hidden,
                         activeElement:document.activeElement?.outerHTML?.slice(0,500)||document.activeElement?.tagName,
                         page,authUser,
-                        dataRevision,latestRevision:dataResponse.headers.get('X-MaClasse-Revision'),
+                        dataRevision,lastRenderedRevision,traceStartRevision:window.__studentTraceStartRevision,traceStartDataRevision:window.__studentTraceStartDataRevision,latestRevision:dataResponse.headers.get('X-MaClasse-Revision'),
                         statusRevision:status.revision,
                         liveSyncBusy,syncOnline,syncLastError,remoteChangePending,
                         savePending,saveTimer:!!saveTimer,saveError:saveError?.message||null,
