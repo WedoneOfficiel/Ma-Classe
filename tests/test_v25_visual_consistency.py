@@ -57,7 +57,7 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn(".v14InfoGrid>div{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}", HTML)
 
     def test_application_version_is_visible_in_the_shared_shell(self):
-        self.assertIn("const MC_VERSION='V25.0.25'", JS)
+        self.assertIn("const MC_VERSION='V25.1.0'", JS)
         self.assertIn("getElementById('appVersionLabel')", JS)
         self.assertIn('id="appVersionLabel"', HTML)
 
