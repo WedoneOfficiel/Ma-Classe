@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 function classTrackingClasses(){
- if(!window.db||!Array.isArray(db.classes)||window.authUser?.role==='student')return [];
+ if(typeof db==='undefined'||!Array.isArray(db.classes)||authUser?.role==='student')return [];
  if(authUser?.role==='admin')return db.classes.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'}));
  if(authUser?.role!=='teacher')return [];
  const tid=String(currentTeacherProfile()?.id||authUser.teacherId||authUser.id||'');
@@ -36,7 +36,7 @@ function openClassTracking(classId){
  if(classId&&!target)return toast('Cette classe ne fait pas partie de vos classes accessibles.');
  window.classContext=target?.id||'';
  window.classGroupContext='';
- window.appSpace='teacher';window.page='ppDashboard';render();
+ appSpace='teacher';page='ppDashboard';render();
 }
 function classTracking(){
  if(authUser?.role!=='admin'&&authUser?.role!=='teacher')return studentHome();
