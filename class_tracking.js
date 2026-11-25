@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 function classTrackingClasses(){
- if(typeof db==='undefined'||!Array.isArray(db.classes)||authUser?.role==='student')return [];
+ if(typeof db==='undefined'||!db||!Array.isArray(db.classes)||authUser?.role==='student')return [];
  if(authUser?.role==='admin')return db.classes.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'}));
  if(authUser?.role!=='teacher')return [];
  const tid=String(currentTeacherProfile()?.id||authUser.teacherId||authUser.id||'');
