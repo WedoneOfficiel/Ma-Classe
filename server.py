@@ -2140,7 +2140,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return os.path.join(UPLOADS,'__invalid_upload_path__')
         return super().translate_path(path)
     def _safe_static_path(self,path):
-        if path in ('/','/index.html','/_all.js'):
+        if path in ('/','/index.html','/_all.js','/class_tracking.js'):
             return True
         return path.startswith('/data/uploads/')
     def _backup_dir(self):
