@@ -202,3 +202,16 @@ CI du lot V25.0.25 : run GitHub Actions #1573 réussi sur Linux, macOS/launchd e
 
 
 | PQA-EDT-02 | Contrôle navigateur des modules et des thèmes | La recette Firefox inclut maintenant un smoke pass de 16 pages enseignant (titre présent, absence de carte d'erreur) et vérifie que le thème manuel sombre s'impose à un OS clair et que le thème manuel clair s'impose à un OS sombre. | Les assertions sont exécutées avant le scénario EDT qui échoue encore dans les runs antérieurs. Le contraste, les composants internes, les pages élève et les petites résolutions restent à auditer visuellement ; ce smoke pass ne vaut pas certification UI complète. |
+
+
+### Compléments de l'audit UI — 25/11/2026
+
+| Identifiant | Constat | Impact utilisateur | Action dans la branche | État |
+|---|---|---|---|---|
+| PQA-THEME-02 | Reflet blanc sur les cartes en thème sombre | Les cartes et bulletins paraissaient éclaircis en diagonale, contrairement aux surfaces sombres attendues. | Neutralisation du pseudo-élément `::before` uniquement en thème sombre ; assertion Firefox sur le rendu calculé des cartes. | Correctif dans la branche, validation CI en cours |
+| PQA-NAV-02 | Cloud absent du menu élève | La page Documents/Cloud existait et les partages élève étaient lisibles, mais l'élève ne pouvait pas retrouver le module depuis sa navigation. | Ajout d'une entrée « Cloud » sous « Ressources » et test Firefox qui ouvre effectivement la page depuis le menu latéral. | Correctif dans la branche, validation CI en cours |
+| PQA-UX-FR-01 | Compteurs et dates insuffisamment adaptés au français | Plusieurs écrans affichaient « 1 élèves », « créneau(x) », « événement(s) » ou des mois capitalisés au milieu d'une phrase. | Helper commun `countLabel` étendu aux profils, classes, appels, devoirs, documents, Cloud et restauration ; titres de dates revus pour conserver les mois en minuscules. | Correctif dans la branche, validation CI en cours |
+| PQA-RESP-01 | Recette responsive trop limitée | Les captures précédentes vérifiaient principalement le desktop et ne mesuraient pas le débordement horizontal du document sur petits écrans. | Contrôles Firefox ajoutés à 900 et 390 px sur les écrans représentatifs, en clair et sombre ; assertion sur le débordement horizontal global. | Nouveau contrôle CI en cours |
+| PQA-QA-01 | Captures attribuées à des routes qui étaient des alias | Certaines captures « Aujourd'hui », « Notifications » et « Travail » ne représentaient pas des pages indépendantes. | Liste des routes réelles corrigée ; les onglets élève « Contenu », « Devoir à la maison » et « À faire » sont capturés comme états distincts du même cahier de cours. | Correctif du banc de test dans la branche, validation CI en cours |
+
+Ces états ne seront pas passés à « Supposé résolu » avant le passage des nouvelles suites automatisées. La validation sur le Mac physique, des données plus denses et des appareils réels reste distincte.
