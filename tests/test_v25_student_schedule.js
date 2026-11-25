@@ -13,7 +13,9 @@ const renderedStudentCard=vm.runInContext("studentEventCard({id:'slot-1'},'2026-
 assert.strictEqual(renderedStudentCard.isStudent,true,'Le composant élève doit déléguer au rendu partagé en mode élève.');
 assert(source.includes('function studentScheduleWeek(ds,occ){return scheduleWeek(ds,occ,true)}'));
 assert(source.includes('function studentScheduleDay(d,occ){return scheduleDay(d,occ,true)}'));
-assert(source.includes('window.setInterval(refreshLiveScheduleData,5000)'));
+assert(source.includes('liveSyncTimer=window.setInterval(()=>refreshLiveScheduleData(false),5000)'));
+assert(source.includes("window.addEventListener('online'"));
+assert(source.includes("document.addEventListener('visibilitychange'"));
 assert(source.includes('Le serveur n’a pas confirmé l’enregistrement'));
 assert(source.includes('Le serveur n’a pas confirmé l’envoi du travail'));
 
