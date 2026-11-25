@@ -95,6 +95,13 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("countLabel((db.auditLog||[]).length,'événement','événements')", settings)
         self.assertNotIn("événement(s)", settings)
 
+    def test_student_cloud_is_reachable_from_the_sidebar(self):
+        start = JS.index("function nav(){")
+        end = JS.index("\\nfunction v12AttentionCount", start + 10)
+        student_nav = JS[start:end]
+        self.assertIn("['Ressources',['studentDocuments']]", student_nav)
+        self.assertIn("studentDocuments:['☁','Cloud']", student_nav)
+
     def test_dark_theme_does_not_add_extra_background_effects(self):
         self.assertIn('html[data-mc-theme="dark"] body{background:var(--bg)!important}', HTML)
         self.assertIn('html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .bulletin{background:var(--paper)!important', HTML)
