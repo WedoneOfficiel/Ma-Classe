@@ -121,6 +121,27 @@ Un module ne passe à **corrigé** qu'après un test ciblé ou une reproduction 
 La liste des anomalies confirmées, des hypothèses et des demandes d'évolution est maintenue dans \`REGISTRE_BUGS_V25.md\`. Le présent document porte le diagnostic produit, les priorités et la recette.
 
 
+
+## 8. Régression globale de rendu — 25/11/2026
+
+Le premier scénario Firefox V25.0.25 échouait avant même l'affichage du calendrier. Le diagnostic enrichi a identifié l'erreur exacte : \`ReferenceError: today is not defined\`, levée lors de la construction de la table des vues dans \`render()\`.
+
+La route \`today\` avait été redirigée vers le Centre d'activité dans \`go()\`, mais une ancienne entrée \`today:today\` subsistait dans la table de rendu alors que la fonction \`today()\` avait été retirée. Comme cette table est construite à chaque rendu, l'erreur bloquait aussi les pages qui n'avaient aucun rapport avec l'écran Aujourd'hui.
+
+**Correction candidate dans la branche :** un alias de compatibilité \`today\` est défini avant le chargement de \`_all.js\` et redirige vers \`window.activity()\`. Le test Firefox confirme à nouveau le rendu, la navigation jour/semaine/mois, la création d'un créneau, l'enregistrement, la synchronisation inter-comptes et la parité structurelle de l'EDT élève/professeur.
+
+Le diagnostic Firefox conserve désormais dans le message d'échec l'état d'authentification, \`lastRenderError\`, le HTML réel de \`#main\`, les révisions de synchronisation et les vraies erreurs JavaScript/console collectées par Playwright. Cela évite de confondre une erreur de rendu générale avec un défaut de calendrier.
+
+## 9. Recette visuelle automatisée — 25/11/2026
+
+Le workflow Firefox génère des captures de modules en thème clair et sombre, en plaçant volontairement le thème système à l'opposé du thème MaClasse choisi. Les contrôles examinés comprennent notamment l'accueil, le Centre d'activité, l'EDT, les séances, les évaluations, les bulletins, la messagerie, le Cloud, les paramètres, les pages élève et les écrans de vie scolaire.
+
+Une première inspection des captures disponibles ne révèle pas de rupture générale du thème sombre ni de défaut structurel majeur sur les écrans représentatifs. L'EDT élève et professeur conserve la même structure de calendrier ; l'interface élève ne présente pas les commandes d'édition du professeur.
+
+**Limites à conserver :** les captures reposent sur des données de test minimales et ne valident pas tous les états chargés d'un établissement réel. Les champs \`input[type=date]\` sont rendus par le navigateur et dépendent de sa locale : les contextes Firefox sont donc maintenant créés en \`fr-FR\`, fuseau \`Europe/Paris\`, pour rapprocher les captures de l'environnement français attendu.
+
+Les captures et tests CI ne remplacent pas la recette physique sur le Mac Apple Silicon de référence, ni la vérification d'une installation ayant des données historiques. Les modules ne sont pas déclarés définitivement validés sur cette seule base.
+
 ## 7. Résultat de l'investigation EDT — 25/11/2026
 
 Le scénario Firefox « Sciences » a été suivi de bout en bout :
