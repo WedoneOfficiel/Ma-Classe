@@ -211,7 +211,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.copyData=value=>value==null?value:JSON.parse(JSON.stringify(value));
   context.syncHasLocalWork=()=>context.modalOpen;
   context.updateSyncBanner=()=>{};context.needsRenderAfterSync=false;
-  context.dataRevision='rev1';
+  context.dataRevision='rev1';context.lastRenderedRevision='rev1';
   context.db={schedule:[{id:'local-draft'}]};
   context.dataBase={schedule:[{id:'local-draft'}]};
   context.normalize=()=>{};
@@ -230,6 +230,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
     'Une actualisation détectée pendant une modale ne doit pas écraser la saisie affichée.');
   assert.strictEqual(context.dataRevision,'rev1',
     'Une actualisation ignorée pendant une modale ne doit pas avancer la révision locale.');
+  assert.strictEqual(context.lastRenderedRevision,'rev1');
   context.modalOpen=false;context.liveSyncBusy=false;
   context.fetch=async url=>{
     if(url==='/api/sync-status')return {ok:true,headers:{get:()=>null},json:async()=>({revision:'rev2'})};
@@ -240,11 +241,12 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   assert.strictEqual(context.db.schedule[0].id,'server-update',
     'Une synchronisation sans modification locale doit appliquer la nouvelle version serveur.');
   assert.strictEqual(context.dataRevision,'rev2');
+  assert.strictEqual(context.lastRenderedRevision,'rev2');
   assert.strictEqual(context.renderCount,1);
 
   // Si l'utilisateur change de vue pendant le chargement des données, la réponse
   // actualise le modèle et le rendu courant ; elle ne doit pas réinjecter l'ancienne vue.
-  context.liveSyncBusy=false;context.dataRevision='rev2';context.db={schedule:[{id:'local-after-navigation'}]};
+  context.liveSyncBusy=false;context.dataRevision='rev2';context.lastRenderedRevision='rev2';context.db={schedule:[{id:'local-after-navigation'}]};
   let resolveData;
   context.fetch=url=>{
     if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev3'})});
@@ -260,11 +262,12 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   assert.strictEqual(context.db.schedule[0].id,'fresh-server-copy',
     'Une navigation sans saisie locale doit recevoir les nouvelles données serveur.');
   assert.strictEqual(context.dataRevision,'rev3');
+  assert.strictEqual(context.lastRenderedRevision,'rev3');
   assert.strictEqual(context.renderCount,2,'La vue courante doit être rendue après actualisation du modèle.');
 
   // Même si un autre chemin a déjà actualisé le modèle local, une nouvelle
   // révision doit reconstruire le DOM : l'ancien calendrier peut être périmé.
-  context.liveSyncBusy=false;context.dataRevision='rev3';
+  context.liveSyncBusy=false;context.dataRevision='rev4';context.lastRenderedRevision='rev3';
   context.db={schedule:[{id:'already-in-memory'}]};
   context.fetch=url=>{
     if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev4'})});
