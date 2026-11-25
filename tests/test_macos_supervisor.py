@@ -36,7 +36,11 @@ class MacOSSupervisorTests(unittest.TestCase):
             with self.subTest(script=name):
                 source = (ROOT / name).read_text(encoding="utf-8")
                 guard = source.index('launchctl print "gui/$(id -u)/fr.maclasse.server"')
-                start = source.index(".venv/bin/python server.py")
+                starts = [
+                    source.find(".venv/bin/python server.py"),
+                    source.find("network_supervisor.py"),
+                ]
+                start = min(position for position in starts if position >= 0)
                 self.assertLess(guard, start)
                 self.assertIn("partagerait la même base de données", source)
 
