@@ -14,6 +14,8 @@ const context = {
   DAYS: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
   selectedWeek: null,
   scheduleView: 'week',
+  dataRevision: null,
+  lastRenderedRevision: null,
   renderCount: 0,
   render() { this.renderCount += 1; },
   db: { schedule: [], classes: [] },
