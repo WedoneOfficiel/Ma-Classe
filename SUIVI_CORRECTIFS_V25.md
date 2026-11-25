@@ -587,3 +587,14 @@ La CI #1727 a passé les jobs Linux, macOS Apple Silicon et Firefox réel après
 - Tester la migration sur une copie de la base réelle, sans jamais prendre la base utilisateur comme fixture.
 - Tester l'accès HTTPS depuis plusieurs appareils, le pare-feu et l'approbation de l'autorité locale.
 - Décider et implémenter une signature/attestation de release avant de présenter l'update manager comme une chaîne de confiance complète.
+
+
+## Complément d'audit UI — découverte des remplacements et cohérence des espaces (25/11/2026)
+
+- **AFFECT-02 :** ajout d'un accès central « Remplacements & co-enseignement » dans la barre d'actions de l'EDT. Il liste les seuls créneaux que l'utilisateur peut gérer, permet de filtrer par classe et de rechercher une matière, un jour ou un horaire, puis ouvre l'éditeur existant. Les restrictions de rôle et la règle de suppression par créateur sont conservées.
+- **Administration :** correction du texte de confidentialité qui affirmait à tort que la messagerie et le Cloud élève étaient désactivés ; le message décrit maintenant le filtrage serveur des données, messages, pièces jointes et ressources.
+- **BUL-04 :** revue de `createAllBulletins` et du test `test_v25_bulletin_persistence.js` : génération idempotente, sauvegarde attendue avant confirmation, rechargement serveur, rollback local si la sauvegarde échoue.
+- **VIE-01 :** vérification du code actif `studentLife()` : la rubrique ne présente que les absences, avec états justifiées/non justifiées.
+- **UI-ADM-01 / UI-SET-01 / UI-PROFIL-01 / VER-01 :** règles CSS et affichage version partagés localisés dans le code actif ; tests de présence ajoutés dans `test_v25_visual_consistency.py`.
+
+Ces points sont désormais distingués entre implémentation présente dans la branche et recette réelle à faire. La CI #1727 valide la tête antérieure au présent complément ; une nouvelle CI est nécessaire sur le dernier commit.
