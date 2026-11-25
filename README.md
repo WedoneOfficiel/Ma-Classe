@@ -658,7 +658,7 @@ Premiers constats issus de la lecture du code :
 - La messagerie V21.04 active bien une boîte élève et une boîte professeur ; un ancien écran « bientôt disponible » reste présent dans le code historique, mais il est remplacé à l'exécution. La recette sur une installation réelle reste nécessaire.
 - Le module Évaluations s'appuie sur le moteur V21.17 ; plusieurs anciennes définitions de fonctions restent dans le fichier JavaScript et doivent être consolidées sans supprimer de chemin actif.
 - Le module Bulletins V21.09 et ses parcours de validation/PDF disposent de tests dédiés ; une recette fonctionnelle complète reste à faire.
-- Le test Firefox de l'EDT couvre déjà les vues jour/semaine/mois et la parité structurelle professeur/élève. Il signale maintenant un défaut de propagation d'un créneau vers le calendrier élève, en cours d'investigation.
+- Le test Firefox de l'EDT couvre les vues jour/semaine/mois et la parité structurelle professeur/élève. Un défaut de rendu a été isolé : le créneau distant arrivait dans le modèle élève et le HTML recalculé, mais le DOM affichait encore l'ancien calendrier. La branche force maintenant le rendu après adoption de toute nouvelle révision ; validation CI en cours.
 - Le thème utilisateur est piloté par le marqueur `data-mc-theme`. La parité visuelle de tous les modules en clair et sombre n'est pas encore certifiée.
 - La rationalisation des modules (tableau de bord, Centre d'activité, Aujourd'hui) reste une question d'audit ; aucune suppression n'est engagée sans mesurer l'usage et les dépendances.
 
