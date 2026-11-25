@@ -43,6 +43,8 @@ assert(source.includes('closeModal();refreshSchedulePage();window.scrollTo(0,scr
 assert(source.includes("catch(err){db=JSON.parse(before);normalize();toast('Échec de sauvegarde : '+(err.message||'réessaie.'))}"), 'En cas d’échec, le formulaire reste ouvert pour permettre une correction ou une nouvelle tentative.');
 
 const context = {
+  countLabel: (value,singular,plural) => { const count=Math.max(0,Number(value)||0); return count+' '+(count===1?singular:(plural||singular+'s')); },
+  formatFrenchDate: (date,options) => { const value=date.toLocaleDateString('fr-FR',options); return value.charAt(0).toUpperCase()+value.slice(1); },
   activeStudent: () => 'student-1',
   student: id => ({id, first:'Alice', classId:'class-1'}),
   studentClass: () => ({name:'6A'}),
