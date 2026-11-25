@@ -29,7 +29,7 @@ assert.strictEqual(headings.length,1,
   'Le Centre d’activité ne doit présenter qu’un seul bloc « Aujourd’hui ».');
 assert(html.includes('id="activityToday"'),
   'Le bouton « Voir la journée » doit garder sa cible principale.');
-assert(html.includes('getElementById(\'activityToday\')'),
+assert(html.includes("getElementById('activityToday')"),
   'Le bouton « Voir la journée » doit continuer à pointer vers le bloc conservé.');
 assert(html.includes('Cours, notes, rendus et messages au même endroit'),
   'Le bloc principal doit conserver son rôle de synthèse.');
