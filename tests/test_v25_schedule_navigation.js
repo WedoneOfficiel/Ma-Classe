@@ -215,7 +215,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.db={schedule:[{id:'local-draft'}]};
   context.dataBase={schedule:[{id:'local-draft'}]};
   context.normalize=()=>{};
-  context.renderCount=0;context.render=()=>{context.renderCount++};
+  context.renderCount=0;context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision};
   let resolveStatus;
   context.fetch=url=>{
     assert.strictEqual(url,'/api/sync-status');
@@ -299,7 +299,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.closeModal=()=>{};
   context.refreshSchedulePage=()=>context.render();
   context.toast=message=>{context.lastToast=message};
-  context.render=()=>{context.renderCount++};
+  context.render=()=>{context.renderCount++;context.lastRenderedRevision=context.dataRevision};
   context.db={schedule:[],classes:[{id:'class-1',name:'Classe 1'}],teachers:[],settings:{rooms:[]}};
   context.persistedSchedule=JSON.parse(JSON.stringify(context.db));
   vm.runInContext(source.slice(saveStart,saveEnd),context);
