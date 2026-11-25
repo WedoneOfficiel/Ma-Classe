@@ -307,3 +307,11 @@ Validation CI complémentaire — 12/11/2026
 
 - Le serveur supervisé Linux/macOS surveille désormais l'IPv4 privée : il ferme le listener en cas de perte réseau, renouvelle le certificat serveur sous la même CA et rebinde automatiquement lors d'un changement DHCP. Les lanceurs manuels macOS utilisent le même superviseur.
 - Tests ajoutés pour la détection Linux/macOS, le rejet d'adresses non privées, la validité SAN/expiration, le changement d'adresse et la perte/retour du réseau.
+
+
+25/11/2026 — Audit produit et synchronisation applicative (candidat de branche)
+- Ajout de docs/AUDIT_PRODUIT_V25.md : inventaire des modules actifs, état des tests, dettes de maintenance, risques de migration et plan de recette Direction/Professeur/Élève.
+- Le navigateur dispose désormais d'un endpoint de révision léger et d'un mécanisme de surveillance global des données, au-delà des seules pages EDT/Séances ; la lecture complète des données est déclenchée lorsqu'une révision change et qu'aucune saisie locale n'est en cours.
+- Ajout d'une première fusion à trois versions pour les modifications indépendantes, et d'un état explicite pour les conflits sur un même champ ; les deux versions peuvent être exportées avant arbitrage.
+- Ajout de tests d'intégration pour l'endpoint de révision et de tests ciblés de fusion concurrente. Les tests Firefox et la validation complète de cette évolution restent en cours : ne pas considérer la synchronisation générale comme validée à ce stade.
+- L'audit produit identifie un parcours de mise à jour du calendrier élève après une modification distante qui échoue encore dans le test Firefox ; le défaut reste ouvert et ne doit pas être masqué en assouplissant l'assertion.
