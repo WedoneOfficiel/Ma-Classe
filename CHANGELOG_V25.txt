@@ -3,6 +3,7 @@ MaClasse V25.0.25 — finalisation des parcours élèves
 - La liste des enseignants joignables depuis la messagerie élève est maintenant alignée sur les droits réellement accordés côté serveur : titulaires, co-enseignants, enseignants des séances et affectations actives.
 - Les comptes élèves utilisent directement la liste de destinataires filtrée par le serveur, sans la réduire une seconde fois aux seuls titulaires de classe.
 - Les couleurs de matières choisies par un professeur sont désormais persistées par la fusion serveur, uniquement pour les matières qu'il enseigne ; les paramètres globaux restent protégés.
+- La grille de l'emploi du temps applique désormais une vraie surface sombre dans le thème sombre au lieu de conserver son dégradé blanc, tout en gardant la surface claire en thème clair.
 - L’export PDF accepte un bulletin dont la publication et la validation sont établies même si l’ancien enregistrement ne possède pas d’horodatage de publication ; les contrôles d’identité, de classe et de rôle restent appliqués.
 - L’espace Résultats distingue l’état officiel du bulletin de la présence éventuelle d’une date d’affichage.
 - Ajout de tests de projection des enseignants accessibles et de validation du statut officiel des bulletins.
