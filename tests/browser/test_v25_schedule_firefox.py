@@ -382,6 +382,39 @@ def main() -> None:
                     raise AssertionError("Le thème clair manuel ne s'impose pas au thème système sombre : "
                                          + repr(light_theme))
                 teacher_page.evaluate("setAppearanceTheme('light');page='schedule';appSpace='teacher';render();")
+                cloud_layout = teacher_page.evaluate("""() => {
+                  const inspect = space => {
+                    window.cloudSpace=space;window.cloudPath=[];window.cloudSelected='';
+                    page='documents';appSpace='teacher';render();
+                    const layout=document.querySelector('.cloudLayout');
+                    const side=layout?.querySelector(':scope > aside');
+                    return {
+                      space,
+                      hasSidebar:!!side,
+                      columns:getComputedStyle(layout).gridTemplateColumns,
+                      sectionWidth:Math.round(layout?.querySelector(':scope > section')?.getBoundingClientRect().width||0),
+                      mainWidth:Math.round(layout?.getBoundingClientRect().width||0)
+                    };
+                  };
+                  return {
+                    personal:inspect('personal'),
+                    shared:inspect('shared'),
+                    class:inspect('class')
+                  };
+                }""")
+                for space in ("personal","shared"):
+                    state=cloud_layout[space]
+                    if state["hasSidebar"] or len(state["columns"].split()) != 1:
+                        raise AssertionError(
+                            "Cloud "+space+" doit utiliser toute la largeur sans colonne latérale vide : "
+                            + repr(state)
+                        )
+                class_state=cloud_layout["class"]
+                if not class_state["hasSidebar"] or len(class_state["columns"].split()) != 2:
+                    raise AssertionError(
+                        "Cloud Classe doit conserver sa navigation latérale : "+repr(class_state)
+                    )
+                teacher_page.evaluate("window.cloudSpace='personal';page='schedule';appSpace='teacher';render();")
                 capture_product_screenshots(
                     teacher_page,
                     "teacher",
