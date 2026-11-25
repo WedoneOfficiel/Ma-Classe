@@ -107,6 +107,20 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
 
         page.set_viewport_size(original_viewport)
 
+    # Automatic appearance must follow the operating-system preference too.
+    page.emulate_media(color_scheme="light")
+    page.evaluate("setAppearanceTheme('system')")
+    page.wait_for_timeout(30)
+    automatic_light = page.evaluate("document.documentElement.dataset.mcTheme")
+    if automatic_light != "light":
+        raise AssertionError(f"Le thème automatique devrait être clair ici, reçu : {automatic_light!r}")
+    page.emulate_media(color_scheme="dark")
+    page.wait_for_timeout(30)
+    automatic_dark = page.evaluate("document.documentElement.dataset.mcTheme")
+    if automatic_dark != "dark":
+        raise AssertionError(f"Le thème automatique devrait être sombre ici, reçu : {automatic_dark!r}")
+    page.evaluate("setAppearanceTheme('light')")
+
 def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
