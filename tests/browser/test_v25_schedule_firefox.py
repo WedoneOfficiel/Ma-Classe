@@ -637,6 +637,78 @@ def main() -> None:
                 if mailbox.locator('.v2104Row').count() == 0:
                     raise AssertionError("Student mailbox has no message row: "+json.dumps(mailbox_state,ensure_ascii=False))
                 expect(mailbox.locator('.v2104Row')).to_contain_text("Message de test élève")
+                # End-to-end Mail V2: compose, save a draft, reload, resume, send and receive.
+                teacher_page.evaluate("""() => {
+                  page='messages';appSpace='teacher';window.mailV2Folder='inbox';
+                  window.mailV2Selected='';render();window.mailV2104Compose('teacher','');
+                }""")
+                composer = teacher_page.locator('#modal .v2104Compose')
+                expect(composer).to_be_visible()
+                recipient = composer.locator('input[name="to"][value="student:firefox-student"]')
+                if recipient.count() != 1:
+                    people = teacher_page.evaluate("peopleOptions('teacher','')")
+                    raise AssertionError(
+                        "Le professeur ne peut pas sélectionner son élève dans la messagerie : "
+                        + json.dumps(people,ensure_ascii=False)
+                    )
+                recipient.check()
+                composer.locator('#v2104Subject').fill("Test de rédaction persistante")
+                composer.locator('#v2104BodyEditor').fill("Message conservé après réouverture du brouillon.")
+                composer.get_by_role("button",name="Enregistrer le brouillon").click()
+                teacher_page.evaluate("""async () => {
+                  await flushPendingSave();
+                  await load();
+                  page='messages';appSpace='teacher';window.mailV2Folder='drafts';
+                  window.mailV2Selected='';render();
+                }""")
+                drafts = teacher_page.locator('.v2104Row')
+                expect(drafts).to_have_count(1)
+                expect(drafts.first).to_contain_text("Test de rédaction persistante")
+                drafts.first.click()
+                resumed = teacher_page.locator('#modal .v2104Compose')
+                expect(resumed).to_be_visible()
+                expect(resumed.locator('#v2104Subject')).to_have_value("Test de rédaction persistante")
+                expect(resumed.locator('#v2104BodyEditor')).to_contain_text(
+                    "Message conservé après réouverture du brouillon."
+                )
+                resumed.locator('#v2104BodyEditor').fill(
+                    "Message envoyé depuis le brouillon repris."
+                )
+                resumed.get_by_role("button",name="Envoyer").click()
+                teacher_page.evaluate("""async () => {
+                  await flushPendingSave();
+                  await load();
+                  page='messages';appSpace='teacher';window.mailV2Folder='sent';
+                  render();
+                }""")
+                sent_rows = teacher_page.locator('.v2104Row')
+                expect(sent_rows).to_contain_text("Test de rédaction persistante")
+                expect(teacher_page.locator('.v2104Thread')).to_contain_text(
+                    "Message envoyé depuis le brouillon repris."
+                )
+                mail_delivery = teacher_page.evaluate("""() => ({
+                  draftCount:db.mailboxV2.drafts.filter(d=>d.owner==='teacher:'+currentTeacherId()).length,
+                  sent:db.mailboxV2.messages.filter(m=>
+                    m.subject==='Test de rédaction persistante' &&
+                    m.to.includes('student:firefox-student')
+                  ).length
+                })""")
+                if mail_delivery["draftCount"] != 0 or mail_delivery["sent"] != 1:
+                    raise AssertionError("État final du brouillon/envoi incorrect : "+repr(mail_delivery))
+                student_page.evaluate("""async () => {
+                  await load();
+                  page='studentMessages';appSpace='student';window.mailV2Folder='inbox';
+                  render();
+                }""")
+                expect(student_page.locator('.v2104Row')).to_contain_text(
+                    "Test de rédaction persistante"
+                )
+                student_page.locator('.v2104Row').filter(
+                    has_text="Test de rédaction persistante"
+                ).click()
+                expect(student_page.locator('.v2104Thread')).to_contain_text(
+                    "Message envoyé depuis le brouillon repris."
+                )
                 student_page.evaluate("""() => {
                   closeModal();
                   page='studentSchedule';
