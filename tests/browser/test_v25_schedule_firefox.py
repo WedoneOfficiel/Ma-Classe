@@ -151,7 +151,29 @@ def main() -> None:
                 )
 
                 existing = page.locator('[data-schedule-id="firefox-existing-course"]')
-                expect(existing).to_be_visible()
+                try:
+                    expect(existing).to_be_visible(timeout=5_000)
+                except AssertionError as failure:
+                    initial_state=page.evaluate("""() => {
+                      const target=(db.schedule||[]).find(x=>x.id==='firefox-existing-course');
+                      const dates=weekDates();
+                      return {
+                        page,appSpace,authUser,scheduleView,
+                        selectedWeek:iso(selectedWeek),
+                        weekDates:dates.map(iso),
+                        target,
+                        targetRecurring:target?recurring(target,dates[4]):null,
+                        fridayOccurrences:dayOcc(dates[4]).map(x=>({id:x.id,subject:x.subject,time:x.time})),
+                        computedMarkup:scheduleWeek(dates,d=>dayOcc(d),false).includes('Français'),
+                        actualDom:document.querySelector('.scheduleCalendarSurface')?.innerText||'',
+                        scheduleHtml:document.querySelector('.scheduleCalendarSurface')?.innerHTML.slice(0,8000)||'',
+                        pageErrors:window.__maclasseTestPageErrors||[]
+                      };
+                    }""")
+                    raise AssertionError(
+                        "Le premier créneau EDT ne s'affiche pas : "
+                        +json.dumps(initial_state,ensure_ascii=False)+" | "+str(failure)
+                    )
                 if "#123456" not in (existing.get_attribute("style") or ""):
                     raise AssertionError("La couleur personnalisée de matière n'est pas appliquée à l'EDT professeur.")
 
