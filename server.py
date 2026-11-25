@@ -1209,7 +1209,7 @@ def _student_can_access_upload(user,relative,write=False):
             return False
         target=_safe_upload_path(rel)
         rel=_uploads_relative(target)
-        if not sid or rel.startswith('cloud/'):
+        if not sid:
             return False
         data=_load_database()
         student_record=next((x for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id'))==sid),None)
