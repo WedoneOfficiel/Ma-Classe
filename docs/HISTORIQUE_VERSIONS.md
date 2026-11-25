@@ -496,3 +496,148 @@ La V21.17 approfondit la reconstruction du module Évaluations :
 Cette version conserve les données existantes et n’effectue aucune migration destructive.
 
 
+
+---
+
+## Notes historiques V21 complémentaires
+
+### Archive source : `NOTES_V21_17_1.txt`
+
+Contenu original conservé :
+
+MaClasse V21.17.1 — Finition du module Évaluations
+
+Objectif : terminer la refonte V21.17 sans créer une nouvelle V21.18 prématurément.
+
+- sélection des compétences repensée : référentiel filtré automatiquement par niveau scolaire et matière ;
+- prise en charge des anciennes compétences liées aux niveaux via settings.competencyLevels ;
+- sélection par cases à cocher, recherche, tout sélectionner / tout désélectionner ;
+- conservation des compétences déjà sélectionnées lors d'un changement de filtre dans une évaluation ;
+- grilles : création/modification avec niveau, matière, compétences et critères ;
+- réutilisation d'une grille filtrée selon le contexte de l'évaluation ;
+- les compétences sélectionnées restent propres à l'évaluation et ne modifient pas les modèles existants ;
+- compatibilité conservée avec les anciennes bibliothèques de compétences stockées sous forme de chaînes ;
+- interface de sélection conçue pour éviter les longues listes et la sélection Cmd/Ctrl obligatoire ;
+- ajout du test test_v2171_competency_picker.js.
+
+Vérifications :
+- 26/26 tests JavaScript OK ;
+- régression sécurité V21.14 OK ;
+- node --check _all.js OK ;
+- python3 -m py_compile server.py OK ;
+- aucune migration destructive des données.
+
+Non testé : validation visuelle complète dans Firefox/macOS.
+
+
+### Archive source : `NOTES_V21_18.txt`
+
+Contenu original conservé :
+
+MaClasse V21.18 — Passe UI/UX globale
+
+- Standardisation globale des contrôles visibles : sélecteurs MaClasse, champs, zones de texte, boutons et états de focus.
+- Les valeurs des <select> natifs restent dans le DOM pour préserver FormData et les handlers existants ; leur rendu est remplacé par le composant MaClasse.
+- Remplacement de la confirmation native du dépôt définitif d’un travail par une modale MaClasse.
+- Suppression visuelle des spinners natifs des champs numériques.
+- Base CSS UI centralisée : focus clavier, états hover/disabled, file inputs, responsive.
+- Passe destinée à être poursuivie écran par écran pour corriger les incohérences CSS restantes sans changer les données métier.
+
+
+### Archive source : `NOTES_V21_19.txt`
+
+Contenu original conservé :
+
+MaClasse V21.19 — Professeur principal et consolidation UI
+
+Objectif
+- Finaliser le chantier Professeur principal sans reconstruire les écrans déjà aboutis.
+- Corriger la recherche globale et son raccourci clavier.
+- Consolider les contrôles UI dynamiques.
+
+Travail réalisé
+- Le tableau de bord Professeur principal a été renforcé : identité de la classe, KPI, accès rapides, groupes, points d’attention, activité récente et suivi synthétique des élèves.
+- Les actions du PP réutilisent les modules existants et le contexte de classe ; aucune nouvelle copie du modèle de données n’a été créée.
+- La Messagerie et les bulletins existants sont conservés comme références visuelles ; ils n’ont pas été reconstruits inutilement.
+- Cmd/Ctrl-K donne désormais le focus au champ de recherche globale visible dans la barre supérieure. La Command Palette reste un fallback si aucun champ de recherche n’existe.
+- Le panneau de résultats de la recherche globale est replacé dans un contexte de superposition maîtrisé : la barre supérieure n’utilise plus contain:paint, le panneau passe au-dessus du contenu normal mais reste sous les modales.
+- Le runtime des Select MaClasse observe les changements d’options d’un select déjà transformé et reconstruit son menu peint lorsque le contenu dynamique change.
+- Version visible passée à V21.19.
+- Test ajouté : tests/test_v219_pp_ui.js.
+
+Validation
+- node --check _all.js : OK
+- python3 -m py_compile server.py : OK
+- Suite JS existante : OK
+- test_v219_pp_ui.js : OK
+- test_v214_security.py : OK
+- La validation visuelle automatisée Chromium n’est pas considérée comme acquise dans cet environnement.
+
+
+### Archive source : `NOTES_V21_20.txt`
+
+Contenu original conservé :
+
+MaClasse V21.20 — MaClasse 27 Design System
+
+Objectif : unifier l’époque visuelle de l’application autour d’un langage contemporain inspiré des interfaces Apple récentes sans transformer MaClasse en copie de macOS.
+
+- primitives communes harmonisées : navigation, cartes, boutons, champs, onglets, tableaux, modales, badges ;
+- surfaces neutres et hiérarchisées ;
+- suppression visuelle des gradients historiques sur les surfaces communes ;
+- sidebar modernisée sans toucher à l’identité fonctionnelle ;
+- recherche globale placée dans un vrai contexte de premier plan ;
+- Cmd/Ctrl-K focalise la recherche globale ;
+- Messagerie et Bulletins conservés comme designs spécialisés déjà aboutis ;
+- états focus/disabled et réduction des animations ajoutés ;
+- responsive renforcé ;
+- aucune modification du modèle de données.
+
+La validation visuelle navigateur complète reste à faire dans un environnement Chromium fonctionnel.
+
+
+### Archive source : `NOTES_V21_21.txt`
+
+Contenu original conservé :
+
+MaClasse V21.21 — UX & EDT 7 jours
+
+Objectif : optimiser les actions récurrentes et rendre l’emploi du temps hebdomadaire complet.
+
+- EDT semaine : 7 jours, lundi → dimanche, côté enseignant et élève.
+- Le formulaire de créneau propose les 7 jours.
+- Appel : les actions principales ouvrent directement le nouvel appel au lieu de faire passer par la page historique.
+- Nouvel appel : préselection automatique de la première classe ayant un cours aujourd’hui, et du cours lorsqu’un appel est lancé depuis une séance EDT.
+- Depuis une séance EDT, action directe « Faire l’appel ».
+- Connexion : premier choix professeur focalisable immédiatement au clavier.
+- Design MaClasse 27 conservé ; Messagerie et Bulletins non reconstruits.
+
+
+### Archive source : `NOTES_V21_22.txt`
+
+Contenu original conservé :
+
+MaClasse V21.22 — Liquid UI + EDT fit
+
+- EDT semaine : 7 jours en grille fluide sans largeur minimale sur desktop.
+- Rail horaire compact et densité adaptée aux écrans courants.
+- Sur très petites largeurs, défilement horizontal conservé pour préserver la lisibilité.
+- MaClasse 27 renforcé : surfaces liquides, blur, highlights, transparence et profondeur sur navigation, topbar, cartes, contrôles, recherche et modales.
+- Messagerie et Bulletins conservés comme identités spécialisées.
+- Dark mode harmonisé avec le matériau liquide.
+
+
+### Archive source : `CORRECTIF_V21_11_3.txt`
+
+Contenu original conservé :
+
+MaClasse V21.11.3 — correctifs ciblés
+
+- Déclare activeConversationId pour éviter l’erreur de référence au clic dans la navigation enseignant.
+- Espace Cloud : vignettes adaptatives, noms de fichiers visibles en mode Icônes, icône de dossier adaptée aux couleurs du thème plutôt qu’un SVG codé en dur.
+- Espace élève : n’affiche que les bulletins officiellement publiés. Les bulletins publiés sont accessibles dans Mes résultats et Vie scolaire.
+- Bulletin : choix entre prévisualiser le PDF dans l’application et télécharger le PDF.
+
+Le message « No Listener: tabs:outgoing.message.ready » provient généralement d’une extension du navigateur et n’est pas la cause de l’erreur JavaScript activeConversationId.
+
+
