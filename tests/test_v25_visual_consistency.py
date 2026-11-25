@@ -135,6 +135,18 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("['Ressources',['studentDocuments']]", student_nav)
         self.assertIn("studentDocuments:['☁','Cloud']", student_nav)
 
+    def test_mobile_navigation_and_main_content_use_full_width(self):
+        self.assertIn("@media(max-width:800px){", HTML)
+        self.assertIn(".app{display:block!important;min-height:100vh}", HTML)
+        self.assertIn("body.sidebar-collapsed .side{", HTML)
+        self.assertIn("width:100%!important;", HTML)
+        self.assertIn(".navSection{", HTML)
+        self.assertIn("display:contents!important;", HTML)
+        self.assertIn(".nav{", HTML)
+        self.assertIn("overflow-x:auto!important;", HTML)
+        self.assertIn("body.sidebar-collapsed .main{", HTML)
+        self.assertIn("margin:0!important;", HTML)
+
     def test_dark_theme_does_not_add_extra_background_effects(self):
         self.assertIn('html[data-mc-theme="dark"] body{background:var(--bg)!important}', HTML)
         self.assertIn('html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .bulletin{background:var(--paper)!important', HTML)
