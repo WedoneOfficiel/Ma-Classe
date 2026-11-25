@@ -16,6 +16,13 @@ MaClasse V25.0.25 — finalisation des parcours élèves
 - L’espace Résultats distingue l’état officiel du bulletin de la présence éventuelle d’une date d’affichage.
 - Ajout de tests de projection des enseignants accessibles et de validation du statut officiel des bulletins.
 
+### Compléments de stabilisation et de finition — 25/11/2026
+
+- Accès central « Remplacements & co-enseignement » ajouté à l'emploi du temps, avec filtres par classe et recherche matière/jour/horaire ; les permissions restent contrôlées créneau par créneau.
+- Message de confidentialité Administration actualisé : les messages, pièces jointes et ressources élève sont filtrés côté serveur au lieu d'être présentés comme désactivés.
+- Gestion des anomalies, guide d'installation, index documentaire et archives historiques réorganisés sans perte du contenu des notes V21.
+- CI complète #1747 verte sur Linux, macOS Apple Silicon et Firefox réel. Ce résultat valide les tests automatisés, pas les recettes physiques ni la signature indépendante de la release.
+
 MaClasse V25.0.23 — supervision des mises à jour Linux et macOS
 
 - Ajout d’un gestionnaire de mises à jour stable fondé sur les releases GitHub et un manifeste vérifié par SHA-256.
