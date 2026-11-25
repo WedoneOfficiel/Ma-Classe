@@ -252,6 +252,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
     return new Promise(resolve=>{resolveData=resolve});
   };
   const navigationRefresh=vm.runInContext('refreshLiveScheduleData(true)',context);
+  await Promise.resolve();
   context.scheduleView='month';context.selectedWeek=new Date(2026,11,1,12);
   resolveData({ok:true,headers:{get:()=> 'rev3'},json:async()=>({schedule:[{id:'fresh-server-copy'}]})});
   await navigationRefresh;
