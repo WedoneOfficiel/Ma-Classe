@@ -1696,7 +1696,40 @@ def _merge_teacher_data(current,incoming,user):
         merged[key]=result
     if 'mailboxV2' in current or 'mailboxV2' in incoming:
         merged['mailboxV2']=_teacher_merge_mailbox(current,incoming,user,current)
-    for key in ('subjects','users','settings','auditLog'):
+
+    # Les professeurs peuvent personnaliser la couleur des matières qu'ils enseignent,
+    # mais aucun autre réglage global (établissement, périodes, salles...) ne vient du client.
+    current_settings=current.get('settings') if isinstance(current.get('settings'),dict) else {}
+    incoming_settings=incoming.get('settings') if isinstance(incoming.get('settings'),dict) else {}
+    colors=current_settings.get('subjectColors') if isinstance(current_settings.get('subjectColors'),dict) else {}
+    incoming_colors=incoming_settings.get('subjectColors') if isinstance(incoming_settings.get('subjectColors'),dict) else {}
+    safe_colors=dict(colors)
+    allowed_color_keys=set()
+    for slot in merged.get('schedule',[]) or []:
+        if not isinstance(slot,dict): continue
+        class_id=str(slot.get('classId') or '')
+        subject=str(slot.get('subject') or '').strip()
+        key=_norm_text(subject)
+        if class_id in allowed and key and _teacher_can_teach_subject(merged,user,class_id,subject):
+            allowed_color_keys.add(key)
+    for assignment in merged.get('teacherAssignments',[]) or []:
+        if not isinstance(assignment,dict): continue
+        class_id=str(assignment.get('classId') or '')
+        subject=str(assignment.get('subject') or '').strip()
+        if (class_id in allowed and str(assignment.get('teacherId') or '')==tid
+                and subject and _teacher_assignment_active(assignment)):
+            allowed_color_keys.add(_norm_text(subject))
+    for raw_key,value in incoming_colors.items():
+        key=_norm_text(raw_key)
+        if key not in allowed_color_keys or not re.fullmatch(r'#[0-9a-fA-F]{6}',str(value or '')):
+            continue
+        safe_colors[key]=str(value).lower()
+    safe_settings=dict(current_settings)
+    if 'subjectColors' in current_settings or incoming_colors:
+        safe_settings['subjectColors']=safe_colors
+    merged['settings']=safe_settings
+
+    for key in ('subjects','users','auditLog'):
         if key in current: merged[key]=current[key]
     for key in list(merged):
         if key not in current and key not in scoped: merged.pop(key,None)
