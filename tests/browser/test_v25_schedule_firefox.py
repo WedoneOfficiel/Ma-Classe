@@ -449,7 +449,7 @@ def main() -> None:
                 capture_product_screenshots(
                     teacher_page,
                     "teacher",
-                    ["dashboard","schedule","lessons","evaluations","bulletins","messages","documents","settings"],
+                    ["dashboard","today","activity","notifications","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","settings"],
                     Path("artifacts/browser-v25"),
                 )
                 uploaded_homework = teacher_page.evaluate("""async () => {
@@ -618,7 +618,7 @@ def main() -> None:
                 capture_product_screenshots(
                     student_page,
                     "student",
-                    ["studentHome","studentSchedule","studentWork","studentResults","studentMessages","studentDocuments"],
+                    ["studentHome","studentSchedule","studentLessons","studentWork","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
                     Path("artifacts/browser-v25"),
                 )
                 student_page.evaluate("page='studentHome';appSpace='student';setAppearanceTheme('light');render();")
