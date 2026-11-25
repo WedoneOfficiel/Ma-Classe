@@ -40,10 +40,12 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
                   appSpace=role;
                   page=module;
                   render();
+                  const toast=document.getElementById('toast');
+                  if(toast){toast.classList.remove('show');toast.textContent='';}
                 }""",
                 {"role": role, "module": module, "theme": theme},
             )
-            page.wait_for_timeout(80)
+            page.wait_for_timeout(140)
             destination = output_dir / f"{role}-{theme}-{module}.png"
             page.screenshot(path=str(destination), full_page=True, animations="disabled")
 
@@ -644,6 +646,48 @@ def main() -> None:
                 }""")
                 composer = teacher_page.locator('#modal .v2104Compose')
                 expect(composer).to_be_visible()
+                composer_layout = teacher_page.evaluate("""() => {
+                  const modal=document.getElementById('modal');
+                  const form=modal?.querySelector('.v2104Compose');
+                  const rect=form?.getBoundingClientRect();
+                  return {
+                    viewportWidth:window.innerWidth,
+                    modalClientWidth:modal?.clientWidth||0,
+                    modalScrollWidth:modal?.scrollWidth||0,
+                    formLeft:rect?.left||0,
+                    formRight:rect?.right||0,
+                    formWidth:rect?.width||0,
+                    recipientPickerCount:form?.querySelectorAll('.v2104Recipients').length||0
+                  };
+                }""")
+                if (
+                    composer_layout["formWidth"] <= 0
+                    or composer_layout["formLeft"] < 0
+                    or composer_layout["formRight"] > composer_layout["viewportWidth"]
+                    or composer_layout["modalScrollWidth"] > composer_layout["modalClientWidth"] + 1
+                ):
+                    raise AssertionError(
+                        "La fenêtre de rédaction Mail déborde horizontalement : "+repr(composer_layout)
+                    )
+                screenshot_dir = Path("artifacts/browser-v25")
+                screenshot_dir.mkdir(parents=True,exist_ok=True)
+                for theme in ("light","dark"):
+                    teacher_page.emulate_media(color_scheme="dark" if theme=="light" else "light")
+                    teacher_page.evaluate("""theme => {
+                      setAppearanceTheme(theme);
+                      const toast=document.getElementById('toast');
+                      if(toast){toast.classList.remove('show');toast.textContent='';}
+                    }""",theme)
+                    teacher_page.wait_for_timeout(140)
+                    teacher_page.screenshot(
+                        path=str(screenshot_dir/f"teacher-{theme}-mail-compose.png"),
+                        full_page=True,animations="disabled"
+                    )
+                teacher_page.evaluate("""() => {
+                  setAppearanceTheme('light');
+                  const toast=document.getElementById('toast');
+                  if(toast){toast.classList.remove('show');toast.textContent='';}
+                }""")
                 recipient = composer.locator('input[name="to"][value="student:firefox-student"]')
                 if recipient.count() != 1:
                     people = teacher_page.evaluate("peopleOptions('teacher','')")
