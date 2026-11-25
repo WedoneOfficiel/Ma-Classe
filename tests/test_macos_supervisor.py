@@ -50,10 +50,9 @@ class MacOSSupervisorTests(unittest.TestCase):
         self.assertIn('MACLASSE_DATA_DIR="$DATA"', runner)
         self.assertIn('SCRIPT_DIR/../../../..', runner)
         self.assertIn('MACLASSE_SUPERVISED=launchd', runner)
-        self.assertIn('MACLASSE_TLS_KEY="$KEY"', runner)
-        self.assertIn("/sbin/route -n get default", runner)
-        self.assertIn("/usr/sbin/ipconfig getifaddr", runner)
-        self.assertIn("Configurer-MaClasse-Reseau.sh", runner)
+        self.assertIn('MACLASSE_APP_ROOT="$PROGRAM"', runner)
+        self.assertIn('MACLASSE_SUPERVISED=launchd', runner)
+        self.assertIn("network_supervisor.py", runner)
 
 
 
