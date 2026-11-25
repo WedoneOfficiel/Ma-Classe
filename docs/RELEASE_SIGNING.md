@@ -54,7 +54,7 @@ Côté client, le gestionnaire exige exactement un asset de signature et valide 
 
 ## 5. Pont de migration des anciennes installations
 
-La dernière release stable antérieure à cette évolution ne vérifie pas encore Ed25519. Une installation V25.0.23 utilise donc son ancien mécanisme pour recevoir la première version qui embarque le vérificateur et la clé publique. Ce premier passage est un **pont de migration** : il ne faut pas prétendre qu'il est déjà authentifié par la nouvelle clé. Dès que V25.0.25 est installée avec la clé publique configurée, toutes les mises à jour suivantes doivent être signées et vérifiées.
+La dernière release stable antérieure à cette évolution est V25.0.23 et ne vérifie pas encore Ed25519. Une installation V25.0.23 utilise donc son ancien mécanisme pour recevoir V25.1.0, qui embarque le vérificateur. Ce premier passage est un **pont de migration** : il ne faut pas prétendre qu'il est déjà authentifié par la nouvelle clé. Dès que V25.1.0 est installée avec la clé publique de production configurée, toutes les mises à jour suivantes doivent être signées et vérifiées.
 
 ## 6. Rotation de clé
 
