@@ -34,7 +34,9 @@ jobs:
       - name: Tester réellement l'installateur Linux
         run: ./Installer-MaClasse-Linux.sh
       - name: Vérifier la syntaxe JavaScript
-        run: node --check _all.js
+        run: |
+          node --check _all.js
+          node --check class_tracking.js
       - name: Vérifier les lanceurs macOS
         run: bash -n Installer-MaClasse.command Lancer-MaClasse.command Lancer-MaClasse-Reseau.command Installer-Service-MaClasse-macOS.sh Lancer-MaClasse-Service-macOS.sh Appliquer-Mise-A-Jour-MaClasse-macOS.sh Configurer-MaClasse-Reseau.command Mettre-A-Jour-MaClasse.command Installer-MaClasse-Linux.sh Lancer-MaClasse-Reseau.sh Configurer-MaClasse-Reseau.sh Mettre-A-Jour-MaClasse-Linux.sh Installer-Service-MaClasse-Linux.sh Desinstaller-Service-MaClasse-Linux.sh Lancer-MaClasse-Service-Linux.sh Appliquer-Mise-A-Jour-MaClasse-Linux.sh Installer-Service-MaClasse-macOS.sh Lancer-MaClasse-Service-macOS.sh Appliquer-Mise-A-Jour-MaClasse-macOS.sh
       - name: Exécuter tous les tests JavaScript
@@ -85,7 +87,9 @@ jobs:
         if: runner.arch == 'ARM64'
         run: ./Installer-MaClasse.command
       - name: Vérifier JavaScript
-        run: node --check _all.js
+        run: |
+          node --check _all.js
+          node --check class_tracking.js
       - name: Compiler Python
         run: python -m py_compile server.py
       - name: Tests JavaScript
