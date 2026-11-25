@@ -4,7 +4,7 @@
 **Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
 **Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
 **Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
-**Validation automatisée :** workflow #1727 vert sur le dernier commit vérifié (`94b86d9`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
+**Validation automatisée :** workflow [#1747](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45697822027) vert sur la tête vérifiée (`832d466`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
 
 Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
 
@@ -300,3 +300,38 @@ Le message d'information des comptes a été actualisé : il ne présente plus l
 - Le test de persistance des bulletins couvre la génération idempotente, l'attente de confirmation serveur et le rollback en cas d'échec.
 - Les tests UI vérifient les dimensions fixes de la navigation, la densité des paramètres, la séparation des champs de profil, la version partagée et la composition de la rubrique Vie scolaire.
 - Ces tests contrôlent la présence des règles et la logique des fonctions ; ils ne remplacent pas une inspection visuelle avec des données denses dans les trois espaces.
+
+
+## 16. Dette de code et portée réelle de la revue visuelle — 25/11/2026
+
+### Dette de maintenance dans les fichiers applicatifs
+
+Le relevé statique de la branche donne les ordres de grandeur suivants :
+- `_all.js` : 2 076 lignes, environ 630 Ko et 551 déclarations de fonctions.
+- 26 noms de fonctions sont déclarés plusieurs fois dans ce même fichier. `evaluations()` apparaît cinq fois ; `bulletins()`, trois fois. Plusieurs autres moteurs et handlers possèdent deux ou trois déclarations.
+- `index.html` : environ 262 Ko, avec plusieurs blocs CSS historiques qui redéfinissent les mêmes sélecteurs. Exemples : `.top` apparaît dix fois, `.scheduleGrid` sept fois, et `.side`, `.main`, `.event` ou `.card` plusieurs fois.
+- `server.py` : 3 101 lignes ; deux fonctions locales nommées `contains` ont été relevées dans des portées distinctes.
+
+Ces doublons ne prouvent pas à eux seuls un bug : les déclarations JavaScript successives remplacent les implémentations précédentes dans le contexte global, et les règles CSS tardives peuvent être des surcharges intentionnelles. Ils rendent toutefois difficile l'identification du code actif et augmentent le risque de corriger une ancienne définition au lieu de celle réellement appelée.
+
+**Décision pour V25.0.25 :** pas de suppression massive de fonctions ou de règles CSS dans cette branche de stabilisation. La consolidation doit être un chantier séparé, avec cartographie des appels HTML inline, fonctions exportées, événements et tests de chaque module.
+
+### Plan de nettoyage post-livraison
+
+1. Cartographier les fonctions actives et les références dynamiques, puis consolider les moteurs Évaluations et Bulletins en premier.
+2. Supprimer les anciennes implémentations uniquement après preuve qu'elles ne sont plus appelées et que tous les tests de rôle/parcours passent.
+3. Déplacer progressivement les styles communs, les variantes thème clair/sombre et les règles mobile vers des feuilles organisées par module ; comparer les captures avant/après.
+4. Conserver un commit par module nettoyé pour faciliter le retour arrière et l'identification des régressions.
+
+### Inspection des captures Firefox
+
+Le workflow #1747 a publié un artefact de 74 captures : écrans Professeur et Élève, thèmes clair/sombre et plusieurs dimensions mobiles. Les vues Emploi du temps, Paramètres, Résultats, Vie scolaire et Messagerie ont été examinées sur un échantillon de ces captures.
+
+Constats :
+- les surfaces clair/sombre et les principaux espacements sont cohérents sur les écrans examinés ;
+- l'EDT mobile reste défilant horizontalement pour afficher la semaine complète ; la navigation supérieure est également horizontale et une partie des libellés n'est pas visible sans défilement ;
+- les vues élève Messagerie et Résultats ont une structure lisible en largeur étroite, mais l'empilement de la boîte de réception et du panneau de lecture allonge la page ;
+- les captures automatisées contiennent peu de données de démonstration ; elles ne certifient pas les états avec classes nombreuses, longues listes de messages ou profils incomplets ;
+- la campagne de captures porte sur les espaces Professeur et Élève ; l'espace Direction doit encore bénéficier d'une recette visuelle complète distincte.
+
+**Limite de validation :** les captures montrent le rendu d'un navigateur Firefox de CI. Elles ne remplacent pas une recette sur l'installation utilisateur, sur des données réelles anonymisées, ni un contrôle clavier/lecteur d'écran.
