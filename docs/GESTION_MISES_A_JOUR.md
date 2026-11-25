@@ -1,7 +1,8 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
 **État actualisé au 25/11/2026 :** le candidat V25.0.25 est porté par la [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), branche `feat/v25.0.25-stabilisation-reseau-migrations`. La CI complète du dernier commit vérifié (`7c5f80b`, workflow #1754) est verte sur Linux, macOS Apple Silicon et Firefox réel.  
-**Limites restantes :** aucune release V25.0.25 n'est publiée ; la signature éditeur indépendante n'est pas implémentée ; la migration V25.0.19 a réussi sur le fixture de CI mais doit encore être répétée sur une copie de données représentative avant toute migration réelle ; la recette réseau physique Fedora/macOS reste à effectuer.  
+**État signature :** le vérificateur Ed25519 côté client et le signataire du workflow sont implémentés. La clé publique versionnée est encore un emplacement à provisionner ; le secret GitHub Actions `MACLASSE_RELEASE_SIGNING_KEY_B64` doit être créé et apparié avant de publier une release. La procédure est dans [Signature des releases](RELEASE_SIGNING.md).  
+**Limites restantes :** aucune release V25.0.25 n'est publiée ; migration V25.0.19 à répéter sur une copie de données représentative ; recette réseau physique Fedora/macOS à effectuer.  
 **Note de lecture :** les mentions « CI en attente », « DHCP non surveillé » et « migration non testée » plus bas décrivent l'état historique du 16/11/2026. Elles sont remplacées par le présent état et les résultats CI #1754.
 
 ## Objectif
@@ -15,7 +16,7 @@ Les données métier et les fichiers téléversés ne doivent jamais être rempl
 ### 1. Versions officielles
 
 - Les versions distribuées sont des **GitHub Releases stables**, identifiées par un tag versionné (`v25.x.y`), qui ne doit jamais être déplacé après publication.
-- Le workflow `publish-release.yml` construit l'archive depuis les fichiers suivis par Git, vérifie la concordance tag/`VERSION.txt` et publie un manifeste avec SHA-256 et le schéma de données minimal. L'archive n'embarque donc pas les données locales non suivies par Git.
+- Le workflow `publish-release.yml` construit l'archive depuis les fichiers suivis par Git, vérifie la concordance tag/`VERSION.txt`, publie un manifeste SHA-256 et sa signature Ed25519 détachée. L'archive n'embarque donc pas les données locales non suivies par Git.
 - La branche `main` n'est jamais installée directement sur une instance en production.
 - Chaque publication fournit un manifeste versionné (version, tag, notes, version minimale du schéma de données et empreinte SHA-256 de l'archive). Les migrations éventuelles devront être déclarées explicitement avant d'être activées.
 - L'archive est téléchargée depuis la release puis vérifiée avant d'être considérée comme installable. L'instance n'exécute jamais un script téléchargé depuis une URL arbitraire.
@@ -57,14 +58,15 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Tous les comptes reçoivent l'annonce de maintenance programmée, sa date/heure et le rappel d'enregistrer leur travail ; la bannière reste visible avec un message « Maintenance en cours » pendant l'installation.
 - Une maintenance annulée ou reprogrammée met à jour la notification.
 - Les actions de gestion sont authentifiées côté serveur et réservées au rôle administrateur ; masquer un bouton dans le navigateur ne constitue jamais un contrôle d'accès.
-- Les archives et manifestes sont vérifiés ; les chemins d'archive sont contrôlés contre les traversées de répertoires et les liens symboliques dangereux.
+- Les manifestes sont authentifiés par une signature Ed25519 vérifiée avec la clé publique épinglée dans `release-signing-public-key.txt`, puis le SHA-256 et la taille de l'archive sont comparés aux métadonnées et au manifeste. Les chemins d'archive sont contrôlés contre les traversées de répertoires et les liens symboliques dangereux.
+- Le workflow échoue fermé si le secret de signature est absent ou si sa clé privée ne correspond pas à la clé publique versionnée.
 - Le gestionnaire n'écoute pas sur l'interface réseau et ne donne pas de privilèges généraux au serveur web.
 
 ## État actuel constaté
 
 - `VERSION.txt`, `server.py` et `_all.js` exposent un numéro de version, mais aucun contrôle de release n'est intégré.
 - Les scripts macOS et Linux font actuellement un `git fetch origin main` puis une avance rapide du clone local.
-- Le module `update_manager.py` interroge la dernière release stable, valide son manifeste, limite les téléchargements aux hôtes GitHub en HTTPS, vérifie l'empreinte SHA-256 et extrait l'archive sans liens symboliques ni chemins traversants dans `data/program/versions/Vx.y.z/`. Il prépare aussi un environnement Python propre à la version et vérifie la compilation Python/JavaScript.
+- Le module `update_manager.py` interroge la dernière release stable, vérifie d'abord la signature Ed25519 du manifeste avec la clé publique locale épinglée, puis vérifie le SHA-256 de l'archive et extrait celle-ci sans liens symboliques ni chemins traversants dans `data/program/versions/Vx.y.z/`. Les téléchargements sont limités aux hôtes GitHub en HTTPS. Il prépare aussi un environnement Python propre à la version et vérifie la compilation Python/JavaScript.
 - La vérification des releases stables est lancée à la connexion de la direction puis répétée toutes les six heures ; la direction peut aussi la relancer manuellement depuis Paramètres. Une nouvelle version est signalée uniquement à la direction.
 - La direction peut télécharger/préparer une version compatible depuis Paramètres. Chaque version préparée possède son propre `.venv` et un marqueur `maclasse-prepared.json`. Le serveur actif n'est pas interrompu.
 - La direction dispose désormais d'une carte Paramètres « Mises à jour » et d'une route serveur de vérification réservée au rôle administrateur.
@@ -142,3 +144,14 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Pas de système complexe de récupération de sessions ou de brouillons côté navigateur.
 - Pas d'exécution de commandes arbitraires depuis l'interface.
 - Pas de déploiement sur l'installation de l'utilisateur pendant le développement.
+
+
+## Signature éditeur Ed25519 — mise en œuvre dans V25.0.25
+
+Le manifeste `maclasse-update.json` est signé sur ses octets exacts par une clé Ed25519 privée conservée exclusivement dans le secret GitHub Actions `MACLASSE_RELEASE_SIGNING_KEY_B64`. Le workflow publie cette signature en asset détaché `maclasse-update.sig`.
+
+Le client télécharge le manifeste et la signature, vérifie la signature avec la clé publique épinglée dans `release-signing-public-key.txt`, puis seulement après parse le manifeste et poursuit les validations de tag, schéma, taille, digest SHA-256 et chemins ZIP. L'absence de signature, de clé publique, de dépendance cryptographique ou une discordance de clé bloque la préparation.
+
+**Provisionnement restant avant publication :** créer la paire de clés avec `python scripts/generate_release_signing_key.py --force`, committer uniquement `release-signing-public-key.txt`, puis créer le secret GitHub Actions à partir du fichier privé conservé hors du dépôt. La procédure détaillée est [ici](RELEASE_SIGNING.md). Aucun secret privé ne doit être ajouté au dépôt, à une archive ou à une conversation.
+
+**Transition des anciennes installations :** les versions antérieures à ce vérificateur ne contrôlent pas encore la signature. La première mise à jour vers V25.0.25 est donc un pont de mise à niveau ; après installation de cette version signée et provisionnée, les mises à jour suivantes sont obligatoirement authentifiées par Ed25519.

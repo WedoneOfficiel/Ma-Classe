@@ -1,2 +1,3 @@
 reportlab>=4.0
 pypdf>=4.0  # recherche dans le contenu des PDF (facultatif pour le reste de l’application)
+cryptography>=44.0

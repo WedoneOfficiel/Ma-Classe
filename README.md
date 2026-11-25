@@ -24,7 +24,7 @@ La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remp
 - Emploi du temps : persistance contrôlée des couleurs de matières, fond de grille adapté au thème sombre et accès central filtrable aux remplacements/co-enseignements.
 - Administration : message de confidentialité aligné sur le filtrage serveur des comptes élèves, messages, pièces jointes et ressources.
 
-La signature éditeur indépendante des releases reste un point de sécurité ouvert : un SHA-256 de manifeste détecte des écarts d'intégrité mais ne prouve pas à lui seul l'identité de l'éditeur.
+La signature Ed25519 du manifeste est maintenant implémentée côté client et dans le workflow de publication. La génération de la paire de clés et la configuration du secret GitHub Actions restent à effectuer avant toute release ; tant que cette étape n'est pas terminée, les nouvelles mises à jour sont refusées par le vérificateur.
 
 ## Installation et démarrage
 
@@ -66,6 +66,7 @@ Pour la gestion des releases, des migrations et du retour arrière, voir [Gestio
 | [Installation](docs/INSTALLATION.md) | Prérequis, installation, démarrage et sauvegardes |
 | [Réseau local HTTPS](docs/RESEAU_HTTPS.md) | Certificats, clients, DHCP et pare-feu |
 | [Gestion des mises à jour](docs/GESTION_MISES_A_JOUR.md) | Architecture du gestionnaire, migration et validation |
+| [Signature des releases](docs/RELEASE_SIGNING.md) | Génération de la clé éditeur et configuration du secret GitHub |
 | [Audit produit V25](docs/AUDIT_PRODUIT_V25.md) | Modules, expérience utilisateur, thèmes et recette |
 | [Registre des bugs](REGISTRE_BUGS_V25.md) | Anomalies ouvertes et statuts de recette |
 | [Suivi des correctifs](SUIVI_CORRECTIFS_V25.md) | Journal chronologique des interventions |

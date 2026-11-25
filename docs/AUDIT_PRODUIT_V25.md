@@ -335,3 +335,17 @@ Constats :
 - la campagne de captures porte sur les espaces Professeur et Élève ; l'espace Direction doit encore bénéficier d'une recette visuelle complète distincte.
 
 **Limite de validation :** les captures montrent le rendu d'un navigateur Firefox de CI. Elles ne remplacent pas une recette sur l'installation utilisateur, sur des données réelles anonymisées, ni un contrôle clavier/lecteur d'écran.
+
+
+## 17. Authenticité des mises à jour — signature Ed25519
+
+Le SHA-256 précédent liait le contenu de l'archive au manifeste de la release, mais ne garantissait pas que le manifeste provenait de l'éditeur. Le candidat V25.0.25 ajoute une signature détachée Ed25519.
+
+- `release_signing.py` charge une clé publique épinglée et valide la signature sur les octets exacts du JSON.
+- `update_manager.py` exige exactement un asset `maclasse-update.sig` et refuse une release non signée, une clé absente, une signature malformée ou une clé qui ne correspond pas.
+- `scripts/generate_release_signing_key.py` génère localement la paire ; la clé privée reste dans le dossier utilisateur hors du dépôt.
+- `scripts/sign_release.py` signe le manifeste dans le workflow avec le secret GitHub Actions `MACLASSE_RELEASE_SIGNING_KEY_B64`. Le script vérifie que la clé privée correspond à la clé publique versionnée, sans afficher le secret.
+- Le workflow publie les trois assets : archive, manifeste et signature.
+- Les tests couvrent la signature correcte, un manifeste modifié, une mauvaise clé, une signature absente et un contenu malformé.
+
+**État : code ajouté, provisionnement réel non effectué.** Le fichier public du dépôt est volontairement non configuré ; il faut générer la paire sur un poste de confiance, committer la clé publique et créer le secret GitHub avant de publier une release. Le workflow de publication sera volontairement en échec tant que l'éditeur n'aura pas effectué cette opération. La première mise à niveau depuis V25.0.23 ne peut pas être authentifiée par un ancien updater qui ne connaissait pas Ed25519 ; la signature protège strictement le flux après installation du pont V25.0.25.

@@ -249,7 +249,9 @@ class ReleaseCheckerTests(unittest.TestCase):
                 updater.check_latest_release("25.0.22")
 
     def test_rejects_duplicate_archive_assets(self):
-        self.release["assets"].append(dict(self.release["assets"][1]))
+        archive_asset = next(asset for asset in self.release["assets"]
+                             if asset["name"] == self.manifest["archive_asset"])
+        self.release["assets"].append(dict(archive_asset))
         with patch.object(updater, "_request", side_effect=self.fake_request):
             with self.assertRaises(updater.UpdateError):
                 updater.check_latest_release("25.0.22")

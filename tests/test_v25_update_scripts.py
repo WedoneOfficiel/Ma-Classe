@@ -14,6 +14,9 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         self.assertIn("workflow_call:", tests)
         self.assertIn("uses: ./.github/workflows/tests.yml", release)
         self.assertIn("needs: validate", release)
+        self.assertIn("scripts/sign_release.py", release)
+        self.assertIn("MACLASSE_RELEASE_SIGNING_KEY_B64", release)
+        self.assertIn("dist/maclasse-update.sig", release)
         self.assertIn("macos-validation:", tests)
         self.assertIn("firefox-schedule-regression:", tests)
 

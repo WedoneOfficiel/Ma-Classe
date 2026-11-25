@@ -625,3 +625,15 @@ Le premier test complet après l'ajout du bouton « Remplacements & co-enseignem
 ## Vérification de la tête finale après clarification du filtre — workflow #1754
 
 La tête `7c5f80b` est entièrement verte sur le workflow [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140) : tests Linux, Firefox réel et macOS Apple Silicon. Le dernier ajustement a remplacé le filtre « Toutes mes classes » par « Toutes les classes accessibles », libellé valable aussi bien pour la Direction que pour un professeur ; l'assertion associée est incluse dans cette exécution.
+
+
+## AUDIT-S2 — Signature Ed25519 du manifeste de mise à jour (25/11/2026)
+
+- Ajout de `release_signing.py` : décodage strict, clé publique Ed25519 épinglée dans `release-signing-public-key.txt`, vérification de la signature détachée sur les octets exacts du manifeste.
+- Le gestionnaire `update_manager.py` exige maintenant exactement un asset `maclasse-update.sig` et vérifie sa signature avant d'interpréter le manifeste, de vérifier le SHA-256 de l'archive ou de préparer une version. L'absence de signature ou de clé publique bloque la mise à jour.
+- Ajout de `scripts/generate_release_signing_key.py` : génération locale d'une paire ; clé privée créée hors du dépôt et permissions POSIX 0600 ; seule la clé publique est destinée à Git.
+- Ajout de `scripts/sign_release.py` : le workflow signe le manifeste avec le secret `MACLASSE_RELEASE_SIGNING_KEY_B64`, après comparaison de la clé privée dérivée avec la clé publique versionnée.
+- Le workflow de publication installe la dépendance cryptographique, signe le manifeste et publie l'asset de signature. Il échoue fermé si le secret n'est pas configuré.
+- Ajout de tests offline : signature valide, altération du manifeste, clé privée ne correspondant pas à la clé publique, signature absente/ambiguë/malformée et vérification côté client.
+
+**Limite opérationnelle :** la paire réelle et le secret ne peuvent pas être provisionnés par un commit de code. Il faut exécuter la génération sur un poste de confiance, committer la clé publique seulement et créer le secret dans les paramètres GitHub du dépôt. Tant que ce provisionnement n'est pas réalisé, aucune nouvelle release ne doit être publiée et le vérificateur refuse les nouvelles mises à jour.

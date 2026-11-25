@@ -19,14 +19,18 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path, PurePosixPath
+
+import release_signing
 from urllib.parse import urljoin, urlsplit
 
 OWNER = "WedoneOfficiel"
 REPOSITORY = "Ma-Classe"
 API_LATEST = f"https://api.github.com/repos/{OWNER}/{REPOSITORY}/releases/latest"
 MANIFEST_ASSET = "maclasse-update.json"
+SIGNATURE_ASSET = "maclasse-update.sig"
 USER_AGENT = "MaClasse-Updater/1"
 MAX_MANIFEST_BYTES = 256 * 1024
+MAX_SIGNATURE_BYTES = 16 * 1024
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 512 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 20000
@@ -153,12 +157,24 @@ def check_latest_release(current_version: str) -> dict:
         raise UpdateError("Le manifeste de mise à jour est absent ou ambigu.")
     manifest_asset = manifest_assets[0]
     manifest_url = manifest_asset.get("browser_download_url", "")
+    signature_assets = [a for a in assets if isinstance(a, dict) and a.get("name") == SIGNATURE_ASSET]
+    if len(signature_assets) != 1:
+        raise UpdateError("La signature Ed25519 de la release est absente ou ambiguë.")
+    signature_asset = signature_assets[0]
+    signature_url = signature_asset.get("browser_download_url", "")
     try:
         manifest_payload = _request(manifest_url, MAX_MANIFEST_BYTES)
         manifest_asset_digest_verified = _verify_github_asset_metadata(
             manifest_asset, "manifeste", MAX_MANIFEST_BYTES, payload=manifest_payload
         )
+        signature_payload = _request(signature_url, MAX_SIGNATURE_BYTES)
+        signature_asset_digest_verified = _verify_github_asset_metadata(
+            signature_asset, "signature", MAX_SIGNATURE_BYTES, payload=signature_payload
+        )
+        release_signing.verify_manifest_signature(manifest_payload, signature_payload)
         manifest = json.loads(manifest_payload.decode("utf-8"))
+    except release_signing.ReleaseSignatureError as exc:
+        raise UpdateError(f"Signature de release invalide : {exc}") from exc
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise UpdateError("Le manifeste de mise à jour est illisible.") from exc
 
@@ -201,6 +217,8 @@ def check_latest_release(current_version: str) -> dict:
         "archive_url": archive_url,
         "archive_size": archive_asset.get("size") if type(archive_asset.get("size")) is int else None,
         "manifest_asset_digest_verified": manifest_asset_digest_verified,
+        "signature_verified": True,
+        "signature_asset_digest_verified": signature_asset_digest_verified,
         "archive_asset_digest_verified": archive_asset_digest_verified,
         "sha256": manifest["sha256"],
     }

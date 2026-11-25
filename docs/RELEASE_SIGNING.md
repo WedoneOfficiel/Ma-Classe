@@ -1,0 +1,61 @@
+# Signature des releases MaClasse
+
+## Objectif
+
+Chaque release MaClasse doit contenir trois fichiers :
+- `maclasse-update.zip` : archive de l'application ;
+- `maclasse-update.json` : manifeste et empreinte SHA-256 de l'archive ;
+- `maclasse-update.sig` : signature Ed25519 détachée des octets exacts du manifeste.
+
+Le client vérifie la signature avec `release-signing-public-key.txt`, qui fait partie du code MaClasse déjà installé. Le SHA-256 reste utile pour l'intégrité de l'archive, mais c'est la signature qui authentifie le manifeste et donc l'empreinte attendue.
+
+## 1. Générer la paire de clés sur un poste de confiance
+
+Depuis le dossier MaClasse, après installation des dépendances :
+
+```bash
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python scripts/generate_release_signing_key.py --force
+```
+
+Le script crée :
+- la clé privée dans `~/.config/maclasse/release-signing-private-key.b64` (permissions POSIX 0600) ;
+- la clé publique dans `release-signing-public-key.txt` à la racine du dépôt.
+
+La clé privée ne doit **jamais** être ajoutée à Git, à une archive, à une pièce jointe, à un ticket ou à une conversation. Conserver une sauvegarde chiffrée hors du poste. La perte de cette clé bloque la publication de futures mises à jour jusqu'à la réalisation d'une rotation de confiance.
+
+## 2. Committer uniquement la clé publique
+
+Vérifier le contenu de `release-signing-public-key.txt` : il doit contenir une seule valeur Base64 correspondant à 32 octets. Committer ce fichier sur la branche de livraison, puis fusionner le changement dans la branche qui servira à créer le tag. Ne jamais committer le fichier privé.
+
+## 3. Créer le secret GitHub Actions
+
+Dans le dépôt GitHub :
+
+1. Ouvrir **Settings**.
+2. Ouvrir **Secrets and variables** puis **Actions**.
+3. Dans **Repository secrets**, choisir **New repository secret**.
+4. Nommer le secret exactement `MACLASSE_RELEASE_SIGNING_KEY_B64`.
+5. Coller le contenu du fichier privé `~/.config/maclasse/release-signing-private-key.b64`, sans ajouter de préfixe ni de guillemets.
+6. Enregistrer.
+
+La valeur du secret n'est jamais affichée par le workflow. Avant de publier, le script de signature dérive la clé publique de la clé privée et la compare à la clé versionnée. Une différence arrête la publication.
+
+## 4. Vérifier la chaîne
+
+Le workflow `.github/workflows/publish-release.yml` :
+1. attend le succès des tests Linux, macOS et Firefox ;
+2. vérifie la cohérence du tag et de `VERSION.txt` ;
+3. construit l'archive et le manifeste ;
+4. signe le manifeste avec le secret GitHub Actions ;
+5. publie les trois assets.
+
+Côté client, le gestionnaire exige exactement un asset de signature et valide Ed25519 avant de parser le manifeste ou de préparer l'archive. L'absence de la clé publique, du secret, de la signature ou une incohérence entre les deux clés bloque la mise à jour.
+
+## 5. Pont de migration des anciennes installations
+
+La dernière release stable antérieure à cette évolution ne vérifie pas encore Ed25519. Une installation V25.0.23 utilise donc son ancien mécanisme pour recevoir la première version qui embarque le vérificateur et la clé publique. Ce premier passage est un **pont de migration** : il ne faut pas prétendre qu'il est déjà authentifié par la nouvelle clé. Dès que V25.0.25 est installée avec la clé publique configurée, toutes les mises à jour suivantes doivent être signées et vérifiées.
+
+## 6. Rotation de clé
+
+Ne pas remplacer directement la clé publique en production : les clients existants ne feraient plus confiance aux signatures de la nouvelle clé. Une rotation doit être préparée en deux étapes avec une version qui embarque temporairement les deux clés publiques, puis une version ultérieure qui retire l'ancienne. Tant que cette procédure n'est pas développée, protéger la clé privée et conserver une sauvegarde chiffrée.

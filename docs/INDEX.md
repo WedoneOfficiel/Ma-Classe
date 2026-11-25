@@ -7,6 +7,7 @@
 | [Installation](INSTALLATION.md) | Installer, démarrer et sauvegarder MaClasse |
 | [Réseau local HTTPS](RESEAU_HTTPS.md) | Accès multi-appareils, certificats, adresse IP et pare-feu |
 | [Gestion des mises à jour](GESTION_MISES_A_JOUR.md) | Architecture, vérifications, migration et limites du gestionnaire |
+| [Signature des releases](RELEASE_SIGNING.md) | Clé Ed25519 épinglée, secret GitHub Actions et vérification côté client |
 | [Audit produit V25](AUDIT_PRODUIT_V25.md) | Audit des modules, des parcours, des thèmes et de l'interface |
 | [Registre des bugs V25](../REGISTRE_BUGS_V25.md) | État courant des anomalies, demandes et recettes restantes |
 | [Suivi des correctifs V25](../SUIVI_CORRECTIFS_V25.md) | Journal chronologique des diagnostics, interventions et résultats |
