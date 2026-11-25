@@ -490,7 +490,7 @@ Le serveur ne démarre plus en HTTP lorsqu'il est lié à une adresse IPv4 priv�
 **Important :** cette évolution verrouille le serveur contre le démarrage LAN non chiffré, mais elle ne constitue pas encore une recette réseau complète. La confiance CA côté clients, le renouvellement du certificat, le pare-feu, les changements d'adresse IP, les tests réels entre plusieurs appareils et les tests de charge restent à valider. Aucun usage avec des données scolaires réelles n'est autorisé avant cette recette.
 
 
-Guide opératoire : [docs/RESEAU_HTTPS.md](docs/RESEAU_HTTPS.md) — installation Fedora/Linux, lancement HTTPS, import de l'autorité de certification sur macOS/Fedora/Windows, pare-feu, adresse IP stable et sauvegarde des clés.
+Guide opératoire : [docs/RESEAU_HTTPS.md](../RESEAU_HTTPS.md) — installation Fedora/Linux, lancement HTTPS, import de l'autorité de certification sur macOS/Fedora/Windows, pare-feu, adresse IP stable et sauvegarde des clés.
 
 
 ## V25.0.17 — accès élèves administrables et réseau HTTPS
@@ -500,7 +500,7 @@ Guide opératoire : [docs/RESEAU_HTTPS.md](docs/RESEAU_HTTPS.md) — installatio
 - Une réinitialisation ne réactive pas implicitement un compte déjà désactivé.
 - Le mode réseau exige HTTPS, TLS 1.2 minimum, cookies Secure, HSTS et une origine HTTPS stricte. Le serveur refuse de démarrer en HTTP sur une adresse LAN.
 - Scripts d'installation, de mise à jour et de lancement HTTPS ajoutés pour Fedora/Linux, en complément des scripts macOS.
-- Guide détaillé : [Réseau local HTTPS](docs/RESEAU_HTTPS.md).
+- Guide détaillé : [Réseau local HTTPS](../RESEAU_HTTPS.md).
 - Tests automatisés couvrant les comptes élèves (création, périmètre, réinitialisation, suspension, réactivation), la génération de l'autorité/certificat TLS, les cookies Secure, HSTS et le refus du LAN HTTP.
 
 **Limite de livraison :** la CI et les tests d'intégration automatisés ne remplacent pas encore la recette sur le PC Fedora cible et les postes clients réels. Tant que la confiance CA sur les navigateurs, le pare-feu, la stabilité IP, les sauvegardes/restaurations et les tests multi-utilisateurs n'ont pas été vérifiés physiquement, MaClasse reste en alpha et ne doit pas contenir de données scolaires réelles.
@@ -658,7 +658,7 @@ Le lot de stabilisation V25.0.25 part du commit c8e5576 (V25.0.24) et aligne les
 
 ## Audit produit — modules et interface (25/11/2026)
 
-Un audit distinct du déploiement réseau est désormais maintenu dans [docs/AUDIT_PRODUIT_V25.md](docs/AUDIT_PRODUIT_V25.md). Il couvre les modules Évaluations, Bulletins, Messagerie, Cloud, Emploi du temps, Séances, Appels, Profils, Paramètres et les espaces Direction/Professeur/Élève.
+Un audit distinct du déploiement réseau est désormais maintenu dans [docs/AUDIT_PRODUIT_V25.md](../AUDIT_PRODUIT_V25.md). Il couvre les modules Évaluations, Bulletins, Messagerie, Cloud, Emploi du temps, Séances, Appels, Profils, Paramètres et les espaces Direction/Professeur/Élève.
 
 Premiers constats issus de la lecture du code :
 - La messagerie V21.04 active bien une boîte élève et une boîte professeur ; un ancien écran « bientôt disponible » reste présent dans le code historique, mais il est remplacé à l'exécution. La recette sur une installation réelle reste nécessaire.
