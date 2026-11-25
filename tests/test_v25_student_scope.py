@@ -212,6 +212,21 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual(mailbox['states']['student:s2'],{'keep':'private'})
         self.assertEqual([x['id'] for x in mailbox['drafts']],['own'])
 
+    def test_student_projection_includes_co_teachers_and_active_assignments_in_mail_recipients(self):
+        self.data['users'].extend([
+            {'id':'t3','role':'teacher','first':'Prof','last':'C'},
+            {'id':'t4','role':'teacher','first':'Prof','last':'D'},
+        ])
+        self.data['schedule'][0]['teacherIds']=['t3']
+        self.data['teacherAssignments']=[
+            {'id':'replacement-1','teacherId':'t4','classId':'c1','type':'replacement',
+             'startDate':'2000-01-01','endDate':'2999-12-31'}
+        ]
+        view=server._student_visible_data(self.data,self.user)
+        visible={x['id'] for x in view['teachers']}
+        self.assertEqual(visible,{'t1','t3','t4'})
+        self.assertNotIn('t2',visible)
+
     def test_student_projection_hides_future_scheduled_evaluation_until_publish_time(self):
         now=datetime.datetime.now(datetime.timezone.utc)
         self.data['evaluations']=[
