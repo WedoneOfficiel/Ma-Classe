@@ -354,7 +354,9 @@ def main() -> None:
                 student_context = browser.new_context()
                 student_page = student_context.new_page()
                 student_page_errors: list[str] = []
+                student_console_errors: list[str] = []
                 student_page.on("pageerror", lambda error: student_page_errors.append(str(error)))
+                student_page.on("console", lambda message: student_console_errors.append(message.text) if message.type == "error" else None)
                 student_page.goto(url, wait_until="networkidle")
                 student_state = student_page.evaluate("""async (password) => {
                   const response = await fetch('/api/auth/login', {
@@ -535,7 +537,7 @@ def main() -> None:
                         page,authUser,
                         dataRevision,latestRevision:dataResponse.headers.get('X-MaClasse-Revision'),
                         statusRevision:status.revision,
-                        liveSyncBusy,syncOnline,remoteChangePending,
+                        liveSyncBusy,syncOnline,syncLastError,remoteChangePending,
                         savePending,saveTimer:!!saveTimer,saveError:saveError?.message||null,
                         hasLocalWork:syncHasLocalWork(),
                         localSchedule:(db.schedule||[]).map(x=>({id:x.id,subject:x.subject,day:x.day})),
@@ -564,7 +566,10 @@ def main() -> None:
                     }""")
                     raise AssertionError(
                         "Synchronisation élève : le créneau Sciences n'est pas apparu. "
-                        + json.dumps(state,ensure_ascii=False) + " | " + str(failure)
+                        + json.dumps(state,ensure_ascii=False)
+                        + " | page errors=" + repr(student_page_errors)
+                        + " | console errors=" + repr(student_console_errors)
+                        + " | " + str(failure)
                     )
                 teacher_page.evaluate("""() => {
                   page='schedule';
