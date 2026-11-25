@@ -154,22 +154,29 @@ def main() -> None:
                 try:
                     expect(existing).to_be_visible(timeout=5_000)
                 except AssertionError as failure:
-                    initial_state=page.evaluate("""() => {
+                    initial_state=page.evaluate("""({pageErrors,browserErrors}) => {
                       const target=(db.schedule||[]).find(x=>x.id==='firefox-existing-course');
                       const dates=weekDates();
+                      const main=document.getElementById('main');
+                      const surface=main?.querySelector('.scheduleCalendarSurface');
                       return {
-                        page,appSpace,authUser,scheduleView,
+                        page,appSpace,authUser,authReady,scheduleView,
                         selectedWeek:iso(selectedWeek),
                         weekDates:dates.map(iso),
                         target,
                         targetRecurring:target?recurring(target,dates[4]):null,
                         fridayOccurrences:dayOcc(dates[4]).map(x=>({id:x.id,subject:x.subject,time:x.time})),
                         computedMarkup:scheduleWeek(dates,d=>dayOcc(d),false).includes('Français'),
-                        actualDom:document.querySelector('.scheduleCalendarSurface')?.innerText||'',
-                        scheduleHtml:document.querySelector('.scheduleCalendarSurface')?.innerHTML.slice(0,8000)||'',
-                        pageErrors:window.__maclasseTestPageErrors||[]
+                        lastRenderError:lastRenderError?String(lastRenderError.stack||lastRenderError):null,
+                        mainExists:!!main,
+                        mainHtml:main?.innerHTML.slice(0,12000)||'',
+                        calendarExists:!!surface,
+                        calendarText:surface?.innerText||'',
+                        calendarHtml:surface?.innerHTML.slice(0,8000)||'',
+                        revision:{dataRevision,lastRenderedRevision},
+                        pageErrors,browserErrors
                       };
-                    }""")
+                    }""", {"pageErrors":page_errors,"browserErrors":browser_errors})
                     raise AssertionError(
                         "Le premier créneau EDT ne s'affiche pas : "
                         +json.dumps(initial_state,ensure_ascii=False)+" | "+str(failure)
