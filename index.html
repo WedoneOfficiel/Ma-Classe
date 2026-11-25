@@ -2056,6 +2056,13 @@ html[data-mc-theme="dark"] .event b{color:var(--event-accent,var(--ui-text))!imp
 html[data-mc-theme="light"] .event small,
 html[data-mc-theme="dark"] .event small{color:var(--ui-text-2,var(--muted))!important}
 .cloudLayout.singleColumn{grid-template-columns:minmax(0,1fr)!important}.cloudLayout.singleColumn>section{min-width:0;width:100%}
+
+/* Audit UI — le reflet des surfaces claires ne doit pas traverser le thème sombre. */
+html[data-mc-theme="dark"] .card::before,
+html[data-mc-theme="dark"] .bulletin::before{
+  background:none!important;
+  opacity:0!important;
+}
 </style>
 
 
