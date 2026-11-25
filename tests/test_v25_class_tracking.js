@@ -24,7 +24,8 @@ const db={
   {id:'e1',classId:'c1',date:'2026-11-18',published:true,grades:[{studentId:'s1',value:'15'},{studentId:'s2',value:'12'}]},
   {id:'e2',classId:'c1',date:'2026-11-19',published:false,grades:[{studentId:'s1',value:'18'}]},
   {id:'e3',classId:'c1',date:'2026-12-01',published:true,grades:[{studentId:'s1',value:'19'}]},
-  {id:'e4',classId:'c2',date:'2026-11-18',published:true,grades:[{studentId:'s3',value:'14'}]}
+  {id:'e4',classId:'c2',date:'2026-11-18',published:true,grades:[{studentId:'s3',value:'14'}]},
+  {id:'e5',classId:'c1',group:'A',date:'2026-11-17',published:true,grades:[{studentId:'s1',value:'16'},{studentId:'s2',value:'11'}]}
  ]
 };
 const context={db,authUser:{role:'admin'},window:{},currentTeacherProfile:()=>({id:'t1'}),teacherClasses:()=>[db.classes[0]],teacherPPClasses:()=>[db.classes[1]],iso:d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')},studentSubmitted:(l,id)=>db.submissions.some(x=>x.lessonId===l.id&&x.studentId===id&&(x.status==='submitted'||!!x.submittedAt)),evaluationModelPublished:(e,today)=>!e.publishAt||e.publishAt<=today};
@@ -43,8 +44,9 @@ assert.strictEqual(data.stats.late,1);
 assert.strictEqual(data.stats.missing,1,'Le devoir de groupe A est rendu et celui du groupe B reste manquant.');
 assert.strictEqual(data.missingWorks[0].student.id,'s2');
 assert.strictEqual(data.stats.upcoming,1,'Seules les échéances futures doivent être retenues.');
-assert.strictEqual(data.recentEvaluations.length,1,'Les évaluations non publiées et futures doivent être exclues.');
+assert.strictEqual(data.recentEvaluations.length,2,'Les évaluations non publiées et futures doivent être exclues.');
 assert.strictEqual(data.recentEvaluations[0].gradedCount,2);
+assert.strictEqual(data.recentEvaluations[1].gradedCount,1,'Une évaluation de groupe ne doit compter que les élèves de ce groupe.');
 assert.strictEqual(data.students.find(x=>x.student.id==='s1').absent,1);
 assert.strictEqual(data.students.find(x=>x.student.id==='s2').missing,1);
 assert.strictEqual(context.classTrackingData('c3',fixed).students.length,0);
