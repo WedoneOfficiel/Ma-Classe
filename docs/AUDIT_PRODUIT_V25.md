@@ -31,6 +31,7 @@ La navigation principale déclare actuellement 14 entrées :
 |---|---|---|---|
 | Tableau de bord | \`dashboard\` | Vue d'ensemble, accès rapides et priorités | À vérifier dans le navigateur |
 | Centre d'activité | \`activity\` | Actions et événements récents | À vérifier ; chevauchement avec le tableau de bord à mesurer |
+| Suivi de classe | `ppDashboard` | Synthèse des classes, assiduité, travaux, évaluations et échéances | Implémenté ; CI #1793 verte, recette réelle à effectuer |
 | Emploi du temps | \`schedule\` | Vues jour/semaine/mois, créneaux et couleurs | Parcours Firefox présent ; synchronisation multi-postes en investigation |
 | Séances & leçons | \`lessons\` | Contenus, devoirs et pièces jointes | Tests de persistance et parcours élève présents ; audit visuel à poursuivre |
 | Élèves | \`students\` | Fiches et suivi | Permissions et périmètres serveur testés ; ergonomie à vérifier |
