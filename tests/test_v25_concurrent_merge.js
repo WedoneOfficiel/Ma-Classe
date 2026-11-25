@@ -38,5 +38,5 @@ localInsert.mailboxV2.messages.push({id:'m-local',body:'local'});
 remoteInsert.mailboxV2.messages.push({id:'m-remote',body:'remote'});
 const inserted=context.mergeConcurrentData(bothInsert,localInsert,remoteInsert);
 assert.strictEqual(JSON.stringify(inserted.conflicts),'[]');
-assert.strictEqual(JSON.stringify([...inserted.value.mailboxV2.messages.map(x=>x.id)].sort()),JSON.stringify(['m-local','m1','m-remote']));
+assert.strictEqual(JSON.stringify([...inserted.value.mailboxV2.messages.map(x=>x.id)].sort()),JSON.stringify(['m-local','m-remote','m1']));
 console.log('OK — fusion inter-postes : modifications indépendantes combinées, même champ signalé, ajouts conservés.');
