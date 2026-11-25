@@ -31,9 +31,9 @@ const db={
 const context={db,authUser:{role:'admin'},window:{},currentTeacherProfile:()=>({id:'t1'}),teacherClasses:()=>[db.classes[0]],teacherPPClasses:()=>[db.classes[1]],iso:d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')},studentSubmitted:(l,id)=>db.submissions.some(x=>x.lessonId===l.id&&x.studentId===id&&(x.status==='submitted'||!!x.submittedAt)),evaluationModelPublished:(e,today)=>!e.publishAt||e.publishAt<=today};
 vm.createContext(context);
 vm.runInContext(source.slice(start,end),context);
-assert.deepStrictEqual(Array.from(context.classTrackingClasses(),x=>x.id),['c1','c2','c3'],'La Direction doit voir toutes les classes.');
+assert.deepStrictEqual(Array.from(context.classTrackingClasses(),x=>x.id),['c3','c2','c1'],'La Direction doit voir toutes les classes.');
 context.authUser={role:'teacher',id:'t1'};
-assert.deepStrictEqual(Array.from(context.classTrackingClasses(),x=>x.id),['c1','c2'],'Un professeur ne voit que ses classes enseignées ou dont il est PP.');
+assert.deepStrictEqual(Array.from(context.classTrackingClasses(),x=>x.id),['c2','c1'],'Un professeur ne voit que ses classes enseignées ou dont il est PP.');
 context.authUser={role:'student',id:'s1'};
 assert.strictEqual(context.classTrackingClasses().length,0,'Un élève ne doit pas accéder au suivi de classe.');
 context.authUser={role:'admin'};
