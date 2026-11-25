@@ -371,7 +371,8 @@ def main() -> None:
                       hasError:text.includes('Une erreur a empêché l’affichage de cette page.'),
                       title:main?.querySelector('.top h1')?.innerText||'',
                       width:main?.scrollWidth||0,
-                      viewport:window.innerWidth
+                      viewport:window.innerWidth,
+                      lessonWeekHasSelectedDate:!['lessons','studentLessons'].includes(id)||!!main?.querySelector('.lessonWeek .dayBtn.active')
                     });
                   }
                   return results;
@@ -380,6 +381,15 @@ def main() -> None:
                 if broken_modules:
                     raise AssertionError("Des modules professeur ne se rendent pas correctement : "
                                          + json.dumps(broken_modules,ensure_ascii=False))
+                misaligned_teacher_lessons = [
+                    item for item in module_smoke
+                    if item["id"] == "lessons" and not item["lessonWeekHasSelectedDate"]
+                ]
+                if misaligned_teacher_lessons:
+                    raise AssertionError(
+                        "La semaine affichée dans Leçons & séances ne contient pas la date sélectionnée : "
+                        + json.dumps(misaligned_teacher_lessons,ensure_ascii=False)
+                    )
 
                 # Manual theme choices must override the operating-system preference.
                 teacher_page.emulate_media(color_scheme="light")
@@ -573,6 +583,15 @@ def main() -> None:
                     raise AssertionError(
                         "Des modules de l'espace élève ne se rendent pas correctement : "
                         + json.dumps(broken_student_modules,ensure_ascii=False)
+                    )
+                misaligned_student_lessons = [
+                    item for item in student_module_smoke
+                    if item["id"] == "studentLessons" and not item["lessonWeekHasSelectedDate"]
+                ]
+                if misaligned_student_lessons:
+                    raise AssertionError(
+                        "La semaine affichée dans Séances & leçons élève ne contient pas la date sélectionnée : "
+                        + json.dumps(misaligned_student_lessons,ensure_ascii=False)
                     )
                 # The student can read an explicitly shared Cloud file, but cannot
                 # see the teacher's private sibling or write to the Cloud.
