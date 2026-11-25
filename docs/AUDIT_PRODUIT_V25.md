@@ -393,7 +393,7 @@ La vue transversale est implémentée dans `class_tracking.js` et réutilise la 
 - Professeur non-PP : travaux et évaluations limités aux matières sur lesquelles ses affectations lui donnent accès.
 - Professeur principal : vue transversale de sa classe, en cohérence avec sa responsabilité de classe.
 - Élève : aucun accès à cette vue.
-- La sélection d'une classe est revalidée contre la liste accessible avant affichage.
+- La sélection d'une classe est revalidée contre la liste accessible avant affichage. Un accès de retour à la liste est disponible depuis la fiche de classe.
 - Les raccourcis vers les modules conservent le contexte de classe.
 
 ### Informations affichées
@@ -410,5 +410,5 @@ Aucun score de risque, classement ou seuil automatique n'est calculé. Les nombr
 ### Tests et validation
 
 - `tests/test_v25_class_tracking.js` couvre le périmètre Direction/Professeur/Élève, la fenêtre de 30 jours, les groupes, les travaux rendus, les échéances et la publication des évaluations.
-- Le parcours Firefox réel vérifie l'ouverture du module, la sélection d'une classe accessible et le rendu des panneaux principaux. Le workflow peut aussi être lancé manuellement depuis GitHub Actions pour valider explicitement la dernière tête de branche.
+- Le parcours Firefox réel vérifie l'ouverture du module, la sélection d'une classe accessible, le retour à la liste et le refus d'accès depuis un compte élève. Le workflow peut aussi être lancé manuellement depuis GitHub Actions pour valider explicitement la dernière tête de branche.
 - La validation CI de cette nouvelle tête et l'inspection visuelle des captures restent nécessaires avant de déclarer la fonctionnalité validée.
