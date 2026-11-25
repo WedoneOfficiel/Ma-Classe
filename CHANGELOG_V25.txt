@@ -315,3 +315,11 @@ Validation CI complémentaire — 12/11/2026
 - Ajout d'une première fusion à trois versions pour les modifications indépendantes, et d'un état explicite pour les conflits sur un même champ ; les deux versions peuvent être exportées avant arbitrage.
 - Ajout de tests d'intégration pour l'endpoint de révision et de tests ciblés de fusion concurrente. Les tests Firefox et la validation complète de cette évolution restent en cours : ne pas considérer la synchronisation générale comme validée à ce stade.
 - L'audit produit identifie un parcours de mise à jour du calendrier élève après une modification distante qui échoue encore dans le test Firefox ; le défaut reste ouvert et ne doit pas être masqué en assouplissant l'assertion.
+
+
+25/11/2026 — Diagnostic et correction du rendu EDT élève
+- Le test Firefox a confirmé que la synchronisation de données fonctionnait : le créneau Sciences figurait dans les données reçues, dans le calcul des occurrences et dans le HTML généré par le moteur de calendrier élève.
+- Le DOM visible gardait malgré tout l'ancien calendrier (aucun élément avec l'identifiant du nouveau créneau). Le garde-fou de synchronisation qui ne redessinait la page que lorsque le JSON semblait différent était donc insuffisant pour réparer un DOM devenu obsolète.
+- Correction dans _all.js : lorsqu'une nouvelle révision serveur est adoptée et qu'aucune saisie locale n'est active, le module actuellement ouvert est systématiquement rendu à nouveau, même si le modèle JSON paraît déjà identique.
+- Test de régression ajouté : nouvelle révision avec modèle local déjà identique doit tout de même déclencher le rendu. La recette Firefox complète sur le dernier commit reste en attente.
+- Les tests smoke Firefox couvrent aussi le rendu des modules Direction/Professeur et l'application du thème manuel clair/sombre à contre-sens du thème système ; le contrôle visuel complet reste à faire.
