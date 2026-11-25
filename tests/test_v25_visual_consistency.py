@@ -95,6 +95,14 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("countLabel((db.auditLog||[]).length,'événement','événements')", settings)
         self.assertNotIn("événement(s)", settings)
 
+    def test_french_date_headings_keep_month_names_lowercase(self):
+        self.assertIn("function formatFrenchDate(date,options)", JS)
+        self.assertIn("formatFrenchDate(d,{weekday:'long',day:'numeric',month:'long',year:'numeric'})", JS)
+        self.assertIn("formatFrenchDate(sel,{weekday:'long',day:'numeric',month:'long',year:'numeric'})", JS)
+        self.assertIn(".scheduleCurrentRange strong,", HTML)
+        self.assertIn(".scheduleMonthAgendaDay b{", HTML)
+        self.assertIn("text-transform:none!important;", HTML)
+
     def test_student_cloud_is_reachable_from_the_sidebar(self):
         start = JS.index("function nav(){")
         end = JS.index("\nfunction v12AttentionCount", start + 10)
