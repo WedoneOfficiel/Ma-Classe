@@ -412,3 +412,10 @@ Aucun score de risque, classement ou seuil automatique n'est calculé. Les nombr
 - `tests/test_v25_class_tracking.js` couvre le périmètre Direction/Professeur/Élève, la fenêtre de 30 jours, les groupes, les travaux rendus, les échéances et la publication des évaluations.
 - Le parcours Firefox réel vérifie l'ouverture du module, la sélection d'une classe accessible, le retour à la liste et le refus d'accès depuis un compte élève. Le workflow peut aussi être lancé manuellement depuis GitHub Actions pour valider explicitement la dernière tête de branche.
 - La validation CI de cette nouvelle tête et l'inspection visuelle des captures restent nécessaires avant de déclarer la fonctionnalité validée.
+
+
+## 11. Navigation Cloud après un suivi de classe — 25/11/2026
+
+Le contexte de classe est désormais libéré lorsque l'utilisateur choisit un espace Cloud personnel, partagé, de groupe ou documentaire. Il reste conservé pour l'espace « Classe », afin de garder le raccourci vers la classe courante.
+
+Le changement d'espace passe par `setCloudSpace()`, qui réinitialise également le chemin, la sélection et les filtres. Le test Firefox vérifie l'espace réellement rendu, l'absence de colonne latérale dans les espaces personnels/partagés et le maintien de la navigation latérale pour l'espace classe.
