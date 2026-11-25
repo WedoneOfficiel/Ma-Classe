@@ -273,6 +273,52 @@ def main() -> None:
                 }""")
                 if teacher_state.get("role") != "teacher" or teacher_state.get("id") != teacher_id:
                     raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
+                shared_cloud = teacher_page.evaluate("""async () => {
+                  const folder='cloud/personal/users/'+authUser.id;
+                  const shared=await upload(new File(
+                    ['Fichier de révision partagé avec un élève.'],
+                    'Fiche partagée.txt',{type:'text/plain'}
+                  ),folder);
+                  const privateFile=await upload(new File(
+                    ['Document strictement privé.'],
+                    'Document privé.txt',{type:'text/plain'}
+                  ),folder);
+                  const data=await api('/api/data');
+                  data.cloudItems??=[];
+                  data.cloudItems.push(
+                    {
+                      id:'firefox-student-shared-cloud-file',type:'file',
+                      name:'Fiche partagée.txt',size:shared.size,mime:'text/plain',
+                      url:shared.url,serverName:shared.name,space:'personal',
+                      ownerId:authUser.id,parentId:'',
+                      shares:[{type:'student',id:'firefox-student',role:'edit'}],
+                      createdAt:new Date().toISOString()
+                    },
+                    {
+                      id:'firefox-student-private-cloud-file',type:'file',
+                      name:'Document privé.txt',size:privateFile.size,mime:'text/plain',
+                      url:privateFile.url,serverName:privateFile.name,space:'personal',
+                      ownerId:authUser.id,parentId:'',shares:[],
+                      createdAt:new Date().toISOString()
+                    }
+                  );
+                  await api('/api/save',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json','If-Match':dataRevision||''},
+                    body:JSON.stringify(data)
+                  });
+                  return {sharedUrl:shared.url,privateUrl:privateFile.url};
+                }""")
+                # The active evaluation page must agree with the selected class immediately.
+                teacher_page.evaluate("""() => {
+                  window.classContext='deleted-class';
+                  page='evaluations';appSpace='teacher';render();
+                }""")
+                expect(teacher_page.locator('#evalClassFilter')).to_have_value('firefox-class')
+                expect(teacher_page.locator('#evalStats')).not_to_contain_text(
+                    "Sélectionne une classe pour afficher les évaluations."
+                )
+                teacher_page.evaluate("window.classContext='';page='schedule';appSpace='teacher';render();")
                 # Product smoke pass: render each visible teacher module in the real browser.
                 module_smoke = teacher_page.evaluate("""() => {
                   const modules=[
@@ -444,6 +490,46 @@ def main() -> None:
                         "Des modules de l'espace élève ne se rendent pas correctement : "
                         + json.dumps(broken_student_modules,ensure_ascii=False)
                     )
+                # The student can read an explicitly shared Cloud file, but cannot
+                # see the teacher's private sibling or write to the Cloud.
+                student_page.evaluate("""() => {
+                  page='studentDocuments';appSpace='student';
+                  window.cloudSpace='shared';window.cloudPath=[];window.cloudSelected='';
+                  render();
+                }""")
+                expect(student_page.locator('.top')).to_contain_text("Mes documents")
+                expect(student_page.locator('.cloudName')).to_contain_text("Fiche partagée.txt")
+                if "Document privé.txt" in student_page.locator('#main').inner_text():
+                    raise AssertionError("Un document Cloud privé de l'enseignant apparaît chez l'élève.")
+                cloud_access = student_page.evaluate("""async ({sharedUrl,privateUrl}) => {
+                  const sharedItem=db.cloudItems.find(x=>x.id==='firefox-student-shared-cloud-file');
+                  const privateItem=db.cloudItems.find(x=>x.id==='firefox-student-private-cloud-file');
+                  const [sharedResponse,privateResponse,writeResponse]=await Promise.all([
+                    fetch(sharedUrl,{cache:'no-store'}),
+                    fetch(privateUrl,{cache:'no-store'}),
+                    fetch('/api/upload',{
+                      method:'POST',
+                      headers:{'X-Filename':'utf8:tentative.txt','X-Upload-Folder':'cloud/class/classes/firefox-class'},
+                      body:new Blob(['tentative'],{type:'text/plain'})
+                    })
+                  ]);
+                  return {
+                    sharedStatus:sharedResponse.status,
+                    sharedContent:await sharedResponse.text(),
+                    privateStatus:privateResponse.status,
+                    visibleShared:!!sharedItem,
+                    visiblePrivate:!!privateItem,
+                    sharedRole:sharedItem?.shares?.[0]?.role||null,
+                    canWrite:cloudCanWrite('student',activeStudent(),sharedItem),
+                    uploadStatus:writeResponse.status
+                  };
+                }""", shared_cloud)
+                if cloud_access["sharedStatus"] != 200 or cloud_access["sharedContent"] != "Fichier de révision partagé avec un élève.":
+                    raise AssertionError("Le fichier Cloud partagé n'est pas lisible par l'élève : "+repr(cloud_access))
+                if cloud_access["privateStatus"] != 403 or cloud_access["visiblePrivate"]:
+                    raise AssertionError("Un fichier Cloud privé n'est pas correctement cloisonné : "+repr(cloud_access))
+                if not cloud_access["visibleShared"] or cloud_access["sharedRole"] != "view" or cloud_access["canWrite"] or cloud_access["uploadStatus"] != 403:
+                    raise AssertionError("Le Cloud élève doit être strictement en lecture seule : "+repr(cloud_access))
                 student_page.evaluate("page='studentHome';appSpace='student';render();")
                 capture_product_screenshots(
                     student_page,
