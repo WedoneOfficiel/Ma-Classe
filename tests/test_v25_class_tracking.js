@@ -5,7 +5,7 @@ const end=source.indexOf('function openClassTracking',start);
 assert(start>=0&&end>start,'Les fonctions de données du suivi de classe doivent exister');
 const fixed=new Date('2026-11-25T12:00:00');
 const db={
- classes:[{id:'c1',name:'6e A'},{id:'c2',name:'5e B'},{id:'c3',name:'4e C'}],
+ classes:[{id:'c1',name:'6e A'},{id:'c2',name:'5e B',principalTeacherId:'t1'},{id:'c3',name:'4e C'}],
  students:[{id:'s1',classId:'c1',first:'Alice',last:'Martin',group:'A'},{id:'s2',classId:'c1',first:'Bilal',last:'Durand',group:'B'},{id:'s3',classId:'c2',first:'Chloé',last:'Petit'}],
  attendance:[
   {id:'a1',classId:'c1',date:'2026-11-24',rows:[{studentId:'s1',status:'absent'},{studentId:'s2',status:'retard'}]},
