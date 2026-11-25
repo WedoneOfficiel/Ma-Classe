@@ -373,7 +373,9 @@ class TeacherDataScopeTests(unittest.TestCase):
             {'id':'slot-french','classId':'c1','subject':'Français','teacherId':'t2'},
             {'id':'slot-foreign','classId':'c2','subject':'Histoire','teacherId':'t2'},
         ]
-        view=server._teacher_visible_data(data,self.user)
+        # La réponse HTTP est sérialisée en JSON : le client reçoit une copie,
+        # pas une référence Python vers les paramètres du serveur.
+        view=copy.deepcopy(server._teacher_visible_data(data,self.user))
         view['settings']['subjectColors'].update({
             'maths':'#abcdef',
             'francais':'#ff0000',
