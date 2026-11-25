@@ -207,7 +207,7 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
   context.modalOpen=false;
   context.$=()=>context.modalOpen?{classList:{contains:()=>true}}:null;
   context.savePending=false;context.saveTimer=null;context.saveError=null;
-  context.conflictState=null;context.liveSyncBusy=false;context.saveGeneration=0;
+  context.conflictState=null;context.liveSyncBusy=false;context.saveGeneration=0;\n  context.copyData=value=>value==null?value:JSON.parse(JSON.stringify(value));\n  context.syncHasLocalWork=()=>context.modalOpen;\n  context.updateSyncBanner=()=>{};context.needsRenderAfterSync=false;
   context.dataRevision='rev1';
   context.db={schedule:[{id:'local-draft'}]};
   context.dataBase={schedule:[{id:'local-draft'}]};
