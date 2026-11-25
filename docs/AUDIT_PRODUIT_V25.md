@@ -206,11 +206,44 @@ Le Cloud élève était présent comme écran et ses règles de lecture seule é
 
 Les titres de dates du cahier de cours et du calendrier n'utilisent plus `text-transform: capitalize` sur toute la chaîne : seul le premier caractère du titre est capitalisé, les noms de mois restent en minuscules selon l'usage français.
 
-La nouvelle recette navigateur génère 48 captures desktop de véritables états (14 écrans Direction/Professeur et 10 états élève, en clair et sombre), auxquelles s'ajoutent 24 captures mobiles à 390 px sur les écrans représentatifs (6 par rôle et par thème). Elle vérifie aussi les écrans représentatifs à 900 px et 390 px, les débordements horizontaux du document, le titre de page, l'application du thème sélectionné malgré un thème système opposé, et le comportement automatique lors du basculement système clair/sombre. Ces contrôles sont des garde-fous de mise en page, pas un test complet de chaque interaction responsive.
+La nouvelle recette navigateur a généré 74 captures PNG : 48 états desktop (14 écrans Direction/Professeur et 10 états élève, en clair et sombre), 2 captures supplémentaires de composition d'un mail (clair/sombre), et 24 captures mobiles à 390 px sur les écrans représentatifs (6 par rôle et par thème). Elle vérifie aussi les écrans représentatifs à 900 px et 390 px, les débordements horizontaux du document, le titre de page, l'application du thème sélectionné malgré un thème système opposé, et le comportement automatique lors du basculement système clair/sombre. Ces contrôles sont des garde-fous de mise en page, pas un test complet de chaque interaction responsive.
 
-**Validation en attente sur le dernier commit UI :** la précédente validation complète #1680 reste verte pour le lot V25.0.25 avant ces ajustements d'interface. Les corrections UI et les nouveaux contrôles doivent encore obtenir leur propre passage complet Linux, Firefox réel et macOS. Les captures de la nouvelle exécution devront être inspectées avant d'affirmer que le reflet sombre a disparu visuellement sur tous les écrans.
+**Validation CI du lot UI :** le workflow #1717 (run `45664713921`, commit `cce2d2b`) est entièrement vert sur Linux, Firefox réel et macOS Apple Silicon. Il inclut l'installation macOS, le démarrage du service réel `launchd` et la suite complète des tests Python. Les captures de ce run ont été inspectées ; les corrections du reflet sombre et du layout mobile ont été confirmées visuellement sur les écrans représentatifs. La vérification native des champs de date sur le Mac physique reste à faire.
 
 
 ### Champs de date natifs — limite identifiée
 
 Sur le runner Firefox Linux, les champs `input[type=date]` des périodes scolaires s'affichent au format natif américain malgré le contexte navigateur `fr-FR` et le document `lang="fr"`. Le stockage et la valeur ISO restent corrects, mais la présentation peut prêter à confusion pour un utilisateur français. Le format natif dépend aussi de la plateforme et des paramètres régionaux : l'affichage doit être contrôlé sur Firefox/macOS du Mac cible avant de décider s'il faut conserver le champ natif ou construire un contrôle de date localisé. Aucun format n'est changé arbitrairement à ce stade.
+
+
+## 13. Correction du layout mobile et validation finale — 25/11/2026
+
+### Défaut responsive reproduit
+
+L'inspection des captures mobiles du run précédent a révélé un défaut qui échappait au contrôle de débordement horizontal : sous 800 px, une ancienne règle CSS empilait la barre latérale au-dessus du contenu, tandis qu'une règle plus récente conservait sur `.main` la marge et la largeur calculées pour la barre latérale desktop réduite à 76 px. Le contenu principal se retrouvait donc comprimé et partiellement masqué, même si `document.scrollWidth` restait dans la largeur du viewport à cause de `overflow-x:hidden`.
+
+### Correction appliquée
+
+Sous 800 px, MaClasse utilise maintenant une vraie composition mobile :
+- barre de navigation dans le flux, en haut de page, sur toute la largeur ;
+- navigation horizontale défilante avec les libellés visibles ;
+- groupes de navigation déployés en une seule rangée ;
+- contenu principal sans marge latérale desktop, sur toute la largeur utile ;
+- comportement identique même lorsqu'un état « menu réduit » avait été mémorisé sur l'appareil.
+
+La navigation mobile reste volontairement compacte et défilante : le produit demeure desktop-first et ce lot ne constitue pas une refonte mobile complète de chaque écran.
+
+### Vérification
+
+Le test Firefox calcule maintenant non seulement la largeur du document, mais aussi les limites réelles des surfaces de contenu principales. Il vérifie les vues représentatives à 900 px et 390 px, en clair et sombre. Une assertion spécifique empêche qu'une page semble tenir dans l'écran alors que ses blocs sont comprimés ou masqués.
+
+Le run #1717 a produit et publié 74 captures PNG ; les 24 captures à 390 px et les états desktop représentatifs ont été inspectés. L'espace élève, le Cloud, la messagerie, les paramètres, le cahier de cours et l'EDT sont visibles dans leur largeur utile. Le calendrier hebdomadaire conserve son défilement horizontal interne, qui est attendu pour présenter les sept jours.
+
+**Résultat CI #1717 :** trois jobs réussis — tests Linux, Firefox réel et validation macOS Apple Silicon. Le job macOS comprend l'installateur, le service `launchd` et tous les tests Python.
+
+### Réserves qui demeurent
+
+- Les champs natifs de date doivent être vérifiés sur Firefox/macOS du Mac physique pour confirmer leur présentation française ; leur valeur ISO et le stockage ne sont pas modifiés.
+- Les données de capture restent peu volumineuses : les listes très longues, les textes exceptionnellement longs, les gros dossiers Cloud et les conversations massives demandent une recette avec des données plus denses.
+- L'accessibilité complète au clavier et aux lecteurs d'écran n'est pas certifiée par les captures et reste à auditer.
+- Le passage CI sur un runner macOS Apple Silicon ne remplace pas une installation/recette finale sur le Mac cible et ses données historiques.
