@@ -53,7 +53,7 @@ class ReleaseSigningTests(unittest.TestCase):
             release_signing.sign_manifest(b"manifest", base64.b64encode(other).decode("ascii"))
 
     def test_invalid_or_missing_public_key_fails_closed(self):
-        self.public_path.write_text("# clé publique non configurée\n", encoding="ascii")
+        self.public_path.write_text("# public key is not configured\n", encoding="ascii")
         with self.assertRaisesRegex(release_signing.ReleaseSignatureError, "non configurée"):
             release_signing.load_public_key()
         self.public_path.write_text("not-base64!!!\n", encoding="ascii")
