@@ -9,7 +9,7 @@ MaClasse est une application web de gestion scolaire destinée à un établissem
 | Dernière release GitHub publiée | **V25.0.23** (`v25.0.23`, 16/11/2026) |
 | Branche `main` | **V25.0.24** |
 | Candidat de stabilisation | **V25.0.25**, [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), ouverte et non fusionnée |
-| CI du dernier commit vérifié | **Verte** — Linux, macOS Apple Silicon et Firefox réel, workflow [#1727](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45695094364) |
+| CI du dernier commit vérifié | **Verte** — Linux, macOS Apple Silicon et Firefox réel, workflow [#1747](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45697822027) |
 | Publication V25.0.25 | Pas encore effectuée |
 
 La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remplace pas les recettes sur le Mac, le PC Fedora et les appareils clients réels. La V25.0.25 n'est pas à installer depuis la branche de développement sur une base scolaire réelle.
