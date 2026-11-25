@@ -718,7 +718,28 @@ def main() -> None:
                 resumed.locator('#v2104BodyEditor').fill(
                     "Message envoyé depuis le brouillon repris."
                 )
+                teacher_page.evaluate("flushPendingSave()")
+                mail_save_attempts = {"count": 0}
+                def fail_first_mail_save(route):
+                    if route.request.url.endswith("/api/save") and mail_save_attempts["count"] == 0:
+                        mail_save_attempts["count"] += 1
+                        route.fulfill(
+                            status=503,
+                            content_type="application/json",
+                            body=json.dumps({"error":"Panne réseau simulée pendant l'envoi."})
+                        )
+                    else:
+                        route.continue_()
+                teacher_page.route("**/api/save",fail_first_mail_save)
                 resumed.get_by_role("button",name="Envoyer").click()
+                retry_send = resumed.locator('button[type="submit"]')
+                expect(retry_send).to_have_text("Réessayer l’envoi",timeout=10_000)
+                if mail_save_attempts["count"] != 1:
+                    raise AssertionError("La panne réseau simulée n'a pas intercepté une seule sauvegarde.")
+                # Retry the same pending message after removing the simulated outage.
+                teacher_page.unroute("**/api/save",fail_first_mail_save)
+                retry_send.click()
+                expect(teacher_page.locator('#modal .v2104Compose')).to_have_count(0,timeout=10_000)
                 teacher_page.evaluate("""async () => {
                   await flushPendingSave();
                   await load();
