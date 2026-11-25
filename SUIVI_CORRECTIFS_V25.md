@@ -598,3 +598,10 @@ La CI #1727 a passé les jobs Linux, macOS Apple Silicon et Firefox réel après
 - **UI-ADM-01 / UI-SET-01 / UI-PROFIL-01 / VER-01 :** règles CSS et affichage version partagés localisés dans le code actif ; tests de présence ajoutés dans `test_v25_visual_consistency.py`.
 
 Ces points sont désormais distingués entre implémentation présente dans la branche et recette réelle à faire. La CI #1727 valide la tête antérieure au présent complément ; une nouvelle CI est nécessaire sur le dernier commit.
+
+
+### Résultat de la première CI du répertoire de remplacements — workflow #1742
+
+Le premier test complet après l'ajout du bouton « Remplacements & co-enseignement » a révélé une dépendance inutile au global `authUser` pendant le rendu de `schedule()`. Le test de navigation EDT construit volontairement la page dans un contexte isolé sans session ; le bouton ne doit donc pas lire ce global à la construction. Le contrôle d'accès est maintenant concentré dans `openScheduleAssignmentDirectory()`, qui ne liste que les créneaux autorisés via `canManageScheduleAssignments()`. Le bouton est seulement un point d'entrée ; il ne donne aucun droit supplémentaire.
+
+**État :** correction committée dans `d66a78f`. Workflow #1742 a aussi passé Firefox réel ; les jobs Linux/macOS ont échoué sur cette erreur de test de rendu. Une nouvelle CI complète est attendue sur le commit corrigé.
