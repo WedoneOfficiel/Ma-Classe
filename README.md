@@ -24,7 +24,7 @@ La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remp
 - Emploi du temps : persistance contrôlée des couleurs de matières, fond de grille adapté au thème sombre et accès central filtrable aux remplacements/co-enseignements.
 - Administration : message de confidentialité aligné sur le filtrage serveur des comptes élèves, messages, pièces jointes et ressources.
 
-La vue Suivi de classe est intégrée pour la Direction et les enseignants autorisés : absences/retards, travaux non rendus, évaluations publiées, échéances et accès aux fiches élèves. Les enseignants non PP restent limités aux matières accessibles par leurs affectations ; les PP disposent de la vue transversale. Aucun classement ni score de risque n'est calculé.
+- Nouvelle vue Suivi de classe pour la Direction et les enseignants autorisés : absences/retards, travaux non rendus, évaluations publiées, échéances et accès aux fiches élèves. Les enseignants non PP restent limités aux matières accessibles par leurs affectations ; les PP disposent de la vue transversale. Aucun classement ni score de risque n'est calculé.
 - Le contexte Cloud est réinitialisé lors du passage vers les espaces personnels, partagés et documentaires, sans perdre le raccourci de classe lorsqu'on reste dans l'espace Classe.
 - La ressource JavaScript du nouveau module est explicitement autorisée par le serveur et couverte par un test de liste blanche.
 
