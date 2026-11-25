@@ -97,7 +97,7 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
             if cloud_nav.count() != 1:
                 raise AssertionError("Le Cloud élève doit être accessible dans la navigation latérale.")
             cloud_nav.click()
-            expect(page.locator("#main h1")).to_contain_text("Documents")
+            expect(page.locator("#main h1")).to_contain_text("documents")
 
         for width in (900, 390):
             page.set_viewport_size({"width": width, "height": 900})
