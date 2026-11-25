@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline security and regression tests for the release checker."""
+import base64
 import hashlib
 import io
 import json
@@ -12,10 +13,30 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import update_manager as updater
+import release_signing
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 class ReleaseCheckerTests(unittest.TestCase):
     def setUp(self):
+        self.key_temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.key_temp.cleanup)
+        self.public_key_path = Path(self.key_temp.name) / "release-signing-public-key.txt"
+        self.signing_key = Ed25519PrivateKey.generate()
+        self.public_key_raw = self.signing_key.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        self.private_key_b64 = base64.b64encode(self.signing_key.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )).decode("ascii")
+        self.public_key_path.write_text(base64.b64encode(self.public_key_raw).decode("ascii"), encoding="ascii")
+        key_path_patch = patch.object(release_signing, "PUBLIC_KEY_FILE", self.public_key_path)
+        key_path_patch.start()
+        self.addCleanup(key_path_patch.stop)
         self.archive = self.make_zip({"server.py": "print('ok')", "VERSION.txt": "V25.1.0", "requirements.txt": ""})
         self.manifest = {
             "schema_version": 1,
@@ -33,6 +54,7 @@ class ReleaseCheckerTests(unittest.TestCase):
             "html_url": "https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.0",
             "assets": [
                 {"name": updater.MANIFEST_ASSET, "browser_download_url": "https://release-assets.githubusercontent.com/manifest"},
+                {"name": updater.SIGNATURE_ASSET, "browser_download_url": "https://release-assets.githubusercontent.com/signature"},
                 {"name": self.manifest["archive_asset"], "browser_download_url": "https://release-assets.githubusercontent.com/archive"}
             ]
         }
@@ -49,7 +71,10 @@ class ReleaseCheckerTests(unittest.TestCase):
         if url == updater.API_LATEST:
             return json.dumps(self.release).encode()
         if url == "https://release-assets.githubusercontent.com/manifest":
-            return json.dumps(self.manifest).encode()
+            return json.dumps(self.manifest, ensure_ascii=False, indent=2).encode("utf-8")
+        if url == "https://release-assets.githubusercontent.com/signature":
+            manifest_payload = json.dumps(self.manifest, ensure_ascii=False, indent=2).encode("utf-8")
+            return base64.b64encode(self.signing_key.sign(manifest_payload))
         if url == "https://release-assets.githubusercontent.com/archive":
             return self.archive
         raise AssertionError("URL inattendue : " + url)
@@ -58,6 +83,7 @@ class ReleaseCheckerTests(unittest.TestCase):
         with patch.object(updater, "_request", side_effect=self.fake_request):
             info = updater.check_latest_release("25.0.22")
             self.assertTrue(info["available"])
+            self.assertTrue(info["signature_verified"])
             self.assertEqual(info["version"], "v25.1.0")
             with tempfile.TemporaryDirectory() as temp:
                 prepared = updater.prepare_release(info, temp)
@@ -241,6 +267,54 @@ class ReleaseCheckerTests(unittest.TestCase):
                 self.assertEqual((target / "maclasse-prepared.json").read_text(encoding="utf-8"),
                                  json.dumps({"sha256": "0" * 64, "status": "prepared"}))
 
+
+    def test_rejects_tampered_manifest_even_when_archive_hash_matches(self):
+        def tampered_request(url, limit):
+            payload = self.fake_request(url, limit)
+            if url == "https://release-assets.githubusercontent.com/manifest":
+                manifest = json.loads(payload.decode("utf-8"))
+                manifest["release_notes"] = "Notes modifiées après signature."
+                return json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+            return payload
+
+        with patch.object(updater, "_request", side_effect=tampered_request):
+            with self.assertRaisesRegex(updater.UpdateError, "Signature de release invalide"):
+                updater.check_latest_release("25.0.22")
+
+    def test_rejects_release_without_signature_asset(self):
+        self.release["assets"] = [asset for asset in self.release["assets"]
+                                  if asset["name"] != updater.SIGNATURE_ASSET]
+        with patch.object(updater, "_request", side_effect=self.fake_request):
+            with self.assertRaisesRegex(updater.UpdateError, "signature Ed25519"):
+                updater.check_latest_release("25.0.22")
+
+    def test_rejects_ambiguous_signature_assets(self):
+        signature_asset = next(asset for asset in self.release["assets"]
+                               if asset["name"] == updater.SIGNATURE_ASSET)
+        self.release["assets"].append(dict(signature_asset))
+        with patch.object(updater, "_request", side_effect=self.fake_request):
+            with self.assertRaisesRegex(updater.UpdateError, "signature Ed25519"):
+                updater.check_latest_release("25.0.22")
+
+    def test_rejects_signature_if_pinned_public_key_does_not_match(self):
+        other_key = Ed25519PrivateKey.generate().public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        self.public_key_path.write_text(base64.b64encode(other_key).decode("ascii"), encoding="ascii")
+        with patch.object(updater, "_request", side_effect=self.fake_request):
+            with self.assertRaisesRegex(updater.UpdateError, "Signature de release invalide"):
+                updater.check_latest_release("25.0.22")
+
+    def test_rejects_malformed_signature_asset(self):
+        def malformed_request(url, limit):
+            if url == "https://release-assets.githubusercontent.com/signature":
+                return b"not-a-signature"
+            return self.fake_request(url, limit)
+
+        with patch.object(updater, "_request", side_effect=malformed_request):
+            with self.assertRaisesRegex(updater.UpdateError, "Signature de release invalide"):
+                updater.check_latest_release("25.0.22")
 
     def test_rejects_duplicate_manifest_assets(self):
         self.release["assets"].append(dict(self.release["assets"][0]))
