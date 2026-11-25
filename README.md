@@ -21,7 +21,8 @@ La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remp
 - Migration de l'architecture supervisée testée sur un fixture V25.0.19 ; la copie des données de l'installation réelle reste à vérifier.
 - Messagerie élève : liste des enseignants joignables alignée sur les droits serveur, titulaires, co-enseignants et affectations actives compris.
 - Bulletins : statut de publication et autorisations PDF cohérents, y compris pour les bulletins anciens sans horodatage de publication.
-- Emploi du temps : persistance contrôlée des couleurs de matières et fond de grille adapté au thème sombre.
+- Emploi du temps : persistance contrôlée des couleurs de matières, fond de grille adapté au thème sombre et accès central filtrable aux remplacements/co-enseignements.
+- Administration : message de confidentialité aligné sur le filtrage serveur des comptes élèves, messages, pièces jointes et ressources.
 
 La signature éditeur indépendante des releases reste un point de sécurité ouvert : un SHA-256 de manifeste détecte des écarts d'intégrité mais ne prouve pas à lui seul l'identité de l'éditeur.
 
