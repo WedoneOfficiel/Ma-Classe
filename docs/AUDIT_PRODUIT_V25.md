@@ -122,6 +122,20 @@ La liste des anomalies confirmées, des hypothèses et des demandes d'évolution
 
 
 
+## 7. Résultat de l'investigation EDT — 25/11/2026
+
+Le scénario Firefox « Sciences » a été suivi de bout en bout :
+
+1. `GET /api/sync-status` renvoie la nouvelle révision après l'écriture enseignant.
+2. `GET /api/data` renvoie bien le créneau `firefox-live-student-course`.
+3. Le navigateur élève a le même SHA de révision et le même créneau dans `db.schedule`.
+4. Pour vendredi 13/11/2026, `recurring()`, `dayOcc()` et `studentScheduleOcc()` renvoient tous le créneau.
+5. `studentSchedule()` et `scheduleWeek()` génèrent un HTML contenant « Sciences ».
+6. En revanche, `.scheduleCalendarSurface` dans le DOM ne contient pas le créneau et son nombre d'éléments avec cet identifiant reste nul.
+
+**Conclusion :** la donnée, la récurrence et le gabarit fonctionnent dans ce cas ; le point défaillant était le rafraîchissement du DOM après la nouvelle révision. Le code de synchronisation ne relançait le rendu que si la comparaison JSON indiquait une différence. Le garde-fou est désormais plus robuste : dès qu'une nouvelle révision est adoptée alors qu'aucune saisie locale ou modale n'est active, le module visible est reconstruit, même si le modèle en mémoire semble déjà à jour.
+
+Un test supplémentaire vérifie que le DOM doit être reconstruit sur une nouvelle révision même si le JSON local est identique au JSON reçu. La correction reste au statut **candidate dans la branche** jusqu'à la réussite du workflow Linux/macOS/Firefox sur le dernier SHA et une recette visuelle.
 ## 8. Régression globale de rendu — 25/11/2026
 
 Le premier scénario Firefox V25.0.25 échouait avant même l'affichage du calendrier. Le diagnostic enrichi a identifié l'erreur exacte : \`ReferenceError: today is not defined\`, levée lors de la construction de la table des vues dans \`render()\`.
@@ -138,21 +152,15 @@ Le workflow Firefox génère des captures de modules en thème clair et sombre, 
 
 Une première inspection des captures disponibles ne révèle pas de rupture générale du thème sombre ni de défaut structurel majeur sur les écrans représentatifs. L'EDT élève et professeur conserve la même structure de calendrier ; l'interface élève ne présente pas les commandes d'édition du professeur.
 
-**Limites à conserver :** les captures reposent sur des données de test minimales et ne valident pas tous les états chargés d'un établissement réel. Les champs \`input[type=date]\` sont rendus par le navigateur et dépendent de sa locale : les contextes Firefox sont donc maintenant créés en \`fr-FR\`, fuseau \`Europe/Paris\`, pour rapprocher les captures de l'environnement français attendu.
+**Limites à conserver :** les captures reposent sur des données de test minimales et ne valident pas tous les états chargés d'un établissement réel. Les contextes Firefox sont maintenant créés et contrôlés en \`fr-FR\`, fuseau \`Europe/Paris\`. Malgré cela, les champs natifs \`input[type=date]\` apparaissent encore au format \`mm/dd/yyyy\` dans les captures Linux CI ; leur présentation dépend du moteur et de l'environnement graphique. Le format devra être confirmé sur Firefox/macOS en français avant de conclure sur l'affichage des dates.
 
 Les captures et tests CI ne remplacent pas la recette physique sur le Mac Apple Silicon de référence, ni la vérification d'une installation ayant des données historiques. Les modules ne sont pas déclarés définitivement validés sur cette seule base.
 
-## 7. Résultat de l'investigation EDT — 25/11/2026
+## 10. Cohérence de la semaine dans Séances & leçons — 25/11/2026
 
-Le scénario Firefox « Sciences » a été suivi de bout en bout :
+Les captures ont révélé un décalage entre la date sélectionnée dans le cahier de cours et la colonne « Semaine » : le centre pouvait afficher le mercredi 25 novembre alors que la navigation rapide montrait encore la semaine du 9 au 15 novembre.
 
-1. `GET /api/sync-status` renvoie la nouvelle révision après l'écriture enseignant.
-2. `GET /api/data` renvoie bien le créneau `firefox-live-student-course`.
-3. Le navigateur élève a le même SHA de révision et le même créneau dans `db.schedule`.
-4. Pour vendredi 13/11/2026, `recurring()`, `dayOcc()` et `studentScheduleOcc()` renvoient tous le créneau.
-5. `studentSchedule()` et `scheduleWeek()` génèrent un HTML contenant « Sciences ».
-6. En revanche, `.scheduleCalendarSurface` dans le DOM ne contient pas le créneau et son nombre d'éléments avec cet identifiant reste nul.
+La cause était une fonction \`weekDates()\` qui lisait toujours la variable globale \`selectedWeek\`, alors que les vues professeur et élève lui transmettaient déjà la date \`lessonDay\`. L'argument était donc ignoré. La fonction accepte désormais une date de référence optionnelle et calcule la semaine correspondante. Le libellé du mini-calendrier utilise également le mois abrégé pour éviter la troncature dans la colonne étroite.
 
-**Conclusion :** la donnée, la récurrence et le gabarit fonctionnent dans ce cas ; le point défaillant était le rafraîchissement du DOM après la nouvelle révision. Le code de synchronisation ne relançait le rendu que si la comparaison JSON indiquait une différence. Le garde-fou est désormais plus robuste : dès qu'une nouvelle révision est adoptée alors qu'aucune saisie locale ou modale n'est active, le module visible est reconstruit, même si le modèle en mémoire semble déjà à jour.
+Un contrôle Firefox supplémentaire vérifie que la semaine affichée contient la date sélectionnée dans les deux espaces. Le correctif reste en attente de la réussite du workflow sur le dernier commit.
 
-Un test supplémentaire vérifie que le DOM doit être reconstruit sur une nouvelle révision même si le JSON local est identique au JSON reçu. La correction reste au statut **candidate dans la branche** jusqu'à la réussite du workflow Linux/macOS/Firefox sur le dernier SHA et une recette visuelle.
