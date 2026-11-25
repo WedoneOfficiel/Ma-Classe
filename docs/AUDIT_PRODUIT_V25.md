@@ -74,7 +74,7 @@ Points à vérifier : cohérence entre l'accueil et les modules, affichage de l'
 
 - Le rendu professeur et élève s'appuie sur un calendrier commun, avec filtres de classe/groupe et vues jour, semaine et mois.
 - Le test Firefox réel vérifie la navigation aujourd'hui/semaine/mois, la création d'un créneau, l'absence de saut de scroll, les couleurs de matière et la structure visuelle comparée entre professeur et élève.
-- Une régression de propagation d'un nouveau créneau vers l'espace élève est actuellement investiguée dans la branche. Le test ne sera pas affaibli pour faire passer la CI : il doit identifier si le problème vient de la révision, de la projection serveur ou du rafraîchissement navigateur.
+- Un défaut de rendu du calendrier élève a été localisé : le nouveau créneau arrivait dans le modèle et les fonctions de calcul et de génération HTML le renvoyaient, mais le DOM conservait le calendrier précédent. La branche force désormais un nouveau render() lors de l'adoption d'une nouvelle révision lorsque l'utilisateur ne saisit rien. Le test de non-régression est ajouté ; sa validation Firefox sur le dernier commit reste requise.
 
 ### Thème clair / sombre
 
@@ -119,3 +119,19 @@ Ces travaux restent dans la branche et ne doivent pas être annulés par l'audit
 Un module ne passe à **corrigé** qu'après un test ciblé ou une reproduction navigateur réussie. Un module ne passe à **validé visuellement** qu'après inspection dans les deux thèmes. Un signalement historique ne passe à **résolu** qu'après un parcours représentatif et, lorsque pertinent, une confirmation sur l'installation de référence.
 
 La liste des anomalies confirmées, des hypothèses et des demandes d'évolution est maintenue dans \`REGISTRE_BUGS_V25.md\`. Le présent document porte le diagnostic produit, les priorités et la recette.
+
+
+## 7. Résultat de l'investigation EDT — 25/11/2026
+
+Le scénario Firefox « Sciences » a été suivi de bout en bout :
+
+1. `GET /api/sync-status` renvoie la nouvelle révision après l'écriture enseignant.
+2. `GET /api/data` renvoie bien le créneau `firefox-live-student-course`.
+3. Le navigateur élève a le même SHA de révision et le même créneau dans `db.schedule`.
+4. Pour vendredi 13/11/2026, `recurring()`, `dayOcc()` et `studentScheduleOcc()` renvoient tous le créneau.
+5. `studentSchedule()` et `scheduleWeek()` génèrent un HTML contenant « Sciences ».
+6. En revanche, `.scheduleCalendarSurface` dans le DOM ne contient pas le créneau et son nombre d'éléments avec cet identifiant reste nul.
+
+**Conclusion :** la donnée, la récurrence et le gabarit fonctionnent dans ce cas ; le point défaillant était le rafraîchissement du DOM après la nouvelle révision. Le code de synchronisation ne relançait le rendu que si la comparaison JSON indiquait une différence. Le garde-fou est désormais plus robuste : dès qu'une nouvelle révision est adoptée alors qu'aucune saisie locale ou modale n'est active, le module visible est reconstruit, même si le modèle en mémoire semble déjà à jour.
+
+Un test supplémentaire vérifie que le DOM doit être reconstruit sur une nouvelle révision même si le JSON local est identique au JSON reçu. La correction reste au statut **candidate dans la branche** jusqu'à la réussite du workflow Linux/macOS/Firefox sur le dernier SHA et une recette visuelle.
