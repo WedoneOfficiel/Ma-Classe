@@ -349,3 +349,8 @@ Le SHA-256 précédent liait le contenu de l'archive au manifeste de la release,
 - Les tests couvrent la signature correcte, un manifeste modifié, une mauvaise clé, une signature absente et un contenu malformé.
 
 **État : code ajouté, provisionnement réel non effectué.** Le fichier public du dépôt est volontairement non configuré ; il faut générer la paire sur un poste de confiance, committer la clé publique et créer le secret GitHub avant de publier une release. Le workflow de publication sera volontairement en échec tant que l'éditeur n'aura pas effectué cette opération. La première mise à niveau depuis V25.0.23 ne peut pas être authentifiée par un ancien updater qui ne connaissait pas Ed25519 ; la signature protège strictement le flux après installation du pont V25.0.25.
+
+
+### Retour CI #1758 — fixture launchd macOS
+
+Le run #1758 a validé Linux, dont les tests Ed25519, et Firefox réel. Le seul échec macOS venait du test de démarrage HTTPS sous launchd : le répertoire temporaire de ce test n'emportait pas le nouveau module `release_signing.py` pourtant importé par `update_manager.py`. La copie du module est ajoutée au fixture de serveur réel et une assertion confirme sa présence. La validation macOS doit être relancée ; aucun assouplissement du test launchd n'est fait.

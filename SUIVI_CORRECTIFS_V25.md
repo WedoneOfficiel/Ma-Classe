@@ -637,3 +637,10 @@ La tête `7c5f80b` est entièrement verte sur le workflow [#1754](https://github
 - Ajout de tests offline : signature valide, altération du manifeste, clé privée ne correspondant pas à la clé publique, signature absente/ambiguë/malformée et vérification côté client.
 
 **Limite opérationnelle :** la paire réelle et le secret ne peuvent pas être provisionnés par un commit de code. Il faut exécuter la génération sur un poste de confiance, committer la clé publique seulement et créer le secret dans les paramètres GitHub du dépôt. Tant que ce provisionnement n'est pas réalisé, aucune nouvelle release ne doit être publiée et le vérificateur refuse les nouvelles mises à jour.
+
+
+### CI #1758 — module Ed25519 absent du fixture launchd macOS
+
+Le workflow #1758 a passé les tests Linux, les nouveaux tests de signature Ed25519 et Firefox réel. Le job macOS a échoué dans `test_launchd_starts_real_maclasse_server_over_local_https` parce que son installation temporaire copiait `server.py` et `update_manager.py`, mais pas le nouveau module importé `release_signing.py`. Le serveur de test quittait donc immédiatement avec `ModuleNotFoundError`; le code de production était bien présent dans l'archive Git.
+
+**Correction :** le fixture copie maintenant aussi `release_signing.py` et vérifie sa présence avant de démarrer launchd. Ce diagnostic ne doit pas être confondu avec une erreur du superviseur ni avec une panne du service macOS réel. Nouvelle CI complète nécessaire sur le commit corrigé.

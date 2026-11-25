@@ -134,6 +134,8 @@ class MacOSSupervisorTests(unittest.TestCase):
             (root / ".venv" / "bin" / "python").symlink_to(sys.executable)
             shutil.copy2(ROOT / "server.py", root / "server.py")
             shutil.copy2(ROOT / "update_manager.py", root / "update_manager.py")
+            shutil.copy2(ROOT / "release_signing.py", root / "release_signing.py")
+            self.assertTrue((root / "release_signing.py").is_file())
             (data / "maclasse.json").write_text(
                 json.dumps({"schemaVersion": 25011, "users": [], "classes": [], "students": []}),
                 encoding="utf-8"
