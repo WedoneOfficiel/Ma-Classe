@@ -198,46 +198,64 @@ assert.strictEqual(vm.runInContext("scheduleDatesOverlap({day:4,startDate:'1900-
 
 
 (async()=>{
-  const refreshStart=source.indexOf('async function refreshLiveScheduleData()');
+  const refreshStart=source.indexOf('async function refreshLiveScheduleData(force=false)');
   const refreshEnd=source.indexOf('function startLiveScheduleSync(',refreshStart);
   assert(refreshStart>=0&&refreshEnd>refreshStart,'La synchronisation automatique doit être présente.');
   context.authUser={role:'teacher'};
   context.page='schedule';
-  context.document={hidden:false};
+  context.document={hidden:false,activeElement:{matches:()=>false}};
   context.modalOpen=false;
   context.$=()=>context.modalOpen?{classList:{contains:()=>true}}:null;
-  context.savePending=false;context.saveTimer=null;context.saveError=null;context.liveSyncBusy=false;
+  context.savePending=false;context.saveTimer=null;context.saveError=null;
+  context.conflictState=null;context.liveSyncBusy=false;context.saveGeneration=0;
   context.dataRevision='rev1';
   context.db={schedule:[{id:'local-draft'}]};
+  context.dataBase={schedule:[{id:'local-draft'}]};
   context.normalize=()=>{};
   context.renderCount=0;context.render=()=>{context.renderCount++};
-  let resolveFetch;
-  context.fetch=()=>new Promise(resolve=>{resolveFetch=resolve});
+  let resolveStatus;
+  context.fetch=url=>{
+    assert.strictEqual(url,'/api/sync-status');
+    return new Promise(resolve=>{resolveStatus=resolve});
+  };
   vm.runInContext(source.slice(refreshStart,refreshEnd),context);
-  const pendingRefresh=vm.runInContext('refreshLiveScheduleData()',context);
+  const pendingRefresh=vm.runInContext('refreshLiveScheduleData(true)',context);
   context.modalOpen=true;
-  resolveFetch({ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-copy'}]})});
+  resolveStatus({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev2'})});
   await pendingRefresh;
-  assert.strictEqual(context.db.schedule[0].id,'local-draft','Une réponse de synchronisation arrivée après l’ouverture d’un formulaire ne doit pas écraser les données locales.');
-  assert.strictEqual(context.dataRevision,'rev1','Une réponse ignorée ne doit pas avancer la révision locale.');
-  context.modalOpen=false;context.liveSyncBusy=false;context.fetch=async()=>({ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-update'}]})});
-  await vm.runInContext('refreshLiveScheduleData()',context);
-  assert.strictEqual(context.db.schedule[0].id,'server-update','Une synchronisation sans modification locale doit appliquer la nouvelle version serveur.');
+  assert.strictEqual(context.db.schedule[0].id,'local-draft',
+    'Une actualisation détectée pendant une modale ne doit pas écraser la saisie affichée.');
+  assert.strictEqual(context.dataRevision,'rev1',
+    'Une actualisation ignorée pendant une modale ne doit pas avancer la révision locale.');
+  context.modalOpen=false;context.liveSyncBusy=false;
+  context.fetch=async url=>{
+    if(url==='/api/sync-status')return {ok:true,headers:{get:()=>null},json:async()=>({revision:'rev2'})};
+    assert.strictEqual(url,'/api/data');
+    return {ok:true,headers:{get:()=> 'rev2'},json:async()=>({schedule:[{id:'server-update'}]})};
+  };
+  await vm.runInContext('refreshLiveScheduleData(true)',context);
+  assert.strictEqual(context.db.schedule[0].id,'server-update',
+    'Une synchronisation sans modification locale doit appliquer la nouvelle version serveur.');
   assert.strictEqual(context.dataRevision,'rev2');
   assert.strictEqual(context.renderCount,1);
-  // Une navigation effectuée pendant une requête doit invalider cette réponse,
-  // même si la page reste « schedule » et qu'aucune sauvegarde n'est en cours.
+
+  // Si l'utilisateur change de vue pendant le chargement des données, la réponse
+  // actualise le modèle et le rendu courant ; elle ne doit pas réinjecter l'ancienne vue.
   context.liveSyncBusy=false;context.dataRevision='rev2';context.db={schedule:[{id:'local-after-navigation'}]};
-  let resolveNavigationFetch;
-  context.fetch=()=>new Promise(resolve=>{resolveNavigationFetch=resolve});
-  const navigationRefresh=vm.runInContext('refreshLiveScheduleData()',context);
+  let resolveData;
+  context.fetch=url=>{
+    if(url==='/api/sync-status')return Promise.resolve({ok:true,headers:{get:()=>null},json:async()=>({revision:'rev3'})});
+    assert.strictEqual(url,'/api/data');
+    return new Promise(resolve=>{resolveData=resolve});
+  };
+  const navigationRefresh=vm.runInContext('refreshLiveScheduleData(true)',context);
   context.scheduleView='month';context.selectedWeek=new Date(2026,11,1,12);
-  resolveNavigationFetch({ok:true,headers:{get:()=> 'rev3'},json:async()=>({schedule:[{id:'stale-server-copy'}]})});
+  resolveData({ok:true,headers:{get:()=> 'rev3'},json:async()=>({schedule:[{id:'fresh-server-copy'}]})});
   await navigationRefresh;
-  assert.strictEqual(context.db.schedule[0].id,'local-after-navigation','Une réponse commencée avant un changement de vue ne doit pas remplacer l’EDT affiché.');
-  assert.strictEqual(context.dataRevision,'rev2','Une réponse invalidée par la navigation ne doit pas avancer la révision.');
-  assert.strictEqual(context.renderCount,1,'Une réponse invalidée ne doit pas déclencher de rendu parasite.');
-  context.scheduleView='week';context.selectedWeek=new Date(2026,10,9,12);
+  assert.strictEqual(context.db.schedule[0].id,'fresh-server-copy',
+    'Une navigation sans saisie locale doit recevoir les nouvelles données serveur.');
+  assert.strictEqual(context.dataRevision,'rev3');
+  assert.strictEqual(context.renderCount,2,'La vue courante doit être rendue après actualisation du modèle.');
   const saveStart=source.indexOf('async function saveSchedule(e,id)');
   const saveEnd=source.indexOf('async function deleteSchedule(',saveStart);
   assert(saveStart>=0&&saveEnd>saveStart,'La sauvegarde du créneau doit être présente.');
