@@ -15,14 +15,14 @@ Depuis le dossier MaClasse, après installation des dépendances :
 
 ```bash
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python scripts/generate_release_signing_key.py --force
+.venv/bin/python scripts/generate_release_signing_key.py
 ```
 
 Le script crée :
 - la clé privée dans `~/.config/maclasse/release-signing-private-key.b64` (permissions POSIX 0600) ;
 - la clé publique dans `release-signing-public-key.txt` à la racine du dépôt.
 
-La clé privée ne doit **jamais** être ajoutée à Git, à une archive, à une pièce jointe, à un ticket ou à une conversation. Conserver une sauvegarde chiffrée hors du poste. La perte de cette clé bloque la publication de futures mises à jour jusqu'à la réalisation d'une rotation de confiance.
+La clé privée ne doit **jamais** être ajoutée à Git, à une archive, à une pièce jointe, à un ticket ou à une conversation. Conserver une sauvegarde chiffrée hors du poste. La perte de cette clé bloque la publication de futures mises à jour jusqu'à la réalisation d'une rotation de confiance. Si le script indique qu'une clé existe déjà, ne pas utiliser `--force` : il faut d'abord décider explicitement d'une rotation de clé et préparer les clients qui font déjà confiance à l'ancienne.
 
 ## 2. Committer uniquement la clé publique
 

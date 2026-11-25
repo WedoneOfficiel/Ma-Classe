@@ -4,7 +4,7 @@
 **Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
 **Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
 **Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
-**Validation automatisée :** workflow [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140) vert sur la tête vérifiée (`7c5f80b`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
+**Validation automatisée :** workflow [#1759](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45704572819) vert sur la tête vérifiée (`b3f44aa`) : tests Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
 
 Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
 
@@ -354,3 +354,22 @@ Le SHA-256 précédent liait le contenu de l'archive au manifeste de la release,
 ### Retour CI #1758 — fixture launchd macOS
 
 Le run #1758 a validé Linux, dont les tests Ed25519, et Firefox réel. Le seul échec macOS venait du test de démarrage HTTPS sous launchd : le répertoire temporaire de ce test n'emportait pas le nouveau module `release_signing.py` pourtant importé par `update_manager.py`. La copie du module est ajoutée au fixture de serveur réel et une assertion confirme sa présence. La validation macOS doit être relancée ; aucun assouplissement du test launchd n'est fait.
+
+
+## 18. Validation de la chaîne Ed25519 et du fixture macOS — 25/11/2026
+
+Le workflow [#1759](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45704572819) est entièrement vert sur la tête `b3f44aa` :
+- tests Linux, y compris les scénarios de signature Ed25519 ;
+- régression EDT Firefox réel ;
+- macOS Apple Silicon, installateur, tests JavaScript, démarrage HTTPS réel sous launchd et tests Python complets.
+
+Le workflow #1758 avait échoué uniquement parce que le test launchd copiait le serveur et le gestionnaire sans copier le nouveau module `release_signing.py`. Le fixture a été complété ; le test lance maintenant le vrai serveur et répond en HTTPS sous launchd.
+
+**Limites non automatisables restantes :**
+- génération de la paire de clés de l'éditeur et création du secret GitHub Actions ;
+- validation de la clé avec une release de test ;
+- migration d'une copie représentative des données de l'installation réelle ;
+- recette Wi-Fi multi-appareils et certificat approuvé sur le réseau cible ;
+- parcours complets avec comptes Direction, Professeur, Élève et remplaçant sur les appareils de référence.
+
+Les tests CI s'appuient sur une clé éphémère uniquement. La clé publique d'éditeur du dépôt reste volontairement non configurée tant que son propriétaire n'a pas procédé au provisionnement.

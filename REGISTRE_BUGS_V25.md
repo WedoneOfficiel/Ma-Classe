@@ -2,7 +2,7 @@
 
 **Document de référence des anomalies signalées, des correctifs et des recettes restantes.**  
 Version candidate : `V25.0.25` — branche `feat/v25.0.25-stabilisation-reseau-migrations` ([PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), base `main`, non fusionnée).  
-Dernière synchronisation : 25 novembre 2026 — CI complète [#1754](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45699459140) verte sur Linux, macOS Apple Silicon et Firefox réel (`7c5f80b`). La recette sur les machines et comptes réels reste distincte.
+Dernière synchronisation : 25 novembre 2026 — CI complète [#1759](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45704572819) verte sur Linux, macOS Apple Silicon et Firefox réel (`b3f44aa`). La recette sur les machines et comptes réels reste distincte.
 
 ## Règles de suivi
 
@@ -83,7 +83,7 @@ Ces anomalies ont été découvertes pendant l'audit demandé le 16/11/2026. Ell
 
 | AMEL-S4 | XSS stockée via le contenu HTML des séances, consignes et corrections | Le contenu riche publié par les professeurs était réinjecté en HTML sans assainissement ; des balises script, attributs événementiels ou liens `javascript:` pouvaient s'exécuter dans les vues élèves. | Assainisseur HTML à liste blanche côté serveur lors du chargement et de la sauvegarde, plus assainissement côté navigateur avant affichage/édition. Autorise seulement le formatage nécessaire, liens HTTP(S) et styles de texte limités. Tests serveur couvrant scripts, événements, liens et CSS. | CI complète verte sur le commit 94b86d9 (run #1727) ; recette réelle restante |
 
-| AUDIT-S2 | Authenticité des releases — signature Ed25519 | Le SHA-256 seul ne permet pas de prouver l'origine du manifeste ; un attaquant qui modifie à la fois archive et manifeste pourrait produire des empreintes cohérentes. | Le vérificateur Ed25519 est intégré à `release_signing.py` et `update_manager.py`. Il refuse toute release sans asset `maclasse-update.sig`, vérifie la signature du contenu exact du manifeste avec la clé publique épinglée dans `release-signing-public-key.txt`, puis seulement valide l'archive. Le workflow `publish-release.yml` appelle `scripts/sign_release.py` et échoue si le secret manque ou si la clé privée ne correspond pas à la clé publique du dépôt. Tests de signature, altération, clé erronée, absence et format invalide ajoutés. | Implémentation et CI à valider ; provisionnement de la paire de clés et du secret GitHub obligatoire avant release stable |
+| AUDIT-S2 | Authenticité des releases — signature Ed25519 | Le SHA-256 seul ne permet pas de prouver l'origine du manifeste ; un attaquant qui modifie à la fois archive et manifeste pourrait produire des empreintes cohérentes. | Le vérificateur Ed25519 est intégré à `release_signing.py` et `update_manager.py`. Il refuse toute release sans asset `maclasse-update.sig`, vérifie la signature du contenu exact du manifeste avec la clé publique épinglée dans `release-signing-public-key.txt`, puis seulement valide l'archive. Le workflow `publish-release.yml` appelle `scripts/sign_release.py` et échoue si le secret manque ou si la clé privée ne correspond pas à la clé publique du dépôt. Tests de signature, altération, clé erronée, absence et format invalide ajoutés ; tests Linux/macOS et Firefox réels verts sur le workflow #1759. | Code et tests CI validés ; génération de la paire éditeur et création du secret GitHub encore requises avant release stable |
 
 | AMEL-S7 | Erreur de syntaxe dans la création de dossier Cloud | La fonction `cloudNewFolder()` construisait un template HTML avec une interpolation `${...}` imbriquée dans une autre interpolation. Le fichier `_all.js` ne pouvait plus être analysé par JavaScript ; l'application ne démarrait pas correctement et les tests navigateur échouaient en cascade. | La valeur `parentPath` est maintenant calculée avant la construction du template puis injectée via `jsArg(parentPath)`. Correctif poussé dans `f12bdfd`. `node --check`, les tests JavaScript et le parcours Firefox réel sont verts sur la CI #1448 ; validation macOS complète encore en cours. La création de dossier doit aussi être vérifiée sur l'application réelle. | CI Linux/macOS/Firefox réussie (run #1477) ; recette réelle restante |
 
@@ -269,3 +269,10 @@ Le code de vérification et de signature Ed25519 est désormais présent dans la
 Ce contrôle ne peut être considéré comme clos qu'après génération locale de la paire, commit de la seule clé publique, création du secret GitHub, vérification du workflow de publication avec une release de test/tag contrôlé et contrôle depuis un client possédant la clé publique épinglée.
 
 La première installation depuis une ancienne version qui ne connaît pas Ed25519 reste un pont de migration non authentifié par ce nouveau mécanisme ; les mises à jour suivantes seront strictement signées.
+
+
+### Résultat de la CI Ed25519 et du fixture launchd — workflow #1759
+
+La tête `b3f44aa` a passé les trois jobs Linux, macOS Apple Silicon et Firefox réel. Les tests de signature Ed25519 valident la signature correcte, le rejet d'un manifeste altéré, l'absence de signature, une signature dupliquée, une mauvaise clé publique et un format de signature invalide. Le test de démarrage réel HTTPS sous launchd passe également après ajout de `release_signing.py` dans le dossier temporaire du fixture.
+
+**Provisionnement restant :** la paire réelle n'a pas été générée et le secret GitHub Actions `MACLASSE_RELEASE_SIGNING_KEY_B64` n'a pas été créé. Le fichier public du dépôt est volontairement non configuré ; aucune release stable ne doit être publiée tant que cette étape n'est pas faite.

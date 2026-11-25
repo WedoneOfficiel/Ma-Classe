@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `7c5f80b`, CI complète #1754 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+> **État courant — 25/11/2026 :** stabilisation V25.0.25 sur la PR #13, tête vérifiée `b3f44aa`, CI complète #1759 verte (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -644,3 +644,17 @@ La tête `7c5f80b` est entièrement verte sur le workflow [#1754](https://github
 Le workflow #1758 a passé les tests Linux, les nouveaux tests de signature Ed25519 et Firefox réel. Le job macOS a échoué dans `test_launchd_starts_real_maclasse_server_over_local_https` parce que son installation temporaire copiait `server.py` et `update_manager.py`, mais pas le nouveau module importé `release_signing.py`. Le serveur de test quittait donc immédiatement avec `ModuleNotFoundError`; le code de production était bien présent dans l'archive Git.
 
 **Correction :** le fixture copie maintenant aussi `release_signing.py` et vérifie sa présence avant de démarrer launchd. Ce diagnostic ne doit pas être confondu avec une erreur du superviseur ni avec une panne du service macOS réel. Nouvelle CI complète nécessaire sur le commit corrigé.
+
+
+## Validation complète de la signature Ed25519 et du service macOS — 25/11/2026
+
+**Commit testé :** `b3f44aa135b61a2334628f1c75cc4043371c49e8`  
+**Workflow :** [#1759](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45704572819)  
+**Résultat :** succès Linux, Firefox réel et macOS Apple Silicon.
+
+- Tests Linux : succès, dont tous les scénarios Ed25519 et les refus fail-closed.
+- Firefox réel : succès.
+- macOS : installateur Apple Silicon, syntaxe, tests JavaScript, démarrage HTTPS réel sous launchd et suite Python : succès.
+- Un premier run #1758 a échoué parce que le fixture launchd ne copiait pas `release_signing.py`. Le fixture a été corrigé pour reproduire le contenu complet de l'application ; aucun contrôle de sécurité n'a été supprimé.
+
+La clé publique et le secret GitHub ne sont pas encore provisionnés. Les tests utilisent une paire éphémère créée dans un répertoire temporaire ; cela prouve le mécanisme de signature, pas l'identité de la future clé éditeur.

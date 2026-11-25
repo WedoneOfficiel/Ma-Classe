@@ -15,6 +15,8 @@ MaClasse V25.0.25 — finalisation des parcours élèves
 - L’export PDF accepte un bulletin dont la publication et la validation sont établies même si l’ancien enregistrement ne possède pas d’horodatage de publication ; les contrôles d’identité, de classe et de rôle restent appliqués.
 - L’espace Résultats distingue l’état officiel du bulletin de la présence éventuelle d’une date d’affichage.
 - Ajout de tests de projection des enseignants accessibles et de validation du statut officiel des bulletins.
+- Ajout de la signature détachée Ed25519 du manifeste de mise à jour, avec vérification par clé publique épinglée et provisionnement du secret éditeur documenté.
+- Validation CI complète #1759 sur Linux, macOS Apple Silicon et Firefox réel, incluant la signature et le démarrage HTTPS sous launchd.
 
 ### Compléments de stabilisation et de finition — 25/11/2026
 

@@ -1,9 +1,9 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**État actualisé au 25/11/2026 :** le candidat V25.0.25 est porté par la [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), branche `feat/v25.0.25-stabilisation-reseau-migrations`. La CI complète du dernier commit vérifié (`7c5f80b`, workflow #1754) est verte sur Linux, macOS Apple Silicon et Firefox réel.  
+**État actualisé au 25/11/2026 :** le candidat V25.0.25 est porté par la [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), branche `feat/v25.0.25-stabilisation-reseau-migrations`. La CI complète du dernier commit vérifié (`b3f44aa`, workflow #1759) est verte sur Linux, macOS Apple Silicon et Firefox réel.  
 **État signature :** le vérificateur Ed25519 côté client et le signataire du workflow sont implémentés. La clé publique versionnée est encore un emplacement à provisionner ; le secret GitHub Actions `MACLASSE_RELEASE_SIGNING_KEY_B64` doit être créé et apparié avant de publier une release. La procédure est dans [Signature des releases](RELEASE_SIGNING.md).  
 **Limites restantes :** aucune release V25.0.25 n'est publiée ; migration V25.0.19 à répéter sur une copie de données représentative ; recette réseau physique Fedora/macOS à effectuer.  
-**Note de lecture :** les mentions « CI en attente », « DHCP non surveillé » et « migration non testée » plus bas décrivent l'état historique du 16/11/2026. Elles sont remplacées par le présent état et les résultats CI #1754.
+**Note de lecture :** les mentions « CI en attente », « DHCP non surveillé » et « migration non testée » plus bas décrivent l'état historique du 16/11/2026. Elles sont remplacées par le présent état et les résultats CI #1759.
 
 ## Objectif
 
@@ -110,7 +110,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 ### Phase E — macOS
 - [x] Ajouter le superviseur launchd utilisateur, le lanceur réseau HTTPS, l'agent de maintenance immédiate/programmée et le rollback code/base.
 - [x] Ajouter les tests de génération des plist, de programmation/annulation et un test de bootstrap/déchargement launchd réel sur runner macOS isolé.
-- [x] CI complète verte sur la tête vérifiée `7c5f80b` : workflow #1754 (tests Linux, macOS Apple Silicon et régression Firefox réelle).
+- [x] CI complète verte sur la tête vérifiée `b3f44aa` : workflow #1759 (tests Linux, macOS Apple Silicon et régression Firefox réelle).
 - [ ] Effectuer la recette sur le Mac de l'utilisateur (démarrage, arrêt, redémarrage, mise à jour, programmation, annulation et rollback).
 - [ ] Effectuer la recette sur le Mac de l'utilisateur (démarrage, arrêt, redémarrage, mise à jour, programmation, annulation et rollback).
 - Conserver les commandes `.command` pour le lancement et le parcours initial de migration ; après activation du gestionnaire supervisé, l'ancien script Git refuse de modifier le code actif.
@@ -118,11 +118,11 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 
 ## Limites et migration initiale
 
-- Le mécanisme de mise à jour intégré n'existe pas dans les anciennes versions telles que V25.0.19. La branche V25.0.25 contient un scénario de migration macOS depuis un fixture V25.0.19 ; la CI #1754 l'a exécuté avec succès et vérifie la préservation de la base, des certificats, des pièces jointes, du lien de version et de `VERSION.txt`. Le registre `MIG-01` reste ouvert uniquement pour la recette sur une copie de données représentative de l'installation réelle, avec sauvegarde externe et retour arrière.
+- Le mécanisme de mise à jour intégré n'existe pas dans les anciennes versions telles que V25.0.19. La branche V25.0.25 contient un scénario de migration macOS depuis un fixture V25.0.19 ; la CI #1759 l'a exécuté avec succès et vérifie la préservation de la base, des certificats, des pièces jointes, du lien de version et de `VERSION.txt`. Le registre `MIG-01` reste ouvert uniquement pour la recette sur une copie de données représentative de l'installation réelle, avec sauvegarde externe et retour arrière.
 - Une fois le gestionnaire supervisé installé et une release stable publiée, les mises à jour normales sont pilotées depuis Paramètres > Mises à jour. Le terminal ne sert plus au téléchargement/à l'installation courante ; il reste nécessaire pour l'installation initiale du service, le dépannage ou une récupération.
 - Le script macOS historique refuse maintenant de faire un git merge si le marqueur du gestionnaire supervisé est présent, et refuse toute mise à jour initiale si un serveur MaClasse tourne encore.
 - Le SHA-256 publié avec le manifeste détecte les corruptions et incohérences d'archive, mais ne constitue pas une signature d'éditeur. Une attestation ou signature vérifiable, avec clé publique épinglée, reste bloquante avant une release stable destinée à des données scolaires réelles.
-- Le workflow de publication appelle le workflow de tests réutilisable et ne crée une release qu'après réussite des jobs Linux, macOS et Firefox. La CI de validation est verte sur le commit `7c5f80b` (workflow #1754). Le workflow déclenché par un véritable tag stable reste à tester ; la dernière release publiée est V25.0.23.
+- Le workflow de publication appelle le workflow de tests réutilisable et ne crée une release qu'après réussite des jobs Linux, macOS et Firefox. La CI de validation est verte sur le commit `b3f44aa` (workflow #1759). Le workflow déclenché par un véritable tag stable reste à tester ; la dernière release publiée est V25.0.23.
 - La chaîne macOS utilise un LaunchAgent de session utilisateur : MaClasse démarre à l'ouverture de session et ne doit pas être considérée comme un service disponible après déconnexion de cet utilisateur.
 - `network_supervisor.py` surveille désormais l'adresse IPv4 privée sur Linux et macOS : perte réseau = fermeture du listener HTTPS ; changement DHCP = renouvellement du certificat serveur sous la même CA puis redémarrage sur la nouvelle IP. La réservation DHCP reste recommandée pour conserver une URL stable.
 
