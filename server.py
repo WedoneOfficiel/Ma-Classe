@@ -629,6 +629,11 @@ def _teacher_assignment_active(item, on_date=None):
 
 
 
+def _bulletin_pdf_is_official(bulletin):
+    """L'état publié/validé fait foi ; l'horodatage reste une métadonnée facultative."""
+    return isinstance(bulletin,dict) and bulletin.get('validated') is True and bulletin.get('published') is True
+
+
 def _bulletin_pdf_access_allowed(database,user,bulletin):
     """A PDF is readable by the direction, a teacher of its class, or its own student."""
     if not isinstance(user,dict) or not isinstance(bulletin,dict): return False
@@ -1337,9 +1342,9 @@ def _student_visible_data(data,user,now=None):
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
     schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
-    teacher_ids={str(x) for x in (class_record or {}).get('teacherIds',[]) or []}
-    teacher_ids.update(str(x.get('teacherId')) for x in out['schedule'] if x.get('teacherId'))
-    teacher_ids.update(str(x.get('teacherId')) for x in data.get('lessons',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and x.get('teacherId'))
+    # Même périmètre que la messagerie côté serveur : classe, co-enseignement,
+    # séances et affectations actives doivent tous apparaître dans les destinataires.
+    teacher_ids=_student_accessible_teacher_ids(data,student_record)
     out['teachers']=[{'id':str(x.get('id')),'first':x.get('first',''),'last':x.get('last','')} for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher' and str(x.get('id')) in teacher_ids]
     out['lessons']=[]
     for item in data.get('lessons',[]) or []:
@@ -2721,7 +2726,7 @@ class Handler(SimpleHTTPRequestHandler):
                 database=_load_database()
                 bulletin=next((x for x in database.get('bulletins',[]) or [] if isinstance(x,dict) and str(x.get('id'))==bulletin_id),None)
                 if not bulletin: return self._json({'error':'Bulletin introuvable.'},404)
-                if bulletin.get('validated') is not True or bulletin.get('published') is not True or not bulletin.get('publishedAt'):
+                if not _bulletin_pdf_is_official(bulletin):
                     return self._json({'error':'Seul un bulletin validé et officiellement publié peut être exporté.'},403)
                 student_id=str(bulletin.get('studentId') or '')
                 class_id=str(bulletin.get('classId') or '')
