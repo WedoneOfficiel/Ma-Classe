@@ -1,8 +1,8 @@
 # Registre des bugs — MaClasse V25
 
 **Document de référence des anomalies signalées et des défauts relevés pendant l'audit.**  
-Branche de travail : `feature/amel-01-update-manager` (PR #10, base `fix/v25-student-teacher-workflows`)  
-Dernière mise à jour : 16 novembre 2026
+Branche de travail : `feat/v25.0.25-stabilisation-reseau-migrations` (PR #13, base `main`)  
+Dernière mise à jour : 25 novembre 2026
 
 ## Règles de suivi
 
@@ -34,6 +34,8 @@ Dernière mise à jour : 16 novembre 2026
 | EVAL-02 | Mauvaise conversion des notes sur 10 | Une note sur 10 est parfois traitée comme une note sur 20. | Défaut relevé pendant l'audit : par exemple, 8/10 doit être converti en 16/20 pour le calcul de moyenne. Le modèle commun normalise désormais la note en fonction du barème maximal ; un test de régression vérifie explicitement 8/10 = 16/20. La recette sur les moyennes affichées dans les différents écrans reste à faire. | Supposé résolu |
 | EVAL-03 | Notes non publiées ou programmées visibles trop tôt | Une note en brouillon ou dont la date de publication est future peut apparaître prématurément. | Défaut relevé pendant l'audit : les filtres de visibilité ne tenaient pas toujours compte de la publication ou de l'heure programmée. Le filtrage frontend et la projection serveur ont été renforcés pour masquer les notes non publiées jusqu'à l'instant exact prévu ; des tests couvrent les dates seules, les timestamps et les timestamps invalides. Une vérification réelle de l'espace élève reste nécessaire. | Supposé résolu |
 | EVAL-04 | Droits de modification des évaluations incohérents | Les droits pour modifier les notes ne sont pas vérifiés de manière uniforme. | Défaut relevé pendant l'audit : l'accès à une classe pouvait être confondu avec le droit d'enseigner toutes ses matières, notamment lors de la suppression d'une évaluation. Le serveur vérifie maintenant l'affectation à la matière pour les créations, modifications et suppressions ; l'interface bloque aussi l'ouverture et les actions de saisie, de critères, de compétences et de commentaires hors affectation. Des tests backend et frontend couvrent les matières, les accents et les remplacements ponctuels. La recette avec de vrais comptes enseignant reste à faire. | Supposé résolu |
+
+| UI-RENDER-01 | Écrans vides après consolidation de la page Aujourd'hui | Plusieurs modules peuvent ne plus s'afficher lorsque le rendu global est appelé. | L'entrée `today:today` restait dans la table de rendu alors que la fonction `today()` avait été retirée et que `go()` redirigeait déjà cette route vers `activity`. La construction de la table levait `ReferenceError: today is not defined`, bloquant aussi les pages sans rapport avec l'EDT. Un alias de compatibilité est maintenant défini avant `_all.js` et redirige vers le Centre d'activité. Diagnostic enrichi et test Firefox réel ajoutés. La CI Linux/macOS/Firefox a passé sur le commit `de2a0a8` ; la confirmation sur l'installation utilisateur reste nécessaire. | Supposé résolu |
 
 ## Demande d'amélioration hors registre des bugs
 
