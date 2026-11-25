@@ -32,8 +32,8 @@ class ReleaseCheckerTests(unittest.TestCase):
             "tag_name": "v25.1.0",
             "html_url": "https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.0",
             "assets": [
-                {"name": updater.MANIFEST_ASSET, "browser_download_url": "https://example.test/manifest"},
-                {"name": self.manifest["archive_asset"], "browser_download_url": "https://example.test/archive"}
+                {"name": updater.MANIFEST_ASSET, "browser_download_url": "https://release-assets.githubusercontent.com/manifest"},
+                {"name": self.manifest["archive_asset"], "browser_download_url": "https://release-assets.githubusercontent.com/archive"}
             ]
         }
 
@@ -48,9 +48,9 @@ class ReleaseCheckerTests(unittest.TestCase):
     def fake_request(self, url, limit):
         if url == updater.API_LATEST:
             return json.dumps(self.release).encode()
-        if url == "https://example.test/manifest":
+        if url == "https://release-assets.githubusercontent.com/manifest":
             return json.dumps(self.manifest).encode()
-        if url == "https://example.test/archive":
+        if url == "https://release-assets.githubusercontent.com/archive":
             return self.archive
         raise AssertionError("URL inattendue : " + url)
 
