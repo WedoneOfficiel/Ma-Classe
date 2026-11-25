@@ -147,6 +147,11 @@ class VisualConsistencyTests(unittest.TestCase):
         self.assertIn("body.sidebar-collapsed .main{", HTML)
         self.assertIn("margin:0!important;", HTML)
 
+    def test_dark_timetable_grid_overrides_the_light_repeating_surface(self):
+        self.assertIn('html[data-mc-theme="dark"] .daycol{background:repeating-linear-gradient(to bottom,#29292c 0,#29292c 71px,#3c3c40 72px)!important}', HTML)
+        self.assertIn('html[data-mc-theme="dark"] .scheduleCalendarSurface{', HTML)
+        self.assertIn('background:var(--paper)!important;', HTML)
+
     def test_dark_theme_does_not_add_extra_background_effects(self):
         self.assertIn('html[data-mc-theme="dark"] body{background:var(--bg)!important}', HTML)
         self.assertIn('html[data-mc-theme="dark"] .card,html[data-mc-theme="dark"] .bulletin{background:var(--paper)!important', HTML)
