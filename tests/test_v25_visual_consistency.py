@@ -34,11 +34,40 @@ class VisualConsistencyTests(unittest.TestCase):
 
     def test_admin_user_notice_matches_student_access_model(self):
         admin_start = JS.index("function adminUsers(){")
-        admin_end = JS.index("\\nfunction openStudentAccountEditor", admin_start)
+        admin_end = JS.index("\nfunction openStudentAccountEditor", admin_start)
         admin_users = JS[admin_start:admin_end]
         self.assertIn("Chaque compte élève ne reçoit que les informations de sa propre fiche", admin_users)
         self.assertIn("filtrés côté serveur", admin_users)
         self.assertNotIn("La messagerie et le Cloud élève restent désactivés", admin_users)
+
+    def test_sidebar_buttons_keep_a_consistent_administration_size(self):
+        self.assertIn(".nav .navBtn{", HTML)
+        self.assertIn("height:34px!important;", HTML)
+        self.assertIn("min-height:34px!important;", HTML)
+        self.assertIn("flex:0 0 34px!important;", HTML)
+        self.assertIn("width:100%!important;", HTML)
+
+    def test_settings_cards_keep_compact_vertical_spacing(self):
+        self.assertIn(".settingsGrid{gap:10px!important}", HTML)
+        self.assertIn(".settingsGrid>.settingsCard{padding:14px!important}", HTML)
+        self.assertIn(".settingsCard>.section{margin-top:9px!important}", HTML)
+
+    def test_student_profile_labels_and_values_are_separated(self):
+        self.assertIn('class="v14InfoGrid"', JS)
+        self.assertIn(".v14InfoGrid>div{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}", HTML)
+
+    def test_application_version_is_visible_in_the_shared_shell(self):
+        self.assertIn("const MC_VERSION='V25.0.25'", JS)
+        self.assertIn("getElementById('appVersionLabel')", JS)
+        self.assertIn('id="appVersionLabel"', HTML)
+
+    def test_student_life_page_only_lists_absences(self):
+        start = JS.index("function studentLife(){")
+        end = JS.index("\nfunction ", start + 20)
+        page = JS[start:end]
+        self.assertIn("filter(x=>x.status==='absent')", page)
+        self.assertIn("Justifiées", page)
+        self.assertIn("Non justifiées", page)
 
     def test_schedule_is_wrapped_and_full_width(self):
         p = JS.index("function schedule(){")
