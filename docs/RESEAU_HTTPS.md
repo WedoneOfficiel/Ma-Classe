@@ -1,5 +1,7 @@
 # Réseau local HTTPS — MaClasse V25
 
+**État au 25/11/2026 :** le superviseur réseau est commun à Linux et macOS. La CI #1727 valide les tests Linux, macOS Apple Silicon et Firefox réel. La vérification sur un vrai réseau Wi-Fi, le pare-feu Fedora et les appareils clients reste à effectuer sur le matériel cible.
+
 ## Principe
 
 Un seul ordinateur héberge le serveur MaClasse. Les autres ordinateurs ouvrent son adresse HTTPS dans Firefox ou un autre navigateur, sur le même réseau privé. Il ne faut pas rediriger le port 8765 depuis Internet.
