@@ -27,6 +27,7 @@ const modelNames = [
   'evaluationModelVisible',
   'evaluationModelAverage',
   'evaluationModelClassStats',
+  'evaluationModelDashboardStats',
   'studentWorkEligible',
   'subjectAverage',
   'classAverageForBulletin',
@@ -425,7 +426,54 @@ equal(context.v101StudentAverage('s1', 'T1'), '16.00', 'La moyenne générale do
 equal(context.v101StudentAverage('s2', 'T1'), '10.00', 'La moyenne générale du groupe B reste propre à cet élève');
 equal(context.classAverageForBulletin(1, 'T1'), '13.00', 'La moyenne de classe combine les moyennes individuelles et les identifiants normalisés');
 
-// 13) Second-wave cross-module matrix: 30 evaluation class/group combinations,
+// 13) Teacher dashboard counters and class averages must count only the
+// students targeted by each group-specific evaluation, not every student in
+// the class. Numeric and textual class IDs are treated as the same identifier.
+context.db = {
+  students: [
+    { id: 'a', classId: 1, group: 'A' },
+    { id: 'b', classId: '1', group: 'B' },
+    { id: 'c', classId: 1, group: 'C' },
+    { id: 'other', classId: '2', group: 'A' }
+  ],
+  evaluations: [
+    makeEvaluation('stats-A', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques' }),
+    makeEvaluation('stats-B', '10', 20, { classId: 1, group: 'B', subject: 'Mathématiques' }),
+    makeEvaluation('stats-C', '12', 20, { classId: '1', group: 'C', subject: 'Français' }),
+    makeEvaluation('stats-other-class', '20', 20, { classId: '2', group: 'A', subject: 'Mathématiques' }),
+    makeEvaluation('stats-draft', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: false }),
+    makeEvaluation('stats-missing-flag', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: undefined })
+  ],
+  settings: { terms: [] },
+  lessons: [],
+  submissions: [],
+  attendance: []
+};
+const statsAll = context.evaluationModelDashboardStats('1', '');
+equal(statsAll.students, 3, 'Le tableau Évaluations reconnaît les élèves de classe aux identifiants normalisés');
+equal(statsAll.all, 5, 'Le compteur total ne doit compter que les évaluations de la classe');
+equal(statsAll.published, 3, 'Le compteur publié exclut brouillons et statuts absents');
+equal(statsAll.entered, 3, 'Le nombre de notes saisies ne compte que les groupes ciblés');
+equal(statsAll.graded, 3, 'Les statistiques de notes excluent les notes hors groupe');
+equal(statsAll.evaluations, 3, 'Les statistiques classe et le tableau utilisent le même nombre de publications');
+equal(statsAll.average, 14, 'La moyenne pondérée combine les notes valides des seuls groupes ciblés');
+const statsSubject = context.evaluationModelDashboardStats(1, 'Mathématiques');
+equal(statsSubject.all, 3, 'Le filtre matière accepte les IDs de classe numériques/texte');
+equal(statsSubject.entered, 2, 'Le filtre matière compte les notes des deux groupes concernés');
+equal(statsSubject.average, 13, 'La moyenne par matière est calculée sur les élèves ciblés');
+const statsOther = context.evaluationModelDashboardStats('2', '');
+equal(statsOther.students, 1, 'Les statistiques d’une autre classe restent séparées');
+equal(statsOther.average, 20, 'Les résultats d’une autre classe ne contaminent pas la classe sélectionnée');
+truthy(
+  declaration('evaluationModelDashboardStats').includes('evaluationModelTargetStudents(db,e)'),
+  'Le tableau Évaluations doit réutiliser le ciblage canonique des élèves'
+);
+truthy(
+  declaration('evaluationModelClassStats').includes('evaluationModelTargetStudents(db,e)'),
+  'Les statistiques classe doivent réutiliser le ciblage canonique des élèves'
+);
+
+// 14) Second-wave cross-module matrix: 30 evaluation class/group combinations,
 // 60 homework eligibility cases and deterministic submission aggregates.
 const targetStudents = [
   { id: 'n1', classId: 1, group: 'A' },
