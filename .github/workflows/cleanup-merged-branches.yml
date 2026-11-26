@@ -1,0 +1,82 @@
+name: Nettoyer les anciennes branches MaClasse
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    name: Supprimer les branches fusionnées ou remplacées
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier puis supprimer les références autorisées
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const candidates = [
+              { name: "feat/teacher-assignment-permissions", sha: "d3d0ff09804366fa87ec05ef3bd4a39eae806378", reason: "PR #8 fusionnée ; PR #7 fermée" },
+              { name: "feat/v25.0.25-stabilisation-reseau-migrations", sha: "dd032cf39a8c072035e63cf55034e20392fc9454", reason: "PR #13 fusionnée" },
+              { name: "feat/v25.1.1-manual-release-workflow", sha: "5f9014db3ef35bbebba1bde01c5602631024ff1a", reason: "PR #17 fusionnée" },
+              { name: "feature/amel-01-update-manager", sha: "f72342c15cab410c0226fad5209ed7d4476b07ab", reason: "PR #10 fusionnée" },
+              { name: "fix/macos-network-launcher-libreSSL", sha: "878d1a38436cac0fdb3d1c429c4c3670fe8797d3", reason: "PR #18 fusionnée" },
+              { name: "fix/recette-v25-0-23", sha: "8a861fd2fcc086f52a11b9bde10b6b000b8d2fe8", reason: "PR #12 fusionnée" },
+              { name: "fix/student-accounts-canonical", sha: "6423536384e3112687623ced051b3d1436ff8b59", reason: "branche orpheline, aucun commit en avance sur main" },
+              { name: "fix/student-canonical-accounts", sha: "5d93aa24e95873fc311f7718a4d45331aa142353", reason: "PR #1 fusionnée" },
+              { name: "fix/student-login-schedule-form-refresh", sha: "f36c099e72f85420314a49e02fdc2184cc71467e", reason: "PR #3 fusionnée" },
+              { name: "fix/teacher-class-student-persistence", sha: "e581e3c6116c25514a1a5d355410855471f69298", reason: "PR #2 fusionnée" },
+              { name: "fix/v25-student-teacher-workflows", sha: "9c83ee3f38da0ea501af2727e53d8bda0d88f0ca", reason: "PR #9 fusionnée" },
+              { name: "fix/v25.0.18-stabilite-globale", sha: "4a4f1d19d8a86eed3c70c569c804687a5de48690", reason: "PR #4 fusionnée" },
+              { name: "fix/v25.0.19-edt-certificat-import", sha: "70292d1ad8cfa40db1c04ca9bb319d518af8a507", reason: "PR #5 fusionnée" },
+              { name: "fix/v25.1.1-macos-certificate-sans", sha: "feb38c31ada607705aefe09d7fff72053d90139d", reason: "PR #14 fusionnée" },
+              { name: "fix/v25.1.1-macos-rollback-release", sha: "66243aeb3738ba71917476f9f41c8daae0ebda8f", reason: "PR #16 fusionnée" },
+              { name: "fix/v25.1.1-macos-rollback-release-notes", sha: "78d18414453aab23852ded68798bb102b48bbcdd", reason: "PR #15 remplacée par #16" },
+              { name: "fix/v25.1.1-updater-launchd-progress", sha: "9e68cb764e2780c39e94a6e309dca236941fe6f6", reason: "PR #19 fusionnée" }
+            ];
+
+            const openPulls = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: "open", per_page: 100
+            });
+            const openHeads = new Set(openPulls.map(pr => pr.head.ref));
+            const report = [];
+
+            for (const candidate of candidates) {
+              if (candidate.name === "main" || openHeads.has(candidate.name)) {
+                report.push([candidate.name, "CONSERVÉE", "branche principale ou PR ouverte"]);
+                continue;
+              }
+
+              let ref;
+              try {
+                ref = await github.rest.git.getRef({
+                  owner, repo, ref: `heads/${candidate.name}`
+                });
+              } catch (error) {
+                if (error.status === 404) {
+                  report.push([candidate.name, "DÉJÀ ABSENTE", candidate.reason]);
+                  continue;
+                }
+                throw error;
+              }
+
+              if (ref.data.object.sha !== candidate.sha) {
+                report.push([candidate.name, "IGNORÉE", "SHA différent de l'inventaire ; réexamen nécessaire"]);
+                continue;
+              }
+
+              await github.rest.git.deleteRef({
+                owner, repo, ref: `heads/${candidate.name}`
+              });
+              report.push([candidate.name, "SUPPRIMÉE", candidate.reason]);
+            }
+
+            await core.summary
+              .addHeading("Nettoyage des branches MaClasse")
+              .addTable([["Branche", "Résultat", "Motif"], ...report])
+              .addRaw("\nLa branche main, les branches référencées par une PR ouverte et les références dont le SHA avait changé ont été conservées.")
+              .write();
+            core.info(report.map(row => row.join(" | ")).join("\n"));

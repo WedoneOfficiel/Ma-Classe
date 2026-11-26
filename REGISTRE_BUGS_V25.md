@@ -1,8 +1,8 @@
 # Registre des bugs — MaClasse V25
 
 **Document de référence des anomalies signalées, des correctifs et des recettes restantes.**  
-Version candidate : `V25.1.0` — branche `feat/v25.0.25-stabilisation-reseau-migrations` ([PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), base `main`, non fusionnée).  
-Dernière synchronisation : 25 novembre 2026 — CI complète [#1793](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45713179841) verte (3/3) sur Linux, macOS Apple Silicon et Firefox réel. La recette sur les machines et comptes réels reste distincte.
+Version de référence : `V25.1.1`, publiée le 26 novembre 2026 ([release v25.1.1](https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.1)). Les PR #13 à #19 ont intégré la stabilisation V25.1.0, les correctifs HTTPS/macOS, le rollback et le gestionnaire de mise à jour.
+Dernière synchronisation : 26 novembre 2026 — CI post-fusion #1844 verte sur Linux, macOS Apple Silicon/launchd et Firefox réel ; workflow de publication #4 réussi ; premier passage V25.0.23 → V25.1.1 confirmé sur le Mac de référence. Les statuts individuels ci-dessous restent distincts : une correction ne passe à « Corrigé » que lorsque la recette réelle correspondante a été confirmée.
 
 ## Règles de suivi
 

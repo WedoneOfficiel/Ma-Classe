@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 25/11/2026 :** candidat V25.1.0 sur la PR #13, tête vérifiée par la CI #1793, 3/3 jobs verts (Linux, macOS Apple Silicon et Firefox réel). Les entrées historiques qui suivent retracent les campagnes antérieures ; elles ne décrivent pas toutes l'état courant. La confirmation sur le Mac, le PC Fedora, un réseau multi-appareils et des comptes réels reste à effectuer.
+> **État courant — 26/11/2026 :** V25.1.1 est publiée sous le tag `v25.1.1` et le premier passage depuis V25.0.23 a été confirmé fonctionnel sur le Mac de référence. La CI post-fusion #1844 et le workflow de publication #4 sont entièrement réussis. Les entrées précédentes restent un journal historique : elles décrivent l'état au moment des diagnostics, pas nécessairement celui du code courant.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -685,3 +685,27 @@ Le commit courant a également corrigé la règle `.gitignore` pour le véritabl
 - Tests unitaires et Firefox réel couvrant permissions, groupes, publication, contexte Cloud et refus d'accès élève.
 - CI #1793 : 3/3 jobs réussis sur Linux, macOS Apple Silicon (installateur et launchd réels) et Firefox réel.
 - Restent hors CI : provisionnement de la clé Ed25519 de production, migration sur copie des données réelles et recette réseau multi-appareils.
+
+
+## Clôture de la campagne V25.1.1 — 26 novembre 2026
+
+### Parcours de mise à jour macOS
+- Symptôme d'origine : depuis V25.0.23, le téléchargement et la préparation de V25.1.1 aboutissaient à l'état « prête », mais le gestionnaire indépendant ne démarrait pas.
+- Premier défaut : le contrôle du certificat HTTPS lisait la sortie texte d'OpenSSL avec un format supposé ; macOS LibreSSL présentait la même information sous une forme différente. Le certificat conservé était valide et contenait bien l'adresse IP dans son SAN.
+- Deuxième défaut : l'ancien déclencheur launchd de V25.0.23 ne parvenait pas à démarrer le gestionnaire indépendant. Une fois la version téléchargée et préparée, le lanceur direct de secours a exécuté le même moteur d'installation/rollback sans modifier lui-même la base.
+- V25.1.1 corrige le parseur X.509, le démarrage du LaunchAgent, la journalisation des erreurs et le retour visuel de préparation.
+- **Recette réelle :** l'utilisateur a confirmé que la mise à jour a finalement fonctionné sur son Mac après utilisation de la commande de secours.
+
+### Traçabilité CI
+- PR #19 fusionnée dans `main` : commit `b5cc07d6747605f2eac6ad11dffb3ce0bbb9ec43`.
+- CI post-fusion #1844, run `45804151065` : jobs Linux, macOS Apple Silicon/launchd et Firefox réel réussis.
+- Passe générale : 93 fichiers de tests (55 JavaScript, 38 Python), les tests propres à chaque plateforme étant exécutés sur le runner correspondant.
+- Couverture ciblée : 15 tests du lanceur direct, 19 tests launchd, 33 tests du gestionnaire de versions, plus les suites applicatives et d'intégration.
+- Workflow manuel de publication #4, run `45806118500` : les trois jobs de validation et le job de publication réussis.
+- Assets effectivement publiés : `maclasse-update.zip`, `maclasse-update.json` et `maclasse-update.sig`.
+
+### Résultat et limites
+- Version publiée : `V25.1.1` ; tag `v25.1.1` pointant sur le commit validé.
+- Aucun changement de schéma de base ni migration supplémentaire.
+- Le premier passage lancé depuis V25.0.23 s'appuyait sur la vérification SHA-256 de l'ancien gestionnaire ; les mises à jour suivantes utilisent la vérification Ed25519 du gestionnaire V25.1.1.
+- Les détails des branches, PR, commits et recommandations de nettoyage sont conservés dans [l'archive des branches et validations](docs/qualite/ARCHIVES_BRANCHES_ET_VALIDATIONS.md).

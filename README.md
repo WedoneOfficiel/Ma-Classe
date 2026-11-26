@@ -6,14 +6,14 @@ MaClasse est une application web de gestion scolaire destinée à un établissem
 
 | Référence | État |
 |---|---|
-| Dernière release GitHub publiée | **V25.1.0** (`v25.1.0`) |
-| Branche `main` après fusion du correctif | **V25.1.1** |
-| Code fusionné dans `main` | **V25.1.1** — validation du certificat HTTPS macOS/LibreSSL |
-| Publication V25.1.1 | En attente du tag et du workflow de publication signé |
+| Dernière release GitHub publiée | **V25.1.1** (`v25.1.1`), publiée le 26/11/2026 |
+| Branche `main` | **V25.1.1**, commit `b5cc07d` |
+| Publication | Workflow #4 réussi : validation Linux, macOS Apple Silicon/launchd, Firefox, archive, manifeste et signature |
+| Installation de référence | Premier passage depuis V25.0.23 effectué sur macOS ; fonctionnement confirmé par l'utilisateur |
 
-La recette réelle de la mise à jour V25.0.23 → V25.1.0 sur macOS a révélé que le superviseur rejetait à tort le certificat HTTPS local : il dépendait du format texte propre à OpenSSL pour lire le SAN, format qui varie avec LibreSSL. L'installation a été restaurée en V25.0.23 sans perte de la base ni des certificats. La V25.1.1 remplace ce contrôle par une lecture X.509 directe avec la dépendance `cryptography` déjà utilisée pour la signature des mises à jour.
+La recette réelle V25.0.23 → V25.1.0 sur macOS a révélé deux défauts de transition : l'analyse du certificat dépendait du format texte OpenSSL (incompatible avec la sortie LibreSSL de macOS), puis l'ancien déclencheur launchd ne lançait pas le gestionnaire indépendant. V25.1.1 remplace l'analyse textuelle par une lecture X.509, fiabilise le lancement launchd, conserve les diagnostics et fournit un lanceur direct de secours pour ce premier passage.
 
-Les workflows #1807 et #1808 de la PR #14 sont verts (3/3 chacun) : Linux, macOS Apple Silicon avec launchd réel et Firefox. Après publication de la version signée, il restera à refaire le parcours de mise à jour intégré sur le Mac et à vérifier l'accès réseau depuis les appareils clients.
+La PR #19 est fusionnée dans `main`. La CI post-fusion #1844 a validé les 93 fichiers de tests (55 JavaScript et 38 Python) sur les runners adaptés, ainsi que Firefox réel et macOS Apple Silicon/launchd. Le workflow de publication #4 (run `45806118500`) a ensuite réussi ses quatre jobs et publié les trois assets signés. La mise à jour a enfin été installée sur le Mac de référence et confirmée fonctionnelle. Voir le [registre des branches et validations](docs/qualite/ARCHIVES_BRANCHES_ET_VALIDATIONS.md).
 
 ### Changements récents du candidat V25.1.0
 
@@ -76,6 +76,7 @@ Pour la gestion des releases, des migrations et du retour arrière, voir [Gestio
 | [Registre des bugs](REGISTRE_BUGS_V25.md) | Anomalies ouvertes et statuts de recette |
 | [Suivi des correctifs](SUIVI_CORRECTIFS_V25.md) | Journal chronologique des interventions |
 | [Historique des versions](docs/HISTORIQUE_VERSIONS.md) | Notes V21 et V25 regroupées sans perte de contenu |
+| [Qualité, branches et validations](docs/qualite/ARCHIVES_BRANCHES_ET_VALIDATIONS.md) | Traçabilité des PR, branches candidates, tests CI et publication V25.1.1 |
 
 Les anciens guides, états et audits ont été déplacés dans [docs/archives](docs/archives/). Ils sont conservés à titre historique ; leurs instructions ne doivent pas être utilisées pour installer la version courante.
 

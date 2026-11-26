@@ -1,15 +1,32 @@
 # Historique des versions MaClasse
 
-> Registre historique consolidé le 25 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
+> Registre historique consolidé le 26 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
 
-## Correctif candidat V25.1.1 — validation X.509 compatible macOS (26/11/2026)
+## V25.1.1 — fiabilisation HTTPS et mises à jour macOS (26/11/2026)
 
-**Statut : code fusionné dans `main` (commit `e6df53f`) ; tag et release stable non encore créés.** Le correctif fait suite à la recette réelle de l'installation supervisée sur macOS : le certificat conservé dans `data/tls/server.crt` contenait bien l'adresse IPv4 dans son SAN, mais le superviseur le déclarait invalide en analysant la sortie texte de LibreSSL avec une expression régulière conçue pour la sortie d'OpenSSL.
+**Statut : release publiée et installée sur le Mac de référence.** Tag `v25.1.1`, commit `b5cc07d6747605f2eac6ad11dffb3ce0bbb9ec43`. La mise à jour depuis V25.0.23 a été confirmée fonctionnelle par l'utilisateur après recours au lanceur direct de premier passage.
 
-- Remplacement de l'analyse du texte OpenSSL par le parseur X.509 de `cryptography`, déjà requis par la vérification Ed25519 des mises à jour.
-- Contrôle explicite de l'IPv4 SAN, de la date de début de validité et d'une durée restante supérieure à 24 heures.
-- Tests avec de vrais certificats PEM générés en fixture : SAN correspondant, SAN différent, absence de SAN, certificat pas encore valide et certificat expirant sous 24 heures.
-- Aucun changement de schéma ni migration de données. Les workflows #1807, #1808 et #1809 valident le correctif sur Linux, macOS Apple Silicon/launchd et Firefox (3/3 chacun). La recette physique du parcours de mise à jour sur le Mac et l'accès depuis les appareils clients sera effectuée après la publication signée de `v25.1.1`.
+### Correctifs livrés
+- Supervision HTTPS : lecture du certificat avec le parseur X.509 de `cryptography`, au lieu d'une expression régulière dépendante de la sortie textuelle OpenSSL/LibreSSL. Contrôles de l'IPv4 SAN, des dates de validité et de la durée restante.
+- Lanceur réseau macOS : récupération de l'IPv4 privée depuis l'interface active, sans dépendance au format OpenSSL/LibreSSL.
+- Installation supervisée : recréation contrôlée du LaunchAgent immédiat, écriture atomique et validation du plist, bootstrap/kickstart vérifiés, diagnostics détaillés conservés dans un journal privé.
+- Rollback : attente et vérification de l'arrêt du superviseur et de son processus serveur enfant avant toute restauration de la base.
+- Interface de mise à jour : état animé et accessible pendant téléchargement, contrôle cryptographique et préparation Python, sans faux pourcentage.
+- Premier passage depuis V25.0.23 : lanceur direct de secours qui contrôle l'état préparé, l'empreinte, la compatibilité des données et les fichiers, puis délègue à l'installateur macOS commun. Il ne modifie pas directement la base.
+
+### Validation réellement exécutée
+- PR #19 fusionnée dans `main` (commit de fusion ci-dessus).
+- CI post-fusion #1844 (`45804151065`) : Linux, macOS Apple Silicon/launchd et Firefox réel réussis.
+- Couverture de la passe générale : 93 fichiers de tests, 55 JavaScript et 38 Python. Les scénarios propres à chaque OS sont exécutés sur le runner adapté.
+- Tests ciblés du parcours de mise à jour : 15 tests du lanceur direct, 19 tests launchd et 33 tests du gestionnaire de versions, en plus des autres suites de régression et d'intégration.
+- Workflow de publication #4 (`45806118500`) : quatre jobs réussis, comprenant les trois validations et la génération/publication de l'archive, du manifeste et de la signature.
+- Les trois assets de release sont présents : `maclasse-update.zip`, `maclasse-update.json`, `maclasse-update.sig`.
+- Recette finale sur le Mac de référence : installation du premier passage confirmée fonctionnelle par l'utilisateur.
+
+### Données et limite de transition
+- Aucun changement de schéma ni migration supplémentaire de la base.
+- Données persistantes, certificats et architecture programme/données conservés.
+- Nuance de sécurité du premier passage : l'ancien gestionnaire V25.0.23 ne savait vérifier que l'empreinte SHA-256 du paquet. L'asset de signature Ed25519 était publié avec la release, mais le contrôle Ed25519 côté client s'applique à partir du gestionnaire V25.1.1 pour les mises à jour ultérieures.
 
 ## V25.1.0 — stabilisation, sécurité et suivi de classe (25/11/2026)
 
