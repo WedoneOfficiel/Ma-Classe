@@ -89,6 +89,8 @@ assert.strictEqual(db.attendance[0].rows[0].justified,true,
   'La case de justification modifiée doit être sauvegardée.');
 assert.strictEqual(db.attendance[0].rows[0].reason,'Certificat médical reçu',
   'Le nouveau motif doit remplacer l’ancien sans perdre le statut.');
+assert.strictEqual(db.attendance[0].time,'09:00',
+  'L’heure du cours doit être conservée malgré un identifiant numérique/texte équivalent.');
 
 // Une fenêtre rouverte après une édition annulée ne doit pas réappliquer
 // les changements en mémoire de la fenêtre précédente.
