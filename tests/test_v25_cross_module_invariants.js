@@ -35,6 +35,7 @@ const modelNames = [
   'studentActivitySummary',
   'studentGrades',
   'studentReportNumericGrade',
+  'v207EvaluationMax',
   'v101SubmissionStats',
   'v103MissingWorkList',
   'weightedAverageForEvaluations',
