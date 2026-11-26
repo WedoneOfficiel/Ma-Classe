@@ -26,6 +26,7 @@ const modelNames = [
   'evaluationModelVisible',
   'evaluationModelAverage',
   'evaluationModelClassStats',
+  'studentWorkEligible',
   'weightedAverageForEvaluations',
   'v101StudentAverage',
   'evaluationGradeLabel'
@@ -253,7 +254,26 @@ equal(
   'Une grille qualitative est identifiée comme telle'
 );
 
-// 9) Ensure all the audited views use the same grade-scale helper.
+// 9) Student work must follow the same class/group eligibility rule as the
+// student work list and teacher missing-submission aggregates.
+const workStudent = { id: 's1', classId: 'c1', group: 'A' };
+const workCases = [
+  [{ classId: 'c1', homework: { requiresSubmission: true } }, true, 'Devoir sans groupe accessible à toute la classe'],
+  [{ classId: 'c1', group: 'A', homework: { requiresSubmission: true } }, true, 'Devoir du groupe A visible pour un élève du groupe A'],
+  [{ classId: 'c1', group: 'B', homework: { requiresSubmission: true } }, false, 'Devoir du groupe B masqué à l’élève du groupe A'],
+  [{ classId: 'c2', homework: { requiresSubmission: true } }, false, 'Devoir d’une autre classe exclu'],
+  [{ classId: 'c1' }, false, 'Un item sans devoir ne compte pas comme travail à rendre']
+];
+for (const item of workCases) {
+  equal(context.studentWorkEligible(item[0], workStudent), item[1], item[2]);
+}
+for (const name of ['studentActivitySummary', 'openStudentActivity']) {
+  const body = declaration(name);
+  truthy(body.includes('studentWorkEligible(l,s)'), name + ' doit respecter le groupe de l’élève');
+  truthy(!body.includes('l.classId===s.classId'), name + ' ne doit pas filtrer uniquement par classe');
+}
+
+// 10) Ensure all the audited views use the same grade-scale helper.
 for (const name of ['studentActivityCenter', 'studentHome', 'profile360Tab', 'openStudent', 'openStudentActivity']) {
   const body = declaration(name);
   truthy(body.includes('evaluationGradeLabel('), name + ' doit appeler le helper commun de barème');
@@ -276,4 +296,4 @@ truthy(
   'Le tableau de bord des évaluations doit respecter l’heure exacte de publication'
 );
 
-console.log('OK — ' + checks + ' invariants testés : barèmes, moyennes de bulletin, publication, périodes, groupes et vues élève.');
+console.log('OK — ' + checks + ' invariants testés : barèmes, moyennes de bulletin, publication, périodes, groupes, devoirs et vues élève.');
