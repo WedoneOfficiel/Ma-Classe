@@ -104,7 +104,7 @@ def _record_update_start_error(error):
         os.makedirs(DATA_DIR,exist_ok=True)
         detail=_update_start_error_detail(error)
         with open(path,'a',encoding='utf-8') as stream:
-            stream.write('\n['+datetime.datetime.now().astimezone().isoformat(timespec='seconds')+'] Échec du démarrage du gestionnaire indépendant\\n')
+            stream.write('\n['+datetime.datetime.now().astimezone().isoformat(timespec='seconds')+'] Échec du démarrage du gestionnaire indépendant\n')
             stream.write(detail+'\n')
         os.chmod(path,0o600)
         return detail
