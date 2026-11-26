@@ -2,7 +2,7 @@
 
 **Document de référence des anomalies signalées, des correctifs et des recettes restantes.**  
 Version de référence : `V25.1.1`, publiée le 26 novembre 2026 ([release v25.1.1](https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.1)). Les PR #13 à #19 ont intégré la stabilisation V25.1.0, les correctifs HTTPS/macOS, le rollback et le gestionnaire de mise à jour.
-Dernière synchronisation : 26 novembre 2026 — le candidat V25.2.0 reprend le travail fonctionnel de la PR #20. La tête c474f77131f4df4e379f4c5f73d377cfe241e01c a passé les trois environnements dans le run [45864215881](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45864215881). La version candidate est maintenant alignée sur V25.2.0 dans VERSION.txt, APP_VERSION et MC_VERSION ; la validation de cette tête versionnée reste à effectuer. La recette sur l'installation physique est distincte.
+Dernière synchronisation : 26 novembre 2026 — candidat V25.2.0 sur la PR #20. La tête 79ff1c83a5f611bbe03e428a4985f62b98cf3003 a passé les trois environnements dans le run [45870596723](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45870596723) : Linux, macOS Apple Silicon/launchd et Firefox réel. VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0. La recette sur l'installation physique et les vrais comptes reste distincte.
 
 ## Règles de suivi
 
@@ -332,3 +332,8 @@ Les anomalies supplémentaires ci-dessous ont un correctif dans la branche et de
 | PROF-01 | Professeurs / PP | Profils et accès classe pouvaient compter deux fois une classe ou oublier une classe accessible via une responsabilité/affectation. | Normalisation des classes et déduplication des identifiants dans les vues de profil et de pilotage PP. | Tests de portée professeur/PP et CI de la PR #20. |
 
 Le candidat interne est V25.2.0. La dernière release stable publique reste V25.1.1. La publication ne sera autorisée qu'après fusion dans main, CI de la tête fusionnée, recette physique, et validation par le workflow officiel de release signée.
+
+
+### Mise à jour du statut de signature des releases — 26/11/2026
+
+Les notes historiques AUDIT-S2 / workflow #1759 indiquant que la clé de signature n'était pas provisionnée décrivaient un état antérieur. Depuis, la release stable publique v25.1.1 existe et contient bien les trois assets attendus, dont maclasse-update.sig. Cela confirme qu'un workflow de publication signé a abouti pour cette release. L'état courant de la valeur secrète GitHub n'est pas lisible depuis cette revue ; le workflow de publication devra donc rester l'autorité et vérifier la signature lors d'une future release. Ne pas supprimer ni remplacer la clé publique épinglée sans procédure explicite de rotation.
