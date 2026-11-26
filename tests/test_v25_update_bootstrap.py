@@ -94,7 +94,7 @@ class DirectMacUpdateBootstrapTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
         marker = self.data / "direct-installer-ran"
         self.assertTrue(marker.is_file())
-        self.assertEqual(marker.read_text(encoding="utf-8").splitlines(), [str(self.root), str(self.data)])
+        self.assertEqual(marker.read_text(encoding="utf-8").splitlines(), [str(self.root.resolve()), str(self.data.resolve())])
         self.assertEqual(self.data_file.read_text(encoding="utf-8"), original)
         self.assertIn("V25.1.1", result.stdout)
 
