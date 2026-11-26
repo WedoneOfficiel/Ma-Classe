@@ -1,5 +1,5 @@
 """Server-side bulletin PDF calculations must honor publication, period, class and group."""
-import copy, math, os, sys
+import copy, datetime, math, os, sys
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server
 
@@ -58,5 +58,42 @@ def run():
     close(finite_result['average'],(18+16+10)/3)
     print('OK — PDF officiel : notes publiées, date de publication, période, classe et groupes appliqués côté serveur.')
 
+def test_same_day_schedule_uses_exact_instant():
+    database = {
+        'students': [{'id': 's1', 'classId': 'c1', 'group': 'A'}],
+        'classes': [{'id': 'c1', 'name': '6A'}],
+        'settings': {'terms': [{'id': 't1', 'name': 'Trimestre', 'start': '2026-09-01', 'end': '2026-12-31'}]},
+        'schedule': [],
+        'attendance': [],
+        'evaluations': [
+            {'id': 'before', 'classId': 'c1', 'subject': 'Mathématiques', 'date': '2026-11-10',
+             'published': True, 'publishAt': '2026-11-26T11:59:59Z', 'maxScore': 10,
+             'grades': [{'studentId': 's1', 'value': '8'}]},
+            {'id': 'after', 'classId': 'c1', 'subject': 'Mathématiques', 'date': '2026-11-10',
+             'published': True, 'publishAt': '2026-11-26T12:00:01Z', 'maxScore': 20,
+             'grades': [{'studentId': 's1', 'value': '20'}]},
+        ],
+    }
+    bulletin = {'id': 'b1', 'studentId': 's1', 'classId': 'c1', 'termId': 't1', 'subjectData': {}}
+    now = datetime.datetime(2026, 11, 26, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    result_at_noon = server._bulletin_pdf_data(
+        database, bulletin, database['students'][0], database['classes'][0],
+        database['settings']['terms'][0], today=now
+    )
+    close(result_at_noon['average'], 16)
+    math_row = next(x for x in result_at_noon['rows'] if x['subject'] == 'Mathématiques')
+    close(math_row['studentAverage'], 16)
+
+    # A date-only as-of value intentionally means the end of that day for
+    # historical reports and keeps the legacy date-only contract compatible.
+    result_end_of_day = server._bulletin_pdf_data(
+        database, bulletin, database['students'][0], database['classes'][0],
+        database['settings']['terms'][0], today='2026-11-26'
+    )
+    close(result_end_of_day['average'], 18)
+    print('OK — PDF bulletin : publication programmée comparée à l’instant exact, dates historiques conservées.')
+
+
 if __name__=='__main__':
     run()
+    test_same_day_schedule_uses_exact_instant()
