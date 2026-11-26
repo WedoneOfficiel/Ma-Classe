@@ -21,6 +21,18 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         self.assertIn("macos-validation:", tests)
         self.assertIn("firefox-schedule-regression:", tests)
 
+    def test_versioned_release_notes_are_used_for_manifest_and_release_description(self):
+        workflow = (ROOT / ".github" / "workflows" / "publish-release.yml").read_text(encoding="utf-8")
+        notes = ROOT / ".github" / "release-notes" / "v25.1.1.md"
+        self.assertTrue(notes.is_file(), "Les notes V25.1.1 doivent être versionnées avec le tag.")
+        self.assertIn('.github/release-notes/\${RELEASE_TAG}.md', workflow)
+        self.assertIn('Path("dist/release-notes.md").read_text', workflow)
+        self.assertIn('--notes-file dist/release-notes.md', workflow)
+        content = notes.read_text(encoding="utf-8")
+        self.assertIn("V25.1.1", content)
+        self.assertIn("rollback", content.lower())
+        self.assertIn("LibreSSL", content)
+
     def test_release_signing_cli_scripts_compile(self):
         for path in (
             ROOT / "release_signing.py",
