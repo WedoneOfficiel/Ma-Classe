@@ -31,7 +31,7 @@ const db={
   schedule:[{id:7,classId:'1',group:'A'}],
   submissions:[
     {id:'sub-1',lessonId:'101',studentId:'s1',status:'submitted',submittedAt:'2026-11-19T10:00:00Z',files:[{name:'alice.pdf',url:'/data/uploads/alice.pdf'}]},
-    {id:'sub-2',lessonId:101,studentId:'2',status:'draft',files:[{name:'brouillon.pdf',url:'/data/uploads/brouillon.pdf'}]},
+    {id:'sub-2',lessonId:101,studentId:'2',files:[{name:'brouillon.pdf',url:'/data/uploads/brouillon.pdf'}]},
     {id:'sub-3',lessonId:102,studentId:'s3',status:'submitted',submittedAt:'2026-11-19T11:00:00Z',corrected:true,files:[{name:'chloe.pdf',url:'/data/uploads/chloe.pdf'}]},
     {id:'sub-4',lessonId:'102',studentId:4,status:'submitted',corrected:false,files:[{name:'dina.pdf',url:'/data/uploads/dina.pdf'}]}
   ]
@@ -70,6 +70,8 @@ vm.runInContext(section('function showSubmissions(','function lessons(){'),conte
 
   assert.strictEqual(context.studentSubmitted(db.lessons[1],4)?.id,'sub-4',
     'Un statut submitted suffit même si submittedAt est absent, et les identifiants texte/nombre doivent être équivalents.');
+  assert.strictEqual(context.studentSubmitted(db.lessons[0],2),undefined,
+    'Une entrée historique sans status ni submittedAt doit rester un brouillon, jamais un rendu transmis.');
   assert.strictEqual(context.studentDraftSubmission('102','4'),undefined,
     'Un rendu déjà marqué submitted ne doit jamais redevenir un brouillon faute de submittedAt.');
   assert.strictEqual(context.studentDraftSubmission('101',2)?.id,'sub-2',
