@@ -55,3 +55,29 @@ assert(source.includes('studentReportDetail(${jsArg(item.evaluationId)},${jsArg(
 assert(source.includes('setStudentResultsTerm(${jsArg(sid)},this.value)'),'term handler must use HTML-safe serialized JS args');
 assert(source.includes('function studentReportDetail(evaluationId,sid)'), 'detail handler must receive evaluationId, not a report item');
 console.log('OK — V21.17 handlers Résultats : détail des évaluations et changement de période.');
+
+/* Cross-module consistency: timestamp precision and student class/group scope. */
+const scopedDb = {
+  students: [{id:'s1',classId:'c1',group:'A'}],
+  settings:{terms:[{id:'t1',name:'T1',start:'2026-09-01',end:'2026-12-31'}]},
+  evaluations:[
+    {id:'before',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',published:true,publishAt:'2026-11-30T11:59:59Z',maxScore:20,grades:[{studentId:'s1',value:'12'}]},
+    {id:'after',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',published:true,publishAt:'2026-11-30T12:00:01Z',maxScore:20,grades:[{studentId:'s1',value:'18'}]},
+    {id:'other-group',classId:'c1',group:'B',subject:'Maths',date:'2026-11-20',published:true,maxScore:20,grades:[{studentId:'s1',value:'20'}]},
+    {id:'other-class',classId:'c2',group:'A',subject:'Maths',date:'2026-11-20',published:true,maxScore:20,grades:[{studentId:'s1',value:'20'}]},
+    {id:'missing-published',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',maxScore:20,grades:[{studentId:'s1',value:'20'}]}
+  ]
+};
+let scoped=ctx.buildStudentReport(scopedDb,'s1','t1','2026-11-30T12:00:00Z');
+assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before'],
+  'Exact as-of timestamp must include due grades and exclude future, other class/group and unpublished records');
+scoped=ctx.buildStudentReport(scopedDb,'s1','t1',new Date('2026-11-30T12:00:00Z'));
+assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before'],
+  'Date object as-of must preserve its exact instant');
+scoped=ctx.buildStudentReport(scopedDb,'s1','t1','2026-11-30');
+assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before','after'],
+  'Date-only as-of remains an end-of-day historical cutoff');
+assert.strictEqual(scoped.asOf,'2026-11-30',
+  'Explicit date-only as-of value remains stable for report metadata');
+console.log('OK — Student Report : précision horaire, fuseaux, compatibilité dates seules et périmètre classe/groupe.');
+
