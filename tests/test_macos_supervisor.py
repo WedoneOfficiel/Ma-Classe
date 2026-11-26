@@ -335,6 +335,105 @@ class MacOSSupervisorTests(unittest.TestCase):
             self.assertTrue(outside.is_dir(), "Le nettoyage ne doit jamais suivre un lien symbolique.")
 
 
+
+    @unittest.skipUnless(__import__("sys").platform == "darwin", "Le test launchd réel nécessite macOS.")
+    def test_launchd_waiting_service_without_pid_can_be_unloaded_for_rollback(self):
+        import os
+        import plistlib
+        import tempfile
+        import time
+
+        uid = os.getuid()
+        label = "fr.maclasse.server"
+        domain = f"gui/{uid}/{label}"
+        existing = subprocess.run(
+            ["/bin/launchctl", "print", domain],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertNotEqual(existing.returncode, 0, "Un agent MaClasse existe déjà ; test refusé.")
+
+        script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh").read_text(encoding="utf-8")
+        helper_start = script.index("server_processes() {")
+        helper_end = script.index("\nstart_service() {", helper_start)
+        helper_functions = script[helper_start:helper_end]
+        stop_start = script.index("stop_service_and_confirm() {")
+        stop_end = script.index("\nfail_restore() {", stop_start)
+        stop_function = script[stop_start:stop_end]
+
+        with tempfile.TemporaryDirectory(prefix="maclasse-launchd-no-pid-") as temp:
+            base = Path(temp)
+            root = base / "MaClasse"
+            python = root / ".venv" / "bin" / "python"
+            python.parent.mkdir(parents=True)
+            python.symlink_to(sys.executable)
+            agents = base / "home" / "Library" / "LaunchAgents"
+            agents.mkdir(parents=True)
+            plist = agents / (label + ".plist")
+            with plist.open("wb") as stream:
+                plistlib.dump({
+                    "Label": label,
+                    "ProgramArguments": ["/usr/bin/true"],
+                    "RunAtLoad": True,
+                    "KeepAlive": False,
+                    "StandardOutPath": str(base / "service.log"),
+                    "StandardErrorPath": str(base / "service-error.log"),
+                }, stream, fmt=plistlib.FMT_XML)
+            plist.chmod(0o600)
+            try:
+                subprocess.run(
+                    ["/bin/launchctl", "bootstrap", f"gui/{uid}", str(plist)],
+                    check=True, capture_output=True, text=True, timeout=15
+                )
+                subprocess.run(
+                    ["/bin/launchctl", "kickstart", domain],
+                    check=True, capture_output=True, text=True, timeout=15
+                )
+                deadline = time.time() + 10
+                waiting_without_pid = False
+                while time.time() < deadline:
+                    current = subprocess.run(
+                        ["/bin/launchctl", "print", domain],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    has_live_pid = any(
+                        line.strip().startswith("pid = ")
+                        and line.strip() != "pid = 0"
+                        and line.strip().split("=", 1)[1].strip().isdigit()
+                        for line in current.stdout.splitlines()
+                    )
+                    if current.returncode == 0 and not has_live_pid:
+                        waiting_without_pid = True
+                        break
+                    time.sleep(0.1)
+                self.assertTrue(waiting_without_pid, "Le service test n'a pas atteint l'état chargé sans PID.")
+
+                command = (
+                    "set -euo pipefail\n"
+                    f"ROOT={str(root)!r}\n"
+                    f"UID_NOW={uid}\n"
+                    f"SERVICE_LABEL={label!r}\n"
+                    "SERVICE_DISABLED=0\n"
+                    + helper_functions + "\n" + stop_function + "\n"
+                    "stop_service_and_confirm\n"
+                    "printf 'SERVICE_DISABLED=%s\\n' \"$SERVICE_DISABLED\"\n"
+                )
+                result = subprocess.run(
+                    ["/bin/bash"], input=command,
+                    capture_output=True, text=True, timeout=40
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
+                self.assertIn("SERVICE_DISABLED=1", result.stdout)
+                self.assertIn("service déchargé", result.stderr)
+            finally:
+                subprocess.run(
+                    ["/bin/launchctl", "bootout", domain],
+                    capture_output=True, text=True, timeout=10
+                )
+                subprocess.run(
+                    ["/bin/launchctl", "enable", domain],
+                    capture_output=True, text=True, timeout=10
+                )
+
     @unittest.skipUnless(__import__("sys").platform == "darwin", "L'installation macOS réelle nécessite launchd.")
     def test_macos_update_install_and_rollback_end_to_end_with_launchd_and_https(self):
         import json
@@ -451,6 +550,14 @@ subjectKeyIdentifier=hash
                     "server.serve_forever()\n",
                     encoding="utf-8"
                 )
+                supervisor_source = (ROOT / "network_supervisor.py").read_text(encoding="utf-8")
+                marker = "    detect_ip = detect_ip or detect_lan_ipv4"
+                if marker not in supervisor_source:
+                    raise AssertionError("Le point d'injection de l'IP de test a changé.")
+                supervisor_source = supervisor_source.replace(
+                    marker, "    detect_ip = detect_ip or (lambda: '127.0.0.1')"
+                )
+                (program / "network_supervisor.py").write_text(supervisor_source, encoding="utf-8")
                 (program / "maclasse-runtime-ready.json").write_text("{}", encoding="utf-8")
                 if prepared:
                     (program / "maclasse-prepared.json").write_text(
@@ -467,16 +574,7 @@ subjectKeyIdentifier=hash
             current.symlink_to("versions/V25.0.22")
             (data / "maclasse.json").write_text('{"preserve":"original"}', encoding="utf-8")
             runner = root / "Lancer-MaClasse-Service-macOS.sh"
-            runner.write_text(
-                '#!/bin/bash\nset -euo pipefail\n'
-                'exec >> "$MACLASSE_DATA_DIR/runner.log" 2>&1\n'
-                'echo "runner-start pid=$$ data=$MACLASSE_DATA_DIR"\n'
-                'PROGRAM="$MACLASSE_DATA_DIR/program/current"\n'
-                'echo "program=$PROGRAM resolved=$(cd "$PROGRAM" && pwd -P)"\n'
-                'ls -l "$PROGRAM/.venv/bin/python" "$PROGRAM/server.py"\n'
-                'exec "$PROGRAM/.venv/bin/python" -u "$PROGRAM/server.py"\n',
-                encoding="utf-8"
-            )
+            shutil.copy2(ROOT / "Lancer-MaClasse-Service-macOS.sh", runner)
             runner.chmod(0o700)
             service_plist = agents / (label + ".plist")
             with service_plist.open("wb") as stream:
@@ -768,7 +866,8 @@ assert server._update_apply_service_active() is False
         end = script.index("\n}\nfail_restore()", start) + 2
         function = script[start:end]
         self.assertIn("launchctl bootout", function)
-        self.assertIn("for _ in {1..25}", function)
+        self.assertIn("for _ in {1..125}", function)
+        self.assertIn("server_processes remaining 0", function)
         self.assertIn("/bin/kill -KILL", function)
         self.assertIn("/bin/kill -0", function)
         self.assertIn("Could not find service", function)
@@ -780,8 +879,8 @@ assert server._update_apply_service_active() is False
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
         self.assertIn("health_ok", script)
         self.assertIn("stop_service_and_confirm", script)
-        self.assertIn("pgrep -f '[p]ython.*server[.]py'", script)
-        self.assertIn('"$pid" == "$SERVICE_PID"', script)
+        self.assertIn('server_processes unmanaged "$SERVICE_PID"', script)
+        self.assertIn("server_processes remaining 0", script)
         self.assertIn("version précédente absente ou invalide", script)
         self.assertIn("base non restaurée", script)
         self.assertIn('MACLASSE_ROOT:-', script)
