@@ -15,6 +15,7 @@ assert(app.includes("api('/api/admin/establishment-import/validate'"),'L’aper�
 assert(app.includes("api('/api/admin/establishment-import/apply'"),'La confirmation doit passer par la route dédiée.');
 assert(app.includes("if(authUser?.role!=='admin')"),'L’outil doit vérifier le rôle Direction côté interface.');
 assert(app.includes('file.size>10*1024*1024'),'La taille du JSON doit être bornée.');
+assert(app.includes('previewEstablishmentImport(this.files&&this.files[0]);this.value=String()'),'Le sélecteur de fichier doit se réinitialiser sans casser la chaîne HTML/JavaScript.');
 assert(app.includes("window.establishmentImportCredentials=[]"),'Les secrets doivent être effacés à la fermeture de la fenêtre.');
 assert(app.includes('downloadEstablishmentCredentials'),'La Direction doit pouvoir enregistrer les identifiants générés.');
 assert(app.includes('downloadEstablishmentSchema'),'Le schéma JSON doit être téléchargeable depuis l’outil.');
