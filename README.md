@@ -8,7 +8,7 @@ MaClasse est une application web de gestion scolaire destinée à un établissem
 |---|---|
 | Dernière release GitHub publiée | **V25.1.0** (`v25.1.0`) |
 | Branche `main` après fusion du correctif | **V25.1.1** |
-| Correctif prêt à intégrer | **V25.1.1** — validation du certificat HTTPS macOS/LibreSSL |
+| Code fusionné dans `main` | **V25.1.1** — validation du certificat HTTPS macOS/LibreSSL |
 | Publication V25.1.1 | En attente du tag et du workflow de publication signé |
 
 La recette réelle de la mise à jour V25.0.23 → V25.1.0 sur macOS a révélé que le superviseur rejetait à tort le certificat HTTPS local : il dépendait du format texte propre à OpenSSL pour lire le SAN, format qui varie avec LibreSSL. L'installation a été restaurée en V25.0.23 sans perte de la base ni des certificats. La V25.1.1 remplace ce contrôle par une lecture X.509 directe avec la dépendance `cryptography` déjà utilisée pour la signature des mises à jour.

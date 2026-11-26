@@ -4,12 +4,12 @@
 
 ## Correctif candidat V25.1.1 — validation X.509 compatible macOS (26/11/2026)
 
-**Statut : candidat non publié.** Le correctif fait suite à la recette réelle de l'installation supervisée sur macOS : le certificat conservé dans `data/tls/server.crt` contenait bien l'adresse IPv4 dans son SAN, mais le superviseur le déclarait invalide en analysant la sortie texte de LibreSSL avec une expression régulière conçue pour la sortie d'OpenSSL.
+**Statut : code fusionné dans `main` (commit `e6df53f`) ; tag et release stable non encore créés.** Le correctif fait suite à la recette réelle de l'installation supervisée sur macOS : le certificat conservé dans `data/tls/server.crt` contenait bien l'adresse IPv4 dans son SAN, mais le superviseur le déclarait invalide en analysant la sortie texte de LibreSSL avec une expression régulière conçue pour la sortie d'OpenSSL.
 
 - Remplacement de l'analyse du texte OpenSSL par le parseur X.509 de `cryptography`, déjà requis par la vérification Ed25519 des mises à jour.
 - Contrôle explicite de l'IPv4 SAN, de la date de début de validité et d'une durée restante supérieure à 24 heures.
 - Tests avec de vrais certificats PEM générés en fixture : SAN correspondant, SAN différent, absence de SAN, certificat pas encore valide et certificat expirant sous 24 heures.
-- Aucun changement de schéma ni migration de données. Les workflows #1807 et #1808 valident le correctif sur Linux, macOS Apple Silicon/launchd et Firefox (3/3 chacun). La publication attend encore la recette physique du parcours de mise à jour sur le Mac et l'accès depuis les appareils clients.
+- Aucun changement de schéma ni migration de données. Les workflows #1807, #1808 et #1809 valident le correctif sur Linux, macOS Apple Silicon/launchd et Firefox (3/3 chacun). La recette physique du parcours de mise à jour sur le Mac et l'accès depuis les appareils clients sera effectuée après la publication signée de `v25.1.1`.
 
 ## V25.1.0 — stabilisation, sécurité et suivi de classe (25/11/2026)
 
