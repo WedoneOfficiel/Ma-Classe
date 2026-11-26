@@ -729,6 +729,7 @@ Le commit courant a également corrigé la règle `.gitignore` pour le véritabl
 - Les vues concernées utilisent evaluationGradeLabel, qui conserve le barème original et distingue une note absente ou une évaluation qualitative.
 - Les calculs de moyenne générale, de moyenne par matière et de statistiques de publication passent l'horodatage ISO complet.
 - evaluationModelNumericGrade rejette toute valeur inférieure à zéro ou supérieure au maximum.
+- evaluationModelPublished exige désormais published=true ; un champ absent ne peut plus être compté comme publié dans les statistiques enseignant quand le serveur le masque à l'élève.
 - _bulletin_pdf_data applique le helper serveur _evaluation_publication_due avec une référence temporelle explicite. Une date seule passée en paramètre reste interprétée comme la fin de cette journée afin de préserver les rapports historiques ; un objet datetime utilise l'instant exact.
 
 ### Tests ajoutés ou renforcés
