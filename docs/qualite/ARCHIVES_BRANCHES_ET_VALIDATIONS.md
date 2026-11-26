@@ -7,7 +7,8 @@
 | Élément | Valeur |
 |---|---|
 | Branche de référence | `main` |
-| Commit de référence | `b5cc07d6747605f2eac6ad11dffb3ce0bbb9ec43` |
+| Commit de référence V25.1.1 | `b5cc07d6747605f2eac6ad11dffb3ce0bbb9ec43` |
+| Main après archivage documentaire | `710c184163e8b9896ab3d539acb007911c65189e` |
 | Version | `V25.1.1` |
 | Tag | `v25.1.1` |
 | Release | [GitHub — V25.1.1](https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.1) |
@@ -51,12 +52,12 @@ La branche `main` est la seule branche de développement de référence. Les tag
 | #3 | Connexion élève, EDT et actualisation formulaire | Fusionnée | `fix/student-login-schedule-form-refresh` |
 | #4 | Stabilisation globale V25.0.18 | Fusionnée | `fix/v25.0.18-stabilite-globale` |
 | #5 | Récurrences EDT et import UTF-8 V25.0.19 | Fusionnée | `fix/v25.0.19-edt-certificat-import` |
-| #6 | Disparition des cours dans l'EDT V25.0.21 | **Encore ouverte** | `fix/v25.0.20-edt-render-root-cause` |
+| #6 | Disparition des cours dans l'EDT V25.0.21 | Fermée sans fusion, dépassée par les corrections EDT et synchronisation ultérieures | `fix/v25.0.20-edt-render-root-cause` |
 | #7 | Affectations pédagogiques V25.0.22 — première proposition | Fermée, non fusionnée ; reprise par #8 | `feat/teacher-assignment-permissions` |
 | #8 | Affectations pédagogiques et droits enseignants | Fusionnée | `feat/teacher-assignment-permissions` |
 | #9 | Parcours EDT et espace élève V25 | Fusionnée | `fix/v25-student-teacher-workflows` |
 | #10 | Gestionnaire de mises à jour AMEL-01 | Fusionnée | `feature/amel-01-update-manager` |
-| #11 | Publication des correctifs applicatifs V25.0.23 | **Encore ouverte** | `release/v25.0.23-validated-fixes` |
+| #11 | Publication des correctifs applicatifs V25.0.23 | Fermée sans fusion, proposition remplacée par les releases V25.0.23, V25.1.0 et V25.1.1 | `release/v25.0.23-validated-fixes` |
 | #12 | Accès élève aux bulletins et à la messagerie V25.0.23 | Fusionnée | `fix/recette-v25-0-23` |
 | #13 | Stabilisation, sécurité et suivi de classe V25.1.0 | Fusionnée | `feat/v25.0.25-stabilisation-reseau-migrations` |
 | #14 | Validation du certificat HTTPS macOS/X.509 | Fusionnée | `fix/v25.1.1-macos-certificate-sans` |
@@ -65,6 +66,9 @@ La branche `main` est la seule branche de développement de référence. Les tag
 | #17 | Workflow manuel de publication stable | Fusionnée | `feat/v25.1.1-manual-release-workflow` |
 | #18 | Lanceur réseau macOS compatible LibreSSL | Fusionnée | `fix/macos-network-launcher-libreSSL` |
 | #19 | Lancement launchd, diagnostics et progression visible | Fusionnée | `fix/v25.1.1-updater-launchd-progress` |
+| `fix/v25.0.20-edt-render-root-cause` | `e4dbf19c9283` | PR #6 fermée sans fusion ; remplacée par les corrections EDT et la couverture Firefox ultérieures |
+| `release/v25.0.23-validated-fixes` | `bf1cca1c9b76` | PR #11 fermée ; proposition de release devenue obsolète |
+| #20 | Cohérence inter-modules Évaluations/Bulletins V25.1.2 | Ouverte — campagne en cours | `fix/v25.1.2-cross-module-consistency` |
 
 Les conversations et patches des PR demeurent accessibles sur GitHub après suppression de la référence de branche. Les liens ci-dessus sont les points d'entrée pour retrouver l'objectif, les changements et les commentaires de chaque campagne.
 
@@ -74,7 +78,7 @@ Les SHA ci-dessous ont été relevés sur les références distantes au 26/11/20
 
 ### Branches candidates au nettoyage
 
-Ces branches correspondent à des PR fusionnées, à une proposition explicitement remplacée, ou à une branche orpheline sans commit en avance sur `main`. Elles sont inscrites dans le workflow manuel de nettoyage. Celui-ci vérifie à nouveau le SHA et saute toute branche rattachée à une PR ouverte.
+Ces branches correspondent à des PR fusionnées, à des propositions explicitement remplacées ou à des campagnes historiques closes sans fusion. Les PR #6 et #11 ont été clôturées après vérification de leur remplacement par le code actuellement intégré.
 
 | Branche | SHA observé | Motif |
 |---|---|---|
@@ -96,23 +100,21 @@ Ces branches correspondent à des PR fusionnées, à une proposition expliciteme
 | `fix/v25.1.1-macos-rollback-release-notes` | `78d18414453a` | PR #15 remplacée par #16 |
 | `fix/v25.1.1-updater-launchd-progress` | `9e68cb764e27` | PR #19 fusionnée |
 
-### Branches à conserver pour l'instant
+### Branches à conserver
 
 | Branche | Motif |
 |---|---|
-| `fix/v25.0.20-edt-render-root-cause` | PR #6 encore ouverte ; ne pas supprimer avant décision explicite sur cette PR |
-| `release/v25.0.23-validated-fixes` | PR #11 encore ouverte ; ne pas supprimer avant décision explicite sur cette PR |
 | `main` | Branche de référence, à conserver |
+| `fix/v25.1.2-cross-module-consistency` | PR #20 ouverte ; campagne corrective en cours |
 
-Le workflow de nettoyage recontrôle ces conditions avant chaque suppression. Si une branche a été déplacée depuis l'inventaire ou si une PR ouverte la référence, elle est ignorée plutôt que supprimée.
-
+Le workflow de nettoyage recontrôle les PR ouvertes et le SHA de chaque branche avant suppression. La PR #20 reste donc protégée automatiquement pendant la campagne V25.1.2. Toute branche déplacée depuis l'inventaire ou encore référencée par une PR ouverte est ignorée.
 ## Workflow de nettoyage
 
 Après vérification de cette archive, ouvrir l'onglet Actions et lancer manuellement **« Nettoyer les anciennes branches MaClasse »** depuis `main` :
 
 [Workflow de nettoyage des branches](../../.github/workflows/cleanup-merged-branches.yml)
 
-Le rapport du workflow indique chaque branche supprimée ou ignorée. La branche `main`, les deux branches de PR ouvertes et tous les tags de version sont exclus.
+Le rapport du workflow indique chaque branche supprimée ou ignorée. La branche `main`, la branche de la PR #20 et tous les tags de version sont exclus.
 
 ## Politique pour les prochaines campagnes
 
