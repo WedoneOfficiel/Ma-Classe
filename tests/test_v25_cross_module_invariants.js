@@ -254,7 +254,7 @@ equal(
 );
 
 // 9) Ensure all the audited views use the same grade-scale helper.
-for (const name of ['studentActivityCenter', 'studentHome', 'profile360Tab', 'openStudent']) {
+for (const name of ['studentActivityCenter', 'studentHome', 'profile360Tab', 'openStudent', 'openStudentActivity']) {
   const body = declaration(name);
   truthy(body.includes('evaluationGradeLabel('), name + ' doit appeler le helper commun de barème');
   truthy(!/g\.value.{0,35}\/20/.test(body), name + ' ne doit plus imposer /20 à une note brute');
