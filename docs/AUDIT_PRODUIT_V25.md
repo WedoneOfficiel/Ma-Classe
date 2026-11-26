@@ -1,10 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : audit individuel, visuel et transversal étendu — candidat V25.1.2 validé par CI — 26 novembre 2026**
+**État : candidat V25.2.0 — audit produit, correctifs fonctionnels et validation automatisée — 26 novembre 2026**
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
-**Validation de la dernière tête :** commit `f8640bd5ccc900bdf0d2b1b4f4fb6969095c6dfe`, run [45842659573](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45842659573), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. La matrice croisée exécute 860 invariants ; le dépôt compte 97 fichiers de tests (57 JavaScript, 40 Python). Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` sont alignées sur V25.1.2. La PR n'est pas encore fusionnée et la release stable n'est pas publiée.
+**Validation de la campagne fonctionnelle :** commit `c474f77131f4df4e379f4c5f73d377cfe241e01c`, run [45864215881](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45864215881), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. La matrice croisée exécute 860 invariants ; le dépôt compte alors 103 fichiers de tests (63 JavaScript, 40 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION ont ensuite été alignées sur V25.2.0 ; la tête versionnée finale doit repasser la même matrice avant fusion. La PR n'est pas fusionnée et la release stable n'est pas publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -502,3 +502,30 @@ La campagne ne se limite pas à la cohérence entre les modules. Elle distingue 
 Cette campagne augmente nettement la couverture individuelle et les interactions réelles, mais elle ne signifie pas que chaque bouton de chaque module a été cliqué dans toutes ses combinaisons. Les captures n’attestent pas à elles seules la logique métier. Les essais avec longues listes, volumes de fichiers extrêmes, accessibilité clavier/lecteur d’écran et données réelles anonymisées restent des recettes distinctes. La confirmation finale dans l’installation physique, avec les vrais comptes et les données de l’établissement, n’a pas été effectuée par cette CI.
 
 La PR #20 reste ouverte ; aucune fusion, aucun tag et aucune release V25.1.2 ne sont annoncés ici.
+
+
+## Candidat V25.2.0 — correctifs fonctionnels et cohérence des parcours — 26/11/2026
+
+### Travail scolaire
+- La détection d'un rendu transmis est alignée sur les états de soumission ; les brouillons ne sont plus présentés comme des travaux reçus ni comme des corrections à effectuer.
+- Les listes de travaux manquants et les compteurs d'enseignant sont cohérents avec l'espace élève, tout en conservant la distinction métier entre « non rendu » et « en retard ».
+- Les filtres de la fiche élève, les notifications et le profil 360° réutilisent les mêmes critères de classe/groupe et d'état de soumission.
+- Le parcours dépôt → rendu → correction → retour élève est couvert par des tests de scénario, dont les anciens enregistrements à état incomplet.
+
+### Vie scolaire
+- Les appels retrouvent les classes, élèves, groupes et créneaux malgré les identifiants historiques numériques ou textuels.
+- Les modifications partielles préservent les statuts et motifs non touchés ; une modification de créneau ou de date n'écrase pas les autres données de l'appel.
+- Les changements non enregistrés sont isolés ; l'annulation ou le changement de contexte ne doit pas écraser l'état persistant.
+- Les files à traiter, les justifications et les compteurs d'absences/retards sont vérifiés après sauvegarde.
+
+### Administration et données associées
+- Les accès des professeurs et professeurs principaux sont harmonisés sur les classes réellement accessibles.
+- Les affectations existantes sont conservées lors de l'édition des comptes professeurs et normalisées dans les vues de gestion de classe.
+- Les suppressions d'élèves nettoient les références liées pour éviter les enregistrements orphelins.
+- Les identifiants de classe et d'élève sont normalisés dans le centre de notifications, les droits d'appréciation et les profils enseignants, sans fusionner des identités distinctes.
+
+### Validation de référence et limites
+- La tête fonctionnelle c474f771 a passé Linux, macOS Apple Silicon avec lancement réel de launchd, et Firefox réel (run 45864215881, 3/3).
+- La version candidate et les notes V25.2.0 ont été ajoutées après cette validation ; elles doivent être validées sur la tête finale par une nouvelle exécution complète.
+- La CI utilise des données et comptes temporaires. La recette sur la base de l'installation de référence, les vrais comptes, les appareils clients et les usages à gros volumes reste indépendante et nécessaire.
+- La PR #20 reste ouverte, non fusionnée et non publiée. Aucun tag stable V25.2.0 n'est créé par cette campagne.
