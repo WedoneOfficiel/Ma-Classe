@@ -260,24 +260,63 @@ def _iter_resource_overlap_pairs(lessons):
                     lessons[index]["endMinutes"],
                 )
             )
-            active = []
+            if resource_type != "class":
+                active = []
+                for current_index in day_indices:
+                    current = lessons[current_index]
+                    active = [
+                        previous_index for previous_index in active
+                        if lessons[previous_index]["endMinutes"] > current["startMinutes"]
+                    ]
+                    for previous_index in active:
+                        pair = (min(previous_index, current_index), max(previous_index, current_index))
+                        if pair not in seen:
+                            seen.add(pair)
+                            yield pair
+                    active.append(current_index)
+                continue
+
+            # Les cours de groupes différents sont indépendants. Conserver
+            # séparément les créneaux de classe entière et ceux de chaque groupe
+            # évite de comparer toutes les paires entre groupes parallèles.
+            active_whole_class = []
+            active_by_group = defaultdict(list)
             for current_index in day_indices:
                 current = lessons[current_index]
-                active = [
-                    previous_index for previous_index in active
+                active_whole_class = [
+                    previous_index for previous_index in active_whole_class
                     if lessons[previous_index]["endMinutes"] > current["startMinutes"]
                 ]
-                for previous_index in active:
-                    previous = lessons[previous_index]
-                    if resource_type == "class" and not _groups_overlap(
-                        previous["group"], current["group"]
-                    ):
-                        continue
+                if current["group"]:
+                    group_active = [
+                        previous_index for previous_index in active_by_group[current["group"]]
+                        if lessons[previous_index]["endMinutes"] > current["startMinutes"]
+                    ]
+                    active_by_group[current["group"]] = group_active
+                    previous_indices = active_whole_class + group_active
+                else:
+                    previous_indices = list(active_whole_class)
+                    for group, group_indices in list(active_by_group.items()):
+                        remaining = [
+                            previous_index for previous_index in group_indices
+                            if lessons[previous_index]["endMinutes"] > current["startMinutes"]
+                        ]
+                        if remaining:
+                            active_by_group[group] = remaining
+                            previous_indices.extend(remaining)
+                        else:
+                            del active_by_group[group]
+
+                for previous_index in previous_indices:
                     pair = (min(previous_index, current_index), max(previous_index, current_index))
                     if pair not in seen:
                         seen.add(pair)
                         yield pair
-                active.append(current_index)
+
+                if current["group"]:
+                    active_by_group[current["group"]].append(current_index)
+                else:
+                    active_whole_class.append(current_index)
 
 
 def _username_base(teacher):
@@ -698,6 +737,10 @@ def validate_bundle(bundle, existing_data=None):
             errors.append(
                 f"Conflit entre les créneaux {left['key']} et {right['key']} ({', '.join(reasons)})."
             )
+            # La réponse publique est de toute façon limitée à 200 erreurs.
+            # Arrêter tôt évite d'énumérer des millions de paires toutes invalides.
+            if len(errors) >= 200:
+                break
 
     for class_key, class_record in classes.items():
         all_groups = set(class_record["groups"])
