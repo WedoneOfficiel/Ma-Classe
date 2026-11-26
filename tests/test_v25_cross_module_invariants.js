@@ -300,6 +300,7 @@ const workCases = [
 for (const item of workCases) {
   equal(context.studentWorkEligible(item[0], workStudent), item[1], item[2]);
 }
+equal(context.studentWorkEligible({ classId: '1', group: 1, homework: {} }, { classId: 1, group: 1 }), true, 'Les identifiants numériques et textuels de classe/groupe doivent correspondre');
 for (const name of ['studentActivitySummary', 'openStudentActivity']) {
   const body = declaration(name);
   truthy(body.includes('studentWorkEligible(l,s)'), name + ' doit respecter le groupe de l’élève');
