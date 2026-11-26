@@ -1209,6 +1209,17 @@ def main() -> None:
                 teacher_context.close()
                 student_context.close()
 
+                # Return to the timetable after the Direction capture pass.
+                # The final synchronization assertion below deliberately targets this page.
+                page.evaluate("""() => {
+                  page='schedule';
+                  appSpace='teacher';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                }""")
+                expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
+
                 # Force an unrelated server-side revision so the real-time refresh
                 # runs while the timetable is open; this must not erase its courses.
                 page.evaluate("""async () => {
