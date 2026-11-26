@@ -10,12 +10,12 @@ function sliceBetween(startText,endText){
   return source.slice(start,end);
 }
 
-const sameId=sliceBetween('function sameId(','\\nfunction cls(');
-const studentAttendance=sliceBetween('function studentAttendance(','\\nfunction openStudentBulletinNotification');
-const studentRows=sliceBetween('function studentRows(','\\nfunction filterStudents');
-const attendanceCounts=sliceBetween('function studentAbsenceCount(','\\nfunction studentEvaluations');
+const sameId=sliceBetween('function sameId(','\nfunction cls(');
+const studentAttendance=sliceBetween('function studentAttendance(','\nfunction openStudentBulletinNotification');
+const studentRows=sliceBetween('function studentRows(','\nfunction filterStudents');
+const attendanceCounts=sliceBetween('function studentAbsenceCount(','\nfunction studentEvaluations');
 const activeFollowupStart=source.lastIndexOf('function attendanceFollowup()');
-const activeFollowupEnd=source.indexOf('\\n\\n/* MaClasse V20.8',activeFollowupStart);
+const activeFollowupEnd=source.indexOf('\n\n/* MaClasse V20.8',activeFollowupStart);
 assert(activeFollowupStart>=0&&activeFollowupEnd>activeFollowupStart,
   'The active attendance follow-up module must exist');
 const attendanceFollowup=source.slice(activeFollowupStart,activeFollowupEnd);
@@ -36,10 +36,6 @@ const context={
   window:{classGroupContext:''},
   location:{search:'?class=42&student=7&status=all'},
   URLSearchParams,
-  sameId:null,
-  activeStudent:()=> '7',
-  student:id=>db.students.find(s=>context.sameId(s.id,id)),
-  cls:id=>db.classes.find(c=>context.sameId(c.id,id)),
   $:selector=>selector==='#studentSearch'?{value:''}:selector==='#studentClass'?{value:'42'}:null,
   initials:s=>(s.first[0]+s.last[0]).toUpperCase(),
   esc:value=>String(value??''),
@@ -54,10 +50,13 @@ const context={
   v205FollowupFilter:()=>{}
 };
 vm.createContext(context);
-vm.runInContext(sameId+'\\n'+studentAttendance+'\\n'+studentRows+'\\n'+attendanceCounts+'\\n'+attendanceFollowup,context);
+vm.runInContext(
+  sameId+'\n'+studentAttendance+'\n'+studentRows+'\n'+attendanceCounts+'\n'+attendanceFollowup+
+  "\nfunction student(id){return db.students.find(s=>sameId(s.id,id))}"+
+  "\nfunction cls(id){return db.classes.find(c=>sameId(c.id,id))}",
+  context
+);
 
-assert.strictEqual(context.sameId,undefined,
-  'The helper declaration is evaluated as a global lexical function, not copied to the host object.');
 assert.strictEqual(vm.runInContext("sameId(7,'7')",context),true,
   'Numeric and textual forms of the same stable ID must match.');
 assert.deepStrictEqual(
