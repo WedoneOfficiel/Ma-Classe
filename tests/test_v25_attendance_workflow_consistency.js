@@ -52,7 +52,7 @@ const context={
   formDataEntries:[]
 };
 context.sameId=(a,b)=>{const x=String(a??'').trim(),y=String(b??'').trim();return !!x&&x===y};
-context.FormData=class{constructor(){return context.formDataEntries}};
+context.FormData=class{constructor(){this.entries=context.formDataEntries}get(name){return this.entries.find(([key])=>key===name)?.[1]??null}[Symbol.iterator](){return this.entries[Symbol.iterator]()}};
 vm.createContext(context);
 
 vm.runInContext(
