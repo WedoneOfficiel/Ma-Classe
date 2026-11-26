@@ -82,7 +82,7 @@ def _launchd_update_plist():
 
 def _launchctl_service_not_found(result):
     """launchctl versions may print lookup failures to stdout or stderr."""
-    message='\\n'.join(part for part in (result.stdout or '',result.stderr or '') if part)
+    message='\n'.join(part for part in (result.stdout or '',result.stderr or '') if part)
     return result.returncode!=0 and 'Could not find service' in message
 
 def _update_start_error_detail(error):
@@ -104,8 +104,8 @@ def _record_update_start_error(error):
         os.makedirs(DATA_DIR,exist_ok=True)
         detail=_update_start_error_detail(error)
         with open(path,'a',encoding='utf-8') as stream:
-            stream.write('\\n['+datetime.datetime.now().astimezone().isoformat(timespec='seconds')+'] Échec du démarrage du gestionnaire indépendant\\n')
-            stream.write(detail+'\\n')
+            stream.write('\n['+datetime.datetime.now().astimezone().isoformat(timespec='seconds')+'] Échec du démarrage du gestionnaire indépendant\\n')
+            stream.write(detail+'\n')
         os.chmod(path,0o600)
         return detail
     except OSError:
