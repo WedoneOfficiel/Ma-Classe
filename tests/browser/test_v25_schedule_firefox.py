@@ -580,21 +580,24 @@ def main() -> None:
 
                 tracking_state = teacher_page.evaluate("""() => {
                   window.classContext='';
-                  page='ppDashboard';appSpace='teacher';render();
-                  const card=[...document.querySelectorAll('.ppQuick')].find(x=>(x.innerText||'').includes('6e A'));
-                  if(!card)throw new Error('La classe accessible doit apparaître dans le Suivi de classe.');
-                  card.click();
+                  page='classes';appSpace='teacher';render();
+                  const card=[...document.querySelectorAll('.classHubCard')].find(x=>(x.innerText||'').includes('6e A'));
+                  if(!card)throw new Error('La classe accessible doit apparaître dans le module Classes unifié.');
+                  const action=[...card.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='Voir le suivi');
+                  if(!action)throw new Error('La fiche de suivi doit rester accessible depuis la carte de classe.');
+                  action.click();
                   const main=document.getElementById('main');
                   return {
                     title:main?.querySelector('.top h1')?.innerText||'',
+                    hasClass:(main?.innerText||'').includes('6e A'),
                     hasStudents:(main?.innerText||'').includes('Élèves'),
                     hasAttendance:(main?.innerText||'').includes('Assiduité récente'),
                     hasUpcoming:(main?.innerText||'').includes('Prochaines échéances'),
                     hasError:(main?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
                   };
                 }""")
-                if tracking_state["title"] != "Suivi de classe" or tracking_state["hasError"] or not tracking_state["hasStudents"] or not tracking_state["hasAttendance"] or not tracking_state["hasUpcoming"]:
-                    raise AssertionError("Le Suivi de classe ne s'affiche pas correctement dans Firefox : "+repr(tracking_state))
+                if tracking_state["title"] != "Classes" or not tracking_state["hasClass"] or tracking_state["hasError"] or not tracking_state["hasStudents"] or not tracking_state["hasAttendance"] or not tracking_state["hasUpcoming"]:
+                    raise AssertionError("Le module Classes unifié ne s'affiche pas correctement dans Firefox : "+repr(tracking_state))
 
                 # Manual theme choices must override the operating-system preference.
                 teacher_page.emulate_media(color_scheme="light")
