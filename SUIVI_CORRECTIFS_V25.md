@@ -884,7 +884,7 @@ La PR #20 demeure ouverte, non fusionnée et non publiée. Aucune installation l
 - Le centre de notifications et les permissions de bulletin retrouvent les objets avec identifiants texte/nombre.
 
 ### Vérification
-- La tête fonctionnelle c474f77131f4df4e379f4c5f73d377cfe241e01c a passé le run [45864215881](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45864215881), Linux, macOS Apple Silicon/launchd et Firefox réel : **3/3 jobs réussis**.
-- VERSION.txt, APP_VERSION et MC_VERSION ont été alignés sur V25.2.0 après ce run ; la validation automatisée doit donc être relancée sur la tête versionnée.
+- La tête finale 79ff1c83a5f611bbe03e428a4985f62b98cf3003 a passé le run [45870596723](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45870596723), Linux, macOS Apple Silicon/launchd et Firefox réel : **3/3 jobs réussis**.
+- VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0 sur cette même tête.
 - La PR #20 demeure ouverte, non fusionnée et non publiée. La dernière version stable reste V25.1.1.
 - La recette de l'installation physique, des vrais comptes et des appareils clients reste à confirmer ; les états des anomalies ne passent pas à « Corrigé » sur la seule base de CI.
