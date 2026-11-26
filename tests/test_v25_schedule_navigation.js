@@ -181,7 +181,7 @@ context.console={error:()=>{},warn:()=>{}};
 context.shell=()=>'<div class="top"></div>';
 context.window.messages=()=>'<div></div>';
 context.window.studentMessages=()=>'<div></div>';
-for(const name of ['dashboard','today','activity','notifications','teachersModule','lessons','studentsModule','evaluations','attendance','attendanceFollowup','bulletins','documents','classes','ppDashboard','settings','adminUsers','studentHome','studentLessons','studentResults','studentLife','studentDocuments'])context[name]=()=>'<div></div>';
+for(const name of ['dashboard','today','activity','notifications','teachersModule','lessons','studentsModule','evaluations','attendance','attendanceFollowup','bulletins','documents','classes','ppDashboard','settings','adminUsers','studentHome','studentLessons','studentWork','studentResults','studentLife','studentDocuments'])context[name]=()=>'<div></div>';
 context.dataRevision??=null;context.lastRenderedRevision??=null;
 vm.runInContext(source.slice(renderStart,shellStart),context);
 context.page='schedule';
