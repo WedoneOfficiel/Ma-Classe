@@ -71,15 +71,15 @@ const scopedDb = {
   ]
 };
 let scoped=ctx.buildStudentReport(scopedDb,'s1','t1','2026-11-30T12:00:00Z');
-assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before'],
+assert.deepStrictEqual(Array.from(scoped.items, x=>x.evaluationId),['before'],
   'Exact as-of timestamp must include due grades and exclude future, other class/group, unpublished and invalid-score records');
 scoped=ctx.buildStudentReport(scopedDb,'s1','t1',new Date('2026-11-30T12:00:00Z'));
-assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before'],
+assert.deepStrictEqual(Array.from(scoped.items, x=>x.evaluationId),['before'],
   'Date object as-of must preserve its exact instant');
 assert.strictEqual(scoped.asOf,'2026-11-30T12:00:00.000Z',
   'Date object metadata must preserve the exact ISO instant');
 scoped=ctx.buildStudentReport(scopedDb,'s1','t1','2026-11-30');
-assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before','after'],
+assert.deepStrictEqual(Array.from(scoped.items, x=>x.evaluationId),['before','after'],
   'Date-only as-of remains an end-of-day historical cutoff');
 assert.strictEqual(scoped.asOf,'2026-11-30',
   'Explicit date-only as-of value remains stable for report metadata');
