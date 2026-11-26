@@ -410,7 +410,7 @@ function studentMessages(){return shell('Communication','Messagerie','La message
 function studentSettings(){
  const sid=activeStudent(),st=student(sid),account=(db.users||[]).find(u=>u.role==='student'&&String(u.studentId||u.id)===String(sid))||{};
  if(!st)return studentHome();
- return shell('Mon compte','Paramètres','Gérez votre compte et les préférences de cet appareil.')+`<div class="grid g2 settingsGrid">
+ return shell('Mon compte','Paramètres','Gérez votre compte et les préférences de cet appareil.')+`<div class="grid g2 settingsGrid settingsStudentGrid">
  <section class="card settingsCard"><div class="sectionhead"><h2>Mon profil</h2></div>
  <div class="v14InfoGrid"><div><small>Prénom et nom</small><b>${esc(st.first+' '+st.last)}</b></div><div><small>Classe</small><b>${esc(studentClass()?.name||'—')}${st.group?' · '+esc(st.group):''}</b></div><div><small>Identifiant</small><b>${esc(account.username||'Compte élève')}</b></div><div><small>Adresse e-mail</small><b>${esc(st.email||'Non renseignée')}</b></div></div>
  <p class="hint">Les informations scolaires sont gérées par l’établissement. Contactez votre professeur ou la direction pour les faire corriger.</p></section>

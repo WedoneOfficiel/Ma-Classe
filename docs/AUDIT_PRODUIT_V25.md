@@ -559,3 +559,16 @@ Ces points sont des constats de code à traiter dans une campagne séparée ; il
 - **Accessibilité :** étendre les vérifications clavier, focus et lecteur d'écran au-delà des contrôles visuels responsive.
 
 La V25.2.0 reste le candidat à stabiliser ; ces pistes ne doivent pas retarder sa recette réelle ni être mélangées à sa branche de livraison.
+
+
+## 23. Nouveautés après mise à jour et journal historique — V25.2.0
+
+- L’écran des nouveautés compare la version installée avec la dernière version consultée par le compte authentifié.
+- L’accusé de consultation est conservé séparément de la base scolaire dans data/release-notes-state.json, sous la forme d’un dictionnaire de versions par identifiant de compte.
+- L’API utilise l’identité dérivée de la session serveur, jamais un identifiant de compte transmis par le navigateur.
+- Les comptes Direction, Professeur et Élève ont des états indépendants ; le changement d’appareil ne répète pas la même annonce.
+- Le journal lit l’historique consolidé, les archives des audits/recettes et l’ancien README conservés dans le dépôt, ainsi que les notes de la version courante.
+- Les entrées répétées sont réunies par numéro de version avec indication des fichiers sources. Les traces datées sans numéro sont conservées comme telles.
+- Les versions qui ne figurent pas dans les traces sont absentes du journal ; aucun statut de publication ou détail de fonctionnalité n’est extrapolé.
+- Le rendu Markdown échappe les caractères HTML avant de produire les éléments de présentation.
+- Les tests couvrent l’isolation par compte, la version réellement installée, les documents historiques multiples, les XSS et l’accès statique autorisé.

@@ -2354,6 +2354,13 @@ html[data-mc-theme="dark"] .bulletin::before{
 }
 </style>
 
+<style id="v2520-student-settings-layout">
+.settingsGrid.settingsStudentGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:none!important;align-items:start!important;gap:14px!important}
+.settingsGrid.settingsStudentGrid>.settingsCard{grid-area:auto!important;grid-column:auto!important}
+.settingsGrid.settingsStudentGrid>.settingsStudentVersionCard{grid-column:1/-1!important}
+@media(max-width:650px){.settingsGrid.settingsStudentGrid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.settingsGrid.settingsStudentGrid>.settingsStudentVersionCard{grid-column:auto!important}}
+</style>
+
 </head>
 <body>
 <div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire · <span id="appVersionLabel"></span></small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><span id="spaceFoot" hidden></span></aside><main class="main" id="main"></main></div>
