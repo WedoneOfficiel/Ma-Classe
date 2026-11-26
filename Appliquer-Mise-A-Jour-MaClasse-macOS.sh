@@ -114,6 +114,43 @@ start_service() {
   /bin/launchctl bootstrap "gui/$UID_NOW" "$SERVICE_PLIST" 2>/dev/null || true
   /bin/launchctl kickstart "gui/$UID_NOW/$SERVICE_LABEL"
 }
+owned_service_pids() {
+  /bin/ps -axo pid=,command= | /usr/bin/awk -v root="$ROOT" '
+    $1 ~ /^[0-9]+$/ && NF >= 2 {
+      command = substr($0, index($0, $2))
+      if (index(command, root) > 0 && command ~ /[pP]ython/ &&
+          command ~ /(network_supervisor|server)[.]py/) print $1
+    }'
+}
+stop_owned_service_processes() {
+  local owned_pids pid
+  owned_pids="$(owned_service_pids)" || return 1
+  [[ -n "$owned_pids" ]] || return 0
+  echo "DEBUG updater: processus du dossier courant détectés sans PID launchd : $owned_pids." >&2
+
+  while IFS= read -r pid; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    /bin/kill -TERM "$pid" >/dev/null 2>&1 || true
+  done <<< "$owned_pids"
+  for _ in {1..5}; do
+    owned_pids="$(owned_service_pids)" || return 1
+    [[ -z "$owned_pids" ]] && return 0
+    /bin/sleep 1
+  done
+
+  echo "DEBUG updater: arrêt gracieux du processus orphelin incomplet ; arrêt forcé ciblé." >&2
+  while IFS= read -r pid; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    /bin/kill -KILL "$pid" >/dev/null 2>&1 || true
+  done <<< "$owned_pids"
+  for _ in {1..5}; do
+    owned_pids="$(owned_service_pids)" || return 1
+    [[ -z "$owned_pids" ]] && return 0
+    /bin/sleep 1
+  done
+  echo "Impossible d'arrêter tous les processus MaClasse appartenant à $ROOT : $owned_pids" >&2
+  return 1
+}
 stop_service_and_confirm() {
   local service_pid probe loaded=0 bootout_pid pgrep_status server_pids
   # A launchd job can remain loaded in the waiting/throttled state after its
@@ -140,7 +177,8 @@ stop_service_and_confirm() {
   # If launchd has already unloaded the job, still prove that no Python
   # supervisor/server process remains before allowing a database restore.
   if [[ "$loaded" == "0" ]]; then
-    if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then
+    if ! stop_owned_service_processes; then return 1; fi
+    if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)";
       echo "Un processus MaClasse subsiste alors que le job launchd est absent : $server_pids" >&2
       return 1
     else
@@ -199,7 +237,11 @@ stop_service_and_confirm() {
       esac
     fi
     if [[ "$loaded" == "0" ]]; then
-      if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then
+      if ! stop_owned_service_processes; then
+        echo "DEBUG updater: impossible de confirmer l'arrêt des processus du dossier courant." >&2
+        return 1
+      fi
+      if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)";
         echo "DEBUG updater: processus serveur encore actif après bootout : $server_pids" >&2
         return 1
       else
