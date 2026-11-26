@@ -107,4 +107,51 @@ assert(followup.includes('value="42" selected'),
 assert(followup.includes('value="7" selected'),
   'The numeric student must remain selected in the student filter.');
 
+
+const studentScheduleSource=sliceBetween('function studentSchedule(){','\\nfunction ');
+assert(studentScheduleSource.includes("sameId(x.classId,st.classId)&&(!x.group||sameId(x.group,st.group||''))"),
+  'The student timetable class and group legend must use the shared ID normalizer.');
+const studentNotificationsSource=sliceBetween('function studentNotifications(','\\nfunction recentStudentMails');
+assert(studentNotificationsSource.includes('sameId(b.studentId,sid)')&&studentNotificationsSource.includes('sameId(x.studentId,sid)'),
+  'Student bulletin notifications must match numeric and textual student IDs.');
+const studentResultsSource=sliceBetween('function studentResults(){','\\n/* V21.11');
+assert(studentResultsSource.includes('sameId(b.studentId,sid)'),
+  'The student results screen must find official bulletins with normalized student IDs.');
+const profile360Source=sliceBetween('function profile360Data(','\\nfunction profile360Tab');
+for(const fragment of [
+  'sameId(r.studentId,id)',
+  'c.participantIds?.some(pid=>sameId(pid,id))',
+  'sameId(b.studentId,id)',
+  'sameId(x.studentId,id)'
+]){
+  assert(profile360Source.includes(fragment),
+    'The 360 student profile must normalize all student-owned records: '+fragment);
+}
+
+// Execute the actual quick-follow-up renderer with mixed numeric/text IDs.
+const openStudentActivity=sliceBetween('function openStudentActivity(','\\nfunction v103MissingWorkList');
+context.db.evaluations=[{
+  id:'evaluation-1',title:'Contrôle de français',subject:'Français',date:'2026-11-20',
+  classId:42,group:'A',grades:[{studentId:7,value:'16'}]
+}];
+context.db.lessons=[{
+  id:101,classId:42,group:'A',subject:'Français',date:'2026-11-12',
+  homework:{title:'Devoir remis',requiresSubmission:true,due:'2026-11-20'}
+}];
+context.db.submissions=[{
+  id:'submission-1',lessonId:101,studentId:7,status:'submitted',submittedAt:'2026-11-20T10:00:00Z'
+}];
+context.evaluationModelTargetStudents=()=>context.db.students;
+context.studentActivitySummary=()=>({avg:'16.00',abs:1,late:1,submissions:1,missing:0});
+context.studentWorkEligible=(lesson,st)=>context.sameId(lesson.classId,st.classId)&&context.sameId(lesson.group,st.group);
+context.evaluationGradeLabel=()=> '16 /20';
+context.fmtDate=value=>String(value??'');
+context.openModal=(title,html)=>{context.lastModal={title,html};};
+vm.runInContext(openStudentActivity,context);
+vm.runInContext("openStudentActivity('7')",context);
+assert(context.lastModal.html.includes('16 /20'),
+  'The quick follow-up must render grades attached to a numeric student ID.');
+assert(context.lastModal.html.includes('REÇU'),
+  'The quick follow-up must recognize submissions attached to a numeric student ID.');
+
 console.log('OK — identifiants mixtes : historique élève, compteurs absences/retards, annuaire et suivi des justifications.');
