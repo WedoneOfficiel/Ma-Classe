@@ -28,6 +28,7 @@ const modelNames = [
   'evaluationModelClassStats',
   'studentWorkEligible',
   'studentLessonItems',
+  'studentActivitySummary',
   'v101SubmissionStats',
   'v103MissingWorkList',
   'weightedAverageForEvaluations',
@@ -296,6 +297,7 @@ context.db = {
     { id: 'L-no-homework', classId: 'c1', group: 'A', subject: 'Maths' },
     { id: 'L-no-due', classId: 'c1', group: 'A', subject: 'Maths', homework: { requiresSubmission: true } }
   ],
+  attendance: [],
   submissions: [
     { lessonId: 'L-all', studentId: 's1' },
     { lessonId: 'L-A', studentId: 's1' },
@@ -306,6 +308,8 @@ context.db = {
 };
 const ownWork = Array.from(context.studentLessonItems('s1'), l => l.id).sort();
 equal(JSON.stringify(ownWork), JSON.stringify(['L-A', 'L-all']), 'La liste élève doit exclure les autres groupes et classes');
+equal(context.studentActivitySummary('s1').missing, 0, 'Le suivi d’un élève du groupe A ne doit compter que ses devoirs');
+equal(context.studentActivitySummary('s2').missing, 2, 'Le suivi d’un élève du groupe B doit compter les devoirs de son groupe');
 const submissionStats = context.v101SubmissionStats();
 equal(submissionStats.expected, 5, 'Les statistiques globales doivent compter les élèves des groupes concernés');
 equal(submissionStats.received, 3, 'Les statistiques globales doivent compter les bons rendus');
