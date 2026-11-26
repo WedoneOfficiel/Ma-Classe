@@ -18,6 +18,8 @@ assert(tracking.includes('data-class-levels='),'Les cartes doivent exposer leurs
 assert(tracking.includes('const cards=available.map(c=>{'),'Toutes les cartes doivent rester en mémoire pour que le filtre puisse être élargi.');
 assert(tracking.includes('classTrackingNoResults'),'La recherche doit afficher un état vide réactif.');
 assert(tracking.includes('if(empty)empty.hidden=visible!==0;'),'L’état vide doit suivre le nombre de résultats.');
+const css=fs.readFileSync(path.join(root,'index.html'),'utf8');
+assert(css.includes('.classHubCard[hidden],#classTrackingNoResults[hidden]{display:none!important}'),'Les cartes filtrées et le panneau vide doivent être réellement masqués par le CSS.');
 assert(tracking.includes('Aucun PP désigné'),'Une classe sans PP doit être clairement indiquée.');
 assert(tracking.includes('Aucune classe accessible pour le moment')&&tracking.includes('onclick="openClass()"'),'La création de classe doit rester possible en état vide.');
 assert(tracking.includes('manageClassGroups('),'La gestion des groupes doit rester disponible.');

@@ -2,6 +2,8 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('p
 const root=path.join(__dirname,'..');
 const app=fs.readFileSync(path.join(root,'_all.js'),'utf8');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+assert(!app.includes(String.fromCharCode(92)+'`'),'Aucun accent grave ne doit être échappé hors d’un littéral template.');
+assert(!app.includes(String.fromCharCode(92)+'${'),'Aucune interpolation de template ne doit rester échappée dans les nouveaux formulaires.');
 function sliceBetween(source,startMarker,endMarker){
  const start=source.indexOf(startMarker),end=source.indexOf(endMarker,start+startMarker.length);
  assert(start>=0&&end>start,'Bloc introuvable : '+startMarker);
