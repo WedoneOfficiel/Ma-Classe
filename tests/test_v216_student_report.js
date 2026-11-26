@@ -73,7 +73,8 @@ const scopedDb = {
 let scoped=ctx.buildStudentReport(scopedDb,'s1','t1','2026-11-30T12:00:00Z');
 assert.deepStrictEqual(Array.from(scoped.items, x=>x.evaluationId),['before'],
   'Exact as-of timestamp must include due grades and exclude future, other class/group, unpublished and invalid-score records');
-scoped=ctx.buildStudentReport(scopedDb,'s1','t1',new Date('2026-11-30T12:00:00Z'));
+const exactDate=vm.runInContext("new Date('2026-11-30T12:00:00Z')",ctx);
+scoped=ctx.buildStudentReport(scopedDb,'s1','t1',exactDate);
 assert.deepStrictEqual(Array.from(scoped.items, x=>x.evaluationId),['before'],
   'Date object as-of must preserve its exact instant');
 assert.strictEqual(scoped.asOf,'2026-11-30T12:00:00.000Z',
