@@ -56,7 +56,7 @@ class DirectMacUpdateBootstrapTests(unittest.TestCase):
         }
         (self.target / "maclasse-prepared.json").write_text(json.dumps(metadata), encoding="utf-8")
         state = {
-            "status": "prepared", "version": VERSION,
+            "status": "prepared", "version": "v" + VERSION,
             "sha256": SHA, "min_data_schema": 25011
         }
         (self.data / "update-state.json").write_text(json.dumps(state), encoding="utf-8")
