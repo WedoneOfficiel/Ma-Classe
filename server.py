@@ -2507,11 +2507,12 @@ class Handler(SimpleHTTPRequestHandler):
                 except RuntimeError as error:
                     return self._json({'error':str(error)},409)
                 except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
-                    detail=_record_update_start_error(error)
+                    detail=_update_start_error_detail(error)
                     return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. Cause : '+detail[:500]},503)
                 return self._json({'installing':True,'version':update_state.get('version')},202)
-            except (OSError,ValueError,KeyError,AttributeError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
-                return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
+            except (OSError,ValueError,KeyError,AttributeError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
+                detail=_record_update_start_error(error)
+                return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. Cause : '+detail[:500]},503)
         if path=='/api/auth/setup':
             try: obj=json.loads(body.decode('utf-8'))
             except Exception: return self._json({'error':'Requête invalide.'},400)
