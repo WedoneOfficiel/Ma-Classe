@@ -50,14 +50,17 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
               const side=document.querySelector('.side');
               const mainRect=main?.getBoundingClientRect();
               const sideRect=side?.getBoundingClientRect();
-              const directSurfaces=[...(main?.children||[])]
-                .filter(el=>!el.classList.contains('top'))
-                .map(el=>el.getBoundingClientRect())
-                .filter(rect=>rect.width>0&&rect.height>0);
-              const contentRight=directSurfaces.length
-                ?Math.max(...directSurfaces.map(rect=>rect.right)):0;
-              const contentLeft=directSurfaces.length
-                ?Math.min(...directSurfaces.map(rect=>rect.left)):0;
+              // Inspect visible content surfaces throughout the page subtree.
+              // Some modules wrap their data area in nested layout containers rather
+              // than placing it directly beside the header.
+              const contentSurfaces=[...(main?.querySelectorAll('*')||[])]
+                .filter(el=>!el.classList.contains('top')&&!el.classList.contains('actions'))
+                .map(el=>({el,rect:el.getBoundingClientRect(),style:getComputedStyle(el)}))
+                .filter(x=>x.rect.width>=120&&x.rect.height>=24&&x.style.display!=='none'&&x.style.visibility!=='hidden');
+              const contentRight=contentSurfaces.length
+                ?Math.max(...contentSurfaces.map(x=>x.rect.right)):0;
+              const contentLeft=contentSurfaces.length
+                ?Math.min(...contentSurfaces.map(x=>x.rect.left)):0;
               return {
                 actualPage,
                 theme:document.documentElement.dataset.mcTheme,
