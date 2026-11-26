@@ -200,7 +200,7 @@ context.db = {
   ],
   evaluations: [
     makeEvaluation('subject-group-one', '15', 20, { classId: '1', group: '1', subject: 'Mathématiques' }),
-    makeEvaluation('subject-group-two', '10', 20, { classId: '1', group: '2', subject: 'Mathématiques' })
+    makeEvaluation('subject-group-two', '10', 20, { classId: '1', group: '2', subject: 'Mathématiques', grades: [{ studentId: 's2', value: '10' }] })
   ],
   settings: { terms: [{ id: 'T1', start: '2026-09-01', end: '2026-12-31' }] },
   lessons: [],
