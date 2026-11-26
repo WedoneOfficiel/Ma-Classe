@@ -115,10 +115,27 @@ assert.strictEqual(db.attendance[0].rows[0].status,'retard',
   'Le statut choisi doit être sauvegardé.');
 assert.strictEqual(db.attendance[0].rows[0].reason,'Arrivée à 9h05',
   'Le motif saisi dans la grille doit remplacer l’ancien motif.');
-assert.strictEqual(context.saveCount,2,'Les deux opérations de suivi doivent sauvegarder les changements.');
+context.formDataEntries=[['status','retard'],['justified','true'],['reason','Retard traité']];
+context.saveAttendanceFollowup({preventDefault(){}},'9','100');
+const processedAt=db.attendance[0].rows[0].processedAt;
+assert(processedAt,'Le traitement d’un retard doit aussi être horodaté.');
+assert.strictEqual(db.attendance[0].rows[0].justified,false,
+  'Un retard ne doit pas être marqué comme une absence justifiée.');
 
-const followup=context.attendanceFollowup();
-assert(followup.includes('MARTIN Alice')&&followup.includes('Retard'),
-  'Le suivi filtré doit encore afficher l’élève et son événement après enregistrement.');
+context.formDataEntries=[['classId','1'],['date','2026-11-25'],['slotId','5'],['partOfDay','']];
+context.getAttDraft()['100']={status:'retard',justified:false,reason:'Retard traité'};
+context.saveAttendance({preventDefault(){}},'9');
+assert.strictEqual(db.attendance[0].rows[0].processedAt,processedAt,
+  'Réenregistrer un appel sans changer le statut doit conserver l’horodatage de traitement.');
+assert.strictEqual(context.saveCount,4,'Chaque enregistrement du cycle doit persister les changements.');
+
+context.location.search='?class=1&student=100&status=pending';
+const pending=context.attendanceFollowup();
+assert(!pending.includes('<td><b>MARTIN Alice</b></td>'),
+  'Un retard déjà traité doit sortir de la file « À traiter ».');
+context.location.search='?class=1&student=100&status=late';
+const late=context.attendanceFollowup();
+assert(late.includes('<td><b>MARTIN Alice</b></td>')&&late.includes('Retard'),
+  'Le filtre Retards doit conserver les événements déjà traités pour consultation.');
 
 console.log('OK — cycle vie scolaire : appel, réouverture, ciblage classe/groupe, compteurs, justification et suivi avec identifiants mixtes.');
