@@ -1029,7 +1029,7 @@ function toggleStudentAccount(id,active){
 function openUserEditor(id=''){
  const u=id?db.users.find(x=>x.id===id&&x.role==='teacher'):{id:'',first:'',last:'',username:'',email:'',phone:'',subjects:[],profileNotes:'',active:true};
  if(id&&!u)return toast('Compte professeur introuvable.');
- const assigned=db.classes.filter(c=>(c.teacherIds||[]).includes(id)).map(c=>c.id),pp=db.classes.filter(c=>c.principalTeacherId===id).map(c=>c.id);
+ const assigned=db.classes.filter(c=>(c.teacherIds||[]).some(teacherId=>sameId(teacherId,id))).map(c=>c.id),pp=db.classes.filter(c=>sameId(c.principalTeacherId,id)).map(c=>c.id);
  openModal(id?'Modifier le compte et la fiche professeur':'Créer un professeur',`<form onsubmit="saveUser(event,${jsArg(id)})"><div class="form">
  <div class="field"><label>Prénom *</label><input class="input" name="first" value="${esc(u.first||'')}" required></div><div class="field"><label>Nom *</label><input class="input" name="last" value="${esc(u.last||'')}" required></div>
  <div class="field"><label>Identifiant de connexion *</label><input class="input" name="username" value="${esc(u.username||'')}" required></div><div class="field"><label>Email</label><input class="input" type="email" name="email" value="${esc(u.email||'')}"></div>
