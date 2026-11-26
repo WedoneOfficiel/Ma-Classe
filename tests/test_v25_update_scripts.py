@@ -30,7 +30,7 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         self.assertIn('--notes-file dist/release-notes.md', workflow)
         content = notes.read_text(encoding="utf-8")
         self.assertIn("V25.1.1", content)
-        self.assertIn("rollback", content.lower())
+        self.assertIn("retour arrière", content.lower())
         self.assertIn("LibreSSL", content)
 
     def test_release_signing_cli_scripts_compile(self):
