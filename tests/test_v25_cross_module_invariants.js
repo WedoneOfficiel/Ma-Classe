@@ -80,7 +80,7 @@ function numberOn20(value, max) {
 // checked both for its displayed label and the normalized overall average.
 const scales = [1, 2, 4, 5, 10, 12, 15, 20, 25, 30, 40, 50, 100];
 for (const max of scales) {
-  const values = [0, max / 4, max / 2, max * 0.75, max];
+  const values = [0, max / 4, max / 3, max / 2, max * 2 / 3, max * 0.75, max];
   for (const value of values) {
     const raw = String(value);
     const e = { id: 'scale-' + max + '-' + raw, maxScore: max };
