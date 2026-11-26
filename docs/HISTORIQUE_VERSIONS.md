@@ -2,14 +2,17 @@
 
 > Registre historique consolidé le 25 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
 
-## Correctif candidat V25.1.1 — validation X.509 compatible macOS (26/11/2026)
+## Correctif candidat V25.1.1 — validation X.509 et fiabilisation du retour arrière macOS (26/11/2026)
 
-**Statut : code fusionné dans `main` (commit `e6df53f`) ; tag et release stable non encore créés.** Le correctif fait suite à la recette réelle de l'installation supervisée sur macOS : le certificat conservé dans `data/tls/server.crt` contenait bien l'adresse IPv4 dans son SAN, mais le superviseur le déclarait invalide en analysant la sortie texte de LibreSSL avec une expression régulière conçue pour la sortie d'OpenSSL.
+**Statut :** le correctif HTTPS est fusionné via la PR #14 ; le correctif complémentaire du retour arrière et les notes de publication sont en cours de validation sur une branche dédiée. Le tag et la release stable ne sont pas encore créés.
 
-- Remplacement de l'analyse du texte OpenSSL par le parseur X.509 de `cryptography`, déjà requis par la vérification Ed25519 des mises à jour.
+- Remplacement de l'analyse du texte OpenSSL/LibreSSL par le parseur X.509 de `cryptography`, déjà requis par la vérification Ed25519 des mises à jour.
 - Contrôle explicite de l'IPv4 SAN, de la date de début de validité et d'une durée restante supérieure à 24 heures.
-- Tests avec de vrais certificats PEM générés en fixture : SAN correspondant, SAN différent, absence de SAN, certificat pas encore valide et certificat expirant sous 24 heures.
-- Aucun changement de schéma ni migration de données. Les workflows #1807, #1808 et #1809 valident le correctif sur Linux, macOS Apple Silicon/launchd et Firefox (3/3 chacun). La recette physique du parcours de mise à jour sur le Mac et l'accès depuis les appareils clients sera effectuée après la publication signée de `v25.1.1`.
+- Renforcement du rollback macOS : un job launchd chargé mais sans PID n'est plus confondu avec un arrêt impossible. Le script désactive KeepAlive, décharge le job et confirme à la fois l'absence du job et l'absence de processus Python serveur/superviseur avant de restaurer la base.
+- Maintien du garde-fou : si un processus subsiste ou si l'état de launchd est indéterminé, la restauration de la base est bloquée.
+- Tests avec de vrais certificats PEM et test ciblé du job launchd sans PID, avec rejet d'un processus orphelin. La validation CI de ce complément est en attente ; les résultats antérieurs #1807, #1808 et #1809 ne couvrent que le correctif HTTPS initial.
+- Aucun changement de schéma ni migration de données. Le seuil minimal du schéma accepté reste `25011`.
+
 
 ## V25.1.0 — stabilisation, sécurité et suivi de classe (25/11/2026)
 
