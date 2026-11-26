@@ -347,9 +347,9 @@ class MacOSSupervisorTests(unittest.TestCase):
             root.mkdir(parents=True, exist_ok=True)
             marker = data / "immediate-update-agent-started"
             script.write_text(
-                '#!/bin/bash\\n'
-                'printf "started\\n" > "$MACLASSE_DATA_DIR/immediate-update-agent-started"\\n'
-                'exec /bin/sleep 30\\n',
+                '#!/bin/bash\n'
+                'printf "started\n" > "$MACLASSE_DATA_DIR/immediate-update-agent-started"\n'
+                'exec /bin/sleep 30\n',
                 encoding="utf-8",
             )
             script.chmod(0o700)
@@ -380,7 +380,7 @@ with plist.open("rb") as stream:
     definition = __import__("plistlib").load(stream)
 assert definition["ProgramArguments"] == ["/bin/bash", str(root / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh")]
 assert definition["RunAtLoad"] is False
-finally = subprocess.run(["/bin/launchctl", "bootout", domain], capture_output=True, text=True, timeout=10)
+bootout_result = subprocess.run(["/bin/launchctl", "bootout", domain], capture_output=True, text=True, timeout=10)
 deadline = time.time() + 10
 while time.time() < deadline:
     probe = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True, timeout=5)
@@ -402,7 +402,7 @@ else:
                     [sys.executable, "-c", code, str(ROOT), str(root), str(data)],
                     cwd=ROOT, env=env, capture_output=True, text=True, timeout=40,
                 )
-                self.assertEqual(result.returncode, 0, result.stdout + "\\n" + result.stderr)
+                self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
             finally:
                 subprocess.run(
                     ["/bin/launchctl", "bootout", domain],
