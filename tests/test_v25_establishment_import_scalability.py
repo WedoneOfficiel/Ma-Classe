@@ -45,6 +45,23 @@ class EstablishmentImportScalabilityTests(unittest.TestCase):
         ]
         self.assertEqual(list(importer._iter_resource_overlap_pairs(lessons)), [])
 
+    def test_many_parallel_groups_of_one_class_do_not_form_cross_group_pairs(self):
+        count = 5000
+        lessons = [
+            lesson(
+                f"group-slot-{index}",
+                classes=("6A",),
+                teachers=(f"teacher-{index}",),
+                room=f"room-{index}",
+                group=f"group-{index}",
+            )
+            for index in range(count)
+        ]
+
+        # Les groupes distincts d'une même classe peuvent travailler en parallèle.
+        # Le validateur ne doit pas comparer toutes les paires entre ces groupes.
+        self.assertEqual(list(importer._iter_resource_overlap_pairs(lessons)), [])
+
     def test_many_parallel_lessons_with_distinct_resources_do_not_form_cartesian_pairs(self):
         count = 5000
         lessons = [
