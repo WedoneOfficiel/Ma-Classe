@@ -93,6 +93,10 @@ const studentOccEnd = source.indexOf('function studentLessonItems(', studentOccS
 assert(studentOccStart >= 0 && studentOccEnd > studentOccStart);
 context.activeStudent = () => 'student-1';
 context.student = id => ({id,classId:'class-1',group:'A'});
+const sameIdStart = source.indexOf('function sameId(');
+const sameIdEnd = source.indexOf('function cls(',sameIdStart);
+assert(sameIdStart>=0&&sameIdEnd>sameIdStart,'Le comparateur d’identifiants partagé doit être présent.');
+vm.runInContext(source.slice(sameIdStart,sameIdEnd),context);
 vm.runInContext(source.slice(studentOccStart, studentOccEnd), context);
 assert.strictEqual(vm.runInContext("studentScheduleOcc(null,new Date('2026-11-13T12:00:00')).length", context), 2, 'L’élève du groupe A voit les cours de classe et de son groupe, pas ceux du groupe B.');
 assert.strictEqual(vm.runInContext("dayOcc(new Date('2026-11-20T12:00:00')).length", context), 0, 'Les cours bimensuels ne doivent pas apparaître la semaine intermédiaire.');
