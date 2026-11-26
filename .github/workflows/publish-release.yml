@@ -54,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          NOTES_FILE=".github/release-notes/\${RELEASE_TAG}.md"
+          NOTES_FILE=".github/release-notes/${RELEASE_TAG}.md"
           if [[ -f "$NOTES_FILE" ]]; then
             cp "$NOTES_FILE" dist/release-notes.md
             echo "Notes de version personnalisées utilisées : $NOTES_FILE"
