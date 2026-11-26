@@ -16,6 +16,23 @@ CURRENT="$DATA/program/current"
 [[ -L "$CURRENT" ]] || { echo "Version active absente : $CURRENT" >&2; exit 1; }
 PROGRAM="$(cd "$(dirname "$CURRENT")" && cd "$(readlink "$CURRENT")" && pwd -P)"
 case "$PROGRAM" in "$ROOT"|"$DATA/program/versions/"*) ;; *) echo "Cible active hors du stockage autorisé." >&2; exit 1;; esac
+# Keep the stable launcher in the installation root aligned with the active
+# version. Existing installations otherwise keep opening the original launcher
+# forever, because updates are extracted into data/program/versions/.
+if [[ "$PROGRAM" != "$ROOT" ]]; then
+  VERSION_LAUNCHER="$PROGRAM/Lancer-MaClasse-Reseau.command"
+  ROOT_LAUNCHER="$ROOT/Lancer-MaClasse-Reseau.command"
+  if [[ -f "$VERSION_LAUNCHER" && ! -L "$VERSION_LAUNCHER" ]] &&
+     { [[ ! -f "$ROOT_LAUNCHER" ]] || ! /usr/bin/cmp -s "$VERSION_LAUNCHER" "$ROOT_LAUNCHER"; }; then
+    TEMP_LAUNCHER="$(/usr/bin/mktemp "$ROOT/.Lancer-MaClasse-Reseau.command.XXXXXX" 2>/dev/null || true)"
+    if [[ -z "$TEMP_LAUNCHER" ]] ||
+       ! /bin/cp -p "$VERSION_LAUNCHER" "$TEMP_LAUNCHER" ||
+       ! /bin/mv -f "$TEMP_LAUNCHER" "$ROOT_LAUNCHER"; then
+      [[ -z "$TEMP_LAUNCHER" ]] || /bin/rm -f "$TEMP_LAUNCHER"
+      echo "Avertissement : impossible de synchroniser le lanceur réseau dans $ROOT." >&2
+    fi
+  fi
+fi
 PYTHON="$PROGRAM/.venv/bin/python"
 [[ -x "$PYTHON" && -f "$PROGRAM/server.py" ]] || { echo "Environnement Python ou serveur absent dans $PROGRAM." >&2; exit 1; }
 # The shared supervisor follows DHCP changes, renews the leaf certificate and
