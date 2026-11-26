@@ -6,6 +6,7 @@ assert(start>=0&&end>start,'V21.17 engine not found');
 const engine=js.slice(start,end);
 const ctx={
   console,
+  Date,
   window:{},
   iso:d=>d instanceof Date?d.toISOString().slice(0,10):String(d),
   gradeNumber:v=>{if(v===''||v===null||v===undefined)return null;const n=typeof v==='string'?Number(v.trim().replace(',','.')):Number(v);return Number.isFinite(n)?n:null},
