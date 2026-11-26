@@ -84,8 +84,8 @@ vm.runInContext(section('function showSubmissions(','function lessons(){'),conte
     'Le compteur À corriger doit refléter les rendus transmis non corrigés.');
 
   context.showSubmissions(7,'2026-11-13');
-  assert(context.lastModal.html.includes('MARTIN')&&context.lastModal.html.includes('Alice')&&context.lastModal.html.includes('alice.pdf'),
-    'La liste des rendus doit retrouver un devoir envoyé avec des identifiants de types différents.');
+  assert(context.lastModal?.title==='Rendus des élèves'&&context.lastModal.html.includes('MARTIN')&&context.lastModal.html.includes('Alice')&&context.lastModal.html.includes('alice.pdf'),
+    'La liste des rendus doit retrouver un devoir envoyé avec des identifiants de types différents. Modal obtenu : '+JSON.stringify(context.lastModal));
   assert(context.lastModal.html.includes('DURAND')&&context.lastModal.html.includes('Bilal')&&context.lastModal.html.includes('Aucun fichier rendu'),
     'Un brouillon ne doit pas être présenté comme un rendu transmis au professeur.');
 
