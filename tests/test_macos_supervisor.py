@@ -775,7 +775,7 @@ assert server._update_apply_service_active() is False
         self.assertIn("job launchd chargé mais aucun PID actif", function)
         self.assertIn("pgrep -f", function)
         self.assertIn("network_supervisor|server", function)
-        self.assertIn("index(command, root "/") > 0", function)
+        self.assertIn('index(command, root "/") > 0', function)
         self.assertIn("stop_owned_service_processes", function)
         self.assertLess(function.index("/bin/kill -KILL"), function.index("Confirm both sides"))
         backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
