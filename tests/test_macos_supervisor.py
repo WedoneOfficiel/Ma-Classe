@@ -809,7 +809,7 @@ assert server._update_apply_service_active() is False
                 '#!/bin/sh\n'
                 'if [ -f "$PROCESS_STOPPED" ]; then exit 0; fi\n'
                 'case "$FAKE_PROCESS_MODE" in\n'
-                '  owned) echo "4321 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/network_supervisor.py";;\n'
+                '  owned) echo "4321 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/network_supervisor.py"; echo "4322 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/server.py";;\n'
                 '  other) echo "4321 /other/MaClasse/.venv/bin/python /other/MaClasse/data/program/current/network_supervisor.py";;\n'
                 'esac\nexit 0\n',
                 encoding="utf-8",
@@ -819,7 +819,8 @@ assert server._update_apply_service_active() is False
             pgrep.write_text(
                 '#!/bin/sh\n'
                 'if [ -f "$PROCESS_STOPPED" ]; then exit 1; fi\n'
-                'if [ "$FAKE_PROCESS_MODE" != "none" ]; then echo 4321; exit 0; fi\n'
+                'if [ "$FAKE_PROCESS_MODE" = "owned" ]; then echo 4321; echo 4322; exit 0; fi\n'
+                'if [ "$FAKE_PROCESS_MODE" = "other" ]; then echo 4333; exit 0; fi\n'
                 'exit 1\n',
                 encoding="utf-8",
             )
@@ -876,12 +877,45 @@ assert server._update_apply_service_active() is False
                     else:
                         self.assertIn("service launchd déchargé et aucun processus", result.stderr)
 
+    def test_process_membership_accepts_supervisor_and_child_from_same_install_only(self):
+        script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
+        start = script.index("owned_service_pids() {")
+        end = script.index("\nstop_owned_service_processes()", start)
+        helpers = script[start:end]
+        with tempfile.TemporaryDirectory(prefix="maclasse-owned-pids-") as temp:
+            fake_ps = Path(temp) / "ps"
+            fake_ps.write_text(
+                '#!/bin/sh\n'
+                'echo "111 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/network_supervisor.py"\n'
+                'echo "222 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/server.py"\n'
+                'echo "333 /other/MaClasse/.venv/bin/python /other/MaClasse/network_supervisor.py"\n',
+                encoding="utf-8",
+            )
+            fake_ps.chmod(0o755)
+            code = (
+                "ROOT=/private/tmp/MaClasse\n"
+                + helpers.replace("/bin/ps", str(fake_ps))
+                + "\n"
+                + "owned=\"$(owned_service_pids)\"\n"
+                + "pid_is_in_list 111 \"$owned\" || exit 11\n"
+                + "pid_is_in_list 222 \"$owned\" || exit 12\n"
+                + "if pid_is_in_list 333 \"$owned\"; then exit 13; fi\n"
+                + "printf '%s\\n' \"$owned\"\n"
+            )
+            result = subprocess.run(
+                ["bash", "-c", code], capture_output=True, text=True, timeout=10
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
+            self.assertEqual(result.stdout.strip().splitlines(), ["111", "222"])
+
     def test_installer_checks_health_and_has_rollback_path(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
         self.assertIn("health_ok", script)
         self.assertIn("stop_service_and_confirm", script)
         self.assertIn("pgrep -f '[p]ython.*(network_supervisor|server)[.]py'", script)
-        self.assertIn('"$pid" == "$SERVICE_PID"', script)
+        self.assertIn('OWNED_SERVICE_PIDS="$(owned_service_pids)"', script)
+        self.assertIn('pid_is_in_list "$SERVICE_PID" "$OWNED_SERVICE_PIDS"', script)
+        self.assertIn('pid_is_in_list "$pid" "$OWNED_SERVICE_PIDS"', script)
         self.assertIn("version précédente absente ou invalide", script)
         self.assertIn("base non restaurée", script)
         self.assertIn('MACLASSE_ROOT:-', script)
