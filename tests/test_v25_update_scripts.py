@@ -25,7 +25,7 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "publish-release.yml").read_text(encoding="utf-8")
         notes = ROOT / ".github" / "release-notes" / "v25.1.1.md"
         self.assertTrue(notes.is_file(), "Les notes V25.1.1 doivent être versionnées avec le tag.")
-        self.assertIn('.github/release-notes/\${RELEASE_TAG}.md', workflow)
+        self.assertIn('.github/release-notes/${RELEASE_TAG}.md', workflow)
         self.assertIn('Path("dist/release-notes.md").read_text', workflow)
         self.assertIn('--notes-file dist/release-notes.md', workflow)
         content = notes.read_text(encoding="utf-8")
