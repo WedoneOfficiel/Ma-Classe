@@ -9,6 +9,7 @@ import copy
 import datetime as _dt
 import re
 import unicodedata
+from collections import defaultdict
 
 FORMAT_NAME = "maclasse-establishment"
 FORMAT_VERSION = 1
@@ -230,6 +231,53 @@ def _groups_overlap(left, right):
 
 def _overlap_time(left, right):
     return left["startMinutes"] < right["endMinutes"] and right["startMinutes"] < left["endMinutes"]
+
+
+def _iter_resource_overlap_pairs(lessons):
+    """Yield only overlapping lesson pairs that share a class, teacher, or room.
+
+    Resource buckets and a per-day interval sweep avoid the previous global
+    O(n²) scan when a large schedule contains mostly unrelated resources.
+    """
+    resources = defaultdict(list)
+    for index, lesson in enumerate(lessons):
+        for class_key in lesson["classes"]:
+            resources[("class", class_key)].append(index)
+        for teacher_key in lesson["teachers"]:
+            resources[("teacher", teacher_key)].append(index)
+        if lesson["room"]:
+            resources[("room", lesson["room"])].append(index)
+
+    seen = set()
+    for (resource_type, _resource_key), indices in resources.items():
+        by_day = defaultdict(list)
+        for index in indices:
+            by_day[lessons[index]["day"]].append(index)
+        for day_indices in by_day.values():
+            day_indices.sort(
+                key=lambda index: (
+                    lessons[index]["startMinutes"],
+                    lessons[index]["endMinutes"],
+                )
+            )
+            active = []
+            for current_index in day_indices:
+                current = lessons[current_index]
+                active = [
+                    previous_index for previous_index in active
+                    if lessons[previous_index]["endMinutes"] > current["startMinutes"]
+                ]
+                for previous_index in active:
+                    previous = lessons[previous_index]
+                    if resource_type == "class" and not _groups_overlap(
+                        previous["group"], current["group"]
+                    ):
+                        continue
+                    pair = (min(previous_index, current_index), max(previous_index, current_index))
+                    if pair not in seen:
+                        seen.add(pair)
+                        yield pair
+                active.append(current_index)
 
 
 def _username_base(teacher):
@@ -548,6 +596,15 @@ def validate_bundle(bundle, existing_data=None):
             }
             schedule[key] = record
 
+    # Préindexe les effectifs pour éviter de reparcourir tous les élèves
+    # pour chaque créneau et chaque salle.
+    student_count_by_class = defaultdict(int)
+    student_count_by_class_group = defaultdict(int)
+    for student in students.values():
+        student_count_by_class[student["class"]] += 1
+        if student["group"]:
+            student_count_by_class_group[(student["class"], student["group"])] += 1
+
     # Les affectations de classe sont la réunion des listes classe/professeur
     # et des professeurs réellement présents dans les cours.
     for class_key, class_record in classes.items():
@@ -577,12 +634,13 @@ def validate_bundle(bundle, existing_data=None):
                     errors.append(f"Créneau {lesson['key']} : groupe {lesson['group']!r} non défini dans {class_record['name']!r}.")
             if lesson["room"] and lesson["room"] in rooms:
                 room = rooms[lesson["room"]]
-                group_students = [
-                    student for student in students.values()
-                    if student["class"] == class_key and (not lesson["group"] or student["group"] == lesson["group"])
-                ]
-                if room["capacity"] and len(group_students) > room["capacity"]:
-                    errors.append(f"Créneau {lesson['key']} : la salle {room['name']!r} ({room['capacity']} places) est trop petite pour {len(group_students)} élèves.")
+                student_count = (
+                    student_count_by_class[class_key]
+                    if not lesson["group"]
+                    else student_count_by_class_group[(class_key, lesson["group"])]
+                )
+                if room["capacity"] and student_count > room["capacity"]:
+                    errors.append(f"Créneau {lesson['key']} : la salle {room['name']!r} ({room['capacity']} places) est trop petite pour {student_count} élèves.")
                 missing_equipment = [
                     need for need in lesson["equipment"]
                     if not any(need.casefold() in offered.casefold() for offered in room["equipment"])
@@ -603,27 +661,43 @@ def validate_bundle(bundle, existing_data=None):
                         if lesson["startMinutes"] < unavailable["endMinutes"] and unavailable["startMinutes"] < lesson["endMinutes"]:
                             errors.append(f"Créneau {lesson['key']} : {teacher['first']} {teacher['last']} est indisponible à cet horaire.")
 
-    # Détecte les conflits de professeur, de salle, de classe et de sous-groupe.
+    # Indexe les créneaux par classe et jour pour les calculs suivants.
+    # Les mêmes index servent aux besoins horaires et aux indicateurs de trous.
     lessons = list(schedule.values())
-    for i, left in enumerate(lessons):
-        for right in lessons[i + 1:]:
-            if not _overlap_time(left, right) or not _recurrences_overlap(left, right):
-                continue
-            shared_classes = set(left["classes"]) & set(right["classes"])
-            same_class_conflict = any(_groups_overlap(left["group"], right["group"]) for _ in shared_classes)
-            same_teacher_conflict = bool(set(left["teachers"]) & set(right["teachers"]))
-            same_room_conflict = bool(left["room"] and right["room"] and left["room"] == right["room"])
-            if same_class_conflict or same_teacher_conflict or same_room_conflict:
-                reasons = []
-                if same_class_conflict:
-                    reasons.append("classe/groupe")
-                if same_teacher_conflict:
-                    reasons.append("professeur")
-                if same_room_conflict:
-                    reasons.append("salle")
-                errors.append(
-                    f"Conflit entre les créneaux {left['key']} et {right['key']} ({', '.join(reasons)})."
-                )
+    lessons_by_class = defaultdict(list)
+    class_day_lessons = defaultdict(list)
+    teacher_day_lessons = defaultdict(list)
+    for lesson in lessons:
+        for class_key in lesson["classes"]:
+            lessons_by_class[class_key].append(lesson)
+            if lesson["recurrence"] == "weekly":
+                class_day_lessons[(class_key, lesson["day"])].append(lesson)
+        if lesson["recurrence"] == "weekly":
+            for teacher_key in lesson["teachers"]:
+                teacher_day_lessons[(teacher_key, lesson["day"])].append(lesson)
+
+    # Détecte les conflits uniquement entre créneaux partageant une ressource.
+    for left_index, right_index in _iter_resource_overlap_pairs(lessons):
+        left, right = lessons[left_index], lessons[right_index]
+        if not _recurrences_overlap(left, right):
+            continue
+        shared_classes = set(left["classes"]) & set(right["classes"])
+        same_class_conflict = any(
+            _groups_overlap(left["group"], right["group"]) for _ in shared_classes
+        )
+        same_teacher_conflict = bool(set(left["teachers"]) & set(right["teachers"]))
+        same_room_conflict = bool(left["room"] and right["room"] and left["room"] == right["room"])
+        if same_class_conflict or same_teacher_conflict or same_room_conflict:
+            reasons = []
+            if same_class_conflict:
+                reasons.append("classe/groupe")
+            if same_teacher_conflict:
+                reasons.append("professeur")
+            if same_room_conflict:
+                reasons.append("salle")
+            errors.append(
+                f"Conflit entre les créneaux {left['key']} et {right['key']} ({', '.join(reasons)})."
+            )
 
     for class_key, class_record in classes.items():
         all_groups = set(class_record["groups"])
@@ -644,8 +718,8 @@ def validate_bundle(bundle, existing_data=None):
             cohorts = [requested_group] if requested_group else (sorted(all_groups) if all_groups else [""])
             for cohort in cohorts:
                 supplied = 0.0
-                for lesson in lessons:
-                    if class_key not in lesson["classes"] or lesson["subject"].casefold() != requirement["subject"].casefold():
+                for lesson in lessons_by_class.get(class_key, ()):
+                    if lesson["subject"].casefold() != requirement["subject"].casefold():
                         continue
                     if lesson["group"] and lesson["group"] != cohort:
                         continue
@@ -685,7 +759,10 @@ def validate_bundle(bundle, existing_data=None):
             cohorts.add("")
         for day in range(5):
             for cohort in cohorts:
-                daily = [lesson for lesson in lessons if lesson["recurrence"] == "weekly" and lesson["day"] == day and class_key in lesson["classes"] and (not lesson["group"] or lesson["group"] == cohort)]
+                daily = [
+                    lesson for lesson in class_day_lessons.get((class_key, day), ())
+                    if not lesson["group"] or lesson["group"] == cohort
+                ]
                 if not daily:
                     continue
                 ordered = sorted(daily, key=lambda x: x["startMinutes"])
@@ -700,7 +777,7 @@ def validate_bundle(bundle, existing_data=None):
     teacher_gap_minutes = 0
     for teacher_key, teacher_record in teachers.items():
         for day in range(5):
-            daily = [lesson for lesson in lessons if lesson["recurrence"] == "weekly" and lesson["day"] == day and teacher_key in lesson["teachers"]]
+            daily = teacher_day_lessons.get((teacher_key, day), [])
             if not daily:
                 continue
             ordered = sorted(daily, key=lambda x: x["startMinutes"])
