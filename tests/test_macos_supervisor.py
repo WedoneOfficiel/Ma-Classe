@@ -44,6 +44,21 @@ class MacOSSupervisorTests(unittest.TestCase):
                 self.assertLess(guard, start)
                 self.assertIn("partagerait la même base de données", source)
 
+    def test_network_launcher_uses_live_private_ipv4_instead_of_parsing_openssl_text(self):
+        launcher = (ROOT / "Lancer-MaClasse-Reseau.command").read_text(encoding="utf-8")
+        self.assertIn("route -n get default", launcher)
+        self.assertIn('ipconfig getifaddr "$IFACE"', launcher)
+        self.assertIn("a.is_private", launcher)
+        self.assertNotIn('openssl x509 -in "data/tls/server.crt"', launcher)
+        self.assertIn("Adresse IPv4 privée introuvable", launcher)
+
+    def test_launchd_service_syncs_root_network_launcher_from_active_version(self):
+        runner = (ROOT / "Lancer-MaClasse-Service-macOS.sh").read_text(encoding="utf-8")
+        self.assertIn('VERSION_LAUNCHER="$PROGRAM/Lancer-MaClasse-Reseau.command"', runner)
+        self.assertIn('ROOT_LAUNCHER="$ROOT/Lancer-MaClasse-Reseau.command"', runner)
+        self.assertIn('/bin/cp -p "$VERSION_LAUNCHER" "$TEMP_LAUNCHER"', runner)
+        self.assertIn('/bin/mv -f "$TEMP_LAUNCHER" "$ROOT_LAUNCHER"', runner)
+
     def test_service_is_user_scoped_and_keeps_data_outside_versions(self):
         installer = (ROOT / SCRIPTS[0]).read_text(encoding="utf-8")
         runner = (ROOT / SCRIPTS[1]).read_text(encoding="utf-8")
