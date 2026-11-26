@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
-if [[ -n "\${MACLASSE_ROOT:-}" ]]; then
+if [[ -n "${MACLASSE_ROOT:-}" ]]; then
   ROOT="$MACLASSE_ROOT"
 elif [[ -d "$SCRIPT_DIR/data" ]]; then
   ROOT="$SCRIPT_DIR"
@@ -11,7 +11,7 @@ else
   ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd -P)"
 fi
 ROOT="$(cd "$ROOT" && pwd -P)"
-DATA="\${MACLASSE_DATA_DIR:-$ROOT/data}"
+DATA="${MACLASSE_DATA_DIR:-$ROOT/data}"
 DATA="$(cd "$DATA" && pwd -P)"
 STATE="$DATA/update-state.json"
 VERSIONS="$DATA/program/versions"
