@@ -21,6 +21,15 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         self.assertIn("macos-validation:", tests)
         self.assertIn("firefox-schedule-regression:", tests)
 
+    def test_release_workflow_prefers_versioned_custom_notes_and_reuses_them(self):
+        workflow = (ROOT / ".github" / "workflows" / "publish-release.yml").read_text(encoding="utf-8")
+        notes = ROOT / "docs" / "releases" / "v25.1.1.md"
+        self.assertTrue(notes.is_file())
+        self.assertIn('CUSTOM_NOTES="docs/releases/${RELEASE_TAG}.md"', workflow)
+        self.assertIn('cp "$CUSTOM_NOTES" dist/release-notes.md', workflow)
+        self.assertIn('gh release edit "$TAG" --notes-file dist/release-notes.md', workflow)
+        self.assertIn('"release_notes": Path("dist/release-notes.md")', workflow)
+
     def test_release_signing_cli_scripts_compile(self):
         for path in (
             ROOT / "release_signing.py",
