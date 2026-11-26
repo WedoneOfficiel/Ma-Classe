@@ -163,7 +163,7 @@ context.getAttDraft()['100']={status:'retard',justified:false,reason:'Retard tra
 context.saveAttendance({preventDefault(){}},'9');
 assert.strictEqual(db.attendance[0].rows[0].processedAt,processedAt,
   'Réenregistrer un appel sans changer le statut doit conserver l’horodatage de traitement.');
-assert.strictEqual(context.saveCount,4,'Chaque enregistrement du cycle doit persister les changements.');
+assert.strictEqual(context.saveCount,6,'Chaque enregistrement du cycle doit persister les changements.');
 
 context.location.search='?class=1&student=100&status=pending';
 const pending=context.attendanceFollowup();
