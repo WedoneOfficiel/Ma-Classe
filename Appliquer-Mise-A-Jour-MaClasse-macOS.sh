@@ -122,6 +122,14 @@ owned_service_pids() {
           command ~ /(network_supervisor|server)[.]py/) print $1
     }'
 }
+pid_is_in_list() {
+  local candidate="$1" process_list="$2"
+  [[ "$candidate" =~ ^[0-9]+$ ]] || return 1
+  case " $process_list " in
+    *" $candidate "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 stop_owned_service_processes() {
   local owned_pids pid
   owned_pids="$(owned_service_pids)" || return 1
@@ -376,10 +384,13 @@ mkdir -p "$BACKUP_DIR"
 command -v pgrep >/dev/null 2>&1 || { write_state failed "pgrep est requis pour vérifier l'absence de serveur manuel."; write_maintenance_state failed; exit 1; }
 SERVICE_PID="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
 [[ "$SERVICE_PID" =~ ^[0-9]+$ ]] || { write_state failed "Impossible d'identifier le processus launchd MaClasse ; mise à jour refusée."; write_maintenance_state failed; exit 1; }
+OWNED_SERVICE_PIDS="$(owned_service_pids)" || { write_state failed "Impossible d'identifier les processus de cette installation ; mise à jour refusée."; write_maintenance_state failed; exit 1; }
+pid_is_in_list "$SERVICE_PID" "$OWNED_SERVICE_PIDS" || { write_state failed "Le PID launchd ne correspond pas à un processus de cette installation ; mise à jour refusée."; write_maintenance_state failed; exit 1; }
 if SERVER_PIDS="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
 [[ "$PGREP_STATUS" -le 1 ]] || { write_state failed "Impossible de vérifier les processus Python ; mise à jour refusée par sécurité."; write_maintenance_state failed; exit 1; }
 while IFS= read -r pid; do
-  [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { write_state failed "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour."; write_maintenance_state failed; exit 1; }
+  [[ -z "$pid" ]] && continue
+  pid_is_in_list "$pid" "$OWNED_SERVICE_PIDS" || { write_state failed "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour."; write_maintenance_state failed; exit 1; }
 done <<< "$SERVER_PIDS"
 write_state installing
 if ! stop_service_and_confirm; then
