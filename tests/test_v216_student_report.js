@@ -65,15 +65,19 @@ const scopedDb = {
     {id:'after',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',published:true,publishAt:'2026-11-30T12:00:01Z',maxScore:20,grades:[{studentId:'s1',value:'18'}]},
     {id:'other-group',classId:'c1',group:'B',subject:'Maths',date:'2026-11-20',published:true,maxScore:20,grades:[{studentId:'s1',value:'20'}]},
     {id:'other-class',classId:'c2',group:'A',subject:'Maths',date:'2026-11-20',published:true,maxScore:20,grades:[{studentId:'s1',value:'20'}]},
-    {id:'missing-published',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',maxScore:20,grades:[{studentId:'s1',value:'20'}]}
+    {id:'missing-published',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',maxScore:20,grades:[{studentId:'s1',value:'20'}]},
+    {id:'negative',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',published:true,maxScore:20,grades:[{studentId:'s1',value:'-1'}]},
+    {id:'over-max',classId:'c1',group:'A',subject:'Maths',date:'2026-11-20',published:true,maxScore:20,grades:[{studentId:'s1',value:'21'}]}
   ]
 };
 let scoped=ctx.buildStudentReport(scopedDb,'s1','t1','2026-11-30T12:00:00Z');
 assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before'],
-  'Exact as-of timestamp must include due grades and exclude future, other class/group and unpublished records');
+  'Exact as-of timestamp must include due grades and exclude future, other class/group, unpublished and invalid-score records');
 scoped=ctx.buildStudentReport(scopedDb,'s1','t1',new Date('2026-11-30T12:00:00Z'));
 assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before'],
   'Date object as-of must preserve its exact instant');
+assert.strictEqual(scoped.asOf,'2026-11-30T12:00:00.000Z',
+  'Date object metadata must preserve the exact ISO instant');
 scoped=ctx.buildStudentReport(scopedDb,'s1','t1','2026-11-30');
 assert.deepStrictEqual(scoped.items.map(x=>x.evaluationId),['before','after'],
   'Date-only as-of remains an end-of-day historical cutoff');
