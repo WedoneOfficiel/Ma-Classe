@@ -126,6 +126,11 @@ jobs:
       - name: Installer Playwright
         run: |
           python -m pip install playwright==1.55.0
+          # The hosted image may include an optional Microsoft apt source that returns
+          # 403 in this runner network. It is not needed by this Firefox test.
+          sudo grep -RIl 'packages.microsoft.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | while read -r source; do
+            sudo mv "$source" "$source.disabled"
+          done
           python -m playwright install --with-deps firefox
       - name: Tester l’EDT dans Firefox
         run: python tests/browser/test_v25_schedule_firefox.py

@@ -52,8 +52,14 @@ assert.strictEqual(tooLarge.length,0,'Une salle de capacité insuffisante ne doi
 assert(app.includes('scheduleAvailabilityConflicts(c)'),'La validation du formulaire de cours doit aussi vérifier les indisponibilités.');
 assert(app.includes('slot.room=name;slot.roomId=roomId'),'Renommer une salle doit préserver les liens de ses créneaux.');
 assert(app.includes("confirmModal(message,'Supprimer la salle'"),'La suppression d’une salle liée doit demander confirmation.');
-const css=html.slice(html.lastIndexOf('/* V25.2.0 — Paramètres : colonnes équilibrées'));
-assert(css.includes('column-count:3')&&css.includes('column-count:2')&&css.includes('column-count:1'),'La grille Paramètres doit s’adapter à trois, deux puis une colonne.');
-assert(css.includes('break-inside:avoid'),'Les cartes Paramètres doivent éviter les coupures verticales.');
-assert(css.includes('column-span:all'),'Les cartes pleine largeur ne doivent pas créer des espaces artificiels.');
+const cssStart=html.indexOf('<style id="v2520-settings-and-release-notes">');
+assert(cssStart>=0,'La grille Paramètres doit être définie dans une feuille de style active.');
+const cssEnd=html.indexOf('</style>',cssStart);
+const css=html.slice(cssStart,cssEnd);
+assert(css.includes('grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)'),'La grille Paramètres desktop doit comporter trois colonnes.');
+assert(css.includes('@media(max-width:900px)')&&css.includes('grid-template-columns:repeat(2,minmax(0,1fr))'),'La grille Paramètres doit passer à deux colonnes sur largeur intermédiaire.');
+assert(css.includes('@media(max-width:650px)')&&css.includes('grid-template-columns:minmax(0,1fr)'),'La grille Paramètres doit passer à une colonne sur mobile.');
+assert(css.includes('.settingsAppearanceCard{grid-area:appearance')&&css.includes('.settingsPeriodsCard{grid-area:periods')&&css.includes('.settingsRoomsCard{grid-area:rooms'),'Les cartes doivent utiliser des zones sémantiques.');
+assert(css.includes('.settingsUpdateCard{grid-area:updates'),'La carte des mises à jour Direction doit avoir sa propre zone.');
+assert(html.trimEnd().endsWith('</html>'),'Aucun bloc CSS ne doit apparaître après la fermeture du document.');
 console.log('OK — Planner et salles : groupes parallèles, professeurs, indisponibilités, capacité, équipements, réservations, liens et grille Paramètres.');
