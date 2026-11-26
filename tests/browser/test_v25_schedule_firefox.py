@@ -101,17 +101,21 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
                 f"Reflet clair indésirable sur les cartes sombres ({role}/{module}) : {state!r}"
             )
 
-    responsive_modules = (
-        ["studentHome","studentSchedule","studentLessons","studentHomework",
-         "studentMessages","studentDocuments","studentSettings"]
-        if role == "student"
-        else ["dashboard","schedule","lessons","students","messages","documents","settings"]
-    )
-    mobile_visual_modules = (
-        {"studentHome","studentSchedule","studentLessons","studentMessages","studentDocuments","studentSettings"}
-        if role == "student"
-        else {"dashboard","schedule","lessons","messages","documents","settings"}
-    )
+    if role == "student":
+        responsive_modules = [
+            "studentHome","studentSchedule","studentLessons","studentHomework",
+            "studentMessages","studentDocuments","studentSettings"
+        ]
+        mobile_visual_modules = {
+            "studentHome","studentSchedule","studentLessons","studentMessages",
+            "studentDocuments","studentSettings"
+        }
+    elif role == "admin":
+        responsive_modules = ["adminUsers","teachers","ppDashboard","settings"]
+        mobile_visual_modules = set(responsive_modules)
+    else:
+        responsive_modules = ["dashboard","schedule","lessons","students","messages","documents","settings"]
+        mobile_visual_modules = {"dashboard","schedule","lessons","messages","documents","settings"}
 
     for theme in ("light", "dark"):
         system_theme = "dark" if theme == "light" else "light"
@@ -249,17 +253,43 @@ def main() -> None:
                       data.settings.subjectColors = {...(data.settings.subjectColors || {}), francais:'#123456'};
                       data.classes = [{
                         id:'firefox-class', name:'6e A', level:'6e',
-                        levels:['6e'], teacherIds:[], groups:[],
+                        levels:['6e'], teacherIds:[], groups:['A','B'],
                         attendanceMode:'hour', periodMode:'trimestres'
                       }];
-                      data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:''}];
+                      data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:'A'}];
+                      const reportTerm = data.settings.terms?.[0]?.id || 'firefox-term';
+                      if (!data.settings.terms?.length) {
+                        data.settings.terms = [{
+                          id:reportTerm,name:'Trimestre 1',start:'2026-09-01',end:'2026-12-31'
+                        }];
+                      }
+                      data.evaluations = [{
+                        id:'firefox-evaluation',title:'Contrôle de français',
+                        classId:'firefox-class',group:'A',subject:'Français',
+                        date:'2026-11-12',maxScore:20,coefficient:1,published:true,
+                        grades:[{studentId:'firefox-student',value:'16'}]
+                      }];
+                      data.attendance = [{
+                        id:'firefox-attendance',classId:'firefox-class',
+                        date:'2026-11-12',mode:'hour',slotId:'firefox-existing-course',
+                        time:'09:00',rows:[{
+                          studentId:'firefox-student',status:'absent',
+                          justified:false,reason:''
+                        }]
+                      }];
+                      data.bulletins = [{
+                        id:'firefox-bulletin',studentId:'firefox-student',
+                        classId:'firefox-class',termId:reportTerm,
+                        subjectData:{'Français':{comment:'Participation régulière.'}},
+                        overall:'Ensemble sérieux.',published:false,validated:false
+                      }];
                       data.schedule = [{
                         id:'firefox-existing-course', classId:'firefox-class',
                         day:4, time:'09:00', endTime:'10:00',
                         subject:'Français', recurrence:'weekly',
                         startDate:'2026-11-09', endDate:'',
                         exceptions:[], overrides:{}, teacherId:'',
-                        room:'', group:''
+                        room:'', group:'A'
                       }];
                       const saved = await fetch('/api/save', {
                         method:'POST',
@@ -601,12 +631,6 @@ def main() -> None:
                         "Cloud Classe doit conserver sa navigation latérale : "+repr(class_state)
                     )
                 teacher_page.evaluate("window.cloudSpace='personal';page='schedule';appSpace='teacher';render();")
-                capture_product_screenshots(
-                    teacher_page,
-                    "teacher",
-                    ["dashboard","activity","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","ppDashboard","settings"],
-                    Path("artifacts/browser-v25"),
-                )
                 uploaded_homework = teacher_page.evaluate("""async () => {
                   db=await api('/api/data');
                   normalize();
@@ -667,6 +691,46 @@ def main() -> None:
                   if (!response.ok) throw new Error('Student account creation failed: '+JSON.stringify(result));
                   return result.user.temporaryPassword;
                 }""")
+                # Exercise the actual Direction interface, not only the administration API.
+                page.evaluate("""async () => {
+                  db=await api('/api/data');
+                  normalize();
+                  page='adminUsers';
+                  appSpace='teacher';
+                  render();
+                }""")
+                expect(page.locator('#main h1')).to_contain_text("Utilisateurs")
+                expect(page.locator('#main')).to_contain_text("firefox-student")
+
+                page.get_by_role("button",name="+ Nouveau professeur").click()
+                admin_teacher_form=page.locator("#modal form")
+                expect(admin_teacher_form).to_be_visible()
+                admin_teacher_form.locator('input[name="first"]').fill("Camille")
+                admin_teacher_form.locator('input[name="last"]').fill("Interface")
+                admin_teacher_form.locator('input[name="username"]').fill("ui-test-prof")
+                admin_teacher_form.locator('input[name="subjectsText"]').fill("Sciences")
+                admin_teacher_form.get_by_role("button",name="Enregistrer le professeur").click()
+                expect(page.locator("#modal")).to_contain_text("Compte professeur créé",timeout=10_000)
+                page.locator("#modal .modalfoot button").click()
+                ui_teacher_row=page.locator("#main .message").filter(has_text="ui-test-prof")
+                expect(ui_teacher_row).to_contain_text("Actif",timeout=10_000)
+                ui_teacher_row.get_by_role("button",name="Désactiver").click()
+                expect(ui_teacher_row).to_contain_text("Désactivé",timeout=10_000)
+                ui_teacher_row.get_by_role("button",name="Activer").click()
+                expect(ui_teacher_row).to_contain_text("Actif",timeout=10_000)
+
+                capture_product_screenshots(
+                    page,
+                    "admin",
+                    ["adminUsers","teachers","ppDashboard","settings"],
+                    Path("artifacts/browser-v25"),
+                )
+                page.evaluate("""() => {
+                  page='adminUsers';
+                  appSpace='teacher';
+                  render();
+                }""")
+
                 student_context = browser.new_context(locale='fr-FR', timezone_id='Europe/Paris')
                 student_page = student_context.new_page()
                 student_page_errors: list[str] = []
@@ -791,12 +855,6 @@ def main() -> None:
                 if not cloud_access["visibleShared"] or cloud_access["sharedRole"] != "view" or cloud_access["canWrite"] or cloud_access["uploadStatus"] != 403:
                     raise AssertionError("Le Cloud élève doit être strictement en lecture seule : "+repr(cloud_access))
                 student_page.evaluate("page='studentHome';appSpace='student';render();")
-                capture_product_screenshots(
-                    student_page,
-                    "student",
-                    ["studentHome","studentSchedule","studentLessons","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
-                    Path("artifacts/browser-v25"),
-                )
                 student_page.evaluate("page='studentHome';appSpace='student';setAppearanceTheme('light');render();")
                 student_page.evaluate("""() => {
                   page='studentMessages';
@@ -1127,8 +1185,27 @@ def main() -> None:
                         raise AssertionError("EDT teacher/student visual structure differs at "+selector+": "+repr((left,right)))
                 if student_page.locator('.schedulePage .eventEdit').count()!=0:
                     raise AssertionError("Student timetable unexpectedly exposes teacher edit controls")
+                if student_page.locator('.schedulePage .eventEdit').count()!=0:
+                    raise AssertionError("Student timetable unexpectedly exposes teacher edit controls")
+
+                # Capture product screens only after representative module data and
+                # the homework/Mail V2 end-to-end journeys have been exercised.
+                capture_product_screenshots(
+                    teacher_page,
+                    "teacher",
+                    ["dashboard","activity","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","ppDashboard","settings"],
+                    Path("artifacts/browser-v25"),
+                )
+                capture_product_screenshots(
+                    student_page,
+                    "student",
+                    ["studentHome","studentSchedule","studentLessons","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
+                    Path("artifacts/browser-v25"),
+                )
+                if teacher_page_errors:
+                    raise AssertionError("Teacher Firefox page errors after the individual-module visual pass: "+" | ".join(teacher_page_errors))
                 if student_page_errors:
-                    raise AssertionError("Student Firefox page errors: "+" | ".join(student_page_errors))
+                    raise AssertionError("Student Firefox page errors after the individual-module visual pass: "+" | ".join(student_page_errors))
                 teacher_context.close()
                 student_context.close()
 
