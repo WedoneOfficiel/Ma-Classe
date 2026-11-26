@@ -48,6 +48,18 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
               const card=document.querySelector('#main .card');
               const main=document.querySelector('main.main');
               const side=document.querySelector('.side');
+              const workRow=actualPage==='studentWork'
+                ?main?.querySelector('.studentWorkTable tbody tr:not(.studentWorkEmpty)'):null;
+              const workCells=workRow?[...workRow.querySelectorAll(':scope > td')]:[];
+              const workButton=workRow?.querySelector('button');
+              const studentWorkLayout=workRow?{
+                rowDisplay:getComputedStyle(workRow).display,
+                columns:getComputedStyle(workRow).gridTemplateColumns.split(' ').length,
+                cellLabels:workCells.map(cell=>cell.getAttribute('data-label')||''),
+                cellWidths:workCells.map(cell=>Math.round(cell.getBoundingClientRect().width)),
+                buttonWidth:Math.round(workButton?.getBoundingClientRect().width||0),
+                tableWidth:Math.round(workRow.getBoundingClientRect().width)
+              }:null;
               const mainRect=main?.getBoundingClientRect();
               const sideRect=side?.getBoundingClientRect();
               // Inspect visible content surfaces throughout the page subtree.
@@ -79,7 +91,8 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
                   contentRight:Math.round(contentRight),
                   contentWidth:Math.round(contentRight-contentLeft)
                 },
-                cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none'
+                cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none',
+                studentWorkLayout
               };
             }""",
             {"role": role, "module": module, "theme": theme},
@@ -103,6 +116,21 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
             raise AssertionError(
                 f"Reflet clair indésirable sur les cartes sombres ({role}/{module}) : {state!r}"
             )
+
+        if role == "student" and module == "studentWork" and viewport <= 650:
+            layout = state.get("studentWorkLayout")
+            if (
+                not layout
+                or layout["rowDisplay"] != "grid"
+                or layout["columns"] != 2
+                or layout["buttonWidth"] < 70
+                or not all(layout["cellLabels"])
+                or len(layout["cellWidths"]) != 5
+            ):
+                raise AssertionError(
+                    "Le module Travail à faire doit s'empiler en carte mobile avec des actions lisibles : "
+                    + repr(layout)
+                )
 
     if role == "student":
         responsive_modules = [
