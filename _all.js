@@ -861,7 +861,7 @@ function ppDashboard(){
 }
 
 function classes(){
- if(typeof window.classTracking==='function')return window.classTracking();
+ if(typeof window!=='undefined'&&typeof window.classTracking==='function')return window.classTracking();
  return shell('Scolarité','Classes','Organisation et suivi des classes.')+'<div class="card"><div class="empty">Le module Classes est en cours de chargement.</div></div>';
 }
 

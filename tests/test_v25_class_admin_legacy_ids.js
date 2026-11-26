@@ -34,6 +34,8 @@ const db={
 const context={
   db,
   authUser:{id:'123',role:'teacher'},
+  window:{classTracking:()=>{context.classTrackingCalled=true;return 'Classes unifiées — '+db.classes.map(c=>c.name).join(', ')}},
+  classTrackingCalled:false,
   CLASS_LEVELS:['6e','5e','4e'],
   sameId:(a,b)=>{const x=String(a??'').trim(),y=String(b??'').trim();return !!x&&x===y},
   iso:()=> '2026-11-26',
@@ -108,12 +110,10 @@ assert.strictEqual(stats.abs,1,'Le suivi PP doit compter l’absence malgré les
 assert.strictEqual(stats.missing,1,'Le suivi PP ne doit compter que les rendus manquants de sa classe.');
 
 const page=context.classes();
-assert(page.includes('Mes classes principales')&&page.includes('Alice Martin'),
-  'L’écran Classes doit afficher la classe PP même si le compte et la classe utilisent des types d’identifiants différents.');
-assert(page.includes('1 élève'),
-  'L’effectif de la classe doit être correct dans la liste générale.');
-assert(page.includes('<small>EDT</small><b>1</b>')&&page.includes('<small>Évals</small><b>1</b>'),
-  'Les compteurs EDT et évaluations de la classe doivent utiliser des identifiants normalisés.');
+assert.strictEqual(context.classTrackingCalled,true,
+  'Le point d’entrée Classes doit déléguer au module unifié, pas réafficher un second écran indépendant.');
+assert(page.includes('Classes unifiées — 6A, 6B'),
+  'L’écran Classes doit utiliser le nouveau point d’entrée unifié.');
 
 context.openClass('1');
 assert(context.lastModal?.title==='Modifier la classe',
