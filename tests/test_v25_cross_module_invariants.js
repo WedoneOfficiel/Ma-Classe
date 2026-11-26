@@ -504,6 +504,7 @@ equal(context.studentReportNumericGrade(context.db.evaluations[0], context.db.ev
 truthy(declaration('studentGrades').includes('evaluationModelVisible(db,e,'), 'La liste élève doit réutiliser le moteur de visibilité');
 truthy(declaration('openStudentActivity').includes('evaluationModelTargetStudents(db,e)'), 'Le suivi enseignant doit respecter le groupe ciblé par chaque évaluation');
 truthy(declaration('studentReportDetail').includes('studentReportNumericGrade(e,g)'), 'Le détail d’une note doit réutiliser la validation numérique commune');
+truthy(declaration('studentReportDetail').includes("qualitative?'Grille qualitative':'Non noté'"), 'Une valeur invalide ne doit pas être présentée comme une grille qualitative');
 
 // 15) Second-wave cross-module matrix: 30 evaluation class/group combinations,
 // 60 homework eligibility cases and deterministic submission aggregates.
