@@ -27,15 +27,20 @@ const modelNames = [
   'evaluationModelAverage',
   'evaluationModelClassStats',
   'studentWorkEligible',
+  'studentLessonItems',
+  'v101SubmissionStats',
+  'v103MissingWorkList',
   'weightedAverageForEvaluations',
   'v101StudentAverage',
   'evaluationGradeLabel'
 ];
 const context = {
-  db: { students: [], evaluations: [], settings: { terms: [] } },
+  db: { students: [], evaluations: [], settings: { terms: [] }, lessons: [], submissions: [] },
   iso: function () { return '2026-11-26'; }
 };
 vm.createContext(context);
+context.student = function (id) { return (context.db.students || []).find(s => String(s.id) === String(id)); };
+context.activeStudent = function () { return 's1'; };
 vm.runInContext(modelNames.map(declaration).join('\n\n'), context);
 
 let checks = 0;
@@ -69,7 +74,9 @@ function setData(evaluations, terms) {
       { id: 's3', classId: 'c2', group: 'A' }
     ],
     evaluations: evaluations,
-    settings: { terms: terms || [{ id: 'T1', start: '2026-09-01', end: '2026-12-31' }] }
+    settings: { terms: terms || [{ id: 'T1', start: '2026-09-01', end: '2026-12-31' }] },
+    lessons: [],
+    submissions: []
   };
 }
 function average() {
@@ -273,7 +280,46 @@ for (const name of ['studentActivitySummary', 'openStudentActivity']) {
   truthy(!body.includes('l.classId===s.classId'), name + ' ne doit pas filtrer uniquement par classe');
 }
 
-// 10) Ensure all the audited views use the same grade-scale helper.
+// 10) Student and teacher homework lists, missing-work totals and student
+// follow-up cards must share one canonical class/group rule.
+context.db = {
+  students: [
+    { id: 's1', classId: 'c1', group: 'A' },
+    { id: 's2', classId: 'c1', group: 'B' },
+    { id: 's3', classId: 'c2', group: 'A' }
+  ],
+  lessons: [
+    { id: 'L-all', classId: 'c1', subject: 'Maths', homework: { requiresSubmission: true, due: '2026-11-30' } },
+    { id: 'L-A', classId: 'c1', group: 'A', subject: 'Maths', homework: { requiresSubmission: true, due: '2026-11-30' } },
+    { id: 'L-B', classId: 'c1', group: 'B', subject: 'Maths', homework: { requiresSubmission: true, due: '2026-11-30' } },
+    { id: 'L-c2', classId: 'c2', group: 'A', subject: 'Maths', homework: { requiresSubmission: true, due: '2026-11-30' } },
+    { id: 'L-no-homework', classId: 'c1', group: 'A', subject: 'Maths' },
+    { id: 'L-no-due', classId: 'c1', group: 'A', subject: 'Maths', homework: { requiresSubmission: true } }
+  ],
+  submissions: [
+    { lessonId: 'L-all', studentId: 's1' },
+    { lessonId: 'L-A', studentId: 's1' },
+    { lessonId: 'L-c2', studentId: 's3' }
+  ],
+  evaluations: [],
+  settings: { terms: [] }
+};
+const ownWork = Array.from(context.studentLessonItems('s1'), l => l.id).sort();
+equal(JSON.stringify(ownWork), JSON.stringify(['L-A', 'L-all']), 'La liste élève doit exclure les autres groupes et classes');
+const submissionStats = context.v101SubmissionStats();
+equal(submissionStats.expected, 5, 'Les statistiques globales doivent compter les élèves des groupes concernés');
+equal(submissionStats.received, 3, 'Les statistiques globales doivent compter les bons rendus');
+equal(submissionStats.missing, 2, 'Les statistiques globales doivent identifier deux rendus manquants');
+equal(submissionStats.works, 4, 'Les statistiques globales doivent exclure les items sans date ou sans devoir');
+const missingWorkKeys = Array.from(context.v103MissingWorkList(), x => x.lesson.id + ':' + x.student.id).sort();
+equal(JSON.stringify(missingWorkKeys), JSON.stringify(['L-all:s2', 'L-B:s2']), 'La liste globale des rendus manquants doit respecter les groupes');
+for (const name of ['studentActivitySummary', 'openStudentActivity']) {
+  const body = declaration(name);
+  truthy(body.includes('studentWorkEligible(l,s)'), name + ' doit respecter le groupe de l’élève');
+  truthy(!body.includes('l.classId===s.classId'), name + ' ne doit pas filtrer uniquement par classe');
+}
+
+// 11) Ensure all the audited views use the same grade-scale helper.
 for (const name of ['studentActivityCenter', 'studentHome', 'profile360Tab', 'openStudent', 'openStudentActivity']) {
   const body = declaration(name);
   truthy(body.includes('evaluationGradeLabel('), name + ' doit appeler le helper commun de barème');
