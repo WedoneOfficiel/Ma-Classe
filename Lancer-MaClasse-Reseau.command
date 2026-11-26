@@ -10,11 +10,18 @@ fi
 if /bin/launchctl print "gui/$(id -u)/fr.maclasse.server" >/dev/null 2>&1; then
   echo "Le service MaClasse est déjà chargé par launchd."
   echo "Ne démarre pas une seconde copie : elle partagerait la même base de données."
-  HOST="$(/usr/bin/openssl x509 -in "data/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | /usr/bin/grep -oE 'IP Address:[0-9.]+' | /usr/bin/head -n1 | /usr/bin/cut -d: -f2 || true)"
+  IFACE="$(/sbin/route -n get default 2>/dev/null | /usr/bin/awk '/interface:/{print $2; exit}')"
+  HOST=""
+  if [[ -n "$IFACE" && -x ".venv/bin/python" ]]; then
+    HOST="$(/usr/sbin/ipconfig getifaddr "$IFACE" 2>/dev/null || true)"
+    if [[ -z "$HOST" ]] || ! .venv/bin/python -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert isinstance(a,ipaddress.IPv4Address) and a.is_private and not a.is_loopback and not a.is_link_local and not a.is_multicast and not a.is_unspecified' "$HOST" >/dev/null 2>&1; then
+      HOST=""
+    fi
+  fi
   if [[ -n "$HOST" ]]; then
     open -a "Firefox" "https://$HOST:8765" >/dev/null 2>&1 || open "https://$HOST:8765" >/dev/null 2>&1 || true
   else
-    echo "Certificat HTTPS introuvable ; consulte data/macos-service-error.log."
+    echo "Adresse IPv4 privée introuvable sur l'interface réseau active ; consulte data/macos-service-error.log."
   fi
   read -r -p "Appuie sur Entrée pour fermer cette fenêtre… " _ || true
   exit 0
