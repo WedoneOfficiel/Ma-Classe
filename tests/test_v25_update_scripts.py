@@ -23,6 +23,15 @@ class UpdateScriptSafetyTests(unittest.TestCase):
 
     def test_versioned_release_notes_are_used_for_manifest_and_release_description(self):
         workflow = (ROOT / ".github" / "workflows" / "publish-release.yml").read_text(encoding="utf-8")
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("release_tag:", workflow)
+        self.assertIn("inputs.release_tag", workflow)
+        self.assertIn('git push origin "refs/tags/$RELEASE_TAG"', workflow)
+        self.assertIn("refs/heads/main", workflow)
+        self.assertLess(
+            workflow.index("Créer ou vérifier le tag après validation"),
+            workflow.index("Construire l'archive et le manifeste vérifié"),
+        )
         notes = ROOT / ".github" / "release-notes" / "v25.1.1.md"
         self.assertTrue(notes.is_file(), "Les notes V25.1.1 doivent être versionnées avec le tag.")
         self.assertIn('.github/release-notes/${RELEASE_TAG}.md', workflow)
