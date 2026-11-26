@@ -11,6 +11,7 @@ function declaration(name) {
 }
 
 const modelNames = [
+  'sameId',
   'gradeNumber',
   'evaluationModelMaxScore',
   'evaluationModelCoefficient',
