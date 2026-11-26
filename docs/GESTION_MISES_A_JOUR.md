@@ -2,9 +2,11 @@
 
 **État actualisé au 26/11/2026 :** la release V25.1.0 (`v25.1.0`) a été publiée avec ses assets de mise à jour et sa signature. La première installation supervisée réelle sur macOS a toutefois révélé un défaut bloquant dans la lecture du SAN du certificat local : `network_supervisor.py` interprétait la sortie texte d'OpenSSL et rejetait à tort un certificat valide sous LibreSSL. L'installation du Mac a été restaurée manuellement en V25.0.23 ; base scolaire et certificats ont été conservés.
 
-**Correctif intégré :** la PR #14 a été fusionnée dans `main` le 26/11/2026 (commit `e6df53f`). Le code V25.1.1 remplace l'analyse textuelle du SAN par le parseur X.509 de `cryptography` et teste de vrais certificats PEM. Le tag `v25.1.1` et la release stable restent à créer ; aucune installation ne doit être lancée avant la présence des assets signés.
+**Correctif HTTPS :** la PR #14 a été fusionnée dans `main` (commit `e6df53f`). V25.1.1 utilise le parseur X.509 de `cryptography` et teste de vrais certificats PEM.
 
-**État signature :** la clé publique de production est épinglée dans `release-signing-public-key.txt` et le secret `MACLASSE_RELEASE_SIGNING_KEY_B64` est configuré dans GitHub Actions. Les workflows #1807, #1808 et #1809 sont verts (3/3 chacun : Linux, macOS/launchd et Firefox). Après création du tag et publication signée, la recette physique du parcours de mise à jour sera réalisée sur le Mac et les appareils clients.
+**Fiabilisation du rollback :** un complément est en cours de validation. Il traite le cas où launchd conserve un job sans PID actif, en vérifiant le déchargement du job et l'absence de tout processus serveur/superviseur avant de restaurer la base. Le garde-fou reste fermé si un processus subsiste ou si l'état du service est incertain.
+
+**Publication :** le workflow est également ajusté pour utiliser un fichier de notes versionné par tag, à la fois dans le manifeste signé et dans le corps de la release. Le tag `v25.1.1` et la release stable ne seront créés qu'après réussite de la CI complète ; aucune installation ne doit être lancée avant la présence des assets signés.
 
 **Note de lecture :** les phases et certains statuts ci-dessous retracent l'historique de conception ; les décisions et résultats actuels sont résumés en tête de ce document et dans le [README](../README.md).
 
