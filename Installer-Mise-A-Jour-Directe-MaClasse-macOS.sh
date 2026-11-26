@@ -102,7 +102,7 @@ except (OSError,ValueError) as error:
     raise SystemExit("Métadonnées de préparation illisibles : "+str(error))
 if not isinstance(metadata,dict) or metadata.get("status")!="prepared":
     raise SystemExit("La version n'est pas marquée comme préparée.")
-if metadata.get("version") not in (sys.argv[2],"V"+sys.argv[2]):
+if metadata.get("version") not in (sys.argv[2],"V"+sys.argv[2],"v"+sys.argv[2]):
     raise SystemExit("Le numéro de version des métadonnées est incohérent.")
 if metadata.get("min_data_schema") != int(sys.argv[3]):
     raise SystemExit("Le schéma minimal des métadonnées est incohérent.")
