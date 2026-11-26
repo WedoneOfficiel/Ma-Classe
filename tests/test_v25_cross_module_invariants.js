@@ -33,6 +33,8 @@ const modelNames = [
   'subjectAverage',
   'classAverageForBulletin',
   'studentLessonItems',
+  'studentEvaluations',
+  'studentWorkItems',
   'studentActivitySummary',
   'studentGrades',
   'studentReportNumericGrade',
@@ -368,6 +370,45 @@ context.db = {
   evaluations: [],
   settings: { terms: [] }
 };
+// The classic student profile must apply the same scope as the newer follow-up panel.
+context.db.lessons.push(
+  { id: 'L-profile-A', classId: 'c1', group: 'A', date: '2026-11-30', homework: { title: 'Groupe A', due: '2026-11-30' } },
+  { id: 'L-profile-B', classId: 'c1', group: 'B', date: '2026-11-30', homework: { title: 'Groupe B', due: '2026-11-30' } },
+  { id: 'L-profile-all', classId: 'c1', date: '2026-11-28', homework: { title: 'Classe entière', due: '' } }
+);
+equal(
+  JSON.stringify(Array.from(context.studentWorkItems('s1'), x => x.l.id)),
+  JSON.stringify(['L-all', 'L-A', 'L-profile-A', 'L-profile-all']),
+  'La fiche élève doit exclure les travaux d’un autre groupe'
+);
+equal(
+  JSON.stringify(Array.from(context.studentWorkItems('s2'), x => x.l.id)),
+  JSON.stringify(['L-all', 'L-B', 'L-profile-B', 'L-profile-all']),
+  'La fiche élève du groupe B doit conserver uniquement ses travaux et ceux de la classe entière'
+);
+context.db.evaluations = [
+  makeEvaluation('profile-A', '12', 20, { group: 'A', grades: [
+    { studentId: 's1', value: '12' }, { studentId: 's2', value: '18' }
+  ] }),
+  makeEvaluation('profile-B', '10', 20, { group: 'B', grades: [
+    { studentId: 's1', value: '19' }, { studentId: 's2', value: '10' }
+  ] }),
+  makeEvaluation('profile-all', '14', 20, { group: '', grades: [
+    { studentId: 's1', value: '14' }, { studentId: 's2', value: '11' }
+  ] })
+];
+equal(
+  JSON.stringify(Array.from(context.studentEvaluations('s1'), x => x.e.id)),
+  JSON.stringify(['profile-all', 'profile-A']),
+  'La fiche élève ne doit pas montrer une note parasite d’une évaluation destinée à un autre groupe'
+);
+equal(
+  JSON.stringify(Array.from(context.studentEvaluations('s2'), x => x.e.id)),
+  JSON.stringify(['profile-all', 'profile-B']),
+  'La fiche élève de l’autre groupe doit conserver son propre périmètre'
+);
+truthy(declaration('studentEvaluations').includes('evaluationModelTargetStudents(db,e)'), 'Les dernières évaluations de la fiche doivent respecter les élèves ciblés');
+truthy(declaration('studentWorkItems').includes('studentWorkEligible(l,st)'), 'Les travaux de la fiche doivent respecter classe et sous-groupe');
 const ownWork = Array.from(context.studentLessonItems('s1'), l => l.id).sort();
 equal(JSON.stringify(ownWork), JSON.stringify(['L-A', 'L-all', 'L-no-due']), 'La liste élève doit exclure les autres groupes et classes tout en conservant les séances sans échéance');
 equal(context.studentActivitySummary('s1').missing, 0, 'Le suivi d’un élève du groupe A ne doit compter que ses devoirs');
