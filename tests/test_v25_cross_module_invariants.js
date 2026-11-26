@@ -25,6 +25,7 @@ const modelNames = [
   'evaluationModelOn20',
   'evaluationModelVisible',
   'evaluationModelAverage',
+  'evaluationModelClassStats',
   'weightedAverageForEvaluations',
   'v101StudentAverage',
   'evaluationGradeLabel'
@@ -130,6 +131,21 @@ setData([
   makeEvaluation('invalid-score', '21', 20, { coefficient: 100 })
 ]);
 equal(average(), '16.67', 'Le bulletin doit agréger uniquement les notes publiées et pertinentes (16.67 attendu)');
+
+// An absent publication flag is private everywhere. It must not be
+// counted as a published evaluation by the teacher dashboard statistics.
+equal(
+  context.evaluationModelPublished({ id: 'legacy-no-flag' }, exactNow),
+  false,
+  'Une évaluation sans état publié explicite doit rester privée'
+);
+setData([
+  makeEvaluation('published-stat', '12', 20),
+  makeEvaluation('legacy-no-flag-stat', '20', 20, { published: undefined })
+]);
+const legacyStats = context.evaluationModelClassStats(context.db, 'c1', '', exactNow);
+equal(legacyStats.evaluations, 1, 'Les statistiques ne doivent compter que les évaluations explicitement publiées');
+equal(legacyStats.graded, 1, 'Les notes d’une évaluation sans état publié ne doivent pas entrer dans les statistiques');
 
 // 4) A publication matrix crosses three publication flags with six scheduling
 // states. The expected result is derived independently from the model.
