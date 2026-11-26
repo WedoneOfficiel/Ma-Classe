@@ -369,9 +369,9 @@ context.db = {
   ],
   attendance: [],
   submissions: [
-    { lessonId: 'L-all', studentId: 's1' },
-    { lessonId: 'L-A', studentId: 's1' },
-    { lessonId: 'L-c2', studentId: 's3' }
+    { lessonId: 'L-all', studentId: 's1', status: 'submitted' },
+    { lessonId: 'L-A', studentId: 's1', status: 'submitted' },
+    { lessonId: 'L-c2', studentId: 's3', status: 'submitted' }
   ],
   evaluations: [],
   settings: { terms: [] }
