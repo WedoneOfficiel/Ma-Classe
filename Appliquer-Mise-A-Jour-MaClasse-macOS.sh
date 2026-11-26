@@ -115,10 +115,41 @@ start_service() {
   /bin/launchctl kickstart "gui/$UID_NOW/$SERVICE_LABEL"
 }
 stop_service_and_confirm() {
-  local service_pid probe alive loaded
-  service_pid="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
-  [[ "$service_pid" =~ ^[0-9]+$ ]] || return 1
-  echo "DEBUG updater: PID du serveur identifié ($service_pid)." >&2
+  local service_pid probe loaded=0 bootout_pid pgrep_status server_pids
+  # A launchd job can remain loaded in the waiting/throttled state after its
+  # process has already exited. A missing PID is therefore not, by itself,
+  # proof that shutdown failed.
+  if probe="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>&1)"; then
+    loaded=1
+  else
+    case "$probe" in
+      *"Could not find service"*) loaded=0 ;;
+      *)
+        echo "Impossible de déterminer l'état launchd : $probe" >&2
+        return 1
+        ;;
+    esac
+  fi
+  service_pid="$(printf '%s\n' "$probe" | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
+  if [[ "$service_pid" =~ ^[0-9]+$ ]]; then
+    echo "DEBUG updater: PID du serveur identifié ($service_pid)." >&2
+  elif [[ "$loaded" == "1" ]]; then
+    echo "DEBUG updater: job launchd chargé mais aucun PID actif ; arrêt idempotent." >&2
+  fi
+
+  # If launchd has already unloaded the job, still prove that no Python
+  # supervisor/server process remains before allowing a database restore.
+  if [[ "$loaded" == "0" ]]; then
+    if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then
+      echo "Un processus MaClasse subsiste alors que le job launchd est absent : $server_pids" >&2
+      return 1
+    else
+      pgrep_status=$?
+      [[ "$pgrep_status" == "1" ]] || return 1
+    fi
+    echo "DEBUG updater: job launchd absent et aucun processus serveur actif." >&2
+    return 0
+  fi
 
   # Désactiver d'abord KeepAlive : sinon launchd peut relancer le processus
   # après SIGKILL pendant que bootout attend encore sa terminaison.
@@ -127,46 +158,55 @@ stop_service_and_confirm() {
   echo "DEBUG updater: launchctl disable terminé." >&2
 
   # bootout peut attendre indéfiniment server_close() si un client TLS inactif
-  # conserve un thread de requête. Le lancer en arrière-plan permet de borner
-  # l'arrêt sans jamais sauvegarder la base tant que le processus existe.
+  # conserve un thread de requête. Le lancer en arrière-plan borne l'arrêt.
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 &
-  local bootout_pid=$!
+  bootout_pid=$!
   echo "DEBUG updater: bootout lancé en arrière-plan (PID $bootout_pid)." >&2
 
   # Laisser au serveur 25 s pour son arrêt gracieux (timeout HTTP : 20 s).
-  for _ in {1..25}; do
-    if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
-    /bin/sleep 1
-  done
+  if [[ "$service_pid" =~ ^[0-9]+$ ]]; then
+    for _ in {1..25}; do
+      if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
+      /bin/sleep 1
+    done
 
-  echo "DEBUG updater: délai gracieux terminé." >&2
+    echo "DEBUG updater: délai gracieux terminé." >&2
 
-  # Sécurité : un arrêt gracieux bloqué ne doit pas figer la mise à jour.
-  # La sauvegarde n'aura lieu qu'après confirmation de la mort du processus.
-  if /bin/kill -0 "$service_pid" >/dev/null 2>&1; then
-    echo "Arrêt gracieux bloqué ; arrêt forcé du serveur PID $service_pid." >&2
-    /bin/kill -KILL "$service_pid" >/dev/null 2>&1 || true
+    # Sécurité : un arrêt gracieux bloqué ne doit pas figer la mise à jour.
+    # La sauvegarde attendra toujours la confirmation de la mort du PID.
+    if /bin/kill -0 "$service_pid" >/dev/null 2>&1; then
+      echo "Arrêt gracieux bloqué ; arrêt forcé du serveur PID $service_pid." >&2
+      /bin/kill -KILL "$service_pid" >/dev/null 2>&1 || true
+    fi
+    echo "DEBUG updater: vérification après arrêt forcé." >&2
+    for _ in {1..10}; do
+      if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
+      /bin/sleep 1
+    done
+    /bin/kill -0 "$service_pid" >/dev/null 2>&1 && return 1
   fi
-  echo "DEBUG updater: vérification après arrêt forcé." >&2
-  for _ in {1..10}; do
-    if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
-    /bin/sleep 1
-  done
-  /bin/kill -0 "$service_pid" >/dev/null 2>&1 && return 1
 
+  # Confirm both sides of the shutdown: launchd no longer owns the job and
+  # no Python server/supervisor process remains. A waiting job with no PID is
+  # not accepted until bootout has removed it from the GUI domain.
   for _ in {1..10}; do
     if probe="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>&1)"; then
       loaded=1
     else
       case "$probe" in
         *"Could not find service"*) loaded=0 ;;
-        *) return 1 ;;
+        *) echo "DEBUG updater: état launchd indéterminé après bootout : $probe" >&2; return 1 ;;
       esac
     fi
     if [[ "$loaded" == "0" ]]; then
-      echo "DEBUG updater: service launchd déchargé." >&2
-      # The job is unloaded and its process is confirmed dead. Do not let a
-      # wedged launchctl client keep the updater itself blocked.
+      if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then
+        echo "DEBUG updater: processus serveur encore actif après bootout : $server_pids" >&2
+        return 1
+      else
+        pgrep_status=$?
+        [[ "$pgrep_status" == "1" ]] || return 1
+      fi
+      echo "DEBUG updater: service launchd déchargé et aucun processus MaClasse actif." >&2
       /bin/kill "$bootout_pid" >/dev/null 2>&1 || true
       return 0
     fi
@@ -294,7 +334,7 @@ mkdir -p "$BACKUP_DIR"
 command -v pgrep >/dev/null 2>&1 || { write_state failed "pgrep est requis pour vérifier l'absence de serveur manuel."; write_maintenance_state failed; exit 1; }
 SERVICE_PID="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
 [[ "$SERVICE_PID" =~ ^[0-9]+$ ]] || { write_state failed "Impossible d'identifier le processus launchd MaClasse ; mise à jour refusée."; write_maintenance_state failed; exit 1; }
-if SERVER_PIDS="$(pgrep -f '[p]ython.*server[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
+if SERVER_PIDS="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
 [[ "$PGREP_STATUS" -le 1 ]] || { write_state failed "Impossible de vérifier les processus Python ; mise à jour refusée par sécurité."; write_maintenance_state failed; exit 1; }
 while IFS= read -r pid; do
   [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { write_state failed "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour."; write_maintenance_state failed; exit 1; }
