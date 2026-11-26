@@ -1,10 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : audit croisé V25.1.2 en cours — 26 novembre 2026**
+**État : audit croisé V25.1.2 terminé — candidat versionné, CI complète réussie — 26 novembre 2026**
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne en cours :** branche fix/v25.1.2-cross-module-consistency, PR #20.
-**Validation de départ :** CI post-fusion #1845 réussie sur Linux, macOS Apple Silicon/launchd et Firefox réel. La PR #20 ajoute une matrice de plus de 200 invariants ; sa CI complète doit réussir avant fusion.
+**Validation finale :** PR #20, run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` sont alignées sur V25.1.2. La version n'est pas encore fusionnée ni publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -15,6 +15,8 @@ La revue des contrats entre modules a mis en évidence plusieurs divergences qui
 | Affichage des barèmes | Certaines vues élève et fiches administratives affichaient la note brute comme si elle était toujours sur 20, alors que le relevé détaillé respecte le barème réel. | Centraliser le libellé de note selon le barème d'origine, avec des états explicites pour les résultats qualitatifs et les valeurs invalides. | Tests des vues concernées sur 13 barèmes et sept valeurs représentatives par barème. |
 | Affectation des devoirs aux groupes | Les listes de devoirs et les agrégats globaux respectaient les groupes, mais le panneau Suivi d'un élève affichait les travaux de toute sa classe. | Réutiliser studentWorkEligible dans le résumé et la fiche Suivi pour appliquer la même règle de classe/groupe partout. | Matrice classe entière, groupe identique, autre groupe et autre classe. |
 | État de publication absent | Le moteur de statistiques considérait un champ published absent comme publié, alors que la projection serveur et le relevé élève exigent published: true. Les statistiques professeur pouvaient donc diverger de ce que l'élève reçoit. | Exiger un état publié explicite dans le moteur canonique. | Test d'une évaluation historique sans champ published dans les statistiques de classe. |
+| Identifiants historiques de type mixte | Des fonctions comparaient parfois strictement un identifiant numérique à sa représentation textuelle, alors que le serveur les normalisait déjà. | Ajouter sameId et l'utiliser dans les recherches de classe, d'élève, de période, les ciblages d'évaluations, les bulletins et les devoirs. Les identifiants vides restent invalides. | Matrice numérique/texte, groupes, bulletins et compétences ; aucune fiche sans classe ne doit être ciblée. |
+| Bilan des compétences | Une évaluation ciblée sur un groupe pouvait inclure les appréciations d'élèves d'un autre groupe dans la synthèse. | Filtrer les appréciations par evaluationModelTargetStudents, comme les notes du moteur commun. | Cas d'une évaluation de classe entière puis d'une évaluation limitée au groupe A, avec une valeur parasite du groupe B. |
 | Statistiques des évaluations par groupe | Le tableau de bord et le calcul des moyennes comptaient les élèves de toute la classe pour des évaluations ciblées sur un groupe ; les IDs classe de types mixtes n'étaient pas toujours reconnus. | Utiliser evaluationModelTargetStudents pour les statistiques et normaliser les identifiants de classe. | Vérifier les compteurs, moyennes et listes avec plusieurs groupes et IDs numériques/texte. |
 | Liste des notes côté élève | studentGrades reconstruisait ses propres filtres et passait une date seule au contrôle de publication. | Réutiliser evaluationModelVisible avec un timestamp ISO complet. | Vérifier groupe, classe, brouillon, publication future et publication arrivée. |
 | Détail d'une note | L'écran détaillé recalculait une valeur brute sans revalider qu'elle respectait le barème. | Utiliser studentReportNumericGrade, comme le relevé et les moyennes. | Vérifier notes négatives, supérieures au barème et valeurs valides. |
@@ -26,6 +28,18 @@ La CI de la PR a déjà révélé un défaut applicatif réel : une valeur néga
 ### Dette technique observée
 
 Le JavaScript principal _all.js contient plusieurs générations historiques de fonctions et des redéfinitions successives. Cette architecture augmente le risque qu'une correction soit écrasée par une version ultérieure ou que deux modules appliquent des règles voisines mais différentes. La campagne V25.1.2 n'entreprend pas de réécrire tout le fichier : elle renforce d'abord les fonctions canoniques et les tests de contrat. Une extraction progressive des moteurs Évaluations, Bulletins, Emploi du temps et Messagerie devra être menée module par module, avec des tests de caractérisation avant déplacement.
+## Validation finale du candidat V25.1.2 — 26/11/2026
+
+- Run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457) : **3/3 jobs réussis**.
+- Linux : suites JavaScript et Python complètes.
+- macOS Apple Silicon : installateur, compilation Python, suites JavaScript/Python et intégration `launchd` réelle.
+- Firefox : parcours réel de l'EDT et captures des modules en thèmes clair/sombre.
+- La matrice inter-modules `tests/test_v25_cross_module_invariants.js` exécute **838 invariants** dans sa dernière passe.
+- La deuxième vague a ajouté plus de 500 contrôles déterministes de classe/groupe, bulletins, notes, statistiques et rendus.
+- Le schéma de données n'a pas changé. V25.1.2 reste une version corrective, sans migration.
+
+La CI ne remplace pas une vérification finale avec de vrais comptes sur l'installation de référence. La PR #20 reste ouverte ; la release stable V25.1.2 n'existe pas encore.
+ 
 ## 1. Principes de l'audit
 
 Pour chaque module, l'audit vérifie :
