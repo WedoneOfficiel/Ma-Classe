@@ -301,6 +301,75 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(modal).not_to_be_visible()
 
 
+def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
+    """Check actual Settings card placement for each role at desktop and mobile widths."""
+    is_student = role == "student"
+    desktop_page = "studentSettings" if is_student else "settings"
+    desktop_space = "student" if is_student else "teacher"
+    page.set_viewport_size({"width":1280,"height":800})
+    page.evaluate("(p,s) => { page=p; appSpace=s; render(); }", desktop_page, desktop_space)
+    selector = "#main .settingsStudentGrid" if is_student else "#main .settingsGrid"
+    grid = page.locator(selector)
+    expect(grid).to_be_visible()
+    state = grid.evaluate("""el => {
+      const css=getComputedStyle(el);
+      const rect=sel=>{
+        const node=el.querySelector(sel);
+        if(!node)return null;
+        const r=node.getBoundingClientRect();
+        return {left:Math.round(r.left),top:Math.round(r.top),width:Math.round(r.width)};
+      };
+      return {
+        className:el.className,
+        display:css.display,
+        columns:css.gridTemplateColumns.split(/\\s+/).filter(Boolean).length,
+        appearance:rect('.settingsAppearanceCard'),
+        periods:rect('.settingsPeriodsCard'),
+        rooms:rect('.settingsRoomsCard'),
+        version:rect('.settingsVersionCard'),
+        updates:rect('.settingsUpdateCard'),
+        data:rect('.settingsDataCard')
+      };
+    }""")
+    expected_columns = 2 if is_student else 3
+    if state["display"] != "grid" or state["columns"] != expected_columns:
+        raise AssertionError(f"Grille Paramètres desktop incorrecte pour {role}: {state!r}")
+    if not is_student:
+        if not (state["appearance"]["left"] < state["periods"]["left"] < state["version"]["left"]):
+            raise AssertionError(f"Colonnes sémantiques Paramètres incohérentes pour {role}: {state!r}")
+        if abs(state["rooms"]["left"]-state["appearance"]["left"]) > 3:
+            raise AssertionError(f"Salles doit rester sous Apparence pour {role}: {state!r}")
+        if abs(state["data"]["left"]-state["version"]["left"]) > 3:
+            raise AssertionError(f"Données doit rester sous Version pour {role}: {state!r}")
+        if role == "admin":
+            if "settingsAdminLayout" not in state["className"] or not state["updates"]:
+                raise AssertionError(f"La Direction doit recevoir la carte Mises à jour: {state!r}")
+            if abs(state["updates"]["left"]-state["version"]["left"]) > 3:
+                raise AssertionError(f"Mises à jour doit rester dans la colonne de droite: {state!r}")
+        elif "settingsAdminLayout" in state["className"] or state["updates"] is not None:
+            raise AssertionError(f"Le professeur ne doit pas recevoir le layout Direction: {state!r}")
+    else:
+        if "settingsStudentGrid" not in state["className"]:
+            raise AssertionError(f"L'élève doit utiliser sa grille Paramètres dédiée: {state!r}")
+
+    output_dir.mkdir(parents=True,exist_ok=True)
+    page.screenshot(path=str(output_dir/f"settings-{role}-desktop.png"),full_page=True,animations="disabled")
+    page.set_viewport_size({"width":390,"height":844})
+    page.evaluate("(p,s) => { page=p; appSpace=s; render(); }", desktop_page, desktop_space)
+    mobile = page.locator(selector)
+    mobile_state = mobile.evaluate("""el => ({
+      display:getComputedStyle(el).display,
+      columns:getComputedStyle(el).gridTemplateColumns.split(/\\s+/).filter(Boolean).length,
+      width:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+      viewport:window.innerWidth
+    })""")
+    if mobile_state["display"] != "grid" or mobile_state["columns"] != 1 or mobile_state["width"] > mobile_state["viewport"]+2:
+        raise AssertionError(f"Paramètres mobile incohérents pour {role}: {mobile_state!r}")
+    page.screenshot(path=str(output_dir/f"settings-{role}-mobile.png"),full_page=True,animations="disabled")
+    page.set_viewport_size({"width":1280,"height":800})
+
+
+def free_port() -> int:
 def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -372,6 +441,10 @@ def main() -> None:
                 expect(page.locator("#nav")).not_to_be_empty()
                 acknowledge_release_notes(page, "direction")
                 verify_release_journal(page, "admin", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(page, "admin", Path("artifacts/browser-v25"))
+                page.evaluate("page='adminUsers';appSpace='teacher';render()")
+                verify_establishment_generator(page, Path("artifacts/browser-v25"))
+                page.evaluate("setAppearanceTheme('light')")                verify_release_journal(page, "admin", Path("artifacts/browser-v25"))
                 page.evaluate("page='adminUsers';appSpace='teacher';render()")
 
                 page.evaluate("page='adminUsers';appSpace='teacher';render()")
@@ -598,6 +671,7 @@ def main() -> None:
                     raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
                 acknowledge_release_notes(teacher_page, "professeur")
                 verify_release_journal(teacher_page, "teacher", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(teacher_page, "teacher", Path("artifacts/browser-v25"))                verify_release_journal(teacher_page, "teacher", Path("artifacts/browser-v25"))
                 teacher_page.evaluate("page='schedule';appSpace='teacher';render()")
                 shared_cloud = teacher_page.evaluate("""async () => {
                   const folder='cloud/personal/users/'+authUser.id;
@@ -906,6 +980,7 @@ def main() -> None:
                     raise AssertionError("Student session not initialized: "+repr(student_state))
                 acknowledge_release_notes(student_page, "élève")
                 verify_release_journal(student_page, "student", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(student_page, "student", Path("artifacts/browser-v25"))                verify_release_journal(student_page, "student", Path("artifacts/browser-v25"))
                 student_page.evaluate("page='studentSchedule';appSpace='student';render()")
                 student_module_smoke = student_page.evaluate("""() => {
                   const modules=[
