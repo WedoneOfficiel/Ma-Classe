@@ -1,13 +1,26 @@
-# Audit produit MaClasse V25 — modules, ergonomie et rendu
+# Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : audit produit poursuivi — candidat V25.1.0 — 25 novembre 2026**  
-**Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
-**Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
-**Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
-**Validation automatisée :** workflow [#1793](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45713179841) vert (3/3) : Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
+**État : audit croisé V25.1.2 en cours — 26 novembre 2026**
+**Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
+**Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
+**Campagne en cours :** branche fix/v25.1.2-cross-module-consistency, PR #20.
+**Validation de départ :** CI post-fusion #1845 réussie sur Linux, macOS Apple Silicon/launchd et Firefox réel. La PR #20 ajoute une matrice de plus de 200 invariants ; sa CI complète doit réussir avant fusion.
+## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
-Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
+La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
 
+| Sujet | Contradiction constatée | Correctif proposé sur PR #20 | Validation prévue |
+|---|---|---|---|
+| Moyenne générale du bulletin | L'ancien calcul parcourait les notes de l'élève sans reprendre tous les filtres de publication, de classe, de groupe et de période du moteur commun. Il pouvait donc diverger des moyennes par matière et du relevé élève. | Rebrancher la moyenne générale sur le moteur partagé de visibilité des évaluations et sur le ciblage de l'élève. | Matrice de cas publiés/non publiés, programmés, autres groupes/classes et périodes. |
+| Affichage des barèmes | Certaines vues élève et fiches administratives affichaient la note brute comme si elle était toujours sur 20, alors que le relevé détaillé respecte le barème réel. | Centraliser le libellé de note selon le barème d'origine, avec des états explicites pour les résultats qualitatifs et les valeurs invalides. | Tests des vues concernées sur 13 barèmes et sept valeurs représentatives par barème. |
+| Publication le jour même | Des calculs navigateur transmettaient une date seule au filtre de publication ; un timestamp prévu plus tard dans la même journée pouvait être considéré comme déjà visible. Le filtre du PDF serveur comparait lui aussi le timestamp à une date par ordre lexical. | Passer l'instant ISO complet aux calculs navigateur et utiliser le contrôle serveur de date/heure dans la génération PDF. | Tests avant, à et après l'instant prévu, avec fuseaux horaires et dates historiques explicites. |
+| Notes négatives ou hors barème | Le moteur navigateur pouvait conserver une valeur négative dans son résultat de secours alors que le PDF serveur l'écartait. Une note invalide pouvait ainsi modifier une moyenne affichée. | Rejeter toute valeur inférieure à zéro ou supérieure au barème, comme le calcul serveur. | Tests de valeurs négatives, supérieures au maximum, non numériques et décimales françaises. |
+
+La CI de la PR a déjà révélé un défaut applicatif réel : une valeur négative pouvait entrer dans une moyenne (par exemple, -1 et 12/20 produisaient 5,50). Le moteur commun a été corrigé sur la branche. Les premiers échecs de CI ont aussi permis de compléter le contexte isolé du nouveau test ; les derniers résultats de la tête courante restent à confirmer.
+
+### Dette technique observée
+
+Le JavaScript principal _all.js contient plusieurs générations historiques de fonctions et des redéfinitions successives. Cette architecture augmente le risque qu'une correction soit écrasée par une version ultérieure ou que deux modules appliquent des règles voisines mais différentes. La campagne V25.1.2 n'entreprend pas de réécrire tout le fichier : elle renforce d'abord les fonctions canoniques et les tests de contrat. Une extraction progressive des moteurs Évaluations, Bulletins, Emploi du temps et Messagerie devra être menée module par module, avec des tests de caractérisation avant déplacement.
 ## 1. Principes de l'audit
 
 Pour chaque module, l'audit vérifie :
