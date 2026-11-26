@@ -50,7 +50,8 @@ const context={
   ],
   esc:v=>String(v??''),
   jsArg:v=>JSON.stringify(v),
-  openModal:(title,html)=>{context.lastModal={title,html}}
+  openModal:(title,html)=>{context.lastModal={title,html}},
+  toast:message=>{context.lastToast=message}
 };
 vm.createContext(context);
 for(const name of [
