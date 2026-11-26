@@ -38,6 +38,8 @@ const modelNames = [
   'studentActivitySummary',
   'studentGrades',
   'studentReportNumericGrade',
+  'studentReportCoefficient',
+  'studentReportDetail',
   'competencySummaryForPeriod',
   'bulletinCompetencyBlock',
   'v207EvaluationMax',
@@ -51,7 +53,10 @@ const modelNames = [
 const context = {
   db: { students: [], evaluations: [], settings: { terms: [] }, lessons: [], submissions: [] },
   iso: function () { return '2026-11-26'; },
-  esc: function (value) { return String(value ?? ''); }
+  esc: function (value) { return String(value ?? ''); },
+  fmtDate: function () { return ''; },
+  modalCalls: 0,
+  openModal: function () { context.modalCalls += 1; }
 };
 vm.createContext(context);
 context.student = function (id) { return (context.db.students || []).find(s => String(s.id) === String(id)); };
@@ -555,6 +560,32 @@ equal(context.studentReportNumericGrade(context.db.evaluations[0], context.db.ev
 truthy(declaration('studentGrades').includes('evaluationModelVisible(db,e,'), 'La liste élève doit réutiliser le moteur de visibilité');
 truthy(declaration('openStudentActivity').includes('evaluationModelTargetStudents(db,e)'), 'Le suivi enseignant doit respecter le groupe ciblé par chaque évaluation');
 truthy(declaration('studentReportDetail').includes('studentReportNumericGrade(e,g)'), 'Le détail d’une note doit réutiliser la validation numérique commune');
+truthy(
+  declaration('studentReportDetail').includes('evaluationModelVisible(db,e,{studentId:sid,today:new Date().toISOString()})'),
+  'Le détail d’une note doit revalider publication, heure et sous-groupe au moment du clic'
+);
+context.db = {
+  students: [{ id: 's1', classId: 'c1', group: 'A' }],
+  evaluations: [
+    { id: 'valid-detail', classId: 'c1', group: 'A', published: true, date: '2026-11-10', maxScore: 20,
+      grades: [{ studentId: 's1', value: '12' }] },
+    { id: 'draft-detail', classId: 'c1', group: 'A', published: false, date: '2026-11-10', maxScore: 20,
+      grades: [{ studentId: 's1', value: '18' }] },
+    { id: 'future-detail', classId: 'c1', group: 'A', published: true, publishAt: '2999-01-01T00:00:00Z', date: '2026-11-10',
+      maxScore: 20, grades: [{ studentId: 's1', value: '20' }] },
+    { id: 'other-group-detail', classId: 'c1', group: 'B', published: true, date: '2026-11-10', maxScore: 20,
+      grades: [{ studentId: 's1', value: '19' }] }
+  ],
+  settings: { terms: [] }
+};
+context.modalCalls = 0;
+context.studentReportDetail('draft-detail', 's1');
+context.studentReportDetail('future-detail', 's1');
+context.studentReportDetail('other-group-detail', 's1');
+equal(context.modalCalls, 0, 'Un lien ancien ne doit pas ouvrir une note brouillon, future ou hors groupe');
+context.studentReportDetail('valid-detail', 's1');
+equal(context.modalCalls, 1, 'Une note actuellement publiée et ciblée doit encore ouvrir son détail');
+
 truthy(declaration('studentReportDetail').includes("qualitative?'Grille qualitative':'Non noté'"), 'Une valeur invalide ne doit pas être présentée comme une grille qualitative');
 
 // Bulletin competency output must follow the same published, due and
