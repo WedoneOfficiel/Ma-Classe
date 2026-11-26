@@ -746,7 +746,7 @@ Le commit courant a également corrigé la règle `.gitignore` pour le véritabl
 - Les statistiques du tableau de bord Évaluations et les moyennes de classe normalisent les identifiants classe et ciblent uniquement les élèves du groupe concerné.
 - La liste de notes élève et le détail d'une note réutilisent eux aussi les règles communes de visibilité et de validation.
 - Le panneau Suivi d'un élève utilisait seulement sa classe pour compter et présenter les devoirs ; il réutilise maintenant studentWorkEligible, comme les listes élève et agrégats globaux.
-- Les corrections du PDF et le test exact à l'instant ont été ajoutés après cette découverte. **La CI de la dernière tête doit encore terminer avant tout statut de validation ou fusion.**
+- Les corrections du PDF et le test exact à l'instant ont été ajoutés après cette découverte. **CI finale réussie :** run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457), 3/3 jobs réussis sur Linux, macOS Apple Silicon/launchd réel et Firefox réel. La PR #20 est validée automatiquement ; elle reste non fusionnée et la release V25.1.2 n'est pas publiée.
 
 Aucun changement du schéma de données n'est prévu.
 
@@ -759,4 +759,17 @@ Aucun changement du schéma de données n'est prévu.
 - Cas du tableau de bord Évaluations : élèves ciblés, groupes, brouillons, statut de publication absent, total d'évaluations, notes saisies et moyenne calculée.
 - Cas de la liste de notes élève, du suivi enseignant et du détail d'une note.
 
-La dernière matrice ajoute plus de 500 assertions générées et déterministes, en complément des tests précédents. La validation définitive reste liée à la CI de la tête finale de PR #20 sur Linux, macOS Apple Silicon/launchd et Firefox réel.
+La dernière matrice ajoute plus de 500 assertions générées et déterministes, en complément des tests précédents. La dernière tête versionnée V25.1.2 a passé la CI complète : run 45819080457, 3/3 environnements réussis. La vérification réelle sur l'installation de référence et les comptes de l'établissement reste une étape séparée.
+
+
+### Résultat de validation finale du candidat versionné
+- Commit validé : `59092e9685ba1113e7cd497e4b1664689fea88fb`.
+- Run GitHub Actions : [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457).
+- Linux : réussi, 15 étapes.
+- macOS Apple Silicon : réussi, 16 étapes, incluant le vrai test `launchd`.
+- Firefox réel : réussi, 9 étapes.
+- Matrice inter-modules : 838 invariants dans `test_v25_cross_module_invariants.js`, plus les tests spécifiques Student Report, bulletins persistants, compétences, publication et permissions.
+- Version du candidat : `VERSION.txt=V25.1.2`, `APP_VERSION=25.1.2`, `MC_VERSION=V25.1.2`.
+- Aucun changement de schéma ni migration de données.
+
+Le candidat est techniquement prêt pour revue/merge. Il n'est pas encore dans `main`, n'a pas de tag `v25.1.2` et n'a pas de release publiée.
