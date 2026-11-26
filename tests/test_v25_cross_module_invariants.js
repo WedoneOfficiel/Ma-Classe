@@ -370,7 +370,7 @@ equal(submissionStats.received, 3, 'Les statistiques globales doivent compter le
 equal(submissionStats.missing, 2, 'Les statistiques globales doivent identifier deux rendus manquants');
 equal(submissionStats.works, 4, 'Les statistiques globales doivent exclure les items sans date ou sans devoir');
 const missingWorkKeys = Array.from(context.v103MissingWorkList(), x => x.lesson.id + ':' + x.student.id).sort();
-equal(JSON.stringify(missingWorkKeys), JSON.stringify(['L-all:s2', 'L-B:s2']), 'La liste globale des rendus manquants doit respecter les groupes');
+equal(JSON.stringify(missingWorkKeys), JSON.stringify(['L-B:s2', 'L-all:s2']), 'La liste globale des rendus manquants doit respecter les groupes');
 for (const name of ['studentActivitySummary', 'openStudentActivity']) {
   const body = declaration(name);
   truthy(body.includes('studentWorkEligible(l,s)'), name + ' doit respecter le groupe de l’élève');
