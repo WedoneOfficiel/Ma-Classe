@@ -51,7 +51,7 @@ class DirectMacUpdateBootstrapTests(unittest.TestCase):
         (self.target / "_all.js").write_text("const MC_VERSION='V25.1.1';\n", encoding="utf-8")
         (self.target / "VERSION.txt").write_text("V25.1.1\n", encoding="utf-8")
         metadata = {
-            "status": "prepared", "version": VERSION,
+            "status": "prepared", "version": "v" + VERSION,
             "sha256": SHA, "min_data_schema": 25011
         }
         (self.target / "maclasse-prepared.json").write_text(json.dumps(metadata), encoding="utf-8")
@@ -134,7 +134,7 @@ class DirectMacUpdateBootstrapTests(unittest.TestCase):
 
     def test_rejects_prepared_metadata_version_mismatch(self):
         metadata = json.loads((self.target / "maclasse-prepared.json").read_text(encoding="utf-8"))
-        metadata["version"] = "25.1.0"
+        metadata["version"] = "v25.1.0"
         (self.target / "maclasse-prepared.json").write_text(json.dumps(metadata), encoding="utf-8")
         result = self.run_launcher()
         self.assertNotEqual(result.returncode, 0)
