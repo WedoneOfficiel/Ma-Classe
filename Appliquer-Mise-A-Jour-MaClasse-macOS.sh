@@ -22,7 +22,12 @@ UPDATE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.update.plist"
 SERVICE_PLIST="$HOME/Library/LaunchAgents/fr.maclasse.server.plist"
 UID_NOW="$(id -u)"
 SERVICE_DISABLED=0
+KEEP_SERVICE_DISABLED=0
 restore_service_enabled() {
+  if [[ "$KEEP_SERVICE_DISABLED" == "1" ]]; then
+    echo "ATTENTION : service maintenu désactivé car l'arrêt complet n'a pas été confirmé." >&2
+    return 0
+  fi
   if [[ "$SERVICE_DISABLED" == "1" ]]; then
     /bin/launchctl enable "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 || true
     SERVICE_DISABLED=0
@@ -225,6 +230,9 @@ fail_restore() {
   local message="$1"
   echo "Échec : $message" >&2
   if ! stop_service_and_confirm; then
+    # Ne jamais réactiver KeepAlive alors qu'un processus de la version
+    # défectueuse pourrait encore tourner et continuer à écrire dans la base.
+    KEEP_SERVICE_DISABLED=1
     write_state rollback_failed "$message — arrêt du nouveau serveur non confirmé ; restauration de la base interdite pour protéger les données."
     write_maintenance_state failed
     echo "ATTENTION : le nouveau serveur semble toujours actif. Le code et la base ne seront pas restaurés tant que son arrêt n'est pas confirmé." >&2
