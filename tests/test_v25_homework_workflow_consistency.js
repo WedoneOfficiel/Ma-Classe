@@ -58,7 +58,7 @@ vm.runInContext(section('function showSubmissions(','function lessons(){'),conte
 
 (async()=>{
   const missing=context.v103MissingWorkList();
-  const keys=missing.map(x=>String(x.lesson.id)+':'+String(x.student.id)).sort();
+  const keys=Array.from(missing,x=>String(x.lesson.id)+':'+String(x.student.id)).sort();
   assert.deepStrictEqual(keys,['101:2','102:s5','103:2','103:s1','104:2','104:s1'],
     'La liste globale des rendus manquants conserve les devoirs à venir, mais ne doit jamais confondre un brouillon avec un rendu transmis ; le retard est calculé séparément dans le suivi de classe.');
 
@@ -70,9 +70,9 @@ vm.runInContext(section('function showSubmissions(','function lessons(){'),conte
     'Un vrai brouillon doit rester modifiable malgré les identifiants mixtes.');
 
   const activity=context.activityData();
-  assert.deepStrictEqual(activity.submissions.map(x=>x.id).sort(),['sub-1','sub-4'],
+  assert.deepStrictEqual(Array.from(activity.submissions,x=>x.id).sort(),['sub-1','sub-4'],
     'Le centre d’activité ne doit envoyer à corriger que les rendus effectivement transmis, non les brouillons ni les copies déjà corrigées.');
-  assert.deepStrictEqual(activity.missing.map(x=>String(x.lessonId)+':'+String(x.student.id)).sort(),['101:2','102:s5','103:2','103:s1','104:2','104:s1'],
+  assert.deepStrictEqual(Array.from(activity.missing,x=>String(x.lessonId)+':'+String(x.student.id)).sort(),['101:2','102:s5','103:2','103:s1','104:2','104:s1'],
     'Les actions « travail non rendu » doivent réutiliser la même règle que la liste dédiée.');
 
   context.openWorkTracking('101');
