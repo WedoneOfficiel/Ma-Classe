@@ -224,6 +224,10 @@ for (const value of invalidValues) {
   ]);
   equal(average(), '12.00', 'Valeur invalide ' + String(value) + ' ignorée');
 }
+equal(context.evaluationModelNumericGrade({ maxScore: 20 }, { value: '-1' }), null, 'Une note négative doit être rejetée par le moteur numérique');
+equal(context.evaluationModelNumericGrade({ maxScore: 20 }, { value: '21' }), null, 'Une note supérieure au barème doit être rejetée par le moteur numérique');
+equal(context.evaluationGradeLabel({ maxScore: 20 }, { value: '-1' }), 'Non noté', 'Une note négative ne doit pas être présentée comme une note valide');
+equal(context.evaluationGradeLabel({ maxScore: 20 }, { value: '21' }), 'Non noté', 'Une note hors barème ne doit pas être présentée comme valide');
 equal(context.evaluationGradeLabel({}, null), 'Non noté', 'Une absence de note est explicitement indiquée');
 equal(context.evaluationGradeLabel({}, { value: '' }), 'Non noté', 'Une note vide est explicitement indiquée');
 equal(
