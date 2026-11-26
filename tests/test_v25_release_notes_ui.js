@@ -27,3 +27,5 @@ assert(rendered.includes('<strong>Correction</strong>')&&rendered.includes('<cod
 const current=api.cleanCurrentRelease('# V25.2.0\n\n> Candidat\n\n## Classes\n\n- Fonctionnalité\n\n## Validation et limites\n\nContenu interne de validation');
 assert(current.includes('## Classes')&&!current.includes('Candidat')&&!current.includes('Contenu interne'));
 console.log('OK — journal : historique extrait des archives présentes, lacunes préservées, source et rendu sûrs.');
+
+assert(helper.includes('function closeJournal()'),'Closing the full journal from the automatic announcement must preserve the pending announcement.');

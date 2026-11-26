@@ -2305,7 +2305,7 @@ html[data-mc-theme="dark"] .bulletin::before{
 </style>
 <style id="v2520-settings-and-release-notes">
 .settingsGrid.settingsAdminLayout{display:grid!important;grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods updates" ". periods data"!important;grid-auto-flow:row!important;align-items:start!important;gap:16px!important}
-.settingsGrid:not(.settingsAdminLayout){display:grid!important;grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods data"!important;grid-auto-flow:row!important;align-items:start!important;gap:16px!important}
+.settingsGrid:not(.settingsAdminLayout):not(.settingsStudentGrid){display:grid!important;grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods data"!important;grid-auto-flow:row!important;align-items:start!important;gap:16px!important}
 #main .settingsGrid:not(.settingsStudentGrid)>.settingsAppearanceCard{grid-area:appearance!important}
 #main .settingsGrid:not(.settingsStudentGrid)>.settingsPeriodsCard{grid-area:periods!important}
 #main .settingsGrid:not(.settingsStudentGrid)>.settingsRoomsCard{grid-area:rooms!important}
@@ -2316,11 +2316,11 @@ html[data-mc-theme="dark"] .bulletin::before{
 .settingsStudentVersionCard{grid-column:1/-1}
 @media(max-width:900px){
  .settingsGrid.settingsAdminLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version updates" "data data"!important}
- .settingsGrid:not(.settingsAdminLayout){grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version data"!important}
+ .settingsGrid:not(.settingsAdminLayout):not(.settingsStudentGrid){grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version data"!important}
 }
 @media(max-width:650px){
  .settingsGrid.settingsAdminLayout{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "updates" "data"!important;gap:12px!important}
- .settingsGrid:not(.settingsAdminLayout){grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "data"!important;gap:12px!important}
+ .settingsGrid:not(.settingsAdminLayout):not(.settingsStudentGrid){grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "data"!important;gap:12px!important}
  .settingsStudentVersionCard{grid-column:auto}
 }
 .modal.releaseNotesModal{width:min(1040px,100%);max-height:min(90vh,860px);display:flex;flex-direction:column;overflow:hidden;padding:20px}

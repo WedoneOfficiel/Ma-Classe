@@ -210,6 +210,10 @@ def acknowledge_release_notes(page, role: str) -> None:
     expect(modal).to_contain_text("Nouveautés de MaClasse")
     expect(modal).to_contain_text("V25.2.0")
     expect(modal).to_contain_text("une fois par compte")
+    page.get_by_role("button", name="Voir le journal complet").click()
+    expect(modal).to_be_visible()
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).to_contain_text("Nouveautés de MaClasse")
     page.get_by_role("button", name="J’ai compris").click()
     expect(modal).not_to_be_visible(timeout=5000)
     state = page.evaluate("""async () => {
