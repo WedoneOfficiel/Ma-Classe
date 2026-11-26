@@ -125,10 +125,7 @@ owned_service_pids() {
 pid_is_in_list() {
   local candidate="$1" process_list="$2"
   [[ "$candidate" =~ ^[0-9]+$ ]] || return 1
-  case " $process_list " in
-    *" $candidate "*) return 0 ;;
-    *) return 1 ;;
-  esac
+  /usr/bin/grep -Fxq -- "$candidate" <<< "$process_list"
 }
 stop_owned_service_processes() {
   local owned_pids pid
