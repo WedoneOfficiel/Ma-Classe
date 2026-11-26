@@ -36,6 +36,8 @@ const modelNames = [
   'studentActivitySummary',
   'studentGrades',
   'studentReportNumericGrade',
+  'competencySummaryForPeriod',
+  'bulletinCompetencyBlock',
   'v207EvaluationMax',
   'v101SubmissionStats',
   'v103MissingWorkList',
@@ -45,7 +47,8 @@ const modelNames = [
 ];
 const context = {
   db: { students: [], evaluations: [], settings: { terms: [] }, lessons: [], submissions: [] },
-  iso: function () { return '2026-11-26'; }
+  iso: function () { return '2026-11-26'; },
+  esc: function (value) { return String(value ?? ''); }
 };
 vm.createContext(context);
 context.student = function (id) { return (context.db.students || []).find(s => String(s.id) === String(id)); };
@@ -507,6 +510,55 @@ truthy(declaration('studentGrades').includes('evaluationModelVisible(db,e,'), 'L
 truthy(declaration('openStudentActivity').includes('evaluationModelTargetStudents(db,e)'), 'Le suivi enseignant doit respecter le groupe ciblé par chaque évaluation');
 truthy(declaration('studentReportDetail').includes('studentReportNumericGrade(e,g)'), 'Le détail d’une note doit réutiliser la validation numérique commune');
 truthy(declaration('studentReportDetail').includes("qualitative?'Grille qualitative':'Non noté'"), 'Une valeur invalide ne doit pas être présentée comme une grille qualitative');
+
+// Bulletin competency output must follow the same published, due and
+// class/group targeting rules as the numeric average and the server PDF.
+context.db = {
+  students: [
+    { id: 's1', classId: 'c1', group: 'A' },
+    { id: 's2', classId: 'c1', group: 'B' },
+    { id: 's3', classId: 'c2', group: 'A' }
+  ],
+  evaluations: [
+    { id: 'competency-A', classId: 'c1', group: 'A', subject: 'Français', date: '2026-11-10', published: true,
+      competencies: ['Lecture'], grades: [
+        { studentId: 's1', value: '', competencyRatings: { Lecture: '3' } },
+        { studentId: 's2', value: '', competencyRatings: { Lecture: '1' } }
+      ] },
+    { id: 'competency-B', classId: 'c1', group: 'B', subject: 'Français', date: '2026-11-12', published: true,
+      competencies: ['Coopérer'], grades: [
+        { studentId: 's1', value: '', competencyRatings: { Coopérer: '1' } },
+        { studentId: 's2', value: '', competencyRatings: { Coopérer: '4' } }
+      ] },
+    { id: 'competency-draft', classId: 'c1', group: 'A', subject: 'Français', date: '2026-11-14', published: false,
+      competencies: ['Méthode'], grades: [{ studentId: 's1', value: '', competencyRatings: { Méthode: '2' } }] },
+    { id: 'competency-future', classId: 'c1', group: 'A', subject: 'Français', date: '2026-11-15', published: true, publishAt: '2999-01-01T00:00:00Z',
+      competencies: ['Future'], grades: [{ studentId: 's1', value: '', competencyRatings: { Future: '4' } }] },
+    { id: 'competency-other-class', classId: 'c2', group: 'A', subject: 'Français', date: '2026-11-16', published: true,
+      competencies: ['Autre classe'], grades: [{ studentId: 's3', value: '', competencyRatings: { 'Autre classe': '4' } }] },
+    { id: 'competency-out-term', classId: 'c1', group: 'A', subject: 'Français', date: '2027-01-02', published: true,
+      competencies: ['Hors période'], grades: [{ studentId: 's1', value: '', competencyRatings: { 'Hors période': '4' } }] }
+  ],
+  settings: { terms: [{ id: 'T1', name: 'Trimestre 1', start: '2026-09-01', end: '2026-12-31' }] },
+  lessons: [],
+  submissions: [],
+  attendance: [],
+  bulletins: []
+};
+const teacherCompetencies = context.competencySummaryForPeriod('c1', '', 'T1', '', exactNow);
+equal(teacherCompetencies.find(x => x.name === 'Lecture').count, 1, 'Le bilan enseignant ne doit pas compter un score d’un élève non ciblé par le groupe');
+equal(teacherCompetencies.find(x => x.name === 'Coopérer').count, 1, 'Le bilan enseignant ne doit pas compter un score hors sous-groupe');
+const studentCompetencies = context.competencySummaryForPeriod('c1', '', 'T1', 's1', exactNow);
+equal(JSON.stringify(studentCompetencies.map(x => x.name)), JSON.stringify(['Lecture']), 'Le bilan individuel doit exclure les autres groupes, brouillons, publications futures et périodes hors bulletin');
+const competencyHtml = context.bulletinCompetencyBlock(
+  { classId: 'c1', studentId: 's1', termId: 'T1' },
+  exactNow
+);
+truthy(competencyHtml.includes('Lecture'), 'Le bulletin doit conserver les compétences publiées de son élève');
+truthy(competencyHtml.includes('Bien'), 'Le bulletin doit conserver le niveau ciblé de l’élève');
+for (const hidden of ['Coopérer', 'Méthode', 'Future', 'Autre classe', 'Hors période']) {
+  truthy(!competencyHtml.includes(hidden), 'Le bulletin ne doit pas inclure ' + hidden);
+}
 
 // 15) Second-wave cross-module matrix: 30 evaluation class/group combinations,
 // 60 homework eligibility cases and deterministic submission aggregates.
