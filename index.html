@@ -2410,3 +2410,78 @@ html[data-mc-theme="dark"] .bulletin::before{
 </script>
 
 </body></html>
+
+
+/* V25.2.0 — Paramètres : colonnes équilibrées sans rangées artificiellement étirées.
+   Les cartes gardent leur hauteur intrinsèque ; Mises à jour et Données occupent la largeur utile. */
+.settingsGrid{
+ display:block!important;
+ column-count:3;
+ column-width:280px;
+ column-gap:16px;
+ column-fill:balance;
+}
+.settingsGrid>.settingsCard{
+ display:inline-block!important;
+ width:100%!important;
+ min-width:0!important;
+ vertical-align:top;
+ break-inside:avoid!important;
+ -webkit-column-break-inside:avoid;
+ box-sizing:border-box!important;
+ margin:0 0 16px!important;
+ grid-column:auto!important;
+ grid-row:auto!important;
+ grid-area:auto!important;
+ align-self:start!important;
+}
+.settingsGrid>.settingsUpdateCard,
+.settingsGrid>.settingsDataCard{
+ display:block!important;
+ width:100%!important;
+ column-span:all;
+ break-inside:avoid!important;
+ margin:0 0 16px!important;
+}
+.settingsGrid>.settingsCard>.sectionhead{align-items:center;gap:10px;flex-wrap:wrap}
+.settingsGrid>.settingsCard .section{min-width:0}
+.settingsGrid>.settingsCard .metric{min-width:0}
+.settingsGrid>.settingsCard .notice{overflow-wrap:anywhere}
+.settingsGrid>.settingsCard .section .btn{margin:0 6px 6px 0!important}
+.settingsGrid .settingsTerm{break-inside:avoid}
+@media(max-width:1050px){
+ .settingsGrid{column-count:2;column-width:260px;column-gap:14px}
+ .settingsGrid>.settingsCard{margin-bottom:14px!important}
+}
+@media(max-width:650px){
+ .settingsGrid{column-count:1;column-width:auto;column-gap:0}
+ .settingsGrid>.settingsCard{margin-bottom:12px!important}
+ .settingsGrid>.settingsUpdateCard,
+ .settingsGrid>.settingsDataCard{margin-bottom:12px!important}
+}
+
+/* V25.2.0 — module Classes unifié */
+.classHubGrid{align-items:stretch}
+.classHubCard{min-width:0;display:flex;flex-direction:column;gap:2px}
+.classHubCard>.actions{margin-top:auto;flex-wrap:wrap}
+.classHubFilters>.searchRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,250px);gap:10px;align-items:end}
+.classHubFilters .muted{margin-top:8px;font-size:12px}
+.classHubIntro .sectionhead{align-items:center;flex-wrap:wrap}
+.classHubIntro .actions{justify-content:flex-end;flex-wrap:wrap}
+@media(max-width:680px){
+ .classHubFilters>.searchRow{grid-template-columns:minmax(0,1fr)}
+ .classHubCard>.actions .btn{flex:1 1 auto}
+}
+
+/* V25.2.0 — salles enrichies et gestion des disponibilités */
+.settingsRoomRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.settingsRoomRow>b{flex:1 1 100%;min-width:0}
+.settingsRoomRow>.muted{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.settingsRoomRow>.btn{margin-left:auto!important}
+
+
+/* V25.2.0 — finition des fiches de salles */
+.settingsRoomRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.settingsRoomRow>b{flex:1 1 100%;min-width:0}
+.settingsRoomRow>.muted{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.settingsRoomRow>.btn{margin-left:auto!important}

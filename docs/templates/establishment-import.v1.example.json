@@ -1,0 +1,27 @@
+{
+  "format": "maclasse-establishment",
+  "version": 1,
+  "establishment": {"name": "Collège Exemple"},
+  "classes": [
+    {"key": "6A", "name": "6e A", "levels": ["6e"], "groups": ["Groupe anglais A", "Groupe anglais B"], "teachers": ["t1", "t2"], "principalTeacher": "t1", "attendanceMode": "hour", "periodMode": "trimestres", "expectedStudentCount": 2, "subjectRequirements": [{"subject": "Français", "hoursPerWeek": 2}]},
+    {"key": "CM1-CM2", "name": "CM1-CM2", "levels": ["CM1", "CM2"], "groups": ["Atelier sciences"], "teachers": ["t2"], "principalTeacher": "t2", "attendanceMode": "halfday", "periodMode": "trimestres"}
+  ],
+  "teachers": [
+    {"key": "t1", "first": "Élodie", "last": "Martin", "subjects": ["Français", "Histoire"], "classes": ["6A"]},
+    {"key": "t2", "first": "Marc", "last": "Durand", "subjects": ["Mathématiques", "Sciences"], "classes": ["6A", "CM1-CM2"]}
+  ],
+  "students": [
+    {"key": "s1", "first": "Alice", "last": "Exemple", "class": "6A"},
+    {"key": "s2", "first": "Bilal", "last": "Exemple", "class": "6A"},
+    {"key": "s3", "first": "Chloé", "last": "Exemple", "class": "CM1-CM2", "level": "CM1"},
+    {"key": "s4", "first": "Noah", "last": "Exemple", "class": "CM1-CM2", "level": "CM2"}
+  ],
+  "rooms": [
+    {"key": "R101", "name": "R101", "type": "classroom", "capacity": 30, "equipment": ["tableau", "vidéoprojecteur"]},
+    {"key": "INFO", "name": "Salle informatique", "type": "computer", "capacity": 20, "equipment": ["ordinateurs"]}
+  ],
+  "schedule": [
+    {"key": "S1", "day": "monday", "start": "08:00", "end": "09:00", "subject": "Français", "class": "6A", "teacher": "t1", "room": "R101", "recurrence": "weekly", "startDate": "2026-09-07", "endDate": "2027-07-02"},
+    {"key": "S2", "day": "monday", "start": "09:00", "end": "10:00", "subject": "Mathématiques", "class": "6A", "teacher": "t2", "room": "R101", "recurrence": "weekly", "startDate": "2026-09-07", "endDate": "2027-07-02"}
+  ]
+}

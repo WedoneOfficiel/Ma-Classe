@@ -2,6 +2,7 @@
 import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys, subprocess, signal
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
+import establishment_import
 import socketserver
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
@@ -2380,7 +2381,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not self._session_user():
                 return self._json({'error':'Connexion requise.'},401)
         elif path not in public_post_paths:
-            admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/user-status','/api/backup/restore','/api/reset')
+            admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/establishment-import/validate','/api/admin/establishment-import/apply','/api/admin/user-status','/api/backup/restore','/api/reset')
             roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin',) if path in admin_only_paths else ('admin','teacher')
             if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
@@ -2639,6 +2640,69 @@ class Handler(SimpleHTTPRequestHandler):
         allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin','teacher')
         user=self._require_auth(roles=allowed_roles)
         if not user: return
+        if path in ('/api/admin/establishment-import/validate','/api/admin/establishment-import/apply'):
+            if user.get('role')!='admin':
+                return self._json({'error':'Réservé à la Direction.'},403)
+            try:
+                payload=json.loads(body.decode('utf-8'))
+            except (UnicodeDecodeError,ValueError):
+                return self._json({'error':'Le fichier JSON est invalide ou illisible.'},400)
+            if not isinstance(payload,dict):
+                return self._json({'error':'Le fichier doit contenir un objet JSON à la racine.'},400)
+            if path.endswith('/validate'):
+                try:
+                    with DATA_LOCK:
+                        current=_load_database()
+                        validation=establishment_import.validate_bundle(payload,current)
+                    return self._json(establishment_import.public_validation(validation))
+                except Exception:
+                    return self._json({'error':'Impossible de valider ce dossier d’établissement.'},500)
+            try:
+                with DATA_LOCK:
+                    current=_load_database()
+                    validation=establishment_import.validate_bundle(payload,current)
+                    if validation.get('errors'):
+                        return self._json({
+                            'error':'Le dossier contient des erreurs bloquantes. Aucune donnée n’a été modifiée.',
+                            'validation':establishment_import.public_validation(validation)
+                        },422)
+                    updated,credentials,summary=establishment_import.build_data(
+                        payload,current,
+                        password_hasher=_password_hash,
+                        token_factory=secrets.token_urlsafe
+                    )
+                    # Une sauvegarde complète est obligatoire avant la moindre écriture.
+                    # L'archive inclut la base et les pièces jointes existantes.
+                    self._create_backup(force=True)
+                    _sanitize_rich_data(updated)
+                    serialized=json.dumps(updated,ensure_ascii=False,indent=2).encode('utf-8')
+                    revision=hashlib.sha256(serialized).hexdigest()
+                    temporary_path=f'{DATA_FILE}.{threading.get_ident()}.import.tmp'
+                    try:
+                        with open(temporary_path,'wb') as output:
+                            output.write(serialized)
+                            output.flush()
+                            os.fsync(output.fileno())
+                        # La seule opération qui remplace la base est atomique.
+                        # Aucun calcul ou accès disque ne suit le remplacement.
+                        os.replace(temporary_path,DATA_FILE)
+                    except Exception:
+                        try:
+                            if os.path.exists(temporary_path):
+                                os.remove(temporary_path)
+                        except OSError:
+                            pass
+                        raise
+                return self._json({
+                    'ok':True,
+                    'summary':summary,
+                    'credentials':credentials,
+                    'revision':revision
+                },201,headers={'X-MaClasse-Revision':revision})
+            except ValueError as exc:
+                return self._json({'error':str(exc)},422)
+            except Exception:
+                return self._json({'error':'Import impossible. La base actuelle a été conservée.'},500)
         if path=='/api/admin/teacher':
             if user.get('role')!='admin': return self._json({'error':'Réservé à la direction.'},403)
             try: obj=json.loads(body.decode('utf-8'))
