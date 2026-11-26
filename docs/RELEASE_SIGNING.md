@@ -61,3 +61,10 @@ La dernière release stable antérieure à cette évolution est V25.0.23 et ne v
 ## 6. Rotation de clé
 
 Ne pas remplacer directement la clé publique en production : les clients existants ne feraient plus confiance aux signatures de la nouvelle clé. Une rotation doit être préparée en deux étapes avec une version qui embarque temporairement les deux clés publiques, puis une version ultérieure qui retire l'ancienne. Tant que cette procédure n'est pas développée, protéger la clé privée et conserver une sauvegarde chiffrée.
+
+
+## Lancement manuel d'une publication stable
+
+Le workflow peut être lancé depuis l'onglet **Actions** de GitHub. Sélectionner **Publier une version stable MaClasse**, cliquer sur **Run workflow**, choisir la branche **main**, puis saisir le tag correspondant exactement à VERSION.txt (par exemple **v25.1.1**).
+
+Le workflow exécute d'abord la matrice complète de tests Linux, macOS et Firefox. Ce n'est qu'après sa réussite qu'il crée le tag annoté, construit l'archive et le manifeste, signe ce dernier avec la clé éditeur et publie les trois assets. Si le tag existe déjà sur un autre commit, la publication est refusée. Le même fichier de notes versionné est utilisé dans la release GitHub et dans le manifeste signé.
