@@ -17,6 +17,7 @@ const modelNames = [
   'evaluationModelTerms',
   'evaluationModelTerm',
   'evaluationModelDate',
+  'evaluationModelTargetStudents',
   'evaluationModelInTerm',
   'evaluationModelPublished',
   'evaluationModelTargetStudents',
@@ -157,6 +158,30 @@ setData([
 const legacyStats = context.evaluationModelClassStats(context.db, 'c1', '', exactNow);
 equal(legacyStats.evaluations, 1, 'Les statistiques ne doivent compter que les évaluations explicitement publiées');
 equal(legacyStats.graded, 1, 'Les notes d’une évaluation sans état publié ne doivent pas entrer dans les statistiques');
+
+// Class/group identifiers can arrive as strings or numbers in older records.
+// Every report, dashboard and PDF must resolve the same student target.
+context.db = {
+  students: [{ id: 's1', classId: 1, group: 1 }, { id: 's2', classId: 1, group: 2 }],
+  evaluations: [
+    makeEvaluation('type-normalized-match', '15', 20, { classId: '1', group: '1' }),
+    makeEvaluation('type-normalized-other-group', '20', 20, { classId: '1', group: '2' }),
+    makeEvaluation('type-normalized-other-class', '20', 20, { classId: '2', group: '1' })
+  ],
+  settings: { terms: [{ id: 'T1', start: '2026-09-01', end: '2026-12-31' }] },
+  lessons: [],
+  submissions: []
+};
+equal(
+  context.v101StudentAverage('s1', 'T1'),
+  '15.00',
+  'Les identifiants classe/groupe de types différents doivent cibler le même élève'
+);
+equal(
+  context.evaluationModelTargetStudents(context.db, context.db.evaluations[1]).some(s => s.id === 's1'),
+  false,
+  'Un identifiant de groupe différent doit exclure l’élève'
+);
 
 // 4) A publication matrix crosses three publication flags with six scheduling
 // states. The expected result is derived independently from the model.
