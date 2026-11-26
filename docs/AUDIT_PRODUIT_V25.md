@@ -561,7 +561,7 @@ Ces points sont des constats de code à traiter dans une campagne séparée ; il
 La V25.2.0 reste le candidat à stabiliser ; ces pistes ne doivent pas retarder sa recette réelle ni être mélangées à sa branche de livraison.
 
 
-## 23. Nouveautés après mise à jour et journal historique — V25.2.0
+## Nouveautés après mise à jour et journal historique
 
 - L’écran des nouveautés compare la version installée avec la dernière version consultée par le compte authentifié.
 - L’accusé de consultation est conservé séparément de la base scolaire dans data/release-notes-state.json, sous la forme d’un dictionnaire de versions par identifiant de compte.

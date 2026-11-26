@@ -4,7 +4,8 @@ var currentVersion='',historyPromise=null,attemptedAccounts=Object.create(null),
 function escapeHtml(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function markerFromLine(line){
  var value=String(line||'').trim();if(!value)return null;
- var heading=value.match(/^(#{1,6})\s+/),level=heading?heading[1].length:0,body=value.replace(/^#{1,6}\s+/,'');
+ var heading=value.match(/^(#{1,6})\s+/),level=heading?heading[1].length:0,body=value.replace(/^#{1,6}\s+/,'').replace(/^\d+(?:\.\d+)*\.\s*/,'');
+ if(/^(?:candidat\b|pistes proposées\b|pistes pour\b|propositions\b|backlog\b|future\b)/i.test(body))return null;
  var table=body.match(/^\|\s*(V\d+(?:\.\d+){1,2})\s*\|\s*([^|]+)\|/i);
  if(table)return {version:table[1].replace(/^v/i,''),title:table[1]+' — '+table[2].trim(),level:0,tableSummary:true,summary:table[2].trim()};
  var dated=body.match(/^(\d{2}\/\d{2}\/\d{4})\s*[—–-]\s*(.+)$/),date=dated?dated[1]:'';
