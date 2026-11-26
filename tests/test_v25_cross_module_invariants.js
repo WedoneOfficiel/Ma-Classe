@@ -413,8 +413,8 @@ context.db = {
     { id: 's2', classId: '1', group: 'B' }
   ],
   evaluations: [
-    makeEvaluation('numeric-class-a', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques' }),
-    makeEvaluation('numeric-class-b', '10', 20, { classId: 1, group: 'B', subject: 'Mathématiques' }),
+    makeEvaluation('numeric-class-a', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques', grades: [{ studentId: 's1', value: '8' }] }),
+    makeEvaluation('numeric-class-b', '10', 20, { classId: 1, group: 'B', subject: 'Mathématiques', grades: [{ studentId: 's2', value: '10' }] }),
     makeEvaluation('other-class', '20', 20, { classId: '2', group: 'A', subject: 'Mathématiques' })
   ],
   settings: { terms: [{ id: 'T1', start: '2026-09-01', end: '2026-12-31' }] },
