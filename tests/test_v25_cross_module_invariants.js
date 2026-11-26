@@ -525,7 +525,7 @@ for (const classId of classVariants) {
   for (const group of groupVariants) {
     const evaluation = { id: 'matrix-' + String(classId) + '-' + String(group), classId, group, published: true, date: '2026-11-10' };
     const expectedIds = targetStudents
-      .filter(s => String(s.classId ?? '') === String(classId ?? '') && (!group || String(s.group ?? '') === String(group)))
+      .filter(s => String(classId ?? '').trim() !== '' && String(s.classId ?? '').trim() !== '' && String(s.classId ?? '') === String(classId ?? '') && (!group || String(s.group ?? '') === String(group)))
       .map(s => s.id).sort();
     const actualIds = Array.from(context.evaluationModelTargetStudents(targetDb, evaluation), s => s.id).sort();
     equal(JSON.stringify(actualIds), JSON.stringify(expectedIds), 'Ciblage classe/groupe : classe=' + String(classId) + ', groupe=' + String(group));
@@ -549,7 +549,7 @@ for (const classId of workClassVariants) {
   for (const group of workGroupVariants) {
     const student = { id: 'student', classId: classId === '1' ? 1 : classId, group: group === '1' ? 1 : 'A' };
     const lesson = { classId, group, homework: { requiresSubmission: true } };
-    const expected = String(lesson.classId ?? '') === String(student.classId ?? '') &&
+    const expected = String(lesson.classId ?? '').trim() !== '' && String(student.classId ?? '').trim() !== '' && String(lesson.classId ?? '') === String(student.classId ?? '') &&
       (!lesson.group || String(lesson.group) === String(student.group || ''));
     equal(context.studentWorkEligible(lesson, student), expected, 'Éligibilité devoir ' + String(classId) + '/' + String(group));
     equal(context.studentWorkEligible({ classId, group, homework: null }, student), false, 'Devoir absent ' + String(classId) + '/' + String(group));
