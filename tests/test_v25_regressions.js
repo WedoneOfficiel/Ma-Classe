@@ -26,7 +26,7 @@ const singleDelete=src.slice(singleDeleteStart,singleDeleteEnd);
 assert(singleDelete.indexOf("await api('/api/cloud-delete'")<singleDelete.indexOf('db.cloudItems=db.cloudItems.filter'), 'physical Cloud deletion must succeed before metadata removal');
 const start=src.lastIndexOf('function subjectAverage('),end=src.indexOf('\nfunction bulletinAttendance',start);
 assert(start>=0&&end>start,'active bulletin subjectAverage found');
-const modelStart=src.indexOf('function gradeNumber('),modelEnd=src.indexOf('function evaluationModelAverage',modelStart);
+const modelStart=src.indexOf('function gradeNumber('),modelEnd=src.indexOf('function classAverage(',modelStart);
 const context={db:{students:[{id:'s1',classId:'c1',group:'A'}],evaluations:[
  {id:'e1',classId:'c1',subject:'Maths',date:'2026-10-01',published:true,maxScore:10,coefficient:2,grades:[{studentId:'s1',value:'8'}]},
  {id:'e2',classId:'c1',subject:'Maths',date:'2026-10-02',published:false,maxScore:20,coefficient:1,grades:[{studentId:'s1',value:'20'}]},
