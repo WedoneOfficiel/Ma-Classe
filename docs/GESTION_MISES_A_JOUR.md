@@ -4,7 +4,7 @@
 
 **Correctif en préparation :** PR #14, branche `fix/v25.1.1-macos-certificate-sans`. Le candidat V25.1.1 remplace l'analyse textuelle par le parseur X.509 de `cryptography` et ajoute des tests sur de vrais certificats PEM. Il n'est pas publié et ne doit pas encore être installé.
 
-**État signature :** la clé publique de production est épinglée dans `release-signing-public-key.txt` et le secret `MACLASSE_RELEASE_SIGNING_KEY_B64` est configuré dans GitHub Actions. Le workflow #1807 de la PR #14 est vert (3/3 : Linux, macOS/launchd et Firefox). Seule la nouvelle recette physique du parcours de mise à jour sur le Mac et des appareils clients reste à faire avant publication.
+**État signature :** la clé publique de production est épinglée dans `release-signing-public-key.txt` et le secret `MACLASSE_RELEASE_SIGNING_KEY_B64` est configuré dans GitHub Actions. Les workflows #1807 et #1808 de la PR #14 sont verts (3/3 : Linux, macOS/launchd et Firefox). Seule la nouvelle recette physique du parcours de mise à jour sur le Mac et des appareils clients reste à faire avant publication.
 
 **Note de lecture :** les phases et certains statuts ci-dessous retracent l'historique de conception ; les décisions et résultats actuels sont résumés en tête de ce document et dans le [README](../README.md).
 
@@ -113,7 +113,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 ### Phase E — macOS
 - [x] Ajouter le superviseur launchd utilisateur, le lanceur réseau HTTPS, l'agent de maintenance immédiate/programmée et le rollback code/base.
 - [x] Ajouter les tests de génération des plist, de programmation/annulation et un test de bootstrap/déchargement launchd réel sur runner macOS isolé.
-- [x] CI complète verte sur la tête vérifiée `d266e60` : workflow #1793 (tests Linux, macOS Apple Silicon et régression Firefox réelle).
+- [x] CI candidate V25.1.0 verte : workflow #1802 (tests Linux, macOS Apple Silicon et régression Firefox réelle).
 - [ ] Effectuer la recette sur le Mac de l'utilisateur (démarrage, arrêt, redémarrage, mise à jour, programmation, annulation et rollback).
 - [ ] Effectuer la recette sur le Mac de l'utilisateur (démarrage, arrêt, redémarrage, mise à jour, programmation, annulation et rollback).
 - Conserver les commandes `.command` pour le lancement et le parcours initial de migration ; après activation du gestionnaire supervisé, l'ancien script Git refuse de modifier le code actif.
@@ -125,7 +125,7 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Une fois le gestionnaire supervisé installé et une release stable publiée, les mises à jour normales sont pilotées depuis Paramètres > Mises à jour. Le terminal ne sert plus au téléchargement/à l'installation courante ; il reste nécessaire pour l'installation initiale du service, le dépannage ou une récupération.
 - Le script macOS historique refuse maintenant de faire un git merge si le marqueur du gestionnaire supervisé est présent, et refuse toute mise à jour initiale si un serveur MaClasse tourne encore.
 - Le SHA-256 publié avec le manifeste détecte les corruptions et incohérences d'archive, mais ne constitue pas une signature d'éditeur. La signature Ed25519 avec clé publique épinglée est implémentée ; la paire de production et le secret GitHub ont été provisionnés pour la release V25.1.0.
-- Le workflow de publication appelle le workflow de tests réutilisable et ne crée une release qu'après réussite des jobs Linux, macOS et Firefox. La release stable V25.1.0 (`v25.1.0`) a été publiée avec ses assets signés. Pour le correctif V25.1.1, le workflow #1807 est vert (3/3) ; la publication attend la recette physique sur le Mac.
+- Le workflow de publication appelle le workflow de tests réutilisable et ne crée une release qu'après réussite des jobs Linux, macOS et Firefox. La release stable V25.1.0 (`v25.1.0`) a été publiée avec ses assets signés. Pour le correctif V25.1.1, les workflows #1807 et #1808 sont verts (3/3 chacun) ; la publication attend la recette physique sur le Mac.
 - La chaîne macOS utilise un LaunchAgent de session utilisateur : MaClasse démarre à l'ouverture de session et ne doit pas être considérée comme un service disponible après déconnexion de cet utilisateur.
 - `network_supervisor.py` surveille désormais l'adresse IPv4 privée sur Linux et macOS : perte réseau = fermeture du listener HTTPS ; changement DHCP = renouvellement du certificat serveur sous la même CA puis redémarrage sur la nouvelle IP. La réservation DHCP reste recommandée pour conserver une URL stable.
 

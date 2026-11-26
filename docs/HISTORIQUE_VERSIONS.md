@@ -9,7 +9,7 @@
 - Remplacement de l'analyse du texte OpenSSL par le parseur X.509 de `cryptography`, déjà requis par la vérification Ed25519 des mises à jour.
 - Contrôle explicite de l'IPv4 SAN, de la date de début de validité et d'une durée restante supérieure à 24 heures.
 - Tests avec de vrais certificats PEM générés en fixture : SAN correspondant, SAN différent, absence de SAN, certificat pas encore valide et certificat expirant sous 24 heures.
-- Aucun changement de schéma ni migration de données. Le workflow #1807 valide le correctif sur Linux, macOS Apple Silicon/launchd et Firefox (3/3). La publication attend encore la recette physique du parcours de mise à jour sur le Mac et l'accès depuis les appareils clients.
+- Aucun changement de schéma ni migration de données. Les workflows #1807 et #1808 valident le correctif sur Linux, macOS Apple Silicon/launchd et Firefox (3/3 chacun). La publication attend encore la recette physique du parcours de mise à jour sur le Mac et l'accès depuis les appareils clients.
 
 ## V25.1.0 — stabilisation, sécurité et suivi de classe (25/11/2026)
 
@@ -32,7 +32,7 @@
 - Workflow #1802 : 3/3 jobs réussis, dont installateur Linux, installateur macOS Apple Silicon, launchd réel, tests Python/JavaScript et Firefox réel avec captures clair/sombre.
 - La migration doit encore être répétée sur une copie représentative des données réelles.
 - La recette réseau multi-appareils doit encore être réalisée sur le Mac, le PC Fedora et les appareils clients.
-- La paire Ed25519 de production est provisionnée : clé publique épinglée dans le dépôt et secret `MACLASSE_RELEASE_SIGNING_KEY_B64` configuré dans GitHub Actions avant la release V25.1.0.
+- La paire Ed25519 de production a été provisionnée avant la release V25.1.0 : clé publique épinglée dans le dépôt et secret `MACLASSE_RELEASE_SIGNING_KEY_B64` configuré dans GitHub Actions.
 
 ## Journal V25
 
