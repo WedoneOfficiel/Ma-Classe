@@ -240,7 +240,8 @@ def verify_release_journal(page, role: str, output_dir: Path) -> None:
     expect(nav).to_contain_text("V21.22")
     expect(nav).to_contain_text("V20.10")
     expect(nav).to_contain_text("V19.7")
-    expect(nav).to_contain_text("V25.2.1").not_to_be_visible()
+    if "V25.2.1" in nav.inner_text():
+        raise AssertionError("Le journal ne doit pas inventer une version absente des archives.")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for theme in ("light", "dark"):
