@@ -733,7 +733,7 @@ Le commit courant a également corrigé la règle `.gitignore` pour le véritabl
 - _bulletin_pdf_data applique le helper serveur _evaluation_publication_due avec une référence temporelle explicite. Une date seule passée en paramètre reste interprétée comme la fin de cette journée afin de préserver les rapports historiques ; un objet datetime utilise l'instant exact.
 
 ### Tests ajoutés ou renforcés
-- Nouveau test JavaScript tests/test_v25_cross_module_invariants.js : plus de 240 assertions déterministes prévues sur 13 barèmes, sept valeurs représentatives par barème, coefficients, publication, heures exactes, fuseaux, périodes, groupes, classes, valeurs invalides et vues utilisant les notes.
+- Nouveau test JavaScript tests/test_v25_cross_module_invariants.js : plus de 250 assertions déterministes prévues sur 13 barèmes, sept valeurs représentatives par barème, coefficients, publication, heures exactes, fuseaux, périodes, groupes, classes, valeurs invalides et vues utilisant les notes.
 - Test PDF serveur tests/test_v25_bulletin_pdf_data.py renforcé pour comparer une publication déjà due et une autre programmée une seconde après l'instant de référence.
 - Les anciens tests V25 de publication élève et de PDF bulletin restent actifs et exécutés dans les trois runners adaptés.
 
@@ -741,6 +741,8 @@ Le commit courant a également corrigé la règle `.gitignore` pour le véritabl
 - Premier run PR #20 : les tests Linux/macOS ont d'abord révélé un helper de date manquant dans le contexte isolé du nouveau test ; le test a été corrigé.
 - Deuxième run : la matrice a mis en évidence le défaut applicatif réel des notes négatives (exemple : -1 et 12/20 produisaient 5,50). Le moteur commun a été corrigé pour retourner null hors barème.
 - Le filtre du PDF serveur a également été corrigé : un rapport construit pour un instant précis respecte désormais les timestamps du jour ; une date seule de référence continue de signifier la fin de cette journée.
+- Le relevé Résultats séparé a été aligné à son tour : il utilise l'instant de référence complet, filtre la classe/groupe de l'élève et rejette les notes hors barème.
+- Le panneau Suivi d'un élève utilisait seulement sa classe pour compter et présenter les devoirs ; il réutilise maintenant studentWorkEligible, comme les listes élève et agrégats globaux.
 - Les corrections du PDF et le test exact à l'instant ont été ajoutés après cette découverte. **La CI de la dernière tête doit encore terminer avant tout statut de validation ou fusion.**
 
 Aucun changement du schéma de données n'est prévu.
