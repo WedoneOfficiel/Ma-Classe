@@ -103,11 +103,11 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
 
     if role == "student":
         responsive_modules = [
-            "studentHome","studentSchedule","studentLessons","studentHomework",
+            "studentHome","studentSchedule","studentLessons","studentWork","studentHomework",
             "studentMessages","studentDocuments","studentSettings"
         ]
         mobile_visual_modules = {
-            "studentHome","studentSchedule","studentLessons","studentMessages",
+            "studentHome","studentSchedule","studentLessons","studentWork","studentMessages",
             "studentDocuments","studentSettings"
         }
     elif role == "admin":
@@ -803,6 +803,22 @@ def main() -> None:
                         "La semaine affichée dans Séances & leçons élève ne contient pas la date sélectionnée : "
                         + json.dumps(misaligned_student_lessons,ensure_ascii=False)
                     )
+
+                # The dedicated student work module must expose overdue, unsubmitted work.
+                student_page.evaluate("""() => {
+                  page='studentHome';
+                  appSpace='student';
+                  render();
+                }""")
+                student_page.get_by_role("button",name="Voir mon travail").click()
+                expect(student_page.locator("#main h1")).to_contain_text("Travail à faire")
+                expect(student_page.locator("#nav button[onclick*='studentWork']")).to_contain_text("1")
+                overdue_row=student_page.locator("#main .table tbody tr").filter(
+                    has_text="Devoir avec pièce jointe"
+                )
+                expect(overdue_row).to_contain_text("En retard")
+                expect(overdue_row.get_by_role("button",name="Ouvrir")).to_be_visible()
+
                 student_tracking_state = student_page.evaluate("""() => {
                   page='ppDashboard';appSpace='teacher';render();
                   const main=document.getElementById('main');
@@ -1199,7 +1215,7 @@ def main() -> None:
                 capture_product_screenshots(
                     student_page,
                     "student",
-                    ["studentHome","studentSchedule","studentLessons","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
+                    ["studentHome","studentSchedule","studentLessons","studentWork","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
                     Path("artifacts/browser-v25"),
                 )
                 if teacher_page_errors:
