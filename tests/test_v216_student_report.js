@@ -48,6 +48,33 @@ r=ctx.buildStudentReport(db,'s1','','2027-02-01');
 assert.strictEqual(r.items.some(x=>x.evaluationId==='e7'),true);
 assert.strictEqual(ctx.studentReportFormatAverage(null),'—');
 assert.strictEqual(ctx.studentReportFormatAverage(14.5),'14.50');
+
+/* Cross-module consistency: a teacher comment alone is not a qualitative grade. */
+const commentOnlyDb = {
+  students: [{id:'s-comment',classId:'c1',group:'A'}],
+  settings:{terms:[{id:'t1',name:'T1',start:'2026-09-01',end:'2026-12-31'}]},
+  evaluations:[
+    {id:'comment-only',classId:'c1',group:'A',subject:'Français',date:'2026-11-15',published:true,maxScore:20,
+     grades:[{studentId:'s-comment',value:'',comment:'Très bonne participation.'}]},
+    {id:'qualitative-only',classId:'c1',group:'A',subject:'Arts',date:'2026-11-16',published:true,
+     competencies:['Coopérer'],grades:[{studentId:'s-comment',value:'',competencyRatings:{Coopérer:'3'}}]},
+    {id:'empty',classId:'c1',group:'A',subject:'Maths',date:'2026-11-17',published:true,
+     grades:[{studentId:'s-comment',value:''}]}
+  ]
+};
+const commentReport = ctx.buildStudentReport(commentOnlyDb,'s-comment','t1','2026-11-30T12:00:00Z');
+assert.strictEqual(commentReport.items.length,2,'A comment-only evaluation remains visible in the report');
+assert.strictEqual(commentReport.counts.numeric,0,'A comment-only evaluation is not numeric');
+assert.strictEqual(commentReport.counts.qualitative,1,'Only actual criteria/competency results count as qualitative');
+const commentItem = commentReport.items.find(x=>x.evaluationId==='comment-only');
+assert.strictEqual(commentItem.qualitative,false,'A comment alone must not set the qualitative-result flag');
+assert.strictEqual(commentItem.comment,'Très bonne participation.','Teacher comment is retained');
+assert.strictEqual(ctx.studentReportNonNumericLabel(commentItem),'Appréciation','Comment-only result is labelled as an appreciation');
+assert.strictEqual(ctx.studentReportNonNumericLabel(commentReport.items.find(x=>x.evaluationId==='qualitative-only')),'Compétences','A competency result is labelled as qualitative');
+assert.strictEqual(ctx.studentReportNonNumericLabel({raw:null,comment:'',qualitative:false}),'Non noté','An empty result is explicitly labelled as not graded');
+assert(js.includes("studentReportNonNumericLabel(item)"),'Results table must use the shared non-numeric label helper');
+console.log('OK — Student Report : distinction entre note chiffrée, résultat qualitatif et appréciation seule.');
+
 console.log('OK — V21.17 moteur Student Report : périodes, publication, barèmes, coefficients, décimales FR et qualitatif.');
 
 // Régression UI : les handlers inline doivent rester valides dans un attribut HTML.
