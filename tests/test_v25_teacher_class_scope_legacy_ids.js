@@ -47,12 +47,15 @@ const context={
   v103MissingWorkList:()=>[
     {lesson:{id:'l1',classId:'1'},student:{id:'11'}},
     {lesson:{id:'l2',classId:'2'},student:{id:'22'}}
-  ]
+  ],
+  esc:v=>String(v??''),
+  jsArg:v=>JSON.stringify(v),
+  openModal:(title,html)=>{context.lastModal={title,html}}
 };
 vm.createContext(context);
 for(const name of [
   'currentTeacherProfile','teacherClassIds','teacherPPClasses','teacherClasses',
-  'classTeachers','teacherAccount','teacherUser','teacherCanReachStudent','ppClassStats'
+  'classTeachers','teacherAccount','teacherUser','teacherCanReachStudent','ppClassStats','openUserEditor'
 ])vm.runInContext(declaration(name),context);
 
 assert.strictEqual(context.currentTeacherProfile().first,'Alice',
@@ -69,6 +72,13 @@ assert.strictEqual(context.teacherAccount('123').username,'alice',
   'La fiche compte doit retrouver le compte enseignant canonique.');
 assert.strictEqual(context.teacherCanReachStudent('123','11'),true,
   'Le contrôle d’accès d’un élève doit normaliser les identifiants de classe.');
+context.openUserEditor('123');
+assert(context.lastModal?.title==='Modifier le compte et la fiche professeur',
+  'Le formulaire de modification du compte doit être accessible.');
+assert(context.lastModal.html.includes('name="classIds" value="1" checked'),
+  'Ouvrir un compte professeur ne doit pas décocher ses classes si les identifiants sont mixtes.');
+assert(context.lastModal.html.includes('name="ppIds" value="1" checked'),
+  'Ouvrir un compte professeur ne doit pas décocher ses classes PP si les identifiants sont mixtes.');
 const stats=context.ppClassStats({id:'1'});
 assert.strictEqual(stats.students,1,'L’effectif PP doit compter les élèves de la classe.');
 assert.strictEqual(stats.avg,'14.00','La moyenne PP doit inclure les évaluations de la classe.');
