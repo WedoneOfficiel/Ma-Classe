@@ -9,7 +9,7 @@ const db={
   lessons:[{id:101,classId:1,subject:'Français',homework:{title:'Rédaction',requiresSubmission:true,due:'2026-11-25'}}],
   submissions:[
     {id:'sent-1',lessonId:'101',studentId:7,status:'submitted',submittedAt:'2026-11-25T10:00:00Z'},
-    {id:'draft-1',lessonId:101,studentId:'7',status:'draft',createdAt:'2026-11-25T09:00:00Z'},
+    {id:'draft-1',lessonId:101,studentId:'7',createdAt:'2026-11-25T09:00:00Z'},
     {id:'corrected-1',lessonId:101,studentId:'7',status:'submitted',submittedAt:'2026-11-24T10:00:00Z',corrected:true}
   ],
   evaluations:[],
