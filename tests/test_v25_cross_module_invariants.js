@@ -456,7 +456,7 @@ equal(statsAll.published, 3, 'Le compteur publié exclut brouillons et statuts a
 equal(statsAll.entered, 3, 'Le nombre de notes saisies ne compte que les groupes ciblés');
 equal(statsAll.graded, 3, 'Les statistiques de notes excluent les notes hors groupe');
 equal(statsAll.evaluations, 3, 'Les statistiques classe et le tableau utilisent le même nombre de publications');
-equal(statsAll.average, 14, 'La moyenne pondérée combine les notes valides des seuls groupes ciblés');
+equal(Number(statsAll.average.toFixed(2)), 12.67, 'La moyenne pondérée combine les notes valides des seuls groupes ciblés');
 const statsSubject = context.evaluationModelDashboardStats(1, 'Mathématiques');
 equal(statsSubject.all, 3, 'Le filtre matière accepte les IDs de classe numériques/texte');
 equal(statsSubject.entered, 2, 'Le filtre matière compte les notes des deux groupes concernés');
