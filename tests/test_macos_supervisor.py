@@ -525,9 +525,11 @@ subjectKeyIdentifier=hash
                 (program / "server.py").write_text(
                     "APP_VERSION='" + version + "'\n"
                     "HEALTHY=" + ("True" if healthy else "False") + "\n"
-                    "import json,os,ssl,socketserver\n"
+                    "import json,os,ssl,socketserver,signal\n"
                     "from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n"
                     "class TestHTTPServer(ThreadingHTTPServer):\n"
+                    " daemon_threads=False\n"
+                    " block_on_close=True\n"
                     " def server_bind(self):\n"
                     "  socketserver.TCPServer.server_bind(self)\n"
                     "  self.server_name=str(self.server_address[0])\n"
@@ -547,7 +549,11 @@ subjectKeyIdentifier=hash
                     "context.load_cert_chain(os.environ['MACLASSE_TLS_CERT'],os.environ['MACLASSE_TLS_KEY'])\n"
 
                     "server.socket=context.wrap_socket(server.socket,server_side=True)\n"
-                    "server.serve_forever()\n",
+                    "def stop(signum,frame): raise KeyboardInterrupt\n"
+                    "signal.signal(signal.SIGTERM,stop)\n"
+                    "try: server.serve_forever()\n"
+                    "except KeyboardInterrupt: pass\n"
+                    "finally: server.server_close()\n",
                     encoding="utf-8"
                 )
                 supervisor_source = (ROOT / "network_supervisor.py").read_text(encoding="utf-8")
