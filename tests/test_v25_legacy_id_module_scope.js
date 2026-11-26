@@ -143,7 +143,7 @@ context.db.submissions=[{
 }];
 context.evaluationModelTargetStudents=()=>context.db.students;
 context.studentActivitySummary=()=>({avg:'16.00',abs:1,late:1,submissions:1,missing:0});
-context.studentWorkEligible=(lesson,st)=>context.sameId(lesson.classId,st.classId)&&context.sameId(lesson.group,st.group);
+context.studentWorkEligible=(lesson,st)=>String(lesson.classId)===String(st.classId)&&String(lesson.group)===String(st.group);
 context.evaluationGradeLabel=()=> '16 /20';
 context.fmtDate=value=>String(value??'');
 context.openModal=(title,html)=>{context.lastModal={title,html};};
