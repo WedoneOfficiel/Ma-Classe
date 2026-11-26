@@ -33,7 +33,7 @@ const db={
 const context={
   db,
   sameId:(a,b)=>{const x=String(a??'').trim(),y=String(b??'').trim();return !!x&&x===y},
-  iso:d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')},
+  iso:()=> '2026-11-26',
   student:id=>db.students.find(s=>context.sameId(s.id,id)),
   activeStudent:()=> 's1',
   v10MissingGrades:()=>[],
