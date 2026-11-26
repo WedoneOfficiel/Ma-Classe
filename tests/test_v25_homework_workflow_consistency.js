@@ -5,6 +5,12 @@ function section(startMarker,endMarker){
   assert(start>=0&&end>start,'Section introuvable : '+startMarker);
   return source.slice(start,end);
 }
+function declaration(name){
+  const start=source.lastIndexOf('function '+name+'(');
+  assert(start>=0,'Fonction active absente : '+name);
+  const end=source.indexOf('\nfunction ',start+10);
+  return source.slice(start,end>=0?end:source.length);
+}
 const db={
   evaluations:[],
   attendance:[],
