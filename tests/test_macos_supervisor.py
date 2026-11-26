@@ -348,7 +348,7 @@ class MacOSSupervisorTests(unittest.TestCase):
             marker = data / "immediate-update-agent-started"
             script.write_text(
                 '#!/bin/bash\n'
-                'printf started > "$MACLASSE_DATA_DIR/immediate-update-agent-started"\n',
+                'printf started > "$MACLASSE_DATA_DIR/immediate-update-agent-started"\n'
                 'exec /bin/sleep 30\n',
                 encoding="utf-8",
             )
