@@ -44,6 +44,7 @@ const modelNames = [
   'v101SubmissionStats',
   'v103MissingWorkList',
   'weightedAverageForEvaluations',
+  'avg',
   'v101StudentAverage',
   'evaluationGradeLabel'
 ];
@@ -408,6 +409,10 @@ equal(
   'La fiche élève de l’autre groupe doit conserver son propre périmètre'
 );
 truthy(declaration('studentEvaluations').includes('evaluationModelTargetStudents(db,e)'), 'Les dernières évaluations de la fiche doivent respecter les élèves ciblés');
+equal(context.avg(['s1']), '13.00', 'La moyenne de la fiche élève ne doit pas intégrer une note conservée dans un autre sous-groupe');
+equal(context.avg(['s2']), '10.50', 'La moyenne de la fiche élève du groupe B doit utiliser ses notes et celles de la classe entière');
+truthy(declaration('avg').includes('evaluationModelTargetStudents(db,e)'), 'La moyenne de la fiche doit filtrer les notes par le groupe ciblé');
+
 truthy(declaration('studentWorkItems').includes('studentWorkEligible(l,st)'), 'Les travaux de la fiche doivent respecter classe et sous-groupe');
 const ownWork = Array.from(context.studentLessonItems('s1'), l => l.id).sort();
 equal(JSON.stringify(ownWork), JSON.stringify(['L-A', 'L-all', 'L-no-due']), 'La liste élève doit exclure les autres groupes et classes tout en conservant les séances sans échéance');
