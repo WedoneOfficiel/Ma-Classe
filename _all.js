@@ -1797,9 +1797,13 @@ function studentReportIsPublished(e,today){
   const now=Date.parse(reference.length<=10?reference+'T23:59:59.999Z':reference);
   return Number.isFinite(timestamp)&&Number.isFinite(now)&&timestamp<=now;
 }
-function studentReportGradeHasContent(g){
+function studentReportNumericGrade(e,g){
+  const max=v207EvaluationMax(e),raw=gradeNumber(g?.value);
+  return raw!==null&&Number.isFinite(max)&&max>0&&raw>=0&&raw<=max?raw:null;
+}
+function studentReportGradeHasContent(e,g){
   if(!g)return false;
-  if(g.value!==''&&g.value!==null&&g.value!==undefined&&gradeNumber(g.value)!==null)return true;
+  if(studentReportNumericGrade(e,g)!==null)return true;
   return Object.keys(g.criterionScores||{}).length>0||Object.keys(g.competencyRatings||{}).length>0||String(g.comment||'').trim()!=='';
 }
 function studentReportCoefficient(e){
@@ -1807,7 +1811,7 @@ function studentReportCoefficient(e){
   return Number.isFinite(n)&&n>0?n:1;
 }
 function studentReportItem(e,g){
-  const max=v207EvaluationMax(e),raw=gradeNumber(g?.value),coef=studentReportCoefficient(e);
+  const max=v207EvaluationMax(e),raw=studentReportNumericGrade(e,g),coef=studentReportCoefficient(e);
   return {
     evaluationId:e.id,
     title:e.title||'Évaluation',
@@ -1850,7 +1854,7 @@ function buildStudentReport(sourceDb,studentId,termId='',today){
   const subjectsMap=new Map(),items=[];
   for(const e of evaluations){
     const g=(e.grades||[]).find(x=>x.studentId===studentId);
-    if(!studentReportGradeHasContent(g))continue;
+    if(!studentReportGradeHasContent(e,g))continue;
     const item=studentReportItem(e,g);items.push(item);
     const subject=item.subject||'Autres';
     if(!subjectsMap.has(subject))subjectsMap.set(subject,[]);
