@@ -6,12 +6,52 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import ipaddress
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.x509.oid import NameOID
 from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import network_supervisor as supervisor
+
+
+def write_test_certificate(
+    path: Path,
+    san_ips: list[str] | None = None,
+    *,
+    not_valid_before: datetime | None = None,
+    not_valid_after: datetime | None = None,
+) -> None:
+    """Write a real PEM certificate to exercise X.509 parsing end to end."""
+    now = datetime.now(timezone.utc)
+    before = (not_valid_before or now - timedelta(days=1)).replace(tzinfo=None)
+    after = (not_valid_after or now + timedelta(days=30)).replace(tzinfo=None)
+    key = ed25519.Ed25519PrivateKey.generate()
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "MaClasse test")])
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(before)
+        .not_valid_after(after)
+    )
+    if san_ips is not None:
+        builder = builder.add_extension(
+            x509.SubjectAlternativeName([
+                x509.IPAddress(ipaddress.ip_address(value)) for value in san_ips
+            ]),
+            critical=False,
+        )
+    certificate = builder.sign(key, algorithm=None)
+    path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
 
 
 class FakeProcess:
@@ -81,24 +121,28 @@ class NetworkSupervisorTests(unittest.TestCase):
         self.assertEqual(supervisor._usable_private_ipv4("10.1.2.3"), "10.1.2.3")
 
     def test_certificate_requires_matching_ip_san_and_more_than_24h_validity(self):
-        def runner(command, **kwargs):
-            if "-ext" in command:
-                return SimpleNamespace(returncode=0, stdout="X509v3 Subject Alternative Name: IP Address:192.168.1.42\n")
-            if "-checkend" in command:
-                return SimpleNamespace(returncode=0, stdout="")
-            raise AssertionError(command)
-
         with tempfile.TemporaryDirectory() as temp:
             cert = Path(temp) / "server.crt"
-            cert.write_text("fixture", encoding="utf-8")
-            self.assertTrue(supervisor.certificate_matches_host(cert, "192.168.1.42", runner, "/usr/bin/openssl"))
-            self.assertFalse(supervisor.certificate_matches_host(cert, "192.168.1.43", runner, "/usr/bin/openssl"))
+            write_test_certificate(cert, ["192.168.1.42"])
+            self.assertTrue(supervisor.certificate_matches_host(cert, "192.168.1.42"))
+            self.assertFalse(supervisor.certificate_matches_host(cert, "192.168.1.43"))
 
-            def expiring(command, **kwargs):
-                if "-ext" in command:
-                    return SimpleNamespace(returncode=0, stdout="X509v3 Subject Alternative Name: IP Address:192.168.1.42\n")
-                return SimpleNamespace(returncode=1, stdout="")
-            self.assertFalse(supervisor.certificate_matches_host(cert, "192.168.1.42", expiring, "/usr/bin/openssl"))
+            write_test_certificate(
+                cert,
+                ["192.168.1.42"],
+                not_valid_after=datetime.now(timezone.utc) + timedelta(hours=12),
+            )
+            self.assertFalse(supervisor.certificate_matches_host(cert, "192.168.1.42"))
+
+            write_test_certificate(
+                cert,
+                ["192.168.1.42"],
+                not_valid_before=datetime.now(timezone.utc) + timedelta(days=1),
+            )
+            self.assertFalse(supervisor.certificate_matches_host(cert, "192.168.1.42"))
+
+            write_test_certificate(cert, None)
+            self.assertFalse(supervisor.certificate_matches_host(cert, "192.168.1.42"))
 
     def test_rebind_stops_old_listener_before_starting_new_address(self):
         processes = []
@@ -159,7 +203,7 @@ class NetworkSupervisorTests(unittest.TestCase):
             def runner(command, **kwargs):
                 calls.append((command, kwargs))
                 if command[0] == "/bin/bash":
-                    (cert_dir / "server.crt").write_text("configured", encoding="utf-8")
+                    write_test_certificate(cert_dir / "server.crt", ["10.0.0.5"])
                     return SimpleNamespace(returncode=0, stdout="")
                 if "-ext" in command:
                     return SimpleNamespace(returncode=0, stdout="X509v3 Subject Alternative Name: IP Address:10.0.0.5\n")
