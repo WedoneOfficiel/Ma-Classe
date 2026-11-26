@@ -113,6 +113,8 @@ equal(context.evaluationGradeLabel({ maxScore: 10 }, { value: '7,5' }), '7,5 /10
 setData([makeEvaluation('comma-grade', '7,5', 10)]);
 equal(average(), '15.00', 'Une virgule décimale est convertie correctement sur 20');
 
+const exactNow = '2026-11-26T10:00:00.000Z';
+
 // 3) Overall averages must use the same publication, class, group and period
 // rules as subject averages. Drafts, future publications and invalid scores
 // must not contaminate the student's bulletin.
@@ -176,7 +178,6 @@ for (const published of publicationFlags) {
 
 // 5) Same-day timestamp scheduling must be compared to the exact instant,
 // not to midnight or the end of the calendar day.
-const exactNow = '2026-11-26T10:00:00.000Z';
 equal(
   context.evaluationModelPublished({ published: true, publishAt: '2026-11-26T09:59:59.000Z' }, exactNow),
   true,
