@@ -37,7 +37,7 @@ const ctx = {
 function $(sel) { if (sel === '#modal') return { querySelector(q) { return els[q.match(/name="([^"]+)/)[1]]; } }; return null; }
 ctx.$ = $;
 vm.createContext(ctx);
-vm.runInContext([fn('sameId','cls'), fn('evaluationModelTargetStudents','evaluationModelInTerm'), fn('applyEvaluationTemplate','saveEvaluationTemplate'), fn('saveEvaluationTemplate','deleteEvaluationTemplate'), fn('deleteEvaluationTemplate','manageEvaluationGrids'), fn('competencySummary','openCompetencyReport')].join('\n'), ctx);
+vm.runInContext([fn('sameId','cls'), fn('evaluationModelTargetStudents'), fn('applyEvaluationTemplate','saveEvaluationTemplate'), fn('saveEvaluationTemplate','deleteEvaluationTemplate'), fn('deleteEvaluationTemplate','manageEvaluationGrids'), fn('competencySummary','openCompetencyReport')].join('\n'), ctx);
 ctx.applyEvaluationTemplate('g1');
 assert.strictEqual(els.subject.value, 'Français');
 assert.strictEqual(els.title.value, 'Compréhension');
