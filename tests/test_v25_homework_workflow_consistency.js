@@ -111,9 +111,9 @@ vm.runInContext(section('function showSubmissions(','function lessons(){'),conte
     'Le devoir pour lequel Bilal a un brouillon doit rester affiché comme À FAIRE dans le suivi rapide.');
 
   const profile360=declaration('profile360Tab');
-  assert(profile360.includes("sameId(z.lessonId,x.l.id)&&sameId(z.studentId,id)&&(z.status==='submitted'||!!z.submittedAt||!z.status)"),
+  assert(profile360.includes("sameId(z.lessonId,x.l.id)&&sameId(z.studentId,id)&&(z.status==='submitted'||!!z.submittedAt)"),
     'Le profil 360 doit réserver le statut Rendu aux soumissions réellement envoyées.');
-  assert(profile360.includes("sameId(x.studentId,id)&&(x.status==='submitted'||!!x.submittedAt||!x.status)"),
+  assert(profile360.includes("sameId(x.studentId,id)&&(x.status==='submitted'||!!x.submittedAt)"),
     'Le KPI Rendus du profil 360 doit exclure les brouillons.');
 
   context.openWorkTracking('101');
