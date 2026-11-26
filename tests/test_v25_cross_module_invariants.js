@@ -441,12 +441,12 @@ context.db = {
     { id: 'other', classId: '2', group: 'A' }
   ],
   evaluations: [
-    makeEvaluation('stats-A', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques' }),
-    makeEvaluation('stats-B', '10', 20, { classId: 1, group: 'B', subject: 'Mathématiques' }),
-    makeEvaluation('stats-C', '12', 20, { classId: '1', group: 'C', subject: 'Français' }),
-    makeEvaluation('stats-other-class', '20', 20, { classId: '2', group: 'A', subject: 'Mathématiques' }),
-    makeEvaluation('stats-draft', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: false }),
-    makeEvaluation('stats-missing-flag', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: undefined })
+    makeEvaluation('stats-A', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques', grades: [{ studentId: 'a', value: '8' }] }),
+    makeEvaluation('stats-B', '10', 20, { classId: 1, group: 'B', subject: 'Mathématiques', grades: [{ studentId: 'b', value: '10' }] }),
+    makeEvaluation('stats-C', '12', 20, { classId: '1', group: 'C', subject: 'Français', grades: [{ studentId: 'c', value: '12' }] }),
+    makeEvaluation('stats-other-class', '20', 20, { classId: '2', group: 'A', subject: 'Mathématiques', grades: [{ studentId: 'other', value: '20' }] }),
+    makeEvaluation('stats-draft', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: false, grades: [{ studentId: 'a', value: '20' }] }),
+    makeEvaluation('stats-missing-flag', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: undefined, grades: [{ studentId: 'a', value: '20' }] })
   ],
   settings: { terms: [] },
   lessons: [],
