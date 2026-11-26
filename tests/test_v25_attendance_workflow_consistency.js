@@ -77,6 +77,28 @@ assert(context.lastModal.html.includes('value="1" selected'),
 assert(context.lastModal.html.includes('value="5" selected'),
   'Le créneau numérique doit rester sélectionné.');
 
+// Modifier uniquement la justification et le motif ne doit pas transformer
+// silencieusement une absence existante en présence.
+context.setAttJust('100',true);
+context.setAttReason('100','Certificat médical reçu');
+context.formDataEntries=[['classId','1'],['date','2026-11-25'],['slotId','5'],['partOfDay','']];
+context.saveAttendance({preventDefault(){}},'9');
+assert.strictEqual(db.attendance[0].rows[0].status,'absent',
+  'Une modification partielle de motif/justification doit conserver le statut absent.');
+assert.strictEqual(db.attendance[0].rows[0].justified,true,
+  'La case de justification modifiée doit être sauvegardée.');
+assert.strictEqual(db.attendance[0].rows[0].reason,'Certificat médical reçu',
+  'Le nouveau motif doit remplacer l’ancien sans perdre le statut.');
+
+// Une fenêtre rouverte après une édition annulée ne doit pas réappliquer
+// les changements en mémoire de la fenêtre précédente.
+context.setAttReason('100','Modification annulée');
+context.openAttendance('9');
+context.formDataEntries=[['classId','1'],['date','2026-11-25'],['slotId','5'],['partOfDay','']];
+context.saveAttendance({preventDefault(){}},'9');
+assert.strictEqual(db.attendance[0].rows[0].reason,'Certificat médical reçu',
+  'Un brouillon d’édition abandonné ne doit pas fuiter dans l’appel rouvert.');
+
 const table=context.attendanceTable({classId:'1',date:'2026-11-25',mode:'hour',slotId:'5',rows:[{studentId:'100',status:'absent',justified:true,reason:'Certificat'}]});
 assert(table.includes('MARTIN Alice')&&table.includes('on absent')&&table.includes('checked'),
   'La grille d’appel doit retrouver l’élève et son statut malgré les identifiants historiques mixtes.');
