@@ -584,7 +584,29 @@ def _load_database():
 
 def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_record, today=None):
     """Build the printable bulletin from canonical server-side records only."""
-    today=today or datetime.date.today().isoformat()
+    if today is None or today == '':
+        publication_now = datetime.datetime.now(datetime.timezone.utc)
+    elif isinstance(today, datetime.datetime):
+        publication_now = today
+    elif isinstance(today, datetime.date):
+        publication_now = datetime.datetime.combine(
+            today, datetime.time.max, tzinfo=datetime.timezone.utc
+        )
+    else:
+        reference = str(today).strip()
+        if len(reference) <= 10:
+            reference_day = datetime.date.fromisoformat(reference[:10])
+            publication_now = datetime.datetime.combine(
+                reference_day, datetime.time.max, tzinfo=datetime.timezone.utc
+            )
+        else:
+            publication_now = datetime.datetime.fromisoformat(
+                reference.replace('Z', '+00:00')
+            )
+    if publication_now.tzinfo is None:
+        publication_now = publication_now.astimezone()
+    publication_now = publication_now.astimezone(datetime.timezone.utc)
+    today = publication_now.date().isoformat()
     class_id=str(bulletin.get('classId') or '')
     student_id=str(bulletin.get('studentId') or '')
     term=term_record if isinstance(term_record,dict) else None
@@ -624,7 +646,7 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
         eligible=[]
         for e in evaluations:
             if str(e.get('classId') or '')!=class_id or e.get('published') is not True: continue
-            if str(e.get('publishAt') or '')>today and e.get('publishAt'): continue
+            if not _evaluation_publication_due(e.get('publishAt'), now=publication_now): continue
             if not in_term(e): continue
             if e.get('group') and str(e.get('group'))!=str(st.get('group') or ''): continue
             eligible.append(e)
