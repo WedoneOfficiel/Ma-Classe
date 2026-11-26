@@ -399,7 +399,33 @@ truthy(
   'Le tableau de bord des évaluations doit respecter l’heure exacte de publication'
 );
 
-// 12) Second-wave cross-module matrix: 30 evaluation class/group combinations,
+// 12) Bulletin subject averages, overall averages and class averages must
+// remain identical when legacy class IDs are numeric in one module and strings
+// in another. This directly covers the production fix from the second audit.
+context.db = {
+  students: [
+    { id: 's1', classId: 1, group: 'A' },
+    { id: 's2', classId: '1', group: 'B' }
+  ],
+  evaluations: [
+    makeEvaluation('numeric-class-a', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques' }),
+    makeEvaluation('numeric-class-b', '10', 20, { classId: 1, group: 'B', subject: 'Mathématiques' }),
+    makeEvaluation('other-class', '20', 20, { classId: '2', group: 'A', subject: 'Mathématiques' })
+  ],
+  settings: { terms: [{ id: 'T1', start: '2026-09-01', end: '2026-12-31' }] },
+  lessons: [],
+  submissions: [],
+  attendance: []
+};
+equal(context.subjectAverage('s1', 1, 'Mathématiques', 'T1'), '16.00', 'La moyenne par matière reconnaît le même identifiant de classe numérique/texte');
+equal(context.subjectAverage('s1', '1', 'Mathématiques', 'T1'), '16.00', 'La moyenne par matière est identique avec la représentation textuelle');
+equal(context.subjectAverage('s2', 1, 'Mathématiques', 'T1'), '10.00', 'La moyenne par matière respecte le groupe B et les identifiants normalisés');
+equal(context.subjectAverage('s1', '2', 'Mathématiques', 'T1'), '—', 'Une classe réellement différente ne doit pas recevoir la moyenne');
+equal(context.v101StudentAverage('s1', 'T1'), '16.00', 'La moyenne générale doit utiliser le même ciblage que la moyenne par matière');
+equal(context.v101StudentAverage('s2', 'T1'), '10.00', 'La moyenne générale du groupe B reste propre à cet élève');
+equal(context.classAverageForBulletin(1, 'T1'), '13.00', 'La moyenne de classe combine les moyennes individuelles et les identifiants normalisés');
+
+// 13) Second-wave cross-module matrix: 30 evaluation class/group combinations,
 // 60 homework eligibility cases and deterministic submission aggregates.
 const targetStudents = [
   { id: 'n1', classId: 1, group: 'A' },
