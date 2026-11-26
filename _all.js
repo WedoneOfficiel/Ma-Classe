@@ -1775,9 +1775,9 @@ function bulletins(){const classes=db.classes||[];let sel=window._bulletinSelect
 
 /* MaClasse V21.16 — moteur unique des résultats élèves */
 function studentReportToday(today){
-  if(today instanceof Date)return iso(today);
+  if(today instanceof Date)return today.toISOString();
   const raw=String(today||'').trim();
-  return raw||iso(new Date());
+  return raw||new Date().toISOString();
 }
 function studentReportTerms(sourceDb){
   return [...(sourceDb?.settings?.terms||[])].filter(Boolean).map(t=>({id:t.id,name:t.name||'Période',start:t.start||'',end:t.end||''}));
@@ -1789,11 +1789,13 @@ function studentReportEvaluationInTerm(e,selectedTerm){
 }
 function studentReportIsPublished(e,today){
   if(e?.published!==true)return false;
-  const publishedAt=String(e.publishAt||'');
+  const publishedAt=String(e.publishAt||'').trim();
   if(!publishedAt)return true;
-  if(publishedAt.length<=10)return publishedAt<=String(today||'');
+  const reference=String(today||new Date().toISOString()).trim();
+  if(publishedAt.length<=10)return publishedAt<=reference.slice(0,10);
   const timestamp=Date.parse(publishedAt);
-  return Number.isFinite(timestamp)&&timestamp<=Date.now();
+  const now=Date.parse(reference.length<=10?reference+'T23:59:59.999Z':reference);
+  return Number.isFinite(timestamp)&&Number.isFinite(now)&&timestamp<=now;
 }
 function studentReportGradeHasContent(g){
   if(!g)return false;
@@ -1836,7 +1838,15 @@ function studentReportAverage(items){
 }
 function buildStudentReport(sourceDb,studentId,termId='',today){
   const terms=studentReportTerms(sourceDb),selectedTerm=terms.find(t=>t.id===termId)||null,asOf=studentReportToday(today);
-  const evaluations=(sourceDb?.evaluations||[]).filter(e=>studentReportIsPublished(e,asOf)&&studentReportEvaluationInTerm(e,selectedTerm));
+  const studentRecord=(sourceDb?.students||[]).find(s=>String(s.id)===String(studentId));
+  const evaluations=(sourceDb?.evaluations||[]).filter(e=>{
+    if(!studentReportIsPublished(e,asOf)||!studentReportEvaluationInTerm(e,selectedTerm))return false;
+    if(studentRecord){
+      if(String(e.classId||'')!==String(studentRecord.classId||''))return false;
+      if(e.group&&String(e.group)!==String(studentRecord.group||''))return false;
+    }
+    return true;
+  });
   const subjectsMap=new Map(),items=[];
   for(const e of evaluations){
     const g=(e.grades||[]).find(x=>x.studentId===studentId);
