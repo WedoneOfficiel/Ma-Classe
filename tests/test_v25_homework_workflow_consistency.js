@@ -75,6 +75,39 @@ vm.runInContext(section('function showSubmissions(','function lessons(){'),conte
   assert.deepStrictEqual(Array.from(activity.missing,x=>String(x.lessonId)+':'+String(x.student.id)).sort(),['101:2','102:s5','103:2','103:s1','104:2','104:s1'],
     'Les actions « travail non rendu » doivent réutiliser la même règle que la liste dédiée.');
 
+  // Les synthèses élève et les statistiques générales ne doivent pas considérer
+  // le brouillon de Bilal comme un rendu transmis.
+  context.v101StudentAverage=()=> '12.00';
+  vm.runInContext(section('function v101SubmissionStats(){','function v101StudentAverage('),context);
+  vm.runInContext(section('function studentActivitySummary(','function openStudentActivity('),context);
+  assert.strictEqual(context.v101SubmissionStats().expected,9,
+    'Les statistiques globales doivent compter tous les élèves ciblés, y compris les groupes.');
+  assert.strictEqual(context.v101SubmissionStats().received,3,
+    'Les statistiques globales ne doivent compter que les rendus transmis, et normaliser les identifiants.');
+  assert.strictEqual(context.v101SubmissionStats().missing,6,
+    'Un brouillon ne doit pas réduire le nombre global de travaux manquants.');
+  const quickSummary=context.studentActivitySummary('2');
+  assert.strictEqual(quickSummary.submissions,0,
+    'La fiche rapide de Bilal ne doit compter aucun rendu transmis lorsqu’il ne possède qu’un brouillon.');
+  assert.strictEqual(quickSummary.missing,3,
+    'La fiche rapide doit compter comme manquants les devoirs dont Bilal n’a pas réellement envoyé le travail.');
+
+  context.evaluationModelTargetStudents=()=>db.students;
+  context.evaluationGradeLabel=()=> '—';
+  vm.runInContext(section('function openStudentActivity(','function studentGrades('),context);
+  context.openStudentActivity('2');
+  assert(context.lastModal.html.includes('<small>Rendus</small><b>0</b>'),
+    'Le KPI Rendus du suivi rapide doit exclure le brouillon.');
+  const draftRow=context.lastModal.html.indexOf('<span class="pill orange">À FAIRE</span><div class="grow"><b>Rédaction</b>');
+  assert(draftRow>=0,
+    'Le devoir pour lequel Bilal a un brouillon doit rester affiché comme À FAIRE dans le suivi rapide.');
+
+  const profile360=declaration('profile360Tab');
+  assert(profile360.includes("sameId(z.lessonId,x.l.id)&&sameId(z.studentId,id)&&(z.status==='submitted'||!!z.submittedAt||!z.status)"),
+    'Le profil 360 doit réserver le statut Rendu aux soumissions réellement envoyées.');
+  assert(profile360.includes("sameId(x.studentId,id)&&(x.status==='submitted'||!!x.submittedAt||!x.status)"),
+    'Le KPI Rendus du profil 360 doit exclure les brouillons.');
+
   context.openWorkTracking('101');
   assert(context.lastModal.html.includes('<small>À rendre</small><b>2</b>'),
     'Le suivi professeur doit inclure tous les élèves du groupe, malgré les identifiants historiques mixtes.');
