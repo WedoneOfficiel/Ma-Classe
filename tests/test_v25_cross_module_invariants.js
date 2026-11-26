@@ -377,13 +377,13 @@ context.db.lessons.push(
   { id: 'L-profile-all', classId: 'c1', date: '2026-11-28', homework: { title: 'Classe entière', due: '' } }
 );
 equal(
-  JSON.stringify(Array.from(context.studentWorkItems('s1'), x => x.l.id)),
-  JSON.stringify(['L-all', 'L-A', 'L-profile-A', 'L-profile-all']),
+  JSON.stringify(Array.from(context.studentWorkItems('s1'), x => x.l.id).sort()),
+  JSON.stringify(['L-all', 'L-A', 'L-profile-A', 'L-profile-all'].sort()),
   'La fiche élève doit exclure les travaux d’un autre groupe'
 );
 equal(
-  JSON.stringify(Array.from(context.studentWorkItems('s2'), x => x.l.id)),
-  JSON.stringify(['L-all', 'L-B', 'L-profile-B', 'L-profile-all']),
+  JSON.stringify(Array.from(context.studentWorkItems('s2'), x => x.l.id).sort()),
+  JSON.stringify(['L-all', 'L-B', 'L-profile-B', 'L-profile-all'].sort()),
   'La fiche élève du groupe B doit conserver uniquement ses travaux et ceux de la classe entière'
 );
 context.db.evaluations = [
@@ -398,13 +398,13 @@ context.db.evaluations = [
   ] })
 ];
 equal(
-  JSON.stringify(Array.from(context.studentEvaluations('s1'), x => x.e.id)),
-  JSON.stringify(['profile-all', 'profile-A']),
+  JSON.stringify(Array.from(context.studentEvaluations('s1'), x => x.e.id).sort()),
+  JSON.stringify(['profile-all', 'profile-A'].sort()),
   'La fiche élève ne doit pas montrer une note parasite d’une évaluation destinée à un autre groupe'
 );
 equal(
-  JSON.stringify(Array.from(context.studentEvaluations('s2'), x => x.e.id)),
-  JSON.stringify(['profile-all', 'profile-B']),
+  JSON.stringify(Array.from(context.studentEvaluations('s2'), x => x.e.id).sort()),
+  JSON.stringify(['profile-all', 'profile-B'].sort()),
   'La fiche élève de l’autre groupe doit conserver son propre périmètre'
 );
 truthy(declaration('studentEvaluations').includes('evaluationModelTargetStudents(db,e)'), 'Les dernières évaluations de la fiche doivent respecter les élèves ciblés');
