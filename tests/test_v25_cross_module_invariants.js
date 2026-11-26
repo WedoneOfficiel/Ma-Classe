@@ -157,7 +157,36 @@ for (const published of publicationFlags) {
   }
 }
 
-// 5) Term boundaries are inclusive; dates immediately outside the period
+// 5) Same-day timestamp scheduling must be compared to the exact instant,
+// not to midnight or the end of the calendar day.
+const exactNow = '2026-11-26T10:00:00.000Z';
+equal(
+  context.evaluationModelPublished({ published: true, publishAt: '2026-11-26T09:59:59.000Z' }, exactNow),
+  true,
+  'Une publication programmée une seconde avant doit être disponible'
+);
+equal(
+  context.evaluationModelPublished({ published: true, publishAt: '2026-11-26T10:00:00.000Z' }, exactNow),
+  true,
+  'Une publication programmée à l’instant exact doit être disponible'
+);
+equal(
+  context.evaluationModelPublished({ published: true, publishAt: '2026-11-26T10:00:01.000Z' }, exactNow),
+  false,
+  'Une publication programmée une seconde après doit rester masquée'
+);
+equal(
+  context.evaluationModelPublished({ published: true, publishAt: '2026-11-26T11:00:00+01:00' }, exactNow),
+  true,
+  'Les horodatages avec décalage doivent être comparés en UTC'
+);
+equal(
+  context.evaluationModelPublished({ published: true, publishAt: '2026-11-26T11:00:01+01:00' }, exactNow),
+  false,
+  'Un décalage de fuseau ne doit pas rendre visible une publication future'
+);
+
+// 6) Term boundaries are inclusive; dates immediately outside the period
 // are excluded. With no selected period, valid historic grades stay available.
 for (const date of ['2026-09-01', '2026-12-31']) {
   setData([makeEvaluation('boundary-' + date, '15', 20, { date: date })]);
@@ -170,7 +199,7 @@ for (const date of ['2026-08-31', '2027-01-01']) {
 setData([makeEvaluation('no-term-filter', '13', 20, { date: '2025-01-15' })]);
 equal(context.v101StudentAverage('s1', ''), '13.00', 'Sans période sélectionnée, les périodes historiques restent consultables');
 
-// 6) Coefficients are applied once. Invalid and non-positive values use the
+// 7) Coefficients are applied once. Invalid and non-positive values use the
 // canonical default coefficient of one.
 const coefficients = [0, -1, 'invalid', 1, 2, 3, 0.5];
 for (const coefficient of coefficients) {
@@ -184,7 +213,7 @@ for (const coefficient of coefficients) {
   equal(average(), expected, 'Coefficient ' + coefficient + ' doit être pondéré une seule fois');
 }
 
-// 7) Invalid, absent, negative and out-of-scale values cannot distort a
+// 8) Invalid, absent, negative and out-of-scale values cannot distort a
 // valid neighboring grade.
 const invalidValues = ['', null, undefined, 'abc', 'Infinity', -1, 21, 1000];
 for (const value of invalidValues) {
@@ -202,7 +231,7 @@ equal(
   'Une grille qualitative est identifiée comme telle'
 );
 
-// 8) Ensure all the audited views use the same grade-scale helper.
+// 9) Ensure all the audited views use the same grade-scale helper.
 for (const name of ['studentActivityCenter', 'studentHome', 'profile360Tab', 'openStudent']) {
   const body = declaration(name);
   truthy(body.includes('evaluationGradeLabel('), name + ' doit appeler le helper commun de barème');
@@ -213,8 +242,16 @@ truthy(
   'Le helper central doit être présent dans le bundle'
 );
 truthy(
-  source.includes('function v101StudentAverage(id,termId=\'\'){const today=iso(new Date()),es='),
-  'La moyenne du bulletin doit utiliser le modèle publié commun'
+  source.includes('function v101StudentAverage(id,termId=\'\'){const today=new Date().toISOString(),es='),
+  'La moyenne du bulletin doit utiliser le modèle publié commun et l’horodatage exact'
+);
+truthy(
+  declaration('subjectAverage').includes('today=new Date().toISOString()'),
+  'La moyenne par matière doit respecter l’heure exacte de publication'
+);
+truthy(
+  declaration('evaluationModelDashboardStats').includes('today=new Date().toISOString()'),
+  'Le tableau de bord des évaluations doit respecter l’heure exacte de publication'
 );
 
 console.log('OK — ' + checks + ' invariants testés : barèmes, moyennes de bulletin, publication, périodes, groupes et vues élève.');
