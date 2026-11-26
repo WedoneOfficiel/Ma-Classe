@@ -33,6 +33,8 @@ const modelNames = [
   'classAverageForBulletin',
   'studentLessonItems',
   'studentActivitySummary',
+  'studentGrades',
+  'studentReportNumericGrade',
   'v101SubmissionStats',
   'v103MissingWorkList',
   'weightedAverageForEvaluations',
@@ -474,7 +476,36 @@ truthy(
   'Les statistiques classe doivent réutiliser le ciblage canonique des élèves'
 );
 
-// 14) Second-wave cross-module matrix: 30 evaluation class/group combinations,
+// 14) Student-facing grade feed, administration follow-up and detail view
+// must share group targeting and reject invalid numeric marks.
+context.db = {
+  students: [
+    { id: 's1', classId: 1, group: 'A' },
+    { id: 's2', classId: '1', group: 'B' }
+  ],
+  evaluations: [
+    makeEvaluation('student-feed-A', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques' }),
+    makeEvaluation('student-feed-B', '18', 20, { classId: 1, group: 'B', subject: 'Mathématiques' }),
+    makeEvaluation('student-feed-invalid', '-1', 20, { classId: 1, group: 'A', subject: 'Mathématiques' }),
+    makeEvaluation('student-feed-future', '20', 20, { classId: '1', group: 'A', subject: 'Mathématiques', publishAt: '2999-01-01T00:00:00Z' }),
+    makeEvaluation('student-feed-draft', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: false })
+  ],
+  settings: { terms: [] },
+  lessons: [],
+  submissions: [],
+  attendance: []
+};
+const gradesA = Array.from(context.studentGrades('s1'), x => x.e.id);
+equal(JSON.stringify(gradesA), JSON.stringify(['student-feed-A']), 'La liste de notes élève respecte le ciblage, la publication, la date et les valeurs valides');
+const gradesB = Array.from(context.studentGrades('s2'), x => x.e.id);
+equal(JSON.stringify(gradesB), JSON.stringify(['student-feed-B']), 'La liste élève du groupe B reste isolée du groupe A');
+equal(context.studentReportNumericGrade(context.db.evaluations[2], context.db.evaluations[2].grades[0]), null, 'Le détail du relevé rejette une note négative');
+equal(context.studentReportNumericGrade(context.db.evaluations[0], context.db.evaluations[0].grades[0]), 8, 'Le détail du relevé conserve une note valide sur son barème');
+truthy(declaration('studentGrades').includes('evaluationModelVisible(db,e,'), 'La liste élève doit réutiliser le moteur de visibilité');
+truthy(declaration('openStudentActivity').includes('evaluationModelTargetStudents(db,e)'), 'Le suivi enseignant doit respecter le groupe ciblé par chaque évaluation');
+truthy(declaration('studentReportDetail').includes('studentReportNumericGrade(e,g)'), 'Le détail d’une note doit réutiliser la validation numérique commune');
+
+// 15) Second-wave cross-module matrix: 30 evaluation class/group combinations,
 // 60 homework eligibility cases and deterministic submission aggregates.
 const targetStudents = [
   { id: 'n1', classId: 1, group: 'A' },
