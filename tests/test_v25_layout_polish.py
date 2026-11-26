@@ -49,10 +49,6 @@ class LayoutPolishTests(unittest.TestCase):
         self.assertIn(".pageTitleRow h1{font-size:22px!important", HTML)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
     def test_v252_settings_use_semantic_layout_areas(self):
         self.assertIn(".settingsGrid>.settingsAppearanceCard{grid-area:appearance!important}", HTML)
         self.assertIn(".settingsGrid>.settingsPeriodsCard{grid-area:periods!important}", HTML)
@@ -61,3 +57,9 @@ if __name__ == "__main__":
         self.assertIn(".settingsGrid>.settingsDataCard{grid-area:data!important;grid-column:auto!important}", HTML)
         self.assertIn(".settingsGrid.settingsStudentGrid{", HTML)
         self.assertIn("settingsAdminLayout", JS)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
