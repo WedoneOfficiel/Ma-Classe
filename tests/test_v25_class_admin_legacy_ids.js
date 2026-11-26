@@ -1,7 +1,8 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const source=fs.readFileSync(path.join(__dirname,'..','_all.js'),'utf8');
 function declaration(name){
-  const start=source.lastIndexOf('function '+name+'(');
+  let start=source.lastIndexOf('async function '+name+'(');
+  if(start<0)start=source.lastIndexOf('function '+name+'(');
   assert(start>=0,'Fonction active absente : '+name);
   const end=source.indexOf('\nfunction ',start+10);
   return source.slice(start,end>=0?end:source.length);
