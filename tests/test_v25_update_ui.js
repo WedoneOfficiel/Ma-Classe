@@ -18,7 +18,7 @@ assert(source.includes("let updatePrepareBusy=false"));
 assert(source.includes("updatePrepareBusy?'Téléchargement…'"));
 assert(source.includes("updatePreparePanel"));
 assert(source.includes("aria-live=\"polite\""));
-assert(source.includes("télécharge l’archive officielle"));
+assert(source.includes("récupère l’archive officielle"));
 const html = fs.readFileSync('index.html', 'utf8');
 assert(html.includes(".updatePrepareSpinner"));
 assert(html.includes("@keyframes mcUpdateProgress"));
