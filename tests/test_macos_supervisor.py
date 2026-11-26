@@ -775,7 +775,8 @@ assert server._update_apply_service_active() is False
         self.assertIn("job launchd chargé mais aucun PID actif", function)
         self.assertIn("pgrep -f", function)
         self.assertIn("network_supervisor|server", function)
-        self.assertIn('index(command, root "/") > 0', function)
+        self.assertIn('index(command, root_input "/") > 0', function)
+        self.assertIn('ROOT_INPUT="$ROOT"', script)
         self.assertIn("stop_owned_service_processes", function)
         self.assertLess(function.index("/bin/kill -KILL"), function.index("Confirm both sides"))
         backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
@@ -809,7 +810,7 @@ assert server._update_apply_service_active() is False
                 '#!/bin/sh\n'
                 'if [ -f "$PROCESS_STOPPED" ]; then exit 0; fi\n'
                 'case "$FAKE_PROCESS_MODE" in\n'
-                '  owned) echo "4321 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/network_supervisor.py"; echo "4322 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/server.py";;\n'
+                '  owned) echo "4321 /var/tmp/MaClasse/.venv/bin/python /var/tmp/MaClasse/data/program/current/network_supervisor.py"; echo "4322 /private/tmp/MaClasse/.venv/bin/python /private/tmp/MaClasse/data/program/current/server.py";;\n'
                 '  other) echo "4321 /other/MaClasse/.venv/bin/python /other/MaClasse/data/program/current/network_supervisor.py";;\n'
                 'esac\nexit 0\n',
                 encoding="utf-8",
@@ -846,7 +847,7 @@ assert server._update_apply_service_active() is False
                 .replace("/bin/sleep", str(sleep))
             )
             code = (
-                "ROOT=/private/tmp/MaClasse\nUID_NOW=501\n"
+                "ROOT=/private/tmp/MaClasse\nROOT_INPUT=/var/tmp/MaClasse\nUID_NOW=501\n"
                 "SERVICE_LABEL=fr.maclasse.server\nSERVICE_DISABLED=0\n"
                 + test_fn
                 + "\nstop_service_and_confirm\n"
@@ -893,7 +894,7 @@ assert server._update_apply_service_active() is False
             )
             fake_ps.chmod(0o755)
             code = (
-                "ROOT=/private/tmp/MaClasse\n"
+                "ROOT=/private/tmp/MaClasse\nROOT_INPUT=/var/tmp/MaClasse\n"
                 + helpers.replace("/bin/ps", str(fake_ps))
                 + "\n"
                 + "owned=\"$(owned_service_pids)\"\n"
