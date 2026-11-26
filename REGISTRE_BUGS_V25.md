@@ -2,7 +2,7 @@
 
 **Document de référence des anomalies signalées, des correctifs et des recettes restantes.**  
 Version de référence : `V25.1.1`, publiée le 26 novembre 2026 ([release v25.1.1](https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.1)). Les PR #13 à #19 ont intégré la stabilisation V25.1.0, les correctifs HTTPS/macOS, le rollback et le gestionnaire de mise à jour.
-Dernière synchronisation : 26 novembre 2026 — candidat V25.2.0 sur la PR #20. La tête 79ff1c83a5f611bbe03e428a4985f62b98cf3003 a passé les trois environnements dans le run [45870596723](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45870596723) : Linux, macOS Apple Silicon/launchd et Firefox réel. VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0. La recette sur l'installation physique et les vrais comptes reste distincte.
+Dernière synchronisation : 26 novembre 2026 — candidat V25.2.0 sur la PR #20. Dernier commit fonctionnel testé : `3522e5dd2d09facd1d694b218a2a6e5718350cf3`, validé dans le run [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692) : Linux, macOS Apple Silicon/launchd et Firefox réel, **3/3 jobs réussis**. VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0. La suite comprend 109 fichiers de tests (67 JavaScript, 42 Python). La recette sur l'installation physique et les vrais comptes reste distincte.
 
 ## Règles de suivi
 

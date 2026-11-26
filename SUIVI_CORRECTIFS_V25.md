@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 26/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; sa tête fonctionnelle c474f771 a passé 3/3 jobs (Linux, macOS Apple Silicon/launchd et Firefox réel). Les constantes de version ont été alignées sur V25.2.0 après cette validation et doivent être retestées sur la tête finale. Les entrées antérieures restent historiques ; la recette sur l'installation physique n'est pas remplacée par la CI hébergée.
+> **État courant — 26/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; le dernier commit fonctionnel testé est `3522e5dd2d09facd1d694b218a2a6e5718350cf3`, validé dans le run [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692), 3/3 jobs réussis (Linux, macOS Apple Silicon/launchd et Firefox réel). Les constantes VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. La suite compte 109 fichiers de tests (67 JavaScript, 42 Python). Les entrées antérieures restent historiques ; la recette sur l'installation physique n'est pas remplacée par la CI hébergée.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -884,7 +884,39 @@ La PR #20 demeure ouverte, non fusionnée et non publiée. Aucune installation l
 - Le centre de notifications et les permissions de bulletin retrouvent les objets avec identifiants texte/nombre.
 
 ### Vérification
-- La tête finale 79ff1c83a5f611bbe03e428a4985f62b98cf3003 a passé le run [45870596723](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45870596723), Linux, macOS Apple Silicon/launchd et Firefox réel : **3/3 jobs réussis**.
-- VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0 sur cette même tête.
+- Le dernier commit fonctionnel testé `3522e5dd2d09facd1d694b218a2a6e5718350cf3` a passé le run [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692), Linux, macOS Apple Silicon/launchd et Firefox réel : **3/3 jobs réussis**.
+- La campagne comprend 860 invariants intermodules et 109 fichiers de tests (67 JavaScript, 42 Python).
+- VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0 sur cette tête fonctionnelle.
 - La PR #20 demeure ouverte, non fusionnée et non publiée. La dernière version stable reste V25.1.1.
 - La recette de l'installation physique, des vrais comptes et des appareils clients reste à confirmer ; les états des anomalies ne passent pas à « Corrigé » sur la seule base de CI.
+
+
+## Optimisation du validateur d'import d'établissement — 26 novembre 2026
+
+**Branche :** `fix/v25.1.2-cross-module-consistency`  
+**PR :** [#20 — V25.2.0](https://github.com/WedoneOfficiel/Ma-Classe/pull/20)
+
+### Défaut de performance constaté
+Le validateur acceptait jusqu'à 50 000 créneaux mais comparait initialement toutes les paires, y compris celles sans ressource partagée. Les contrôles d'effectifs et les analyses de trous répétaient également des parcours complets.
+
+### Modifications codées
+- Index classe/professeur/salle et balayage d'intervalles pour réduire la comparaison aux ressources et horaires concernés.
+- Index dédié des groupes parallèles pour ne pas comparer les cours de groupes distincts.
+- Index des effectifs par classe/groupe, des cours par classe et des cours hebdomadaires par enseignant/jour.
+- Arrêt de l'énumération des conflits dès que 200 erreurs publiques sont disponibles.
+- Conservation des contrôles existants de récurrence, d'exceptions, de capacité, d'équipement et d'indisponibilité.
+
+### Tests et preuve
+- Nouveau fichier `tests/test_v25_establishment_import_scalability.py` avec quatre tests, dont deux cas de 5 000 créneaux/groupes parallèles.
+- Commit fonctionnel : `3522e5dd2d09facd1d694b218a2a6e5718350cf3`.
+- Run [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692) : Linux 15/15, macOS 17/17, Firefox réel 9/9.
+- Aucun changement de schéma.
+
+## Préparation de la V25.2.1 — constats à auditer après la recette V25.2.0
+
+1. **Planner :** appliquer la capacité et les équipements saisis lors de la recherche d'un créneau, et valider le choix de salle jusqu'au brouillon du cours.
+2. **Échéances des devoirs :** faire respecter l'heure `dueTime` dans les états « À faire », « En retard », les compteurs et les notifications, avec une règle explicite pour les anciennes données sans heure.
+3. **Sauvegardes :** étendre les tests de restauration à des archives volumineuses, pièces jointes nombreuses et archives invalides.
+4. **Accessibilité :** poursuivre les tests clavier, focus et lecteur d'écran.
+
+Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corrigé. Ils seront traités dans une branche dédiée après la recette réelle du candidat V25.2.0.

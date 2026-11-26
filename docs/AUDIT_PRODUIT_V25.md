@@ -4,7 +4,7 @@
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
-**Validation de la dernière tête :** commit `79ff1c83a5f611bbe03e428a4985f62b98cf3003`, run [45870596723](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45870596723), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel avec captures. La matrice croisée exécute 860 invariants ; le dépôt compte 103 fichiers de tests (63 JavaScript, 40 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. La PR n'est pas fusionnée et la release stable n'est pas publiée.
+**Dernière tête fonctionnelle testée :** commit `3522e5dd2d09facd1d694b218a2a6e5718350cf3`, run [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692), trois jobs réussis : Linux (15/15 étapes), macOS Apple Silicon/launchd réel (17/17) et Firefox réel (9/9). La matrice croisée exécute 860 invariants ; le dépôt compte 109 fichiers de tests (67 JavaScript, 42 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. La PR n'est pas fusionnée et la release stable n'est pas publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -529,3 +529,33 @@ La PR #20 reste ouverte ; aucune fusion, aucun tag et aucune release V25.1.2 ne 
 - La version candidate et les notes V25.2.0 ont été ajoutées après cette validation ; elles doivent être validées sur la tête finale par une nouvelle exécution complète.
 - La CI utilise des données et comptes temporaires. La recette sur la base de l'installation de référence, les vrais comptes, les appareils clients et les usages à gros volumes reste indépendante et nécessaire.
 - La PR #20 reste ouverte, non fusionnée et non publiée. Aucun tag stable V25.2.0 n'est créé par cette campagne.
+
+
+## 21. Optimisation du validateur d'import d'établissement — 26/11/2026
+
+### Problème de charge
+Le schéma autorise jusqu'à 50 000 créneaux d'emploi du temps. L'ancien contrôle des conflits parcourait toutes les paires de créneaux, même lorsque les deux cours n'avaient ni classe, ni professeur, ni salle en commun. Le coût pouvait donc devenir quadratique sur un dossier volumineux. Les calculs de capacité et certains indicateurs parcouraient aussi de nouveau toutes les fiches élèves ou tous les créneaux pour chaque classe/professeur.
+
+### Correctifs appliqués sur la PR #20
+- Indexation des créneaux par classe, professeur, salle et jour, puis balayage des seuls intervalles horaires qui se chevauchent.
+- Séparation des créneaux de classe entière et des créneaux de sous-groupes : deux groupes distincts peuvent travailler en parallèle sans générer de comparaison inutile.
+- Préindexation des effectifs par classe et par groupe, des créneaux par classe et des créneaux hebdomadaires par jour pour les calculs de besoins horaires et de trous.
+- Arrêt anticipé du rapport de conflits lorsque sa limite publique de 200 erreurs est atteinte.
+- Les règles métier restent inchangées : conflits de classe/groupe, professeur et salle, ainsi que l'intersection des récurrences et des exceptions.
+
+### Tests et validation
+- Nouveau fichier `tests/test_v25_establishment_import_scalability.py` : quatre scénarios dédiés, dont 5 000 créneaux simultanés sans ressource commune et 5 000 groupes parallèles distincts d'une même classe.
+- Commit fonctionnel testé : `3522e5dd2d09facd1d694b218a2a6e5718350cf3`.
+- Workflow [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692) : Linux, macOS Apple Silicon/launchd et Firefox réel, **3/3 réussis**.
+- Aucun changement de schéma ni migration de données.
+
+## 22. Pistes proposées pour V25.2.1 — hors périmètre du candidat V25.2.0
+
+Ces points sont des constats de code à traiter dans une campagne séparée ; ils ne sont ni des correctifs déjà livrés ni des anomalies confirmées par l'utilisateur.
+
+- **Planner :** le formulaire demande une capacité et des équipements, mais le parcours « Trouver un créneau » ne réutilise actuellement ces critères pour filtrer les salles compatibles. Il faut définir le comportement attendu et tester le chemin complet jusqu'à la préparation du cours.
+- **Échéances de devoirs :** `dueTime` est enregistré et affiché, mais les statuts élève « À faire » / « En retard » et la liste des travaux à venir reposent sur la date seule. Il faut harmoniser la règle de date/heure, y compris les devoirs historiques sans heure.
+- **Recette de sauvegarde :** compléter la campagne avec des archives contenant beaucoup de pièces jointes, des archives invalides et une restauration sur copie de données représentative.
+- **Accessibilité :** étendre les vérifications clavier, focus et lecteur d'écran au-delà des contrôles visuels responsive.
+
+La V25.2.0 reste le candidat à stabiliser ; ces pistes ne doivent pas retarder sa recette réelle ni être mélangées à sa branche de livraison.
