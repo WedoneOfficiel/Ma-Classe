@@ -44,22 +44,30 @@ PYTHON="$ROOT/.venv/bin/python"
   exit 1
 }
 
-read -r VERSION SHA < <("$PYTHON" - "$STATE" <<'PY'
+read -r VERSION SHA MIN_SCHEMA < <("$PYTHON" - "$STATE" "$DATA/maclasse.json" <<'PY'
 import json,re,sys
 try:
     with open(sys.argv[1],encoding="utf-8") as stream:
         state=json.load(stream)
+    with open(sys.argv[2],encoding="utf-8") as stream:
+        database=json.load(stream)
 except (OSError,ValueError) as error:
-    raise SystemExit("État de mise à jour illisible : "+str(error))
+    raise SystemExit("État de mise à jour ou base de données illisible : "+str(error))
 if not isinstance(state,dict) or state.get("status")!="prepared":
     raise SystemExit("Aucune version n'est marquée comme préparée. Télécharge d'abord la mise à jour depuis Paramètres.")
 version=str(state.get("version") or "").lstrip("vV")
 sha=str(state.get("sha256") or "")
+minimum=state.get("min_data_schema")
 if not re.fullmatch(r"\d+\.\d+\.\d+",version):
     raise SystemExit("Numéro de version préparée invalide.")
 if not re.fullmatch(r"[a-f0-9]{64}",sha):
     raise SystemExit("Empreinte de version préparée invalide.")
-print(version,sha)
+if type(minimum) is not int or minimum < 1:
+    raise SystemExit("Schéma minimal de la mise à jour invalide.")
+current=database.get("schemaVersion",0) if isinstance(database,dict) else 0
+if type(current) is not int or minimum > current:
+    raise SystemExit("Cette mise à jour n'est pas compatible avec le schéma actuel des données.")
+print(version,sha,minimum)
 PY
 )
 
@@ -85,7 +93,7 @@ esac
   exit 1
 }
 
-EXPECTED="$("$PYTHON" - "$TARGET_REAL/maclasse-prepared.json" <<'PY'
+EXPECTED="$("$PYTHON" - "$TARGET_REAL/maclasse-prepared.json" "$VERSION" "$MIN_SCHEMA" <<'PY'
 import json,sys
 try:
     with open(sys.argv[1],encoding="utf-8") as stream:
@@ -94,6 +102,10 @@ except (OSError,ValueError) as error:
     raise SystemExit("Métadonnées de préparation illisibles : "+str(error))
 if not isinstance(metadata,dict) or metadata.get("status")!="prepared":
     raise SystemExit("La version n'est pas marquée comme préparée.")
+if metadata.get("version") not in (sys.argv[2],"V"+sys.argv[2]):
+    raise SystemExit("Le numéro de version des métadonnées est incohérent.")
+if metadata.get("min_data_schema") != int(sys.argv[3]):
+    raise SystemExit("Le schéma minimal des métadonnées est incohérent.")
 print(metadata.get("sha256",""))
 PY
 )"
