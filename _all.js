@@ -955,15 +955,15 @@ function canEditBulletinSubject(classId,subject,termId=null){
  const tid=String(currentTeacherProfile()?.id||''),norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLocaleLowerCase('fr'),key=norm(subject),today=iso(new Date()),period=termId?term(termId):null,start=period?.start||today,end=period?.end||today;
  if(!tid||!key)return false;
  const overlaps=a=>(!a.startDate||!end||a.startDate<=end)&&(!a.endDate||!start||a.endDate>=start);
- const slots=db.schedule.filter(s=>{if(String(s.classId)!==String(classId)||norm(s.subject)!==key||!([String(s.teacherId||''),...(s.teacherIds||[]).map(String)].includes(tid))||!overlaps(s))return false;const probeStart=s.startDate&&s.startDate>start?s.startDate:start,probeEnd=s.endDate&&s.endDate<end?s.endDate:end;return !(teacherScheduleSuspended(s,tid,probeStart)&&teacherScheduleSuspended(s,tid,probeEnd));});
- const replacements=db.schedule.some(s=>String(s.classId)===String(classId)&&norm(s.subject)===key&&Object.entries(s.overrides||{}).some(([date,ov])=>date>=start&&date<=end&&String(ov?.replacementTeacherId||'')===tid&&ov?.status!=='cancelled'));
+ const slots=db.schedule.filter(s=>{if(!sameId(s.classId,classId)||norm(s.subject)!==key||!([s.teacherId,...(s.teacherIds||[])].some(id=>sameId(id,tid)))||!overlaps(s))return false;const probeStart=s.startDate&&s.startDate>start?s.startDate:start,probeEnd=s.endDate&&s.endDate<end?s.endDate:end;return !(teacherScheduleSuspended(s,tid,probeStart)&&teacherScheduleSuspended(s,tid,probeEnd));});
+ const replacements=db.schedule.some(s=>sameId(s.classId,classId)&&norm(s.subject)===key&&Object.entries(s.overrides||{}).some(([date,ov])=>date>=start&&date<=end&&sameId(ov?.replacementTeacherId,tid)&&ov?.status!=='cancelled'));
  if(replacements)return true;
- const assignments=db.teacherAssignments.filter(a=>String(a.classId)===String(classId)&&String(a.teacherId)===tid&&norm(a.subject)===key&&overlaps(a));
+ const assignments=db.teacherAssignments.filter(a=>sameId(a.classId,classId)&&sameId(a.teacherId,tid)&&norm(a.subject)===key&&overlaps(a));
  if(slots.length||assignments.length)return true;
- const hasExplicit=db.schedule.some(a=>String(a.classId)===String(classId)&&([String(a.teacherId||''),...(a.teacherIds||[]).map(String)].includes(tid)||Object.values(a.overrides||{}).some(ov=>String(ov?.replacementTeacherId||'')===tid)))||db.teacherAssignments.some(a=>String(a.classId)===String(classId)&&(String(a.teacherId)===tid||String(a.supersedesTeacherId||'')===tid));
+ const hasExplicit=db.schedule.some(a=>sameId(a.classId,classId)&&([a.teacherId,...(a.teacherIds||[])].some(id=>sameId(id,tid))||Object.values(a.overrides||{}).some(ov=>sameId(ov?.replacementTeacherId,tid))))||db.teacherAssignments.some(a=>sameId(a.classId,classId)&&(sameId(a.teacherId,tid)||sameId(a.supersedesTeacherId,tid)));
  if(hasExplicit)return false;
  const t=currentTeacherProfile(),c=cls(classId);
- return !!t&&!!c&&((c.teacherIds||[]).includes(tid)||c.principalTeacherId===tid)&&(t.subjects||[]).some(v=>norm(v)===key);
+ return !!t&&!!c&&((c.teacherIds||[]).some(id=>sameId(id,tid))||sameId(c.principalTeacherId,tid))&&(t.subjects||[]).some(v=>norm(v)===key);
 }
 function setBulletinComment(id,sub,v){let b=db.bulletins.find(x=>x.id===id);b.subjectData[sub]??={};b.subjectData[sub].comment=v;save()}function setBulletinOverall(id,v){db.bulletins.find(x=>x.id===id).overall=v;save()}function deleteBulletin(id){confirmModal('Supprimer ce bulletin ?', 'Supprimer',()=>{db.bulletins=db.bulletins.filter(x=>x.id!==id);save();closeModal();render()})}
 function teacherUser(id=currentTeacherId()){return db.teachers?.find(t=>sameId(t.id,id))||null}
