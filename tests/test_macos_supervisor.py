@@ -764,7 +764,7 @@ assert server._update_apply_service_active() is False
 
     def test_launchd_shutdown_is_bounded_and_confirms_process_exit_before_backup(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
-        start = script.index("stop_service_and_confirm() {")
+        start = script.index("owned_service_pids() {")
         end = script.index("\n}\nfail_restore()", start) + 2
         function = script[start:end]
         self.assertIn("launchctl bootout", function)
@@ -775,7 +775,7 @@ assert server._update_apply_service_active() is False
         self.assertIn("job launchd chargé mais aucun PID actif", function)
         self.assertIn("pgrep -f", function)
         self.assertIn("network_supervisor|server", function)
-        self.assertIn("index(command, root) > 0", function)
+        self.assertIn("index(command, root "/") > 0", function)
         self.assertIn("stop_owned_service_processes", function)
         self.assertLess(function.index("/bin/kill -KILL"), function.index("Confirm both sides"))
         backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
