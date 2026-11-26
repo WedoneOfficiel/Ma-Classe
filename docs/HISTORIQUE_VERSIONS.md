@@ -2,6 +2,15 @@
 
 > Registre historique consolidé le 25 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
 
+## Correctif candidat V25.1.1 — validation X.509 compatible macOS (26/11/2026)
+
+**Statut : candidat non publié.** Le correctif fait suite à la recette réelle de l'installation supervisée sur macOS : le certificat conservé dans `data/tls/server.crt` contenait bien l'adresse IPv4 dans son SAN, mais le superviseur le déclarait invalide en analysant la sortie texte de LibreSSL avec une expression régulière conçue pour la sortie d'OpenSSL.
+
+- Remplacement de l'analyse du texte OpenSSL par le parseur X.509 de `cryptography`, déjà requis par la vérification Ed25519 des mises à jour.
+- Contrôle explicite de l'IPv4 SAN, de la date de début de validité et d'une durée restante supérieure à 24 heures.
+- Tests avec de vrais certificats PEM générés en fixture : SAN correspondant, SAN différent, absence de SAN, certificat pas encore valide et certificat expirant sous 24 heures.
+- Aucun changement de schéma ni migration de données. Le code est isolé dans une branche corrective ; la publication attend la CI Linux/macOS/Firefox et une recette réelle.
+
 ## Candidat V25.1.0 — stabilisation, sécurité et suivi de classe (25/11/2026)
 
 **Statut : candidat non publié**, porté par la PR #13. La CI complète #1793 est verte (Linux, macOS Apple Silicon et Firefox réel). Les recettes physiques, le provisionnement de la clé éditeur et la publication restent à effectuer.
