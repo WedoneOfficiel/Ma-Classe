@@ -28,6 +28,8 @@ const modelNames = [
   'evaluationModelAverage',
   'evaluationModelClassStats',
   'studentWorkEligible',
+  'subjectAverage',
+  'classAverageForBulletin',
   'studentLessonItems',
   'studentActivitySummary',
   'v101SubmissionStats',
@@ -42,6 +44,7 @@ const context = {
 };
 vm.createContext(context);
 context.student = function (id) { return (context.db.students || []).find(s => String(s.id) === String(id)); };
+context.term = function (id) { return (context.db.settings?.terms || []).find(t => String(t.id) === String(id)); };
 context.activeStudent = function () { return 's1'; };
 vm.runInContext(modelNames.map(declaration).join('\n\n'), context);
 
@@ -187,6 +190,25 @@ equal(
   2,
   'Un groupe vide au sens du serveur ne doit pas filtrer les élèves'
 );
+
+// Bulletin subject/class averages must share class/group string normalization
+// with the canonical student report and the server-side PDF.
+context.db = {
+  students: [
+    { id: 's1', classId: 1, group: 1 },
+    { id: 's2', classId: 1, group: 2 }
+  ],
+  evaluations: [
+    makeEvaluation('subject-group-one', '15', 20, { classId: '1', group: '1', subject: 'Mathématiques' }),
+    makeEvaluation('subject-group-two', '10', 20, { classId: '1', group: '2', subject: 'Mathématiques' })
+  ],
+  settings: { terms: [{ id: 'T1', start: '2026-09-01', end: '2026-12-31' }] },
+  lessons: [],
+  submissions: []
+};
+equal(context.subjectAverage('s1', '1', 'Mathématiques', 'T1'), '15.00', 'La moyenne matière doit accepter les identifiants classe/groupe normalisés');
+equal(context.subjectAverage('s2', 1, 'Mathématiques', 'T1'), '10.00', 'La moyenne matière doit distinguer le groupe de l’élève');
+equal(context.classAverageForBulletin('1', 'T1'), '12.50', 'La moyenne de classe doit inclure les élèves malgré les types d’identifiants mixtes');
 
 // 4) A publication matrix crosses three publication flags with six scheduling
 // states. The expected result is derived independently from the model.
