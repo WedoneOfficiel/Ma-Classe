@@ -108,16 +108,16 @@ assert(followup.includes('value="7" selected'),
   'The numeric student must remain selected in the student filter.');
 
 
-const studentScheduleSource=sliceBetween('function studentSchedule(){','\\nfunction ');
+const studentScheduleSource=sliceBetween('function studentSchedule(){','\nfunction ');
 assert(studentScheduleSource.includes("sameId(x.classId,st.classId)&&(!x.group||sameId(x.group,st.group||''))"),
   'The student timetable class and group legend must use the shared ID normalizer.');
-const studentNotificationsSource=sliceBetween('function studentNotifications(','\\nfunction recentStudentMails');
+const studentNotificationsSource=sliceBetween('function studentNotifications(','\nfunction recentStudentMails');
 assert(studentNotificationsSource.includes('sameId(b.studentId,sid)')&&studentNotificationsSource.includes('sameId(x.studentId,sid)'),
   'Student bulletin notifications must match numeric and textual student IDs.');
-const studentResultsSource=sliceBetween('function studentResults(){','\\n/* V21.11');
+const studentResultsSource=sliceBetween('function studentResults(){','\n/* V21.11');
 assert(studentResultsSource.includes('sameId(b.studentId,sid)'),
   'The student results screen must find official bulletins with normalized student IDs.');
-const profile360Source=sliceBetween('function profile360Data(','\\nfunction profile360Tab');
+const profile360Source=sliceBetween('function profile360Data(','\nfunction profile360Tab');
 for(const fragment of [
   'sameId(r.studentId,id)',
   'c.participantIds?.some(pid=>sameId(pid,id))',
@@ -129,7 +129,7 @@ for(const fragment of [
 }
 
 // Execute the actual quick-follow-up renderer with mixed numeric/text IDs.
-const openStudentActivity=sliceBetween('function openStudentActivity(','\\nfunction v103MissingWorkList');
+const openStudentActivity=sliceBetween('function openStudentActivity(','\nfunction v103MissingWorkList');
 context.db.evaluations=[{
   id:'evaluation-1',title:'Contrôle de français',subject:'Français',date:'2026-11-20',
   classId:42,group:'A',grades:[{studentId:7,value:'16'}]
