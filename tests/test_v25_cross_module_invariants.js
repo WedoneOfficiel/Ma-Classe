@@ -732,14 +732,16 @@ for (let seed = 0; seed < 12; seed++) {
         submissions.push({
           id: 'seed' + seed + '-sub' + lessonIndex + '-' + studentIndex,
           lessonId: lesson.id,
-          studentId: eligible[studentIndex].id
+          studentId: eligible[studentIndex].id,
+          status: 'submitted'
         });
         if ((seed + lessonIndex + studentIndex) % 7 === 0) {
           // A duplicate record must not inflate the received count.
           submissions.push({
             id: 'duplicate-' + seed + '-' + lessonIndex + '-' + studentIndex,
             lessonId: lesson.id,
-            studentId: eligible[studentIndex].id
+            studentId: eligible[studentIndex].id,
+            status: 'submitted'
           });
         }
       }
