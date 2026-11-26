@@ -82,12 +82,14 @@ assert(table.includes('MARTIN Alice')&&table.includes('on absent')&&table.includ
   'La grille d’appel doit retrouver l’élève et son statut malgré les identifiants historiques mixtes.');
 
 const summary=context.attendanceSummaryForClass('1');
-assert.deepStrictEqual(summary['100'],{abs:1,late:0,just:0},
-  'Le résumé de classe doit agréger une absence dont l’ID élève est stocké en texte.');
+assert.strictEqual(summary['100'].abs,1,'Le résumé doit compter l’absence malgré un ID élève stocké en texte.');
+assert.strictEqual(summary['100'].late,0,'Aucun retard ne doit être compté avant sa saisie.');
+assert.strictEqual(summary['100'].just,0,'Une absence non justifiée ne doit pas être comptée comme justifiée.');
 db.attendance[0].rows.push({studentId:100,status:'retard',justified:false,reason:'5 minutes'});
 const summaryWithLate=context.attendanceSummaryForClass('1');
-assert.deepStrictEqual(summaryWithLate['100'],{abs:1,late:1,just:0},
-  'Le résumé doit aussi compter les retards sans dupliquer l’élève.');
+assert.strictEqual(summaryWithLate['100'].abs,1,'Le nombre d’absences doit rester stable après ajout d’un retard.');
+assert.strictEqual(summaryWithLate['100'].late,1,'Le résumé doit compter le retard sans dupliquer l’élève.');
+assert.strictEqual(summaryWithLate['100'].just,0,'Le retard ne doit pas modifier le total des absences justifiées.');
 
 context.openAttendanceFollowup('9','100');
 assert(context.lastModal?.title==='Traiter une absence ou un retard'&&context.lastModal.html.includes('Alice Martin'),
