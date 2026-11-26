@@ -789,3 +789,19 @@ La revue des sorties HTML et PDF d'un même bulletin a révélé une divergence 
 La même passe du relevé élève a aussi été complétée : une appréciation seule est maintenant libellée « Appréciation » et n'est plus comptée comme un résultat qualitatif de compétences.
 
 Le run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457) reste la validation complète de la base candidate antérieure. La dernière tête de PR #20 doit repasser la CI Linux, macOS Apple Silicon/launchd et Firefox réel avant que le candidat V25.1.2 soit déclaré validé.
+
+
+### Fiche élève et contrôle des anciens liens de notes
+
+La comparaison des parcours de fiche élève a identifié deux fonctions historiques qui n'étaient pas encore raccordées aux règles communes :
+- `studentEvaluations` et le helper `avg` pouvaient reprendre une note d'un enregistrement où l'élève n'était pas réellement ciblé par le groupe.
+- `studentWorkItems` ne filtrait que la classe, contrairement à la liste élève et au nouveau panneau de suivi.
+
+Correctifs codés sur la PR #20 :
+- Historique et moyenne de la fiche : filtrage par `evaluationModelTargetStudents`, en conservant l'accès interne professeur aux brouillons.
+- Travaux à venir de la fiche : réutilisation de `studentWorkEligible`.
+- Détail d'une note : contrôle `evaluationModelVisible` au moment de l'ouverture, avant le contrôle numérique du barème. Un ancien lien ne peut donc plus contourner la publication ou le périmètre de groupe.
+
+Tests : deux groupes dans une même classe, note parasite d'un autre groupe, travaux partagés et individuels, brouillon, publication future, ancien lien et note valide.
+
+La revalidation complète de la tête courante reste obligatoire sur Linux, macOS Apple Silicon/launchd et Firefox réel.
