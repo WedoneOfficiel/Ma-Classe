@@ -486,7 +486,7 @@ context.db = {
   ],
   evaluations: [
     makeEvaluation('student-feed-A', '8', 10, { classId: '1', group: 'A', subject: 'Mathématiques' }),
-    makeEvaluation('student-feed-B', '18', 20, { classId: 1, group: 'B', subject: 'Mathématiques' }),
+    makeEvaluation('student-feed-B', '18', 20, { classId: 1, group: 'B', subject: 'Mathématiques', grades: [{ studentId: 's2', value: '18' }] }),
     makeEvaluation('student-feed-invalid', '-1', 20, { classId: 1, group: 'A', subject: 'Mathématiques' }),
     makeEvaluation('student-feed-future', '20', 20, { classId: '1', group: 'A', subject: 'Mathématiques', publishAt: '2999-01-01T00:00:00Z' }),
     makeEvaluation('student-feed-draft', '20', 20, { classId: 1, group: 'A', subject: 'Mathématiques', published: false })
