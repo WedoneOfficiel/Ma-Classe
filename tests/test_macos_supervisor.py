@@ -877,7 +877,13 @@ assert server._update_apply_service_active() is False
         self.assertIn("/bin/kill -KILL", function)
         self.assertIn("/bin/kill -0", function)
         self.assertIn("Could not find service", function)
-        self.assertLess(function.index("/bin/kill -KILL"), function.index('if probe='))
+        self.assertLess(function.index("/bin/launchctl disable"), function.index("/bin/launchctl bootout"))
+        self.assertLess(function.index("/bin/launchctl bootout"), function.index("/bin/kill -KILL"))
+        self.assertGreater(function.rindex("server_processes remaining 0"), function.index("/bin/launchctl bootout"))
+        trap = script[script.index("restore_service_enabled() {"):script.index("trap restore_service_enabled EXIT")]
+        failure = script[script.index("fail_restore() {"):script.index("\n}\nabort_before_switch()")]
+        self.assertIn('if [[ "$KEEP_SERVICE_DISABLED" == "1" ]]', trap)
+        self.assertIn("KEEP_SERVICE_DISABLED=1", failure)
         backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
         self.assertLess(script.index("if ! stop_service_and_confirm; then"), backup)
 
