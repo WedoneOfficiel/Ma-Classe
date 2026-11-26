@@ -108,6 +108,35 @@ PYSAN
   /bin/rm -f "$body_file"
   return 0
 }
+server_processes() {
+  local mode="$1" service_pid="${2:-0}" process_table
+  case "$mode" in unmanaged|remaining) ;; *) return 2 ;; esac
+  process_table="$(/bin/ps -ww -axo pid=,ppid=,command=)" || return 1
+  printf '%s\n' "$process_table" | "$ROOT/.venv/bin/python" -c '
+import re, sys
+mode = sys.argv[1]
+try: service_pid = int(sys.argv[2])
+except (IndexError, ValueError): raise SystemExit(2)
+rows = {}
+for line in sys.stdin:
+    parts = line.strip().split(None, 2)
+    if len(parts) != 3: continue
+    try: pid, ppid = int(parts[0]), int(parts[1])
+    except ValueError: continue
+    rows[pid] = (ppid, parts[2])
+for pid, (ppid, command) in rows.items():
+    if not re.search(r"python.*server[.]py", command): continue
+    if mode == "unmanaged":
+        current, seen = pid, set()
+        managed = current == service_pid
+        while not managed and current in rows and current not in seen:
+            seen.add(current)
+            current = rows[current][0]
+            managed = current == service_pid
+        if managed: continue
+    print(pid)
+' "$mode" "$service_pid"
+}
 start_service() {
   /bin/launchctl enable "gui/$UID_NOW/$SERVICE_LABEL"
   SERVICE_DISABLED=0
@@ -115,58 +144,73 @@ start_service() {
   /bin/launchctl kickstart "gui/$UID_NOW/$SERVICE_LABEL"
 }
 stop_service_and_confirm() {
-  local service_pid probe alive loaded
-  service_pid="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
-  [[ "$service_pid" =~ ^[0-9]+$ ]] || return 1
-  echo "DEBUG updater: PID du serveur identifié ($service_pid)." >&2
-
-  # Désactiver d'abord KeepAlive : sinon launchd peut relancer le processus
-  # après SIGKILL pendant que bootout attend encore sa terminaison.
+  local service_pid="" probe="" loaded=1 bootout_pid="" remaining=""
+  # Un service en état waiting peut rester chargé dans launchd sans PID.
+  if probe="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>&1)"; then
+    loaded=1
+  else
+    case "$probe" in
+      *"Could not find service"*) loaded=0 ;;
+      *) echo "DEBUG updater: état launchd indéterminé : $probe" >&2; return 1 ;;
+    esac
+  fi
+  if [[ "$loaded" == "0" ]]; then
+    remaining="$(server_processes remaining 0)" || return 1
+    [[ -z "$remaining" ]] || { echo "DEBUG updater: serveur(s) orphelin(s) : $remaining" >&2; return 1; }
+    echo "DEBUG updater: service déjà déchargé et aucun serveur enfant actif." >&2
+    return 0
+  fi
+  service_pid="$(printf '%s\n' "$probe" | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}')"
+  if [[ "$service_pid" =~ ^[0-9]+$ ]]; then
+    echo "DEBUG updater: PID du superviseur identifié ($service_pid)." >&2
+  else
+    echo "DEBUG updater: service chargé sans PID actif ; déchargement contrôlé." >&2
+  fi
   /bin/launchctl disable "gui/$UID_NOW/$SERVICE_LABEL" || return 1
   SERVICE_DISABLED=1
-  echo "DEBUG updater: launchctl disable terminé." >&2
-
-  # bootout peut attendre indéfiniment server_close() si un client TLS inactif
-  # conserve un thread de requête. Le lancer en arrière-plan permet de borner
-  # l'arrêt sans jamais sauvegarder la base tant que le processus existe.
+  # Le superviseur peut attendre jusqu'à 105 s + 10 s pour terminer son enfant.
+  # On lui laisse 125 s avant de refuser toute mutation.
   /bin/launchctl bootout "gui/$UID_NOW/$SERVICE_LABEL" >/dev/null 2>&1 &
-  local bootout_pid=$!
-  echo "DEBUG updater: bootout lancé en arrière-plan (PID $bootout_pid)." >&2
-
-  # Laisser au serveur 25 s pour son arrêt gracieux (timeout HTTP : 20 s).
-  for _ in {1..25}; do
-    if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
-    /bin/sleep 1
-  done
-
-  echo "DEBUG updater: délai gracieux terminé." >&2
-
-  # Sécurité : un arrêt gracieux bloqué ne doit pas figer la mise à jour.
-  # La sauvegarde n'aura lieu qu'après confirmation de la mort du processus.
-  if /bin/kill -0 "$service_pid" >/dev/null 2>&1; then
-    echo "Arrêt gracieux bloqué ; arrêt forcé du serveur PID $service_pid." >&2
-    /bin/kill -KILL "$service_pid" >/dev/null 2>&1 || true
+  bootout_pid=$!
+  if [[ "$service_pid" =~ ^[0-9]+$ ]]; then
+    for _ in {1..125}; do
+      if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
+      /bin/sleep 1
+    done
+    if /bin/kill -0 "$service_pid" >/dev/null 2>&1; then
+      echo "Arrêt gracieux bloqué ; arrêt forcé du superviseur PID $service_pid." >&2
+      /bin/kill -KILL "$service_pid" >/dev/null 2>&1 || true
+    fi
+    for _ in {1..10}; do
+      if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
+      /bin/sleep 1
+    done
+    if /bin/kill -0 "$service_pid" >/dev/null 2>&1; then
+      /bin/kill "$bootout_pid" >/dev/null 2>&1 || true
+      return 1
+    fi
   fi
-  echo "DEBUG updater: vérification après arrêt forcé." >&2
-  for _ in {1..10}; do
-    if ! /bin/kill -0 "$service_pid" >/dev/null 2>&1; then break; fi
-    /bin/sleep 1
-  done
-  /bin/kill -0 "$service_pid" >/dev/null 2>&1 && return 1
-
-  for _ in {1..10}; do
+  # Le parent arrêté ne suffit pas : confirmer aussi la disparition de server.py.
+  for _ in {1..15}; do
     if probe="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>&1)"; then
       loaded=1
     else
       case "$probe" in
         *"Could not find service"*) loaded=0 ;;
-        *) return 1 ;;
+        *) /bin/kill "$bootout_pid" >/dev/null 2>&1 || true; return 1 ;;
       esac
     fi
     if [[ "$loaded" == "0" ]]; then
-      echo "DEBUG updater: service launchd déchargé." >&2
-      # The job is unloaded and its process is confirmed dead. Do not let a
-      # wedged launchctl client keep the updater itself blocked.
+      remaining="$(server_processes remaining 0)" || {
+        /bin/kill "$bootout_pid" >/dev/null 2>&1 || true
+        return 1
+      }
+      if [[ -n "$remaining" ]]; then
+        echo "DEBUG updater: processus server.py orphelin après bootout : $remaining" >&2
+        /bin/kill "$bootout_pid" >/dev/null 2>&1 || true
+        return 1
+      fi
+      echo "DEBUG updater: service déchargé ; superviseur et serveur enfant arrêtés." >&2
       /bin/kill "$bootout_pid" >/dev/null 2>&1 || true
       return 0
     fi
@@ -291,14 +335,18 @@ PY
 umask 077
 BACKUP_DIR="$DATA/backups"
 mkdir -p "$BACKUP_DIR"
-command -v pgrep >/dev/null 2>&1 || { write_state failed "pgrep est requis pour vérifier l'absence de serveur manuel."; write_maintenance_state failed; exit 1; }
 SERVICE_PID="$(/bin/launchctl print "gui/$UID_NOW/$SERVICE_LABEL" 2>/dev/null | /usr/bin/awk '$1 == "pid" && $2 == "=" && $3 ~ /^[0-9]+$/ && $3 > 0 {print $3; exit}' || true)"
 [[ "$SERVICE_PID" =~ ^[0-9]+$ ]] || { write_state failed "Impossible d'identifier le processus launchd MaClasse ; mise à jour refusée."; write_maintenance_state failed; exit 1; }
-if SERVER_PIDS="$(pgrep -f '[p]ython.*server[.]py' 2>/dev/null)"; then PGREP_STATUS=0; else PGREP_STATUS=$?; fi
-[[ "$PGREP_STATUS" -le 1 ]] || { write_state failed "Impossible de vérifier les processus Python ; mise à jour refusée par sécurité."; write_maintenance_state failed; exit 1; }
-while IFS= read -r pid; do
-  [[ -z "$pid" || "$pid" == "$SERVICE_PID" ]] || { write_state failed "Un autre serveur MaClasse non supervisé est actif (PID $pid) ; arrête-le avant la mise à jour."; write_maintenance_state failed; exit 1; }
-done <<< "$SERVER_PIDS"
+if ! OTHER_SERVER_PIDS="$(server_processes unmanaged "$SERVICE_PID")"; then
+  write_state failed "Impossible de vérifier l'arbre des processus Python ; mise à jour refusée par sécurité."
+  write_maintenance_state failed
+  exit 1
+fi
+[[ -z "$OTHER_SERVER_PIDS" ]] || {
+  write_state failed "Un serveur MaClasse non supervisé est actif (PID $OTHER_SERVER_PIDS) ; arrête-le avant la mise à jour."
+  write_maintenance_state failed
+  exit 1
+}
 write_state installing
 if ! stop_service_and_confirm; then
   write_state failed "Impossible de confirmer l'arrêt complet du serveur launchd ; aucune sauvegarde ni bascule n'a été effectuée."
