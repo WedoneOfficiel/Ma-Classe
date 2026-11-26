@@ -295,7 +295,7 @@ for (const coefficient of coefficients) {
 
 // 8) Invalid, absent, negative and out-of-scale values cannot distort a
 // valid neighboring grade.
-const invalidValues = ['', null, undefined, 'abc', 'Infinity', -1, 21, 1000];
+const invalidValues = ['', '   ', '\t', null, undefined, 'abc', 'Infinity', -1, 21, 1000];
 for (const value of invalidValues) {
   setData([
     makeEvaluation('invalid-' + String(value), value, 20),
@@ -309,6 +309,7 @@ equal(context.evaluationGradeLabel({ maxScore: 20 }, { value: '-1' }), 'Non not�
 equal(context.evaluationGradeLabel({ maxScore: 20 }, { value: '21' }), 'Non noté', 'Une note hors barème ne doit pas être présentée comme valide');
 equal(context.evaluationGradeLabel({}, null), 'Non noté', 'Une absence de note est explicitement indiquée');
 equal(context.evaluationGradeLabel({}, { value: '' }), 'Non noté', 'Une note vide est explicitement indiquée');
+equal(context.evaluationGradeLabel({}, { value: '   ' }), 'Non noté', 'Une saisie composée d’espaces ne doit pas devenir une note zéro');
 equal(
   context.evaluationGradeLabel({}, { value: '', criterionScores: { c1: 2 } }),
   'Évaluation qualitative',
