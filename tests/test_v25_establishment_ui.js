@@ -33,4 +33,15 @@ assert(helper.includes('def validate_bundle(')&&helper.includes('def build_data(
 assert(helper.includes('mustChangePassword')&&helper.includes('passwordHash'));
 assert(!app.includes('api.openai.com')&&!server.includes('api.openai.com'),'Aucune API OpenAI/ChatGPT n’est intégrée.');
 assert(guide.includes('Ma Classe ne se connecte jamais à ChatGPT'));
+
+const generatorSource = fs.readFileSync('_all.js','utf8');
+const generatorGuide = fs.readFileSync('docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md','utf8');
+const generatorServer = fs.readFileSync('server.py','utf8');
+assert(generatorSource.includes("Générateur de configuration d’établissement"),'Le parcours doit être présenté comme un générateur guidé.');
+assert(generatorSource.includes("1. Décrire l’établissement")&&generatorSource.includes("2. Générer le JSON dans ChatGPT")&&generatorSource.includes("3. Vérifier et importer"),'Le parcours doit afficher trois étapes explicites.');
+assert(generatorSource.includes("ne transmets aucune identité réelle à ChatGPT"),'L’interface doit avertir de ne pas transmettre de données personnelles.');
+assert(generatorSource.includes("Élève 6A-001")&&generatorSource.includes("Professeur 01"),'Le générateur doit proposer des pseudonymes concrets.');
+assert(!generatorSource.includes("api.openai.com")&&!generatorServer.includes("api.openai.com"),'Aucune intégration API ChatGPT ne doit être ajoutée.');
+assert(generatorGuide.includes("Générateur guidé — parcours actuel en trois étapes")&&generatorGuide.includes("Confidentialité des personnes"),'Le guide doit expliciter les trois étapes et la pseudonymisation.');
+
 console.log('OK — Import établissement : schéma, exemple, documentation, échange manuel, Direction, sauvegarde, comptes locaux et import atomique.');

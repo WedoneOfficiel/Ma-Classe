@@ -110,3 +110,6 @@ Les tests complets sont lancés par le workflow [MaClasse — tests automatisés
 Après l’installation d’une nouvelle version, chaque compte Direction, Professeur ou Élève dispose d’un écran des nouveautés. La consultation est mémorisée côté serveur par compte et par version. Le journal complet est accessible depuis les Paramètres des trois espaces.
 
 Les entrées historiques sont issues des notes de version, des audits/recettes archivés et de l’ancien README conservés dans le dépôt. Les versions sans trace exploitable ne sont pas complétées par supposition.
+
+
+Le générateur d'établissement guide la Direction en trois étapes : modèle et schéma, génération manuelle d'un JSON avec ChatGPT, puis prévalidation et import confirmé. Ne transmets jamais d'identités ou données personnelles réelles à ChatGPT : utilise des pseudonymes puis complète les identités directement dans Ma Classe. Il n'existe aucune API ChatGPT ni aucun transfert automatique.

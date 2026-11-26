@@ -572,3 +572,11 @@ La V25.2.0 reste le candidat à stabiliser ; ces pistes ne doivent pas retarder 
 - Les versions qui ne figurent pas dans les traces sont absentes du journal ; aucun statut de publication ou détail de fonctionnalité n’est extrapolé.
 - Le rendu Markdown échappe les caractères HTML avant de produire les éléments de présentation.
 - Les tests couvrent l’isolation par compte, la version réellement installée, les documents historiques multiples, les XSS et l’accès statique autorisé.
+
+
+## Générateur d'établissement : parcours et confidentialité
+
+- Le parcours Direction présente trois étapes clairement séparées : préparer les sources, générer manuellement le JSON dans ChatGPT, puis prévalider et confirmer l'import dans Ma Classe.
+- L'interface rappelle qu'aucune API ni connexion automatique à ChatGPT n'est utilisée.
+- La génération externe impose des pseudonymes et interdit l'envoi d'identités réelles, coordonnées, dates de naissance, comptes ou commentaires individuels. Le serveur continue de créer les comptes enseignants localement.
+- La recette Firefox ouvre le générateur depuis l'espace Direction, vérifie les trois étapes et l'avertissement de confidentialité, et inspecte le rendu en clair/sombre.

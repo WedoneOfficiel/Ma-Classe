@@ -276,6 +276,31 @@ def verify_release_journal(page, role: str, output_dir: Path) -> None:
     expect(modal).not_to_be_visible()
 
 
+def verify_establishment_generator(page, output_dir: Path) -> None:
+    """Open the real Direction generator and verify its privacy-first workflow."""
+    page.evaluate("page='adminUsers';appSpace='teacher';render()")
+    expect(page.get_by_role("heading",name="Générateur de configuration d’établissement")).to_be_visible()
+    page.get_by_role("button",name="Ouvrir le générateur").click()
+    modal=page.locator("#modal")
+    expect(modal).to_contain_text("Générateur de configuration d’établissement")
+    expect(modal).to_contain_text("1. Décrire l’établissement")
+    expect(modal).to_contain_text("2. Générer le JSON dans ChatGPT")
+    expect(modal).to_contain_text("3. Vérifier et importer")
+    expect(modal).to_contain_text("ne transmets aucune identité réelle")
+    expect(modal).to_contain_text("aucun fichier à un service externe")
+    expect(modal.get_by_role("button",name="Télécharger le modèle JSON")).to_be_visible()
+    expect(modal.get_by_role("button",name="Télécharger le schéma JSON")).to_be_visible()
+    expect(modal.get_by_role("button",name="Télécharger les instructions")).to_be_visible()
+    expect(modal.get_by_role("button",name="Exporter le contexte anonymisé")).to_be_visible()
+    output_dir.mkdir(parents=True,exist_ok=True)
+    page.screenshot(path=str(output_dir/"establishment-generator-admin-light.png"),full_page=True,animations="disabled")
+    page.evaluate("setAppearanceTheme('dark')")
+    expect(page.locator("html")).to_have_attribute("data-mc-theme","dark")
+    page.screenshot(path=str(output_dir/"establishment-generator-admin-dark.png"),full_page=True,animations="disabled")
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).not_to_be_visible()
+
+
 def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -348,6 +373,10 @@ def main() -> None:
                 acknowledge_release_notes(page, "direction")
                 verify_release_journal(page, "admin", Path("artifacts/browser-v25"))
                 page.evaluate("page='adminUsers';appSpace='teacher';render()")
+
+                page.evaluate("page='adminUsers';appSpace='teacher';render()")
+                verify_establishment_generator(page, Path("artifacts/browser-v25"))
+                page.evaluate("setAppearanceTheme('light')")
 
                 # Seed one recurring course through the real authenticated API.
                 page.evaluate(

@@ -57,3 +57,16 @@ Le premier passage est une prévisualisation : il ne modifie aucune donnée. Ma 
 À la confirmation, Ma Classe crée les classes, les élèves, les profils et comptes professeurs, les salles et les créneaux. Chaque compte professeur reçoit un identifiant et un mot de passe provisoire générés localement ; le mot de passe n'est affiché qu'une fois. Aucun compte élève n'est créé automatiquement.
 
 L'import ajoute des éléments et ne remplace jamais silencieusement les classes ou les salles déjà présentes. Une sauvegarde de sécurité est créée avant toute écriture.
+
+
+## Générateur guidé — parcours actuel en trois étapes
+
+1. **Décrire la structure** : télécharger le modèle JSON, le schéma, les instructions, et éventuellement le contexte structurel anonymisé exporté par Ma Classe.
+2. **Générer le JSON manuellement dans ChatGPT** : joindre uniquement ces éléments structurels, indiquer les classes, niveaux, groupes, effectifs agrégés, matières, volumes horaires, contraintes de salles et disponibilités. Aucun transfert automatique ni appel d'API n'existe.
+3. **Vérifier et importer** : sélectionner le fichier dans Ma Classe, lire les erreurs et avertissements de la prévalidation, puis confirmer séparément l'import. Aucune modification n'est écrite pendant la prévisualisation.
+
+### Confidentialité des personnes
+
+Ne transmettez jamais à ChatGPT de vrais noms ou prénoms d'élèves/personnels, dates de naissance, emails, téléphones, identifiants de connexion, mots de passe, commentaires individuels ou autres données sensibles. Utilisez des pseudonymes stables tels que « Élève 6A-001 » et « Professeur 01 », avec des effectifs agrégés. Les identités réelles et coordonnées se complètent ensuite localement dans Ma Classe.
+
+Le contexte exporté par Ma Classe est structurel et pseudonymisé : il ne contient ni noms ni coordonnées d'élèves, et pseudonymise les professeurs. Les comptes et mots de passe provisoires des professeurs sont créés localement au moment de l'import.
