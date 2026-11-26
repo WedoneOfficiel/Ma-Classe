@@ -113,7 +113,7 @@ server_processes() {
   case "$mode" in unmanaged|remaining) ;; *) return 2 ;; esac
   process_table="$(/bin/ps -ww -axo pid=,ppid=,command=)" || return 1
   printf '%s\n' "$process_table" | "$ROOT/.venv/bin/python" -c '
-import re, sys
+import os, re, sys
 mode = sys.argv[1]
 try: service_pid = int(sys.argv[2])
 except (IndexError, ValueError): raise SystemExit(2)
@@ -125,6 +125,8 @@ for line in sys.stdin:
     except ValueError: continue
     rows[pid] = (ppid, parts[2])
 for pid, (ppid, command) in rows.items():
+    if pid == os.getpid():
+        continue
     if not re.search(r"python.*server[.]py", command): continue
     if mode == "unmanaged":
         current, seen = pid, set()
