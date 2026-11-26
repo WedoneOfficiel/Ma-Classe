@@ -772,9 +772,83 @@ assert server._update_apply_service_active() is False
         self.assertIn("/bin/kill -KILL", function)
         self.assertIn("/bin/kill -0", function)
         self.assertIn("Could not find service", function)
-        self.assertLess(function.index("/bin/kill -KILL"), function.index('if probe='))
+        self.assertIn("job launchd chargé mais aucun PID actif", function)
+        self.assertIn("pgrep -f", function)
+        self.assertIn("network_supervisor|server", function)
+        self.assertLess(function.index("/bin/kill -KILL"), function.index("Confirm both sides"))
         backup = script.index('/bin/cp -p "$DATA/maclasse.json" "$BACKUP_FILE"')
         self.assertLess(script.index("if ! stop_service_and_confirm; then"), backup)
+
+    def test_updater_accepts_a_stopped_launchd_job_without_pid_but_rejects_orphan_processes(self):
+        script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
+        start = script.index("stop_service_and_confirm() {")
+        end = script.index("\n}\nfail_restore()", start) + 2
+        stop_fn = script[start:end]
+
+        with tempfile.TemporaryDirectory(prefix="maclasse-launchd-stop-") as temp:
+            base = Path(temp)
+            fakebin = base / "bin"
+            fakebin.mkdir()
+            launchctl = fakebin / "launchctl"
+            launchctl.write_text(
+                '#!/bin/sh\n'
+                'case "$1" in\n'
+                '  print)\n'
+                '    if [ -f "$BOOTOUT_MARKER" ]; then echo "Could not find service"; exit 113; fi\n'
+                '    echo "state = waiting"; exit 0;;\n'
+                '  disable) touch "$DISABLED_MARKER"; exit 0;;\n'
+                '  bootout) touch "$BOOTOUT_MARKER"; exit 0;;\n'
+                'esac\nexit 2\n',
+                encoding="utf-8",
+            )
+            launchctl.chmod(0o755)
+            pgrep = fakebin / "pgrep"
+            pgrep.write_text(
+                '#!/bin/sh\n'
+                'if [ "$FAKE_ORPHAN_PROCESS" = "1" ]; then echo 4321; exit 0; fi\n'
+                'exit 1\n',
+                encoding="utf-8",
+            )
+            pgrep.chmod(0o755)
+            kill = fakebin / "kill"
+            kill.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            kill.chmod(0o755)
+            sleep = fakebin / "sleep"
+            sleep.write_text("#!/bin/sh\n/bin/sleep 0.02\n", encoding="utf-8")
+            sleep.chmod(0o755)
+
+            test_fn = (
+                stop_fn
+                .replace("/bin/launchctl", str(launchctl))
+                .replace("/usr/bin/pgrep", str(pgrep))
+                .replace("/bin/kill", str(kill))
+                .replace("/bin/sleep", str(sleep))
+            )
+            code = (
+                "UID_NOW=501\nSERVICE_LABEL=fr.maclasse.server\nSERVICE_DISABLED=0\n"
+                + test_fn
+                + "\nstop_service_and_confirm\n"
+            )
+            for orphan, expected in ((0, 0), (1, 1)):
+                with self.subTest(orphan_process=orphan):
+                    for marker in (base / "bootout.done", base / "disabled.done"):
+                        marker.unlink(missing_ok=True)
+                    env = os.environ.copy()
+                    env.update({
+                        "BOOTOUT_MARKER": str(base / "bootout.done"),
+                        "DISABLED_MARKER": str(base / "disabled.done"),
+                        "FAKE_ORPHAN_PROCESS": str(orphan),
+                    })
+                    result = subprocess.run(
+                        ["bash", "-c", code], env=env, capture_output=True, text=True, timeout=10
+                    )
+                    self.assertEqual(result.returncode, expected, result.stdout + "\n" + result.stderr)
+                    self.assertTrue((base / "disabled.done").exists())
+                    self.assertTrue((base / "bootout.done").exists())
+                    if orphan:
+                        self.assertIn("processus serveur encore actif", result.stderr)
+                    else:
+                        self.assertIn("service launchd déchargé et aucun processus", result.stderr)
 
     def test_installer_checks_health_and_has_rollback_path(self):
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
