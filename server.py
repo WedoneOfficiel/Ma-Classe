@@ -2131,6 +2131,88 @@ class MaClasseHTTPServer(ThreadingHTTPServer):
         self.server_port=int(self.server_address[1])
 
 
+def _release_notes_state_path():
+    return os.path.join(DATA_DIR, 'release-notes-state.json')
+
+
+def _release_notes_seen_version(user_id):
+    account_id = str(user_id or '').strip()
+    if not account_id:
+        return ''
+    with DATA_LOCK:
+        try:
+            with open(_release_notes_state_path(), encoding='utf-8') as state_file:
+                state = json.load(state_file)
+        except (OSError, ValueError, TypeError):
+            return ''
+    accounts = state.get('accounts') if isinstance(state, dict) else None
+    if not isinstance(accounts, dict):
+        return ''
+    return str(accounts.get(account_id) or '')
+
+
+def _mark_release_notes_seen(user_id, version):
+    account_id = str(user_id or '').strip()
+    requested = str(version or '').strip().lstrip('vV')
+    installed = str(APP_VERSION).strip().lstrip('vV')
+    if not account_id:
+        raise ValueError('Identifiant de compte manquant.')
+    if not installed or requested != installed:
+        raise ValueError('La version consultée ne correspond pas à la version installée.')
+    path = _release_notes_state_path()
+    with DATA_LOCK:
+        state = {}
+        try:
+            with open(path, encoding='utf-8') as state_file:
+                saved = json.load(state_file)
+            if isinstance(saved, dict):
+                state = saved
+        except (OSError, ValueError, TypeError):
+            pass
+        accounts = state.get('accounts')
+        if not isinstance(accounts, dict):
+            accounts = {}
+        accounts[account_id] = installed
+        os.makedirs(DATA_DIR, exist_ok=True)
+        temporary = path + '.' + str(threading.get_ident()) + '.tmp'
+        try:
+            with open(temporary, 'w', encoding='utf-8') as state_file:
+                json.dump({'schema_version': 1, 'accounts': accounts}, state_file, ensure_ascii=False, indent=2)
+                state_file.write('\n')
+            os.replace(temporary, path)
+        finally:
+            try:
+                if os.path.exists(temporary):
+                    os.remove(temporary)
+            except OSError:
+                pass
+    return installed
+
+
+def _release_notes_history_payload():
+    documents = []
+    sources = (
+        ('docs/HISTORIQUE_VERSIONS.md', 'Historique consolidé'),
+        ('docs/archives/ETATS_AUDITS_ET_RECETTES_ANTERIEURS.md', 'Archives des audits et recettes'),
+        ('docs/archives/README_PRE_REORGANISATION.md', 'Ancien README et historique synthétique'),
+    )
+    for relative, label in sources:
+        path = os.path.join(ROOT, *relative.split('/'))
+        try:
+            with open(path, encoding='utf-8') as source:
+                documents.append({'path': relative, 'label': label, 'markdown': source.read()})
+        except OSError:
+            continue
+    release_path = os.path.join(ROOT, 'docs', 'releases', 'v' + str(APP_VERSION).lstrip('vV') + '.md')
+    try:
+        with open(release_path, encoding='utf-8') as source:
+            current_release = source.read()
+    except OSError:
+        current_release = ''
+    return {'current_version': str(APP_VERSION).lstrip('vV'),
+            'history_documents': documents, 'current_release_markdown': current_release}
+
+
 class Handler(SimpleHTTPRequestHandler):
     # Borne les connexions inactives pour qu'un client abandonné ne bloque pas
     # indéfiniment l'arrêt gracieux du serveur pendant une mise à jour supervisée.
@@ -2226,7 +2308,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return os.path.join(UPLOADS,'__invalid_upload_path__')
         return super().translate_path(path)
     def _safe_static_path(self,path):
-        if path in ('/','/index.html','/_all.js','/class_tracking.js'):
+        if path in ('/','/index.html','/_all.js','/class_tracking.js','/release_notes.js'):
             return True
         return path.startswith('/data/uploads/')
     def _backup_dir(self):
@@ -2286,6 +2368,17 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(_public_update_maintenance(maintenance))
             except (OSError,ValueError,AttributeError):
                 return self._json({'scheduled':False,'maintenance':None})
+        if path in ('/api/release-notes/state', '/api/release-notes/history'):
+            user = self._require_auth(roles=('admin', 'teacher', 'student'))
+            if not user:
+                return
+            if path == '/api/release-notes/state':
+                return self._json({'version': str(APP_VERSION).lstrip('vV'),
+                                   'seen_version': _release_notes_seen_version(user.get('id'))})
+            payload = _release_notes_history_payload()
+            if not payload.get('history_documents') and not payload.get('current_release_markdown'):
+                return self._json({'error': 'Aucune trace de version disponible dans le dépôt.'}, 503)
+            return self._json(payload)
         if path=='/api/auth/setup-status':
             data=_load_database()
             users=data.get('users') if isinstance(data.get('users'),list) else []
@@ -2300,7 +2393,7 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance','/api/sync-status') or path.startswith('/data/uploads/') else ('admin','teacher')
+            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance','/api/sync-status','/api/release-notes/state','/api/release-notes/history') or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
         if path=='/api/sync-status':
             # Lightweight revision probe used by every open application module.
@@ -2382,7 +2475,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({'error':'Connexion requise.'},401)
         elif path not in public_post_paths:
             admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/establishment-import/validate','/api/admin/establishment-import/apply','/api/admin/user-status','/api/backup/restore','/api/reset')
-            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin',) if path in admin_only_paths else ('admin','teacher')
+            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf','/api/release-notes/ack') else ('admin',) if path in admin_only_paths else ('admin','teacher')
             if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
@@ -2399,6 +2492,23 @@ class Handler(SimpleHTTPRequestHandler):
         if length<0 or length>max_length:
             return self._json({'error':f'Requête trop volumineuse (maximum {max_length//(1024*1024)} Mo pour cette opération).'},413)
         body=self.rfile.read(length)
+        if path == '/api/release-notes/ack':
+            user = self._require_auth(roles=('admin', 'teacher', 'student'))
+            if not user:
+                return
+            try:
+                payload = json.loads(body.decode('utf-8'))
+            except (UnicodeDecodeError, ValueError):
+                return self._json({'error': 'Demande de consultation invalide.'}, 400)
+            if not isinstance(payload, dict):
+                return self._json({'error': 'Demande de consultation invalide.'}, 400)
+            try:
+                saved_version = _mark_release_notes_seen(user.get('id'), payload.get('version'))
+            except ValueError as error:
+                return self._json({'error': str(error)}, 409)
+            except OSError:
+                return self._json({'error': 'Impossible d’enregistrer la consultation de cette version.'}, 500)
+            return self._json({'ok': True, 'seen_version': saved_version})
         if path=='/api/admin/updates/prepare':
             user=self._require_auth(roles=('admin',))
             if not user: return

@@ -2303,11 +2303,63 @@ html[data-mc-theme="dark"] .bulletin::before{
   }
 }
 </style>
+<style id="v2520-settings-and-release-notes">
+.settingsGrid.settingsAdminLayout{display:grid!important;grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods updates" ". periods data"!important;grid-auto-flow:row!important;align-items:start!important;gap:16px!important}
+.settingsGrid:not(.settingsAdminLayout){display:grid!important;grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods data"!important;grid-auto-flow:row!important;align-items:start!important;gap:16px!important}
+.settingsGrid>.settingsAppearanceCard{grid-area:appearance!important}
+.settingsGrid>.settingsPeriodsCard{grid-area:periods!important}
+.settingsGrid>.settingsRoomsCard{grid-area:rooms!important}
+.settingsGrid>.settingsVersionCard{grid-area:version!important}
+.settingsGrid>.settingsUpdateCard{grid-area:updates!important}
+.settingsGrid>.settingsDataCard{grid-area:data!important;grid-column:auto!important}
+.settingsGrid>.settingsCard{min-width:0!important;height:fit-content;align-self:start;margin:0!important}
+.settingsStudentVersionCard{grid-column:1/-1}
+@media(max-width:900px){
+ .settingsGrid.settingsAdminLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version updates" "data data"!important}
+ .settingsGrid:not(.settingsAdminLayout){grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version data"!important}
+}
+@media(max-width:650px){
+ .settingsGrid.settingsAdminLayout{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "updates" "data"!important;gap:12px!important}
+ .settingsGrid:not(.settingsAdminLayout){grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "data"!important;gap:12px!important}
+ .settingsStudentVersionCard{grid-column:auto}
+}
+.modal.releaseNotesModal{width:min(1040px,100%);max-height:min(90vh,860px);display:flex;flex-direction:column;overflow:hidden;padding:20px}
+.releaseNotesLead{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.55}
+.releaseNotesLayout{display:grid;grid-template-columns:minmax(190px,245px) minmax(0,1fr);gap:14px;min-height:0;flex:1}
+.releaseNotesNav{min-width:0;max-height:62vh;overflow:auto;padding:5px;border:1px solid var(--line);border-radius:12px;background:var(--mc-surface-soft,var(--bg))}
+.releaseNotesNav button{display:block;width:100%;border:0;border-radius:9px;padding:10px 11px;margin:0 0 4px;text-align:left;color:var(--ink);background:transparent;font:inherit;font-size:12px;line-height:1.35;cursor:pointer}
+.releaseNotesNav button:hover,.releaseNotesNav button.active{background:var(--blue2)}
+.releaseNotesNav button.active{color:var(--blue);font-weight:800;box-shadow:inset 3px 0 0 var(--blue)}
+.releaseNotesNav small{display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:500}
+.releaseNotesArticle{min-width:0;max-height:62vh;overflow:auto;padding:4px 8px 12px 3px;color:var(--ink)}
+.releaseNotesArticle h3{margin:0 0 12px;font-size:19px;line-height:1.3}
+.releaseNotesArticle h4{margin:18px 0 7px;font-size:14px}
+.releaseNotesArticle p{margin:8px 0;font-size:13px;line-height:1.6}
+.releaseNotesArticle ul{margin:7px 0 13px;padding-left:22px}
+.releaseNotesArticle li{margin:5px 0;font-size:13px;line-height:1.55}
+.releaseNotesArticle code{padding:2px 5px;border:1px solid var(--line);border-radius:5px;background:var(--mc-surface-soft,var(--bg));font-size:.92em;overflow-wrap:anywhere}
+.releaseNotesArticle blockquote{margin:10px 0;padding:9px 12px;border-left:3px solid var(--blue);background:var(--blue2);border-radius:0 8px 8px 0}
+.releaseNotesActions{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);margin-top:14px;padding-top:13px;flex-wrap:wrap}
+.releaseNotesSource{color:var(--muted);font-size:10px;line-height:1.45}
+@media(max-width:700px){
+ .modal.releaseNotesModal{padding:14px;max-height:94vh}
+ .releaseNotesLayout{grid-template-columns:minmax(0,1fr);gap:9px}
+ .releaseNotesNav{display:flex;gap:5px;max-height:104px;overflow:auto;white-space:nowrap}
+ .releaseNotesNav button{flex:0 0 auto;width:auto;max-width:210px;margin:0}
+ .releaseNotesNav button.active{box-shadow:inset 0 -3px 0 var(--blue)}
+ .releaseNotesNav small{white-space:normal}
+ .releaseNotesArticle{max-height:54vh;padding-right:2px}
+ .releaseNotesActions{align-items:stretch}
+ .releaseNotesActions .btn{flex:1}
+}
+</style>
+
 </head>
 <body>
 <div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire · <span id="appVersionLabel"></span></small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><span id="spaceFoot" hidden></span></aside><main class="main" id="main"></main></div>
 <div class="modalback" id="modalback"><div class="modal" id="modal"></div></div><div class="toast" id="toast"></div>
 
+<script src="release_notes.js"></script>
 <script src="_all.js"></script>
 <script src="class_tracking.js"></script>
 
