@@ -303,3 +303,16 @@ Le commit documentaire courant ne modifie pas le code ; le workflow de contrôle
 ### Résultat de la vérification des scripts Ed25519 — workflow #1763
 
 Le workflow [#1763](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45706617681) est vert sur Linux, macOS Apple Silicon et Firefox réel. Les tests de provisionnement exécutent le générateur de paire et le signataire dans des répertoires temporaires, contrôlent les permissions POSIX, vérifient le manifeste signé et refusent le secret absent sans produire de signature. La clé publique d'éditeur du dépôt n'est toujours pas provisionnée ; aucun tag ni release stable ne peut être publié avant cette opération.
+
+
+## Complément d’audit individuel — 26/11/2026
+
+| ID | Module | Défaut constaté | Correction dans la branche V25.1.2 | Validation |
+|---|---|---|---|---|
+| STU-WORK-01 | Espace Élève — Travail à faire | La page existait, mais la route était redirigée vers Séances & leçons et aucun accès direct n’était proposé dans le menu. Les devoirs en retard étaient donc difficiles à retrouver. | Route autonome rétablie ; accès depuis l’accueil et la navigation ; filtres À faire / En retard / Rendus / Corrigés / Tous ; badge de retards. | Firefox réel : parcours d’ouverture du devoir échu et vérification de son état ; CI 3/3 sur le commit `f8640bd`. |
+| ID-MIXED-01 | Annuaire, EDT élève, assiduité, rendus, bulletins et fiches | Certaines fonctions comparaient strictement les identifiants numériques et textuels et pouvaient ne pas retrouver un élève ou un événement pourtant identique. | Réutilisation du comparateur commun `sameId` dans les filtres et projections concernés ; tests avec identifiants volontairement mixtes. | Tests isolés et suites Linux/macOS/Firefox ; 3/3 réussis sur le commit `f8640bd`. |
+| UI-STU-02 | Espace Élève — Travail à faire | À 390 px, le tableau à cinq colonnes comprimait le texte et l’action Ouvrir. | Présentation mobile en fiches à deux colonnes, libellés accessibles, statut repliable et bouton correctement dimensionné ; tableau desktop préservé. | Test Firefox mesurant la structure et la taille de l’action ; captures 390 px clair/sombre inspectées ; CI 3/3 sur le commit `f8640bd`. |
+
+### Niveau de preuve et réserve
+
+Les états ci-dessus sont **corrigés dans la branche et validés par CI**, pas encore confirmés sur l’installation physique. La campagne utilise des comptes et une base temporaires isolés ; elle ne modifie pas les données de l’installation utilisateur. La recette sur les vrais comptes et la vraie base reste distincte.

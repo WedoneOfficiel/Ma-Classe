@@ -1,10 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : audit croisé V25.1.2 terminé — candidat validé par CI — 26 novembre 2026**
+**État : audit individuel, visuel et transversal étendu — candidat V25.1.2 validé par CI — 26 novembre 2026**
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
-**Validation de la dernière tête :** commit `eae1433c8c12bb7e84ae0b9749633864fa2388c1`, run [45822162433](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45822162433), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. La matrice croisée exécute 860 invariants. Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` sont alignées sur V25.1.2. La PR n'est pas encore fusionnée et la release stable n'est pas publiée.
+**Validation de la dernière tête :** commit `f8640bd5ccc900bdf0d2b1b4f4fb6969095c6dfe`, run [45842659573](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45842659573), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. La matrice croisée exécute 860 invariants ; le dépôt compte 97 fichiers de tests (57 JavaScript, 40 Python). Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` sont alignées sur V25.1.2. La PR n'est pas encore fusionnée et la release stable n'est pas publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -454,3 +454,51 @@ Aucun score de risque, classement ou seuil automatique n'est calculé. Les nombr
 Le contexte de classe est désormais libéré lorsque l'utilisateur choisit un espace Cloud personnel, partagé, de groupe ou documentaire. Il reste conservé pour l'espace « Classe », afin de garder le raccourci vers la classe courante.
 
 Le changement d'espace passe par `setCloudSpace()`, qui réinitialise également le chemin, la sélection et les filtres. Le test Firefox vérifie l'espace réellement rendu, l'absence de colonne latérale dans les espaces personnels/partagés et le maintien de la navigation latérale pour l'espace classe.
+
+
+## 20. Audit individuel des modules, parcours réels et finition responsive — 26/11/2026
+
+### Objectif et méthode
+
+La campagne ne se limite pas à la cohérence entre les modules. Elle distingue désormais trois niveaux de preuve :
+
+1. **Test isolé du module ou de sa logique :** helper, calcul, filtre, permissions, persistance, rendu de fragment et cas limites, sans dépendre d’un autre écran.
+2. **Parcours fonctionnel dans Firefox réel :** actions déclenchées dans l’interface avec des comptes temporaires Direction, Professeur et Élève, puis vérification des résultats réellement affichés et persistés.
+3. **Inspection visuelle :** captures réelles de l’écran rendu en clair/sombre et aux largeurs desktop, 900 px et 390 px. Une capture confirme une composition visuelle, pas le fonctionnement de toutes les actions de l’écran.
+
+### Couverture par espace
+
+| Espace / modules | Tests isolés ou spécialisés présents | Parcours Firefox / inspection | Limite restante |
+|---|---|---|---|
+| Direction / administration | comptes, authentification, rôles, affectations, confidentialité, paramètres, sauvegardes et restauration | création d’un compte professeur depuis l’interface, désactivation puis réactivation ; captures Utilisateurs, Professeurs, Suivi de classe et Paramètres | recette avec les vrais comptes de l’installation de référence |
+| Professeur — emploi du temps | formulaire, récurrences, navigation jour/semaine/mois, conflits, permissions d’affectation, XSS et synchronisation | création/sauvegarde d’un créneau, persistance, mise à jour par une autre session et comparaison structurelle Professeur/Élève | scénarios de données exceptionnellement denses et recette multi-postes physique |
+| Professeur — séances et devoirs | pièces jointes, rendus, sauvegardes, états et ciblage de groupe | création d’une séance/devoir, téléversement d’une pièce jointe et ouverture du document côté Élève | gros volumes de fichiers et très longues listes de rendus |
+| Professeur — élèves et suivi | fiche 360°, identifiants mixtes, suivi individuel, devoirs éligibles, assiduité | ouverture des fiches et du suivi à partir du compte enseignant ; captures avec données de classe | recette métier avec les jeux de données réels de l’établissement |
+| Professeur — évaluations et bulletins | 860 invariants croisés, barèmes, moyennes, publication différée, permissions, compétences, PDF et persistance | écrans Évaluations et Bulletins capturés ; les calculs et projections sont vérifiés par tests dédiés et comparaisons HTML/PDF | validation humaine de bulletins réels et de cas d’établissement atypiques |
+| Professeur / Élève — messagerie | modèle Mail V2, destinataires, brouillons, CC/CCI, pièces jointes, droits et URLs | message professeur vers Élève, ouverture de la boîte élève et inspection des écrans | test d’usage humain avec échanges longs et nombreuses conversations |
+| Cloud Professeur / Élève | permissions personnelles/partagées/classe, identité des fichiers, upload et filtrage serveur | fichier partagé visible côté Élève, fichier privé non visible, lecture seule et refus de téléversement élève | volumes de stockage et arborescences très importantes |
+| Élève — emploi du temps, cours, résultats, vie scolaire et paramètres | tests dédiés de navigation, période, publications, PDF, assiduité, documents et préférences | captures des pages élève, thèmes et largeurs ; navigation vers les pages et contrôle de l’absence de commandes réservées au professeur | ergonomie avec historique complet et comptes présentant des données très volumineuses |
+| Élève — Travail à faire | tests de soumission et de téléversement, filtres, brouillons et identifiants mixtes ; test responsive dédié | depuis l’accueil, ouverture de la page, vérification du devoir en retard, état et bouton Ouvrir | recette avec un devoir réel, une correction réelle et un dépôt élève sur l’installation physique |
+
+### Anomalies supplémentaires découvertes et corrigées
+
+- **STU-WORK-01 — page Travail à faire inaccessible :** la page et ses filtres existaient déjà, mais le routeur redirigeait `studentWork` vers `studentLessons` et la navigation ne proposait aucun accès direct. La route dédiée est rétablie ; le menu et l’accueil y conduisent, un indicateur affiche le nombre de travaux en retard et la vue du cahier de cours reste séparée avec son onglet « À venir ».
+- **ID-MIXED-01 — identifiants numériques / textuels divergents :** plusieurs vues comparaient strictement les identifiants alors que des données historiques peuvent stocker un même identifiant sous forme numérique ou textuelle. Le comparateur commun `sameId` est réutilisé dans l’historique d’assiduité, les compteurs d’absences/retards, l’annuaire, le suivi des justifications, l’emploi du temps élève, les rendus/brouillons, les notifications, les bulletins et la fiche 360°. Des tests isolés exercent ces chemins avec des valeurs volontairement mixtes.
+- **UI-STU-02 — tableau Travail à faire trop comprimé sur téléphone :** les cinq colonnes se réduisaient jusqu’à couper les mots et la commande. Sous 650 px, chaque ligne devient une fiche à deux colonnes, avec les libellés explicites, le statut et le bouton Ouvrir. Le rendu desktop reste tabulaire. Le test Firefox mesure les colonnes et la largeur du bouton ; les captures 390 px en clair et sombre ont été inspectées.
+
+### Résultats de la campagne
+
+- Commit : `f8640bd5ccc900bdf0d2b1b4f4fb6969095c6dfe`.
+- Workflow : [45842659573](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45842659573).
+- Linux : réussi, tests JavaScript et Python.
+- macOS Apple Silicon : réussi, installateur, JavaScript, vrai démarrage `launchd` et suite Python.
+- Firefox réel : réussi, parcours multi-rôles et captures.
+- Matrice inter-modules : 860 invariants réussis.
+- Dépôt : 97 fichiers de tests (57 JS et 40 Python).
+- Captures Firefox : écrans Direction, Professeur et Élève en clair/sombre, avec largeurs desktop, 900 px et 390 px.
+
+### Limites assumées
+
+Cette campagne augmente nettement la couverture individuelle et les interactions réelles, mais elle ne signifie pas que chaque bouton de chaque module a été cliqué dans toutes ses combinaisons. Les captures n’attestent pas à elles seules la logique métier. Les essais avec longues listes, volumes de fichiers extrêmes, accessibilité clavier/lecteur d’écran et données réelles anonymisées restent des recettes distinctes. La confirmation finale dans l’installation physique, avec les vrais comptes et les données de l’établissement, n’a pas été effectuée par cette CI.
+
+La PR #20 reste ouverte ; aucune fusion, aucun tag et aucune release V25.1.2 ne sont annoncés ici.

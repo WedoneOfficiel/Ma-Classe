@@ -820,3 +820,42 @@ La revalidation complète de la tête courante reste obligatoire sur Linux, macO
 - Aucun changement de schéma ni migration de données.
 
 La PR #20 reste ouverte pour revue ; la version n'est pas encore fusionnée, taguée ni publiée. La recette sur l'installation physique et les comptes de l'établissement reste distincte de la CI hébergée.
+
+
+## Audit individuel, parcours Firefox et finition responsive — 26 novembre 2026
+
+### Périmètre étendu
+
+L’audit ne se limite plus aux contrats entre modules. Il combine :
+- des tests isolés de logique, filtres, autorisations, persistance et rendu des composants ;
+- des scénarios Firefox réels avec des comptes temporaires Direction, Professeur et Élève ;
+- l’inspection des captures en clair/sombre, aux largeurs desktop, 900 px et 390 px ;
+- les invariants inter-modules, conservés en complément.
+
+Le test Firefox exerce notamment la création d’un compte professeur dans l’interface Direction, sa désactivation/réactivation, la création et la persistance d’un créneau, les échanges entre rôles, un devoir avec pièce jointe, la messagerie V2 et le cloisonnement Cloud. Les captures couvrent les vues Direction, Professeur et Élève.
+
+### Corrections supplémentaires
+
+- **STU-WORK-01 :** la page « Travail à faire » est redevenue accessible comme module autonome. Elle présente les catégories À faire, En retard, Rendus, Corrigés et Tous ; l’accueil et le menu y conduisent et un badge signale les retards. « À venir » reste une vue distincte du cahier de cours.
+- **ID-MIXED-01 :** les comparaisons d’identifiants ont été harmonisées autour de `sameId` dans l’annuaire, l’assiduité, les filtres classe/groupe de l’EDT élève, les rendus et brouillons, le suivi rapide, les notifications, les bulletins et la fiche élève 360°.
+- **UI-STU-02 :** le tableau « Travail à faire » se transforme en fiches à deux colonnes sous 650 px. Les libellés de cellules sont visibles, l’état reste lisible et le bouton Ouvrir conserve une largeur utile ; le tableau desktop est préservé.
+
+### Tests ajoutés ou complétés
+
+- `tests/test_v25_legacy_id_module_scope.js` : identifiants mixtes dans l’historique d’assiduité, les compteurs, l’annuaire, le suivi, l’EDT, les rendus/brouillons, les notifications, les résultats officiels et le suivi rapide.
+- `tests/test_v25_student_schedule.js` et `tests/test_v25_schedule_navigation.js` : fixtures mises à jour pour charger le comparateur commun et le nouveau module routé.
+- `tests/test_v25_student_work_responsive.py` : présence du layout mobile, des libellés et de la route autonome.
+- `tests/browser/test_v25_schedule_firefox.py` : assertion réelle sur la structure deux colonnes, les cinq cellules nommées et la largeur minimale du bouton mobile.
+
+### Validation de la tête courante
+
+- Commit : `f8640bd5ccc900bdf0d2b1b4f4fb6969095c6dfe`.
+- Run : [45842659573](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45842659573).
+- Linux : succès.
+- macOS Apple Silicon : succès, installateur et véritable `launchd`.
+- Firefox réel : succès.
+- Résultat : **3/3 jobs réussis**.
+- Matrice croisée : 860 invariants.
+- Dépôt : 97 fichiers de tests (57 JavaScript, 40 Python).
+
+La PR #20 demeure ouverte, non fusionnée et non publiée. Aucune installation locale ni donnée réelle n’a été modifiée. La recette sur les comptes et données physiques reste nécessaire.
