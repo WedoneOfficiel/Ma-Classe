@@ -24,10 +24,11 @@ if [[ "$PROGRAM" != "$ROOT" ]]; then
   ROOT_LAUNCHER="$ROOT/Lancer-MaClasse-Reseau.command"
   if [[ -f "$VERSION_LAUNCHER" && ! -L "$VERSION_LAUNCHER" ]] &&
      { [[ ! -f "$ROOT_LAUNCHER" ]] || ! /usr/bin/cmp -s "$VERSION_LAUNCHER" "$ROOT_LAUNCHER"; }; then
-    TEMP_LAUNCHER="$ROOT/.Lancer-MaClasse-Reseau.command.$"
-    if ! /bin/cp -p "$VERSION_LAUNCHER" "$TEMP_LAUNCHER" ||
+    TEMP_LAUNCHER="$(/usr/bin/mktemp "$ROOT/.Lancer-MaClasse-Reseau.command.XXXXXX" 2>/dev/null || true)"
+    if [[ -z "$TEMP_LAUNCHER" ]] ||
+       ! /bin/cp -p "$VERSION_LAUNCHER" "$TEMP_LAUNCHER" ||
        ! /bin/mv -f "$TEMP_LAUNCHER" "$ROOT_LAUNCHER"; then
-      /bin/rm -f "$TEMP_LAUNCHER"
+      [[ -z "$TEMP_LAUNCHER" ]] || /bin/rm -f "$TEMP_LAUNCHER"
       echo "Avertissement : impossible de synchroniser le lanceur réseau dans $ROOT." >&2
     fi
   fi
