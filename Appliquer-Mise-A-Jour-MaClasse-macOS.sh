@@ -9,6 +9,8 @@ elif [[ -d "$SCRIPT_DIR/data" ]]; then
 else
   ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd -P)"
 fi
+ROOT_INPUT="$ROOT"
+if [[ "$ROOT_INPUT" != /* ]]; then ROOT_INPUT="$(cd "$ROOT_INPUT" && pwd -L)"; fi
 ROOT="$(cd "$ROOT" && pwd -P)"
 cd "$ROOT"
 DATA="${MACLASSE_DATA_DIR:-$ROOT/data}"
@@ -115,11 +117,12 @@ start_service() {
   /bin/launchctl kickstart "gui/$UID_NOW/$SERVICE_LABEL"
 }
 owned_service_pids() {
-  /bin/ps -axo pid=,command= | /usr/bin/awk -v root="$ROOT" '
+  local root_input="${ROOT_INPUT:-$ROOT}"
+  /bin/ps -axo pid=,command= | /usr/bin/awk -v root="$ROOT" -v root_input="$root_input" '
     $1 ~ /^[0-9]+$/ && NF >= 2 {
       command = substr($0, index($0, $2))
-      if (index(command, root "/") > 0 && command ~ /[pP]ython/ &&
-          command ~ /(network_supervisor|server)[.]py/) print $1
+      if ((index(command, root "/") > 0 || index(command, root_input "/") > 0) &&
+          command ~ /[pP]ython/ && command ~ /(network_supervisor|server)[.]py/) print $1
     }'
 }
 pid_is_in_list() {
