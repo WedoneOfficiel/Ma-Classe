@@ -118,7 +118,7 @@ owned_service_pids() {
   /bin/ps -axo pid=,command= | /usr/bin/awk -v root="$ROOT" '
     $1 ~ /^[0-9]+$/ && NF >= 2 {
       command = substr($0, index($0, $2))
-      if (index(command, root) > 0 && command ~ /[pP]ython/ &&
+      if (index(command, root "/") > 0 && command ~ /[pP]ython/ &&
           command ~ /(network_supervisor|server)[.]py/) print $1
     }'
 }
@@ -178,7 +178,7 @@ stop_service_and_confirm() {
   # supervisor/server process remains before allowing a database restore.
   if [[ "$loaded" == "0" ]]; then
     if ! stop_owned_service_processes; then return 1; fi
-    if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)";
+    if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then
       echo "Un processus MaClasse subsiste alors que le job launchd est absent : $server_pids" >&2
       return 1
     else
