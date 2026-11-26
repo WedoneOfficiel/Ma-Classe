@@ -241,7 +241,7 @@ assert definition["Label"] == "fr.maclasse.update"
 assert definition["ProgramArguments"] == ["/bin/bash", str(pathlib.Path(server.ROOT) / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh")]
 assert definition["RunAtLoad"] is False
 assert "StartCalendarInterval" not in definition
-assert definition["EnvironmentVariables"]["MACLASSE_DATA_DIR"] == str(pathlib.Path(server.DATA_DIR).resolve())
+assert definition["EnvironmentVariables"]["MACLASSE_DATA_DIR"] == os.path.abspath(server.DATA_DIR)
 commands = [call[:2] for call in fake.calls]
 assert commands.index(["/usr/bin/plutil", "-lint"]) < commands.index(["/bin/launchctl", "bootstrap"])
 assert commands.index(["/bin/launchctl", "bootstrap"]) < commands.index(["/bin/launchctl", "kickstart"])
