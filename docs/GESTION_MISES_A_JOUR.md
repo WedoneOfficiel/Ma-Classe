@@ -1,13 +1,14 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**État actualisé au 26/11/2026 :** la release V25.1.0 (`v25.1.0`) a été publiée avec ses assets de mise à jour et sa signature. La première installation supervisée réelle sur macOS a toutefois révélé un défaut bloquant dans la lecture du SAN du certificat local : `network_supervisor.py` interprétait la sortie texte d'OpenSSL et rejetait à tort un certificat valide sous LibreSSL. L'installation du Mac a été restaurée manuellement en V25.0.23 ; base scolaire et certificats ont été conservés.
+**État actualisé au 26/11/2026 :** la release stable V25.1.1 (v25.1.1) est publiée avec son archive, son manifeste et sa signature Ed25519. Le workflow de publication #4 (run 45806118500) a terminé avec succès ses quatre jobs. Le tag pointe sur le commit validé b5cc07d6747605f2eac6ad11dffb3ce0bbb9ec43.
 
-**Correctif intégré :** la PR #14 a été fusionnée dans `main` le 26/11/2026 (commit `e6df53f`). Le code V25.1.1 remplace l'analyse textuelle du SAN par le parseur X.509 de `cryptography` et teste de vrais certificats PEM. Le tag `v25.1.1` et la release stable restent à créer ; aucune installation ne doit être lancée avant la présence des assets signés.
+**Correctifs V25.1.1 :** la PR #14 a remplacé l'analyse textuelle du SAN par le parseur X.509 de cryptography. Les PR #16, #18 et #19 ont renforcé l'arrêt et le rollback, le lanceur réseau LibreSSL, le démarrage LaunchAgent et les diagnostics. La version ajoute également une progression visible pendant la préparation de la mise à jour et un lanceur direct de premier passage depuis V25.0.23.
 
-**État signature :** la clé publique de production est épinglée dans `release-signing-public-key.txt` et le secret `MACLASSE_RELEASE_SIGNING_KEY_B64` est configuré dans GitHub Actions. Les workflows #1807, #1808 et #1809 sont verts (3/3 chacun : Linux, macOS/launchd et Firefox). Après création du tag et publication signée, la recette physique du parcours de mise à jour sera réalisée sur le Mac et les appareils clients.
+**Recette réelle :** sur le Mac de référence, l'ancien gestionnaire V25.0.23 préparait le paquet mais ne déclenchait pas l'installation. Après préparation de V25.1.1, le lanceur direct a exécuté le même moteur d'installation/rollback ; l'utilisateur a confirmé que MaClasse fonctionne désormais en V25.1.1. Les données, certificats et schéma sont restés conservés. Le premier passage utilisait la vérification SHA-256 de l'ancien gestionnaire ; les mises à jour suivantes utilisent la vérification Ed25519 du gestionnaire V25.1.1.
 
-**Note de lecture :** les phases et certains statuts ci-dessous retracent l'historique de conception ; les décisions et résultats actuels sont résumés en tête de ce document et dans le [README](../README.md).
+**État des validations :** CI post-fusion #1844 (run 45804151065) et CI documentaire #1845 (run 45808824689) réussies sur Linux, macOS Apple Silicon/launchd et Firefox réel.
 
+**Note de lecture :** les phases et certains statuts ci-dessous retracent l'historique de conception ; les décisions et résultats actuels sont résumés en tête de ce document et dans le README.
 ## Objectif
 
 Permettre à la direction de rechercher, télécharger, planifier et installer une version officielle de MaClasse depuis l'interface, sans ouvrir de terminal au quotidien. Les commandes manuelles restent disponibles comme procédure de secours.
