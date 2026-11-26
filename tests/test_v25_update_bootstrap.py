@@ -157,6 +157,7 @@ class DirectMacUpdateBootstrapTests(unittest.TestCase):
         outside.mkdir()
         original = self.target
         original.rename(self.versions / "V25.1.1.real")
+        self.script = self.versions / "V25.1.1.real" / SCRIPT_NAME
         self.target.symlink_to(outside, target_is_directory=True)
         result = self.run_launcher()
         self.assertNotEqual(result.returncode, 0)
