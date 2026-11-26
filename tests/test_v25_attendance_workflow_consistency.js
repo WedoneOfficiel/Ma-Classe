@@ -101,6 +101,14 @@ context.saveAttendance({preventDefault(){}},'9');
 assert.strictEqual(db.attendance[0].rows[0].reason,'Certificat médical reçu',
   'Un brouillon d’édition abandonné ne doit pas fuiter dans l’appel rouvert.');
 
+// Changer classe/date dans le formulaire ne doit pas muter la fiche persistée avant sauvegarde.
+context.openAttendance('9');
+context.attendanceSetup('2','9');
+assert.strictEqual(String(db.attendance[0].classId),'1',
+  'Changer la classe dans le formulaire ne doit pas modifier l’appel enregistré avant validation.');
+assert.strictEqual(db.attendance[0].date,'2026-11-25',
+  'Changer la date dans le formulaire ne doit pas modifier l’appel enregistré avant validation.');
+
 const table=context.attendanceTable({classId:'1',date:'2026-11-25',mode:'hour',slotId:'5',rows:[{studentId:'100',status:'absent',justified:true,reason:'Certificat'}]});
 assert(table.includes('MARTIN Alice')&&table.includes('on absent')&&table.includes('checked'),
   'La grille d’appel doit retrouver l’élève et son statut malgré les identifiants historiques mixtes.');
