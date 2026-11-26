@@ -182,6 +182,11 @@ equal(
   false,
   'Un identifiant de groupe différent doit exclure l’élève'
 );
+equal(
+  context.evaluationModelTargetStudents(context.db, { classId: '1', group: 0 }).length,
+  2,
+  'Un groupe vide au sens du serveur ne doit pas filtrer les élèves'
+);
 
 // 4) A publication matrix crosses three publication flags with six scheduling
 // states. The expected result is derived independently from the model.
