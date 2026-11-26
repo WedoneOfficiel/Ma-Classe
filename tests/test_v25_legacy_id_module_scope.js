@@ -43,6 +43,7 @@ const context={
   window:{classGroupContext:''},
   location:{search:'?class=42&student=7&status=all'},
   URLSearchParams,
+  activeStudent:()=> '7',
   dayOcc:()=>[{id:'slot-1',classId:'42',group:'A',subject:'Mathématiques'}],
   $:selector=>selector==='#studentSearch'?{value:''}:selector==='#studentClass'?{value:'42'}:null,
   initials:s=>(s.first[0]+s.last[0]).toUpperCase(),
