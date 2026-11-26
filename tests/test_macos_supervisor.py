@@ -854,7 +854,7 @@ assert server._update_apply_service_active() is False
         script = (ROOT / SCRIPTS[2]).read_text(encoding="utf-8")
         self.assertIn("health_ok", script)
         self.assertIn("stop_service_and_confirm", script)
-        self.assertIn("pgrep -f '[p]ython.*server[.]py'", script)
+        self.assertIn("pgrep -f '[p]ython.*(network_supervisor|server)[.]py'", script)
         self.assertIn('"$pid" == "$SERVICE_PID"', script)
         self.assertIn("version précédente absente ou invalide", script)
         self.assertIn("base non restaurée", script)
