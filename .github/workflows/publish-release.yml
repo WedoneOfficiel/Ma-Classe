@@ -54,7 +54,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG" --jq .body > dist/release-notes.md
+          gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG" --jq .body > dist/generated-release-notes.md
+          CUSTOM_NOTES="docs/releases/${RELEASE_TAG}.md"
+          if [[ -f "$CUSTOM_NOTES" ]]; then
+            cp "$CUSTOM_NOTES" dist/release-notes.md
+          else
+            cp dist/generated-release-notes.md dist/release-notes.md
+          fi
           git archive --format=zip "$GITHUB_SHA" > dist/maclasse-update.zip
           python - <<'PY'
           import hashlib, json, os
