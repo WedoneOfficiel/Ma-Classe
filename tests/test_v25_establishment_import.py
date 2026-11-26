@@ -206,6 +206,7 @@ class EstablishmentImportTests(unittest.TestCase):
         bundle["schedule"] = [first, second]
         self.assertFalse(any("Conflit entre les créneaux" in x for x in self.validate(bundle)["errors"]))
         second["startDate"] = "2026-09-21"
+        second["endDate"] = "2026-09-21"
         self.assertTrue(any("Conflit entre les créneaux" in x for x in self.validate(bundle)["errors"]))
         second["exceptions"] = ["2026-09-21"]
         self.assertFalse(any("Conflit entre les créneaux" in x for x in self.validate(bundle)["errors"]))
@@ -278,6 +279,7 @@ class EstablishmentImportTests(unittest.TestCase):
         bundle = sample_bundle()
         bundle["students"] = []
         bundle["schedule"] = []
+        bundle["classes"][0].pop("expectedStudentCount", None)
         bundle["classes"][0]["subjectRequirements"] = []
         result = self.validate(bundle)
         self.assertFalse(result["errors"])

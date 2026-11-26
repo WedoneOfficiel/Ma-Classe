@@ -251,7 +251,7 @@ def validate_bundle(bundle, existing_data=None):
             errors.append(f"Propriété obligatoire manquante : {required}.")
     if bundle.get("format") != FORMAT_NAME:
         errors.append(f"Format incorrect : format attendu {FORMAT_NAME!r}.")
-    if bundle.get("version") != FORMAT_VERSION:
+    if isinstance(bundle.get("version"), bool) or not isinstance(bundle.get("version"), int) or bundle.get("version") != FORMAT_VERSION:
         errors.append(f"Version de format non prise en charge : version {FORMAT_VERSION} attendue.")
     establishment = bundle.get("establishment", {})
     if not isinstance(establishment, dict):
@@ -557,9 +557,6 @@ def validate_bundle(bundle, existing_data=None):
         for teacher_key, teacher_record in teachers.items():
             if class_key in teacher_record["classes"]:
                 assigned.add(teacher_key)
-        for lesson in schedule.values():
-            if class_key in lesson["classes"]:
-                assigned.update(lesson["teachers"])
         class_record["teachers"] = sorted(assigned)
         if class_record["principalTeacher"] and class_record["principalTeacher"] not in assigned:
             errors.append(f"Le professeur principal de {class_record['name']!r} doit être affecté à cette classe.")
