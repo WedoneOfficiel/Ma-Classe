@@ -103,3 +103,10 @@ python -m py_compile server.py
 ```
 
 Les tests complets sont lancés par le workflow [MaClasse — tests automatisés](.github/workflows/tests.yml). Toute release stable doit être créée depuis un tag versionné cohérent avec `VERSION.txt`, `APP_VERSION` et `MC_VERSION`, puis attendre la réussite du workflow de publication. Ne pas publier une release depuis une branche candidate.
+
+
+### Journal des versions et écran des nouveautés — V25.2.0
+
+Après l’installation d’une nouvelle version, chaque compte Direction, Professeur ou Élève dispose d’un écran des nouveautés. La consultation est mémorisée côté serveur par compte et par version. Le journal complet est accessible depuis les Paramètres des trois espaces.
+
+Les entrées historiques sont issues des notes de version, des audits/recettes archivés et de l’ancien README conservés dans le dépôt. Les versions sans trace exploitable ne sont pas complétées par supposition.
