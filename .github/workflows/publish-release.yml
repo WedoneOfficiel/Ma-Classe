@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag à créer et publier (doit correspondre à VERSION.txt, ex. v25.1.1)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,6 +21,8 @@ jobs:
   release:
     needs: validate
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
     steps:
       - name: Récupérer le code de la version taguée
         uses: actions/checkout@v4
@@ -34,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
+          TAG="$RELEASE_TAG"
           VERSION="$(tr -d '\r\n' < VERSION.txt)"
           [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           [[ "$VERSION" == "V${TAG#v}" ]] || {
@@ -46,9 +54,44 @@ jobs:
           grep -Fq "const MC_VERSION='V$VERSION_NUMBER'" _all.js
           echo "version=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
 
+      - name: Créer ou vérifier le tag après validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            [[ "$GITHUB_REF" == "refs/heads/main" ]] || {
+              echo "La publication manuelle doit être lancée depuis main." >&2
+              exit 1
+            }
+            git fetch origin --tags --force
+            if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+              EXISTING_COMMIT="$(git rev-list -n 1 "refs/tags/$RELEASE_TAG")"
+              [[ "$EXISTING_COMMIT" == "$GITHUB_SHA" ]] || {
+                echo "Le tag $RELEASE_TAG existe déjà sur un autre commit ($EXISTING_COMMIT)." >&2
+                exit 1
+              }
+              echo "Le tag $RELEASE_TAG existe déjà sur le commit validé."
+            else
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git tag -a "$RELEASE_TAG" "$GITHUB_SHA" -m "MaClasse $RELEASE_TAG"
+              git push origin "refs/tags/$RELEASE_TAG"
+              echo "Tag $RELEASE_TAG créé sur le commit validé."
+            fi
+          else
+            [[ "$GITHUB_REF" == "refs/tags/$RELEASE_TAG" ]] || {
+              echo "La référence déclenchée ne correspond pas au tag demandé." >&2
+              exit 1
+            }
+            EXISTING_COMMIT="$(git rev-list -n 1 "refs/tags/$RELEASE_TAG")"
+            [[ "$EXISTING_COMMIT" == "$GITHUB_SHA" ]] || {
+              echo "Le tag $RELEASE_TAG ne pointe pas sur le commit déclencheur." >&2
+              exit 1
+            }
+          fi
+
       - name: Construire l'archive et le manifeste vérifié
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -94,7 +137,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
+          TAG="$RELEASE_TAG"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/maclasse-update.zip dist/maclasse-update.json dist/maclasse-update.sig --clobber
             gh release edit "$TAG" --notes-file dist/release-notes.md
