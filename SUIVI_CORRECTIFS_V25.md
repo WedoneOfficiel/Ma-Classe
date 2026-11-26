@@ -773,3 +773,19 @@ La dernière matrice ajoute plus de 500 assertions générées et déterministes
 - Aucun changement de schéma ni migration de données.
 
 Le candidat est techniquement prêt pour revue/merge. Il n'est pas encore dans `main`, n'a pas de tag `v25.1.2` et n'a pas de release publiée.
+
+
+### Dernier ajout d'audit — compétences du bulletin HTML et appréciations seules
+
+La revue des sorties HTML et PDF d'un même bulletin a révélé une divergence : le PDF serveur ne reprend que les évaluations publiées, à l'heure exacte et ciblant l'élève ; le bloc Compétences de l'impression HTML utilisait une synthèse de classe qui pouvait conserver des évaluations en brouillon ou des valeurs d'un autre sous-groupe.
+
+**Correctif codé sur la PR #20 :**
+- Le bilan enseignant conserve les évaluations de son périmètre, mais chaque appréciation doit provenir d'un élève effectivement ciblé par l'évaluation.
+- Pour un bulletin individuel, `competencySummaryForPeriod` utilise désormais `evaluationModelVisible` avec l'identifiant de l'élève, la période et un horodatage complet.
+- `bulletinCompetencyBlock` réutilise cette synthèse individuelle ; le rendu HTML suit ainsi les mêmes règles que le PDF serveur.
+
+**Tests ajoutés :** élèves hors groupe, notes parasites dans un autre sous-groupe, brouillon, publication future, autre classe et période hors bulletin. Les assertions comparent le bilan enseignant, la synthèse individuelle et le HTML du bulletin.
+
+La même passe du relevé élève a aussi été complétée : une appréciation seule est maintenant libellée « Appréciation » et n'est plus comptée comme un résultat qualitatif de compétences.
+
+Le run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457) reste la validation complète de la base candidate antérieure. La dernière tête de PR #20 doit repasser la CI Linux, macOS Apple Silicon/launchd et Firefox réel avant que le candidat V25.1.2 soit déclaré validé.
