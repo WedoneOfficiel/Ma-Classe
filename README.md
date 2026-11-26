@@ -2,17 +2,18 @@
 
 MaClasse est une application web de gestion scolaire destinée à un établissement : classes et élèves, emploi du temps, séances et devoirs, évaluations, absences, bulletins, messagerie et espace documentaire. Elle est servie par un ordinateur hôte et utilisée depuis un navigateur.
 
-## État du projet — 25 novembre 2026
+## État du projet — 26 novembre 2026
 
 | Référence | État |
 |---|---|
-| Dernière release GitHub publiée | **V25.0.23** (`v25.0.23`, 16/11/2026) |
-| Branche `main` | **V25.0.24** |
-| Candidat de stabilisation | **V25.1.0**, [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), ouverte et non fusionnée |
-| CI du dernier commit vérifié | **Verte (3/3)** — Linux, macOS Apple Silicon et Firefox réel, workflow [#1793](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45713179841) |
-| Publication V25.1.0 | Pas encore effectuée |
+| Dernière release GitHub publiée | **V25.1.0** (`v25.1.0`) |
+| Branche `main` après fusion du correctif | **V25.1.1** |
+| Correctif prêt à intégrer | **V25.1.1** — validation du certificat HTTPS macOS/LibreSSL |
+| Publication V25.1.1 | En attente du tag et du workflow de publication signé |
 
-La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remplace pas les recettes sur le Mac, le PC Fedora et les appareils clients réels. La V25.1.0 n'est pas à installer depuis la branche de développement sur une base scolaire réelle.
+La recette réelle de la mise à jour V25.0.23 → V25.1.0 sur macOS a révélé que le superviseur rejetait à tort le certificat HTTPS local : il dépendait du format texte propre à OpenSSL pour lire le SAN, format qui varie avec LibreSSL. L'installation a été restaurée en V25.0.23 sans perte de la base ni des certificats. La V25.1.1 remplace ce contrôle par une lecture X.509 directe avec la dépendance `cryptography` déjà utilisée pour la signature des mises à jour.
+
+Les workflows #1807 et #1808 de la PR #14 sont verts (3/3 chacun) : Linux, macOS Apple Silicon avec launchd réel et Firefox. Après publication de la version signée, il restera à refaire le parcours de mise à jour intégré sur le Mac et à vérifier l'accès réseau depuis les appareils clients.
 
 ### Changements récents du candidat V25.1.0
 
@@ -28,7 +29,7 @@ La CI verte valide les suites automatisées sur les runners GitHub. Elle ne remp
 - Le contexte Cloud est réinitialisé lors du passage vers les espaces personnels, partagés et documentaires, sans perdre le raccourci de classe lorsqu'on reste dans l'espace Classe.
 - La ressource JavaScript du nouveau module est explicitement autorisée par le serveur et couverte par un test de liste blanche.
 
-La signature Ed25519 du manifeste est maintenant implémentée côté client et dans le workflow de publication. La génération de la paire de clés et la configuration du secret GitHub Actions restent à effectuer avant toute release ; tant que cette étape n'est pas terminée, les nouvelles mises à jour sont refusées par le vérificateur.
+La signature Ed25519 du manifeste est implémentée côté client et dans le workflow de publication. La clé publique de production est épinglée dans le dépôt et le secret privé reste uniquement dans GitHub Actions ; la release V25.1.0 a été construite avec ses assets de manifeste et de signature.
 
 ## Installation et démarrage
 

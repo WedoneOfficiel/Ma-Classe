@@ -10,14 +10,16 @@ from __future__ import annotations
 import ipaddress
 import os
 import re
-import shutil
 import signal
 import subprocess
 import sys
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
+
+from cryptography import x509
 
 
 def _command_output(command: list[str], runner: Callable = subprocess.run) -> str:
@@ -87,33 +89,33 @@ def detect_lan_ipv4(
     return None
 
 
-def certificate_matches_host(
-    certificate: Path | str,
-    host: str,
-    runner: Callable = subprocess.run,
-    openssl: str | None = None,
-) -> bool:
-    """Check the certificate SAN and ensure it does not expire within 24h."""
-    certificate = Path(certificate)
-    openssl = openssl or shutil.which("openssl")
-    if not openssl or not certificate.is_file():
-        return False
-    san = _command_output(
-        [openssl, "x509", "-in", str(certificate), "-noout", "-ext", "subjectAltName"],
-        runner,
-    )
-    addresses = re.findall(r"IP Address:([0-9.]+)", san)
-    if host not in addresses:
-        return False
-    try:
-        result = runner(
-            [openssl, "x509", "-in", str(certificate), "-checkend", "86400", "-noout"],
-            check=False, capture_output=True, text=True, timeout=5,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return getattr(result, "returncode", 1) == 0
+def certificate_matches_host(certificate: Path | str, host: str) -> bool:
+    """Validate the IPv4 SAN and remaining validity using the X.509 parser.
 
+    Do not parse the human-readable output of the system OpenSSL command:
+    OpenSSL and Apple's LibreSSL format SAN text differently. The cryptography
+    dependency is already required by the signed-update verifier.
+    """
+    certificate = Path(certificate)
+    try:
+        expected_host = ipaddress.ip_address(host)
+        if not isinstance(expected_host, ipaddress.IPv4Address):
+            return False
+
+        parsed = x509.load_pem_x509_certificate(certificate.read_bytes())
+        san = parsed.extensions.get_extension_for_class(
+            x509.SubjectAlternativeName
+        ).value
+        if expected_host not in san.get_values_for_type(x509.IPAddress):
+            return False
+
+        now = datetime.now(timezone.utc)
+        return (
+            parsed.not_valid_before_utc <= now
+            and parsed.not_valid_after_utc > now + timedelta(hours=24)
+        )
+    except (OSError, ValueError, TypeError, x509.ExtensionNotFound):
+        return False
 
 def ensure_certificate(
     root: Path | str,
@@ -126,7 +128,7 @@ def ensure_certificate(
     root = Path(root).resolve()
     data_dir = Path(data_dir).resolve()
     certificate = data_dir / "tls" / "server.crt"
-    if certificate_matches_host(certificate, host, runner=runner):
+    if certificate_matches_host(certificate, host):
         return
     configurer = root / "Configurer-MaClasse-Reseau.sh"
     if not configurer.is_file():
@@ -143,7 +145,7 @@ def ensure_certificate(
         raise RuntimeError(
             f"Impossible de renouveler le certificat HTTPS pour {host}."
         ) from error
-    if not certificate_matches_host(certificate, host, runner=runner):
+    if not certificate_matches_host(certificate, host):
         raise RuntimeError(
             f"Le certificat HTTPS généré ne couvre pas la nouvelle adresse {host}."
         )
