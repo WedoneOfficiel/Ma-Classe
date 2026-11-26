@@ -420,7 +420,7 @@ truthy(declaration('avg').includes('evaluationModelTargetStudents(db,e)'), 'La m
 
 truthy(declaration('studentWorkItems').includes('studentWorkEligible(l,st)'), 'Les travaux de la fiche doivent respecter classe et sous-groupe');
 const ownWork = Array.from(context.studentLessonItems('s1'), l => l.id).sort();
-equal(JSON.stringify(ownWork), JSON.stringify(['L-A', 'L-all', 'L-no-due']), 'La liste élève doit exclure les autres groupes et classes tout en conservant les séances sans échéance');
+equal(JSON.stringify(ownWork), JSON.stringify(['L-A', 'L-all', 'L-no-due', 'L-profile-A', 'L-profile-all'].sort()), 'La liste élève doit exclure les autres groupes et classes tout en conservant les séances sans échéance');
 equal(context.studentActivitySummary('s1').missing, 0, 'Le suivi d’un élève du groupe A ne doit compter que ses devoirs');
 equal(context.studentActivitySummary('s2').missing, 2, 'Le suivi d’un élève du groupe B doit compter les devoirs de son groupe');
 const submissionStats = context.v101SubmissionStats();
