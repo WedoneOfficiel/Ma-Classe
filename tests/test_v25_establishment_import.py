@@ -1,8 +1,10 @@
 import copy
 import json
 from pathlib import Path
+import sys
 import unittest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import establishment_import as importer
 
 
