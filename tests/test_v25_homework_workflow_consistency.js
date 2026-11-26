@@ -94,7 +94,7 @@ vm.runInContext(section('function showSubmissions(','function lessons(){'),conte
 
   context.evaluationModelTargetStudents=()=>db.students;
   context.evaluationGradeLabel=()=> '—';
-  vm.runInContext(section('function openStudentActivity(','function studentGrades('),context);
+  vm.runInContext(section('function openStudentActivity(','function v103MissingWorkList('),context);
   context.openStudentActivity('2');
   assert(context.lastModal.html.includes('<small>Rendus</small><b>0</b>'),
     'Le KPI Rendus du suivi rapide doit exclure le brouillon.');
