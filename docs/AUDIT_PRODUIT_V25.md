@@ -4,7 +4,7 @@
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
-**Validation de la campagne fonctionnelle :** commit `c474f77131f4df4e379f4c5f73d377cfe241e01c`, run [45864215881](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45864215881), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. La matrice croisée exécute 860 invariants ; le dépôt compte alors 103 fichiers de tests (63 JavaScript, 40 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION ont ensuite été alignées sur V25.2.0 ; la tête versionnée finale doit repasser la même matrice avant fusion. La PR n'est pas fusionnée et la release stable n'est pas publiée.
+**Validation de la dernière tête :** commit `79ff1c83a5f611bbe03e428a4985f62b98cf3003`, run [45870596723](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45870596723), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel avec captures. La matrice croisée exécute 860 invariants ; le dépôt compte 103 fichiers de tests (63 JavaScript, 40 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. La PR n'est pas fusionnée et la release stable n'est pas publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
