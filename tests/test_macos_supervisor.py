@@ -320,6 +320,95 @@ class MacOSSupervisorTests(unittest.TestCase):
             )
             self.assertEqual(result.stdout.strip(), "127.0.0.1")
 
+    @unittest.skipUnless(sys.platform == "darwin", "Le lancement du gestionnaire nécessite launchd réel sur macOS.")
+    def test_real_launchd_starts_and_runs_immediate_update_agent(self):
+        """Exercise the exact _start_update_apply_service path, not just a hand-written plist."""
+        import os
+        import plistlib
+        import tempfile
+        import time
+
+        uid = os.getuid()
+        domain = f"gui/{uid}/fr.maclasse.update"
+        existing = subprocess.run(
+            ["/bin/launchctl", "print", domain],
+            capture_output=True, text=True, timeout=10
+        )
+        self.assertNotEqual(existing.returncode, 0, "Un gestionnaire MaClasse existe déjà ; test refusé.")
+
+        with tempfile.TemporaryDirectory(prefix="maclasse-update-agent-live-") as temp:
+            base = Path(temp)
+            root = base / "MaClasse"
+            data = root / "data"
+            agents = base / "home" / "Library" / "LaunchAgents"
+            agents.mkdir(parents=True)
+            data.mkdir(parents=True)
+            script = root / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh"
+            root.mkdir(parents=True, exist_ok=True)
+            marker = data / "immediate-update-agent-started"
+            script.write_text(
+                '#!/bin/bash\n'
+                'printf started > "$MACLASSE_DATA_DIR/immediate-update-agent-started"\n'
+                'exec /bin/sleep 30\n',
+                encoding="utf-8",
+            )
+            script.chmod(0o700)
+
+            code = r"""
+import os, pathlib, subprocess, sys, time
+source, root, data = map(pathlib.Path, sys.argv[1:4])
+home = pathlib.Path(os.environ["HOME"])
+os.environ["MACLASSE_SUPERVISED"] = "launchd"
+os.environ["MACLASSE_ROOT"] = str(root)
+os.environ["MACLASSE_DATA_DIR"] = str(data)
+sys.path.insert(0, str(source))
+import server
+server.sys.platform = "darwin"
+server.ROOT = str(root)
+server.DATA_DIR = str(data)
+server._start_update_apply_service()
+marker = data / "immediate-update-agent-started"
+deadline = time.time() + 15
+while time.time() < deadline and not marker.exists():
+    time.sleep(0.1)
+assert marker.is_file(), "Le script du gestionnaire indépendant n'a pas été exécuté."
+domain = f"gui/{os.getuid()}/fr.maclasse.update"
+loaded = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True, timeout=10)
+assert loaded.returncode == 0, loaded.stdout + loaded.stderr
+plist = home / "Library/LaunchAgents/fr.maclasse.update.plist"
+with plist.open("rb") as stream:
+    definition = __import__("plistlib").load(stream)
+assert definition["ProgramArguments"] == ["/bin/bash", str(root / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh")]
+assert definition["RunAtLoad"] is False
+bootout_result = subprocess.run(["/bin/launchctl", "bootout", domain], capture_output=True, text=True, timeout=10)
+deadline = time.time() + 10
+while time.time() < deadline:
+    probe = subprocess.run(["/bin/launchctl", "print", domain], capture_output=True, text=True, timeout=5)
+    if probe.returncode != 0 and "Could not find service" in (probe.stdout + probe.stderr):
+        break
+    time.sleep(0.2)
+else:
+    raise AssertionError("Le gestionnaire indépendant n'a pas été déchargé après le test.")
+"""
+            env = os.environ.copy()
+            env.update({
+                "HOME": str(base / "home"),
+                "MACLASSE_ROOT": str(root),
+                "MACLASSE_DATA_DIR": str(data),
+                "MACLASSE_SUPERVISED": "launchd",
+            })
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-c", code, str(ROOT), str(root), str(data)],
+                    cwd=ROOT, env=env, capture_output=True, text=True, timeout=40,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
+            finally:
+                subprocess.run(
+                    ["/bin/launchctl", "bootout", domain],
+                    capture_output=True, text=True, timeout=10
+                )
+
     def test_macos_updater_retains_active_previous_and_three_newest_versions(self):
         script = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh").read_text(encoding="utf-8")
         start_marker = 'if ! "$ROOT/.venv/bin/python" - "$VERSIONS" "$TARGET_REAL" "$PREVIOUS_REAL" <<\'PY\'\n'
@@ -790,10 +879,20 @@ sys.path.insert(0, str(root))
 import server
 server.sys.platform = "darwin"
 calls = []
+loaded = {"value": False}
 def fake_run(args, **kwargs):
     calls.append(args)
     if args[:2] == ["/bin/launchctl", "print"]:
-        return subprocess.CompletedProcess(args, 1, "", "Could not find service")
+        if loaded["value"]:
+            return subprocess.CompletedProcess(args, 0, "state = waiting\\n", "")
+        # Exercise the macOS variant that writes this message to stdout.
+        return subprocess.CompletedProcess(args, 113, "Could not find service", "")
+    if args[:2] == ["/bin/launchctl", "bootout"]:
+        loaded["value"] = False
+        return subprocess.CompletedProcess(args, 0, "", "")
+    if args[:2] == ["/bin/launchctl", "bootstrap"]:
+        loaded["value"] = True
+        return subprocess.CompletedProcess(args, 0, "", "")
     return subprocess.CompletedProcess(args, 0, "", "")
 server.subprocess.run = fake_run
 server._schedule_update_timer(time.time() + 3600)
