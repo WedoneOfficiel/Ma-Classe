@@ -12,6 +12,9 @@ function sliceBetween(startText,endText){
 
 const sameId=sliceBetween('function sameId(','\nfunction cls(');
 const studentAttendance=sliceBetween('function studentAttendance(','\nfunction openStudentBulletinNotification');
+const studentScheduleOcc=sliceBetween('function studentScheduleOcc(','\nfunction studentLessonItems(');
+const studentSubmitted=sliceBetween('function studentSubmitted(','\nfunction evaluationGradeLabel(');
+const studentDraftSubmission=sliceBetween('function studentDraftSubmission(','\nfunction studentWorkEligible(');
 const studentRows=sliceBetween('function studentRows(','\nfunction filterStudents');
 const attendanceCounts=sliceBetween('function studentAbsenceCount(','\nfunction studentEvaluations');
 const activeFollowupStart=source.lastIndexOf('function attendanceFollowup()');
@@ -29,13 +32,18 @@ const db={
       {studentId:7,status:'absent',justified:false,reason:'Non justifiée'},
       {studentId:7,status:'retard',justified:false,reason:'Retard de 5 minutes'}
     ]
-  }]
+  }],
+  submissions:[
+    {lessonId:'lesson-submitted',studentId:7,status:'submitted',submittedAt:'2026-11-20T10:00:00Z'},
+    {lessonId:'lesson-draft',studentId:7,status:'draft'}
+  ]
 };
 const context={
   db,
   window:{classGroupContext:''},
   location:{search:'?class=42&student=7&status=all'},
   URLSearchParams,
+  dayOcc:()=>[{id:'slot-1',classId:'42',group:'A',subject:'Mathématiques'}],
   $:selector=>selector==='#studentSearch'?{value:''}:selector==='#studentClass'?{value:'42'}:null,
   initials:s=>(s.first[0]+s.last[0]).toUpperCase(),
   esc:value=>String(value??''),
@@ -51,7 +59,7 @@ const context={
 };
 vm.createContext(context);
 vm.runInContext(
-  sameId+'\n'+studentAttendance+'\n'+studentRows+'\n'+attendanceCounts+'\n'+attendanceFollowup+
+  sameId+'\n'+studentAttendance+'\n'+studentScheduleOcc+'\n'+studentSubmitted+'\n'+studentDraftSubmission+'\n'+studentRows+'\n'+attendanceCounts+'\n'+attendanceFollowup+
   "\nfunction student(id){return db.students.find(s=>sameId(s.id,id))}"+
   "\nfunction cls(id){return db.classes.find(c=>sameId(c.id,id))}",
   context
@@ -63,6 +71,21 @@ assert.deepStrictEqual(
   Array.from(vm.runInContext("studentAttendance('7').map(x=>x.status)",context)),
   ['absent','retard'],
   'The student attendance history must find numeric IDs when the account supplies text IDs.'
+);
+assert.strictEqual(
+  vm.runInContext("studentScheduleOcc(null,new Date('2026-11-26T12:00:00')).length",context),
+  1,
+  'The student timetable must match a string class ID to the numeric class ID on the student record.'
+);
+assert.strictEqual(
+  vm.runInContext("studentSubmitted({id:'lesson-submitted'},'7').status",context),
+  'submitted',
+  'The student work list must detect an existing submission when the student ID type differs.'
+);
+assert.strictEqual(
+  vm.runInContext("studentDraftSubmission('lesson-draft','7').status",context),
+  'draft',
+  'The student must be able to resume a draft submission with a normalized student ID.'
 );
 assert.strictEqual(vm.runInContext("studentAbsenceCount('7')",context),1,
   'The student absence count must use the same normalized identifier.');
