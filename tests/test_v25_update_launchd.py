@@ -243,9 +243,12 @@ assert definition["RunAtLoad"] is False
 assert "StartCalendarInterval" not in definition
 assert definition["EnvironmentVariables"]["MACLASSE_DATA_DIR"] == os.path.abspath(server.DATA_DIR)
 commands = [call[:2] for call in fake.calls]
-assert commands.index(["/usr/bin/plutil", "-lint"]) < commands.index(["/bin/launchctl", "bootstrap"])
-assert commands.index(["/bin/launchctl", "bootstrap"]) < commands.index(["/bin/launchctl", "kickstart"])
-assert fake.running
+plutil_index = commands.index(["/usr/bin/plutil", "-lint"])
+bootstrap_index = commands.index(["/bin/launchctl", "bootstrap"])
+kickstart_index = commands.index(["/bin/launchctl", "kickstart"])
+assert plutil_index < bootstrap_index, repr(fake.calls)
+assert bootstrap_index < kickstart_index, repr(fake.calls)
+assert fake.running, repr(fake.calls)
 """)
 
     def test_start_unloads_an_idle_stale_launchd_job_before_bootstrap(self):
