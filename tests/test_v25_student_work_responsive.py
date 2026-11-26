@@ -17,7 +17,7 @@ class StudentWorkResponsiveTests(unittest.TestCase):
 
     def test_student_work_table_exposes_mobile_cell_labels(self):
         start = JS.index("function studentWork(){")
-        end = JS.index("\\nfunction ", start + 20)
+        end = JS.index("\nfunction ", start + 20)
         module = JS[start:end]
         self.assertIn('class="table studentWorkTable"', module)
         for label in ("Travail", "Matière", "À rendre", "État", "Action"):
