@@ -458,7 +458,7 @@ equal(statsAll.graded, 3, 'Les statistiques de notes excluent les notes hors gro
 equal(statsAll.evaluations, 3, 'Les statistiques classe et le tableau utilisent le même nombre de publications');
 equal(Number(statsAll.average.toFixed(2)), 12.67, 'La moyenne pondérée combine les notes valides des seuls groupes ciblés');
 const statsSubject = context.evaluationModelDashboardStats(1, 'Mathématiques');
-equal(statsSubject.all, 3, 'Le filtre matière accepte les IDs de classe numériques/texte');
+equal(statsSubject.all, 4, 'Le filtre matière accepte les IDs de classe numériques/texte et conserve les brouillons dans le total');
 equal(statsSubject.entered, 2, 'Le filtre matière compte les notes des deux groupes concernés');
 equal(statsSubject.average, 13, 'La moyenne par matière est calculée sur les élèves ciblés');
 const statsOther = context.evaluationModelDashboardStats('2', '');
