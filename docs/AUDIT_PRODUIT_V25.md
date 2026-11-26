@@ -1,10 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : audit croisé V25.1.2 — campagne corrective en revalidation — 26 novembre 2026**
+**État : audit croisé V25.1.2 terminé — candidat validé par CI — 26 novembre 2026**
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
-**Campagne en cours :** branche fix/v25.1.2-cross-module-consistency, PR #20.
-**Validation de la base candidate :** run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457), trois jobs réussis : Linux, macOS Apple Silicon/launchd réel et Firefox réel. Deux correctifs supplémentaires ont depuis été ajoutés (appréciations seules et compétences du bulletin HTML) ; la tête la plus récente doit encore terminer sa CI. Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` restent alignées sur V25.1.2. La version n'est pas encore fusionnée ni publiée.
+**Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
+**Validation de la dernière tête :** commit `eae1433c8c12bb7e84ae0b9749633864fa2388c1`, run [45822162433](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45822162433), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. La matrice croisée exécute 860 invariants. Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` sont alignées sur V25.1.2. La PR n'est pas encore fusionnée et la release stable n'est pas publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -32,11 +32,11 @@ La CI de la PR a déjà révélé plusieurs défauts applicatifs réels, dont un
 Le JavaScript principal _all.js contient plusieurs générations historiques de fonctions et des redéfinitions successives. Cette architecture augmente le risque qu'une correction soit écrasée par une version ultérieure ou que deux modules appliquent des règles voisines mais différentes. La campagne V25.1.2 n'entreprend pas de réécrire tout le fichier : elle renforce d'abord les fonctions canoniques et les tests de contrat. Une extraction progressive des moteurs Évaluations, Bulletins, Emploi du temps et Messagerie devra être menée module par module, avec des tests de caractérisation avant déplacement.
 ## Validation finale du candidat V25.1.2 — 26/11/2026
 
-- Base candidate `59092e9` : run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457), **3/3 jobs réussis**. Les corrections ultérieures EVAL-13 et l'étiquetage des appréciations seules attendent leur dernière CI.
+- Dernière tête `eae1433` : run [45822162433](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45822162433), **3/3 jobs réussis**.
 - Linux : suites JavaScript et Python complètes.
 - macOS Apple Silicon : installateur, compilation Python, suites JavaScript/Python et intégration `launchd` réelle.
 - Firefox : parcours réel de l'EDT et captures des modules en thèmes clair/sombre.
-- La matrice inter-modules `tests/test_v25_cross_module_invariants.js` exécutait **838 invariants** sur la base validée ; les derniers cas de compétences et d'appréciations seules ont été ajoutés depuis.
+- La matrice inter-modules `tests/test_v25_cross_module_invariants.js` exécute **860 invariants** sur la dernière tête validée.
 - La deuxième vague a ajouté plus de 500 contrôles déterministes de classe/groupe, bulletins, notes, statistiques et rendus.
 - Le schéma de données n'a pas changé. V25.1.2 reste une version corrective, sans migration.
 
