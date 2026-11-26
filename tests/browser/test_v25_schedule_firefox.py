@@ -203,6 +203,78 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
         raise AssertionError(f"Le thème automatique ne suit pas le mode sombre : {automatic_dark!r}") from error
     page.evaluate("setAppearanceTheme('light')")
 
+def acknowledge_release_notes(page, role: str) -> None:
+    """Verify and acknowledge the real first-login release screen for an account."""
+    modal = page.locator("#modal.releaseNotesModal")
+    expect(modal).to_be_visible(timeout=10000)
+    expect(modal).to_contain_text("Nouveautés de MaClasse")
+    expect(modal).to_contain_text("V25.2.0")
+    expect(modal).to_contain_text("une fois par compte")
+    page.get_by_role("button", name="J’ai compris").click()
+    expect(modal).not_to_be_visible(timeout=5000)
+    state = page.evaluate("""async () => {
+      const response = await fetch('/api/release-notes/state', {cache:'no-store'});
+      if (!response.ok) throw new Error('Release notes state failed: '+response.status);
+      return response.json();
+    }""")
+    if state.get("seen_version") != "25.2.0":
+        raise AssertionError(f"Accusé de lecture non persisté pour {role}: {state!r}")
+
+
+def verify_release_journal(page, role: str, output_dir: Path) -> None:
+    """Exercise the journal as a user would, including theme and mobile layouts."""
+    if role == "student":
+        page.evaluate("page='studentSettings';appSpace='student';render()")
+        expect(page.locator(".settingsStudentGrid")).to_be_visible()
+        page.get_by_role("button", name="Journal des versions").click()
+    else:
+        page.locator("#nav button[onclick*=\"go('settings')\"]").click()
+        expect(page.locator("#main h1")).to_have_text("Paramètres")
+        page.get_by_role("button", name="Consulter le journal des versions").click()
+
+    modal = page.locator("#modal.releaseNotesModal")
+    expect(modal).to_be_visible()
+    nav = page.locator("#releaseNotesNav")
+    expect(nav).to_contain_text("V25.1.1")
+    expect(nav).to_contain_text("V25.0.6")
+    expect(nav).to_contain_text("V21.22")
+    expect(nav).to_contain_text("V20.10")
+    expect(nav).to_contain_text("V19.7")
+    expect(nav).to_contain_text("V25.2.1").not_to_be_visible()
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for theme in ("light", "dark"):
+        page.evaluate("(theme) => setAppearanceTheme(theme)", theme)
+        expect(page.locator("html")).to_have_attribute("data-mc-theme", theme)
+        page.screenshot(path=str(output_dir / f"release-journal-{role}-{theme}.png"),
+                        full_page=True, animations="disabled")
+
+    # Automatic must follow the operating-system preference, independent of the last manual choice.
+    page.emulate_media(color_scheme="dark")
+    page.evaluate("setAppearanceTheme('system')")
+    expect(page.locator("html")).to_have_attribute("data-mc-theme", "dark")
+    page.emulate_media(color_scheme="light")
+    page.evaluate("setAppearanceTheme('system')")
+    expect(page.locator("html")).to_have_attribute("data-mc-theme", "light")
+
+    # Verify a genuinely narrow modal, not only a CSS string.
+    page.set_viewport_size({"width":390,"height":844})
+    page.screenshot(path=str(output_dir / f"release-journal-{role}-mobile.png"),
+                    full_page=True, animations="disabled")
+    layout = page.evaluate("""() => ({
+      viewport:window.innerWidth,
+      documentWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+      modalWidth:Math.round(document.getElementById('modal').getBoundingClientRect().width),
+      navHeight:Math.round(document.getElementById('releaseNotesNav').getBoundingClientRect().height),
+      articleHeight:Math.round(document.getElementById('releaseNotesArticle').getBoundingClientRect().height)
+    })""")
+    if layout["documentWidth"] > layout["viewport"] + 2 or layout["modalWidth"] > layout["viewport"] + 2:
+        raise AssertionError(f"Journal mobile overflow for {role}: {layout!r}")
+    page.set_viewport_size({"width":1280,"height":800})
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).not_to_be_visible()
+
+
 def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -272,6 +344,9 @@ def main() -> None:
                 page.locator('input[name="confirm"]').fill("Temporary-Test-Password-2026!")
                 page.get_by_role("button", name="Créer l’accès direction").click()
                 expect(page.locator("#nav")).not_to_be_empty()
+                acknowledge_release_notes(page, "direction")
+                verify_release_journal(page, "admin", Path("artifacts/browser-v25"))
+                page.evaluate("page='adminUsers';appSpace='teacher';render()")
 
                 # Seed one recurring course through the real authenticated API.
                 page.evaluate(
@@ -491,6 +566,9 @@ def main() -> None:
                 }""")
                 if teacher_state.get("role") != "teacher" or teacher_state.get("id") != teacher_id:
                     raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
+                acknowledge_release_notes(teacher_page, "professeur")
+                verify_release_journal(teacher_page, "teacher", Path("artifacts/browser-v25"))
+                teacher_page.evaluate("page='schedule';appSpace='teacher';render()")
                 shared_cloud = teacher_page.evaluate("""async () => {
                   const folder='cloud/personal/users/'+authUser.id;
                   const shared=await upload(new File(
@@ -796,6 +874,9 @@ def main() -> None:
                 }""", account)
                 if student_state.get("role") != "student" or student_state.get("studentId") != "firefox-student":
                     raise AssertionError("Student session not initialized: "+repr(student_state))
+                acknowledge_release_notes(student_page, "élève")
+                verify_release_journal(student_page, "student", Path("artifacts/browser-v25"))
+                student_page.evaluate("page='studentSchedule';appSpace='student';render()")
                 student_module_smoke = student_page.evaluate("""() => {
                   const modules=[
                     'studentHome','studentSchedule','studentLessons','studentWork',
