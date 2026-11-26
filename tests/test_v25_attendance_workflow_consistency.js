@@ -69,6 +69,10 @@ vm.runInContext(
 assert.strictEqual(context.attendanceSlotLabel(db.attendance[0]),'09:00–10:00 · Mathématiques',
   'Le libellé de cours doit retrouver un créneau avec un identifiant numérique/texte équivalent.');
 
+const initialSummary=context.attendanceSummaryForClass('1');
+assert.strictEqual(initialSummary['100'].just,0,
+  'Une absence non justifiée ne doit pas être comptée comme justifiée avant traitement.');
+
 context.openAttendance('9');
 assert(context.lastModal?.title==='Modifier l’appel'&&context.lastModal.html.includes('Alice'),
   'La réouverture d’un appel doit accepter un identifiant d’appel de type différent.');
@@ -116,12 +120,12 @@ assert(table.includes('MARTIN Alice')&&table.includes('on absent')&&table.includ
 const summary=context.attendanceSummaryForClass('1');
 assert.strictEqual(summary['100'].abs,1,'Le résumé doit compter l’absence malgré un ID élève stocké en texte.');
 assert.strictEqual(summary['100'].late,0,'Aucun retard ne doit être compté avant sa saisie.');
-assert.strictEqual(summary['100'].just,0,'Une absence non justifiée ne doit pas être comptée comme justifiée.');
+assert.strictEqual(summary['100'].just,1,'Le résumé doit refléter la justification enregistrée dans le formulaire.');
 db.attendance[0].rows.push({studentId:100,status:'retard',justified:false,reason:'5 minutes'});
 const summaryWithLate=context.attendanceSummaryForClass('1');
 assert.strictEqual(summaryWithLate['100'].abs,1,'Le nombre d’absences doit rester stable après ajout d’un retard.');
 assert.strictEqual(summaryWithLate['100'].late,1,'Le résumé doit compter le retard sans dupliquer l’élève.');
-assert.strictEqual(summaryWithLate['100'].just,0,'Le retard ne doit pas modifier le total des absences justifiées.');
+assert.strictEqual(summaryWithLate['100'].just,1,'Le retard ne doit pas effacer l’absence déjà justifiée.');
 
 context.openAttendanceFollowup('9','100');
 assert(context.lastModal?.title==='Traiter une absence ou un retard'&&context.lastModal.html.includes('Alice Martin'),
