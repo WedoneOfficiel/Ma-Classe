@@ -1,10 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : audit croisé V25.1.2 terminé — candidat versionné, CI complète réussie — 26 novembre 2026**
+**État : audit croisé V25.1.2 — campagne corrective en revalidation — 26 novembre 2026**
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne en cours :** branche fix/v25.1.2-cross-module-consistency, PR #20.
-**Validation finale :** PR #20, run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457), trois jobs réussis : tests Linux, macOS Apple Silicon/launchd réel et Firefox réel. Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` sont alignées sur V25.1.2. La version n'est pas encore fusionnée ni publiée.
+**Validation de la base candidate :** run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457), trois jobs réussis : Linux, macOS Apple Silicon/launchd réel et Firefox réel. Deux correctifs supplémentaires ont depuis été ajoutés (appréciations seules et compétences du bulletin HTML) ; la tête la plus récente doit encore terminer sa CI. Les versions `VERSION.txt`, `APP_VERSION` et `MC_VERSION` restent alignées sur V25.1.2. La version n'est pas encore fusionnée ni publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -17,24 +17,25 @@ La revue des contrats entre modules a mis en évidence plusieurs divergences qui
 | État de publication absent | Le moteur de statistiques considérait un champ published absent comme publié, alors que la projection serveur et le relevé élève exigent published: true. Les statistiques professeur pouvaient donc diverger de ce que l'élève reçoit. | Exiger un état publié explicite dans le moteur canonique. | Test d'une évaluation historique sans champ published dans les statistiques de classe. |
 | Identifiants historiques de type mixte | Des fonctions comparaient parfois strictement un identifiant numérique à sa représentation textuelle, alors que le serveur les normalisait déjà. | Ajouter sameId et l'utiliser dans les recherches de classe, d'élève, de période, les ciblages d'évaluations, les bulletins et les devoirs. Les identifiants vides restent invalides. | Matrice numérique/texte, groupes, bulletins et compétences ; aucune fiche sans classe ne doit être ciblée. |
 | Bilan des compétences | Une évaluation ciblée sur un groupe pouvait inclure les appréciations d'élèves d'un autre groupe dans la synthèse. | Filtrer les appréciations par evaluationModelTargetStudents, comme les notes du moteur commun. | Cas d'une évaluation de classe entière puis d'une évaluation limitée au groupe A, avec une valeur parasite du groupe B. |
+| Compétences du bulletin HTML | L'impression depuis le navigateur réutilisait une synthèse de classe qui ne filtrait ni les brouillons, ni les publications futures, ni le ciblage individuel comme le PDF serveur. | Pour un bulletin, produire une synthèse individualisée avec evaluationModelVisible ; conserver le ciblage des élèves dans les bilans enseignants. | Bulletin HTML contre données PDF, évaluations publiées/non publiées, heure future, autre groupe et autre période. |
 | Statistiques des évaluations par groupe | Le tableau de bord et le calcul des moyennes comptaient les élèves de toute la classe pour des évaluations ciblées sur un groupe ; les IDs classe de types mixtes n'étaient pas toujours reconnus. | Utiliser evaluationModelTargetStudents pour les statistiques et normaliser les identifiants de classe. | Vérifier les compteurs, moyennes et listes avec plusieurs groupes et IDs numériques/texte. |
 | Liste des notes côté élève | studentGrades reconstruisait ses propres filtres et passait une date seule au contrôle de publication. | Réutiliser evaluationModelVisible avec un timestamp ISO complet. | Vérifier groupe, classe, brouillon, publication future et publication arrivée. |
 | Détail d'une note | L'écran détaillé recalculait une valeur brute sans revalider qu'elle respectait le barème. | Utiliser studentReportNumericGrade, comme le relevé et les moyennes. | Vérifier notes négatives, supérieures au barème et valeurs valides. |
 | Publication le jour même | Des calculs navigateur transmettaient une date seule au filtre de publication ; un timestamp prévu plus tard dans la même journée pouvait être considéré comme déjà visible. Le filtre du PDF serveur comparait lui aussi le timestamp à une date par ordre lexical. | Passer l'instant ISO complet aux calculs navigateur et utiliser le contrôle serveur de date/heure dans la génération PDF. | Tests avant, à et après l'instant prévu, avec fuseaux horaires et dates historiques explicites. |
 | Notes négatives ou hors barème | Le moteur navigateur pouvait conserver une valeur négative dans son résultat de secours alors que le PDF serveur l'écartait. Une note invalide pouvait ainsi modifier une moyenne affichée. | Rejeter toute valeur inférieure à zéro ou supérieure au barème, comme le calcul serveur. | Tests de valeurs négatives, supérieures au maximum, non numériques et décimales françaises. |
 
-La CI de la PR a déjà révélé un défaut applicatif réel : une valeur négative pouvait entrer dans une moyenne (par exemple, -1 et 12/20 produisaient 5,50). Le moteur commun a été corrigé sur la branche. Les premiers échecs de CI ont aussi permis de compléter le contexte isolé du nouveau test ; les derniers résultats de la tête courante restent à confirmer.
+La CI de la PR a déjà révélé plusieurs défauts applicatifs réels, dont une note négative qui pouvait entrer dans une moyenne (par exemple, -1 et 12/20 produisaient 5,50). Le moteur commun a été corrigé sur la branche. La comparaison des rendus HTML/PDF a ensuite identifié un défaut de cloisonnement des compétences dans le bulletin navigateur ; le correctif et ses tests viennent d'être ajoutés. Les résultats du dernier commit restent à confirmer.
 
 ### Dette technique observée
 
 Le JavaScript principal _all.js contient plusieurs générations historiques de fonctions et des redéfinitions successives. Cette architecture augmente le risque qu'une correction soit écrasée par une version ultérieure ou que deux modules appliquent des règles voisines mais différentes. La campagne V25.1.2 n'entreprend pas de réécrire tout le fichier : elle renforce d'abord les fonctions canoniques et les tests de contrat. Une extraction progressive des moteurs Évaluations, Bulletins, Emploi du temps et Messagerie devra être menée module par module, avec des tests de caractérisation avant déplacement.
 ## Validation finale du candidat V25.1.2 — 26/11/2026
 
-- Run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457) : **3/3 jobs réussis**.
+- Base candidate `59092e9` : run [45819080457](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45819080457), **3/3 jobs réussis**. Les corrections ultérieures EVAL-13 et l'étiquetage des appréciations seules attendent leur dernière CI.
 - Linux : suites JavaScript et Python complètes.
 - macOS Apple Silicon : installateur, compilation Python, suites JavaScript/Python et intégration `launchd` réelle.
 - Firefox : parcours réel de l'EDT et captures des modules en thèmes clair/sombre.
-- La matrice inter-modules `tests/test_v25_cross_module_invariants.js` exécute **838 invariants** dans sa dernière passe.
+- La matrice inter-modules `tests/test_v25_cross_module_invariants.js` exécutait **838 invariants** sur la base validée ; les derniers cas de compétences et d'appréciations seules ont été ajoutés depuis.
 - La deuxième vague a ajouté plus de 500 contrôles déterministes de classe/groupe, bulletins, notes, statistiques et rendus.
 - Le schéma de données n'a pas changé. V25.1.2 reste une version corrective, sans migration.
 
