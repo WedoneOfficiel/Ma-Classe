@@ -228,7 +228,7 @@ def verify_release_journal(page, role: str, output_dir: Path) -> None:
         expect(page.locator(".settingsStudentGrid")).to_be_visible()
         page.get_by_role("button", name="Journal des versions").click()
     else:
-        page.locator("#nav button[onclick*=\"go('settings')\"]").click()
+        page.locator("#nav button").filter(has_text="Paramètres").click()
         expect(page.locator("#main h1")).to_have_text("Paramètres")
         page.get_by_role("button", name="Consulter le journal des versions").click()
 
