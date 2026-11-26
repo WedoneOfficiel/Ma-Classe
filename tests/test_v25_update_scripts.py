@@ -30,6 +30,25 @@ class UpdateScriptSafetyTests(unittest.TestCase):
         self.assertIn('gh release edit "$TAG" --notes-file dist/release-notes.md', workflow)
         self.assertIn('"release_notes": Path("dist/release-notes.md")', workflow)
 
+    def test_release_workflow_supports_validated_manual_tag_creation_from_main(self):
+        workflow = (ROOT / ".github" / "workflows" / "publish-release.yml").read_text(encoding="utf-8")
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("release_tag:", workflow)
+        self.assertIn("inputs.release_tag", workflow)
+        self.assertIn("refs/heads/main", workflow)
+        self.assertIn('git push origin "refs/tags/$RELEASE_TAG"', workflow)
+        self.assertIn('git tag -a "$RELEASE_TAG" "$GITHUB_SHA"', workflow)
+        self.assertIn('RELEASE_TAG: ${{ github.event_name', workflow)
+        self.assertLess(
+            workflow.index("Vérifier la cohérence du tag et de VERSION.txt"),
+            workflow.index("Créer ou vérifier le tag après validation"),
+        )
+        self.assertLess(
+            workflow.index("Créer ou vérifier le tag après validation"),
+            workflow.index("Construire l'archive et le manifeste vérifié"),
+        )
+        self.assertIn('TAG="$RELEASE_TAG"', workflow)
+
     def test_release_signing_cli_scripts_compile(self):
         for path in (
             ROOT / "release_signing.py",
