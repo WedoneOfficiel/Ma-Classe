@@ -1,8 +1,12 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**État actualisé au 25/11/2026 :** le candidat V25.1.0 est porté par la [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), branche `feat/v25.0.25-stabilisation-reseau-migrations`. La CI complète du dernier commit vérifié (workflow #1793) est verte sur Linux, macOS Apple Silicon et Firefox réel.  
-**État signature :** le vérificateur Ed25519 côté client et le signataire du workflow sont implémentés. La clé publique versionnée est encore un emplacement à provisionner ; le secret GitHub Actions `MACLASSE_RELEASE_SIGNING_KEY_B64` doit être créé et apparié avant de publier une release. La procédure est dans [Signature des releases](RELEASE_SIGNING.md).  
-**Limites restantes :** aucune release V25.1.0 n'est publiée ; migration V25.0.19 à répéter sur une copie de données représentative ; recette réseau physique Fedora/macOS à effectuer.  
+**État actualisé au 26/11/2026 :** la release V25.1.0 (`v25.1.0`) a été publiée avec ses assets de mise à jour et sa signature. La première installation supervisée réelle sur macOS a toutefois révélé un défaut bloquant dans la lecture du SAN du certificat local : `network_supervisor.py` interprétait la sortie texte d'OpenSSL et rejetait à tort un certificat valide sous LibreSSL. L'installation du Mac a été restaurée manuellement en V25.0.23 ; base scolaire et certificats ont été conservés.
+
+**Correctif en préparation :** PR #14, branche `fix/v25.1.1-macos-certificate-sans`. Le candidat V25.1.1 remplace l'analyse textuelle par le parseur X.509 de `cryptography` et ajoute des tests sur de vrais certificats PEM. Il n'est pas publié et ne doit pas encore être installé.
+
+**État signature :** la clé publique de production est épinglée dans `release-signing-public-key.txt` et le secret `MACLASSE_RELEASE_SIGNING_KEY_B64` est configuré dans GitHub Actions. La validation CI de V25.1.1 et une nouvelle recette physique sur le Mac restent nécessaires avant toute publication.
+
+**Note de lecture :** les mentions de statut et les résultats CI dans les sections ci-dessous décrivent les étapes historiques de conception. Pour l'état courant, se référer à cette synthèse et au [README](../README.md).
 **Note de lecture :** les mentions « CI en attente », « DHCP non surveillé » et « migration non testée » plus bas décrivent l'état historique du 16/11/2026. Elles sont remplacées par le présent état et les résultats CI #1793.
 
 ## Objectif
