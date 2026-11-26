@@ -805,3 +805,18 @@ Correctifs codés sur la PR #20 :
 Tests : deux groupes dans une même classe, note parasite d'un autre groupe, travaux partagés et individuels, brouillon, publication future, ancien lien et note valide.
 
 La revalidation complète de la tête courante reste obligatoire sur Linux, macOS Apple Silicon/launchd et Firefox réel.
+
+
+### Validation finale de la dernière tête V25.1.2 — 26 novembre 2026
+
+- Commit : `eae1433c8c12bb7e84ae0b9749633864fa2388c1`.
+- Run : [45822162433](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45822162433).
+- Linux : tests JavaScript et Python complets — réussi.
+- macOS Apple Silicon : installateur, compilation Python, tests JavaScript, intégration `launchd` réelle et tests Python — réussi.
+- Firefox réel : régression EDT et parcours modules — réussi.
+- Résultat : **3/3 jobs réussis**.
+- Matrice inter-modules : **860 invariants** réussis.
+- Version : V25.1.2 dans `VERSION.txt`, `APP_VERSION` et `MC_VERSION`.
+- Aucun changement de schéma ni migration de données.
+
+La PR #20 reste ouverte pour revue ; la version n'est pas encore fusionnée, taguée ni publiée. La recette sur l'installation physique et les comptes de l'établissement reste distincte de la CI hébergée.
