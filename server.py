@@ -80,6 +80,37 @@ def _launchd_service_plist():
 def _launchd_update_plist():
     return os.path.join(os.path.expanduser('~'),'Library','LaunchAgents','fr.maclasse.update.plist')
 
+def _launchctl_service_not_found(result):
+    """launchctl versions may print lookup failures to stdout or stderr."""
+    message='\\n'.join(part for part in (result.stdout or '',result.stderr or '') if part)
+    return result.returncode!=0 and 'Could not find service' in message
+
+def _update_start_error_detail(error):
+    parts=[]
+    if isinstance(error,subprocess.CalledProcessError):
+        if error.cmd: parts.append('Commande : '+str(error.cmd))
+        parts.append('Code de sortie : '+str(error.returncode))
+        if error.stdout: parts.append('stdout : '+str(error.stdout).strip())
+        if error.stderr: parts.append('stderr : '+str(error.stderr).strip())
+    else:
+        parts.append(str(error))
+    return ' | '.join(part for part in parts if part)[:1200] or type(error).__name__
+
+def _record_update_start_error(error):
+    """Keep the exact launchd/systemd failure locally instead of hiding it behind a generic HTTP 503."""
+    try:
+        log_name='macos-update-error.log' if sys.platform=='darwin' else 'linux-update-error.log'
+        path=os.path.join(DATA_DIR,log_name)
+        os.makedirs(DATA_DIR,exist_ok=True)
+        detail=_update_start_error_detail(error)
+        with open(path,'a',encoding='utf-8') as stream:
+            stream.write('\\n['+datetime.datetime.now().astimezone().isoformat(timespec='seconds')+'] Échec du démarrage du gestionnaire indépendant\\n')
+            stream.write(detail+'\\n')
+        os.chmod(path,0o600)
+        return detail
+    except OSError:
+        return _update_start_error_detail(error)
+
 def _public_update_maintenance(maintenance):
     """Expose only the maintenance fields needed by authenticated users."""
     if not isinstance(maintenance,dict):
@@ -121,16 +152,21 @@ def _cancel_update_timer():
         probe=subprocess.run(['/bin/launchctl','print',domain],
                              check=False,capture_output=True,text=True,timeout=10)
         if probe.returncode==0:
+            # Treat bootout as a request, then decide from the observed final state.
+            # launchctl can race a one-shot job that exits between print and bootout.
             subprocess.run(['/bin/launchctl','bootout',f'gui/{os.getuid()}','fr.maclasse.update'],
-                           check=True,capture_output=True,text=True,timeout=10)
+                           check=False,capture_output=True,text=True,timeout=10)
             verify=subprocess.run(['/bin/launchctl','print',domain],
                                   check=False,capture_output=True,text=True,timeout=10)
             if verify.returncode==0:
-                raise RuntimeError("La tâche launchd de maintenance est toujours chargée ; annulation non confirmée.")
-            if 'Could not find service' not in (verify.stderr or ''):
-                raise RuntimeError("Impossible de vérifier l'arrêt de la tâche launchd ; annulation non confirmée.")
-        elif 'Could not find service' not in (probe.stderr or ''):
-            raise RuntimeError("Impossible de vérifier l'état de la tâche launchd ; annulation non confirmée.")
+                detail=' '.join(part for part in (verify.stdout or '',verify.stderr or '') if part).strip()
+                raise RuntimeError("La tâche launchd de maintenance est toujours chargée ; annulation non confirmée. "+detail[:300])
+            if not _launchctl_service_not_found(verify):
+                detail=' '.join(part for part in (verify.stdout or '',verify.stderr or '') if part).strip()
+                raise RuntimeError("Impossible de confirmer le déchargement de la tâche launchd. "+detail[:300])
+        elif not _launchctl_service_not_found(probe):
+            detail=' '.join(part for part in (probe.stdout or '',probe.stderr or '') if part).strip()
+            raise RuntimeError("Impossible de vérifier l'état de la tâche launchd. "+detail[:300])
         if os.path.exists(plist):
             os.unlink(plist)
         return
@@ -210,30 +246,57 @@ def _start_update_apply_service():
     if _update_apply_service_active():
         raise RuntimeError("Une installation de mise à jour est déjà en cours.")
     if sys.platform=='darwin':
-        _cancel_update_timer()
         plist=_launchd_update_plist()
+        domain=f'gui/{os.getuid()}/fr.maclasse.update'
         try:
-            if not os.path.isfile(plist):
-                import plistlib
-                os.makedirs(os.path.dirname(plist),exist_ok=True)
-                document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')],
-                          'WorkingDirectory':ROOT,'RunAtLoad':False,
-                          'EnvironmentVariables':{'MACLASSE_ROOT':os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR)),
-                                                  'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
-                          'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
-                          'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
-                tmp=plist+'.tmp'
-                with open(tmp,'wb') as f: plistlib.dump(document,f,fmt=plistlib.FMT_XML,sort_keys=True)
-                os.chmod(tmp,0o600); os.replace(tmp,plist)
-                subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
-                               check=True,capture_output=True,text=True,timeout=10)
-            subprocess.run(['/bin/launchctl','kickstart',f'gui/{os.getuid()}/fr.maclasse.update'],
+            # Always unload any scheduled/stale definition, then write and load
+            # one fresh immediate-job plist. Do not kickstart a plist merely
+            # because a file with that name happens to exist on disk.
+            _cancel_update_timer()
+            import plistlib
+            script=os.path.join(ROOT,'Appliquer-Mise-A-Jour-MaClasse-macOS.sh')
+            if not os.path.isfile(script):
+                raise FileNotFoundError("Le programme d'installation macOS est absent : "+script)
+            install_root=os.environ.get('MACLASSE_ROOT') or os.path.dirname(os.path.abspath(DATA_DIR))
+            os.makedirs(os.path.dirname(plist),exist_ok=True)
+            document={'Label':'fr.maclasse.update','ProgramArguments':['/bin/bash',script],
+                      'WorkingDirectory':ROOT,'RunAtLoad':False,'ProcessType':'Background',
+                      'EnvironmentVariables':{'MACLASSE_ROOT':install_root,
+                                              'MACLASSE_DATA_DIR':os.path.abspath(DATA_DIR)},
+                      'StandardOutPath':os.path.join(DATA_DIR,'macos-update.log'),
+                      'StandardErrorPath':os.path.join(DATA_DIR,'macos-update-error.log')}
+            tmp=plist+'.'+str(os.getpid())+'.tmp'
+            with open(tmp,'wb') as stream:
+                plistlib.dump(document,stream,fmt=plistlib.FMT_XML,sort_keys=True)
+            os.chmod(tmp,0o600)
+            os.replace(tmp,plist)
+            subprocess.run(['/usr/bin/plutil','-lint',plist],
                            check=True,capture_output=True,text=True,timeout=10)
-        except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
+            subprocess.run(['/bin/launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+                           check=True,capture_output=True,text=True,timeout=10)
+            loaded=subprocess.run(['/bin/launchctl','print',domain],
+                                  check=False,capture_output=True,text=True,timeout=10)
+            if loaded.returncode!=0:
+                raise subprocess.CalledProcessError(loaded.returncode,['/bin/launchctl','print',domain],
+                                                    output=loaded.stdout,stderr=loaded.stderr)
+            subprocess.run(['/bin/launchctl','kickstart',domain],
+                           check=True,capture_output=True,text=True,timeout=10)
+            confirmed=subprocess.run(['/bin/launchctl','print',domain],
+                                     check=False,capture_output=True,text=True,timeout=10)
+            if confirmed.returncode!=0:
+                raise subprocess.CalledProcessError(confirmed.returncode,['/bin/launchctl','print',domain],
+                                                    output=confirmed.stdout,stderr=confirmed.stderr)
+        except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
+            _record_update_start_error(error)
             try:
                 _cancel_update_timer()
             except Exception as cleanup_error:
-                raise RuntimeError("Le lancement launchd a échoué et le déchargement de secours n'a pas pu être confirmé.") from cleanup_error
+                combined=RuntimeError("Le lancement launchd a échoué et le déchargement de secours n'a pas pu être confirmé : "+_update_start_error_detail(error))
+                _record_update_start_error(combined)
+                raise combined from cleanup_error
+            raise
+        except RuntimeError as error:
+            _record_update_start_error(error)
             raise
         return
     subprocess.run(['/usr/bin/systemctl','--user','start','--no-block','maclasse-update-apply.service'],
@@ -2443,6 +2506,9 @@ class Handler(SimpleHTTPRequestHandler):
                     _start_update_apply_service()
                 except RuntimeError as error:
                     return self._json({'error':str(error)},409)
+                except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
+                    detail=_record_update_start_error(error)
+                    return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. Cause : '+detail[:500]},503)
                 return self._json({'installing':True,'version':update_state.get('version')},202)
             except (OSError,ValueError,KeyError,AttributeError,RuntimeError,subprocess.CalledProcessError,subprocess.TimeoutExpired):
                 return self._json({'error':'Le gestionnaire indépendant ne peut pas démarrer. La version active est inchangée.'},503)
