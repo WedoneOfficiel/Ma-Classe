@@ -377,4 +377,170 @@ truthy(
   'Le tableau de bord des évaluations doit respecter l’heure exacte de publication'
 );
 
-console.log('OK — ' + checks + ' invariants testés : barèmes, moyennes de bulletin, publication, périodes, groupes, devoirs et vues élève.');
+// 12) Second-wave cross-module matrix: 30 evaluation class/group combinations,
+// 60 homework eligibility cases and deterministic submission aggregates.
+const targetStudents = [
+  { id: 'n1', classId: 1, group: 'A' },
+  { id: 'n2', classId: '1', group: 'B' },
+  { id: 'c1a', classId: 'c1', group: 1 },
+  { id: 'c1b', classId: 'c1', group: '1' },
+  { id: 'c2a', classId: 'c2', group: 'A' },
+  { id: 'empty', classId: null, group: '' }
+];
+const classVariants = [1, '1', 'c1', 'c2', null];
+const groupVariants = [undefined, '', 'A', 'B', 1, '1'];
+const targetDb = { students: targetStudents, evaluations: [], settings: { terms: [] } };
+for (const classId of classVariants) {
+  for (const group of groupVariants) {
+    const evaluation = { id: 'matrix-' + String(classId) + '-' + String(group), classId, group, published: true, date: '2026-11-10' };
+    const expectedIds = targetStudents
+      .filter(s => String(s.classId ?? '') === String(classId ?? '') && (!group || String(s.group ?? '') === String(group)))
+      .map(s => s.id).sort();
+    const actualIds = Array.from(context.evaluationModelTargetStudents(targetDb, evaluation), s => s.id).sort();
+    equal(JSON.stringify(actualIds), JSON.stringify(expectedIds), 'Ciblage classe/groupe : classe=' + String(classId) + ', groupe=' + String(group));
+    for (const st of targetStudents) {
+      const expectedVisible = expectedIds.includes(st.id);
+      equal(
+        context.evaluationModelVisible(targetDb, evaluation, { studentId: st.id, today: exactNow }),
+        expectedVisible,
+        'Visibilité évaluation/élève : ' + String(classId) + '/' + String(group) + '/' + st.id
+      );
+    }
+    checks += 0;
+  }
+}
+
+// The same membership rule is exercised from the homework-facing modules.
+// Each positive case is paired with an absent-homework case.
+const workClassVariants = [1, '1', 'c1', 'c2', null];
+const workGroupVariants = [undefined, '', 'A', 'B', 1, '1'];
+for (const classId of workClassVariants) {
+  for (const group of workGroupVariants) {
+    const student = { id: 'student', classId: classId === '1' ? 1 : classId, group: group === '1' ? 1 : 'A' };
+    const lesson = { classId, group, homework: { requiresSubmission: true } };
+    const expected = String(lesson.classId ?? '') === String(student.classId ?? '') &&
+      (!lesson.group || String(lesson.group) === String(student.group || ''));
+    equal(context.studentWorkEligible(lesson, student), expected, 'Éligibilité devoir ' + String(classId) + '/' + String(group));
+    equal(context.studentWorkEligible({ classId, group, homework: null }, student), false, 'Devoir absent ' + String(classId) + '/' + String(group));
+  }
+}
+
+// Twelve independently generated but deterministic school datasets. For each,
+// derive the expected workload and missing-submission pairs without calling
+// the production eligibility helpers, then compare student and teacher views.
+for (let seed = 0; seed < 12; seed++) {
+  const students = [];
+  const groups = ['A', 'B', 'C', ''];
+  for (let classIndex = 0; classIndex < 4; classIndex++) {
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      students.push({
+        id: 'seed' + seed + '-s' + classIndex + '-' + groupIndex,
+        classId: classIndex % 2 === 0 ? 'c' + classIndex : classIndex,
+        group: groups[groupIndex]
+      });
+    }
+  }
+
+  const lessons = [];
+  for (let classIndex = 0; classIndex < 4; classIndex++) {
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      const hasHomework = (seed + classIndex + groupIndex) % 5 !== 0;
+      const requiresSubmission = (seed * 2 + classIndex + groupIndex) % 4 !== 0;
+      const hasDueDate = (seed + classIndex * 3 + groupIndex) % 6 !== 0;
+      lessons.push({
+        id: 'seed' + seed + '-l' + classIndex + '-' + groupIndex,
+        classId: classIndex % 2 === 0 ? 'c' + classIndex : classIndex,
+        group: groups[groupIndex],
+        homework: hasHomework ? {
+          requiresSubmission,
+          due: hasDueDate ? '2026-12-' + String(10 + groupIndex).padStart(2, '0') : ''
+        } : null
+      });
+    }
+  }
+
+  const submissions = [];
+  for (let lessonIndex = 0; lessonIndex < lessons.length; lessonIndex++) {
+    const lesson = lessons[lessonIndex];
+    if (!lesson.homework?.requiresSubmission || !lesson.homework?.due) continue;
+    const eligible = students.filter(st =>
+      String(st.classId ?? '') === String(lesson.classId ?? '') &&
+      (!lesson.group || String(st.group || '') === String(lesson.group))
+    );
+    for (let studentIndex = 0; studentIndex < eligible.length; studentIndex++) {
+      if ((seed + lessonIndex + studentIndex) % 3 !== 0) {
+        submissions.push({
+          id: 'seed' + seed + '-sub' + lessonIndex + '-' + studentIndex,
+          lessonId: lesson.id,
+          studentId: eligible[studentIndex].id
+        });
+        if ((seed + lessonIndex + studentIndex) % 7 === 0) {
+          // A duplicate record must not inflate the received count.
+          submissions.push({
+            id: 'duplicate-' + seed + '-' + lessonIndex + '-' + studentIndex,
+            lessonId: lesson.id,
+            studentId: eligible[studentIndex].id
+          });
+        }
+      }
+    }
+  }
+
+  context.db = {
+    students,
+    lessons,
+    submissions,
+    attendance: [],
+    evaluations: [],
+    settings: { terms: [] }
+  };
+
+  let expectedWorkCount = 0;
+  let expectedStudents = 0;
+  let expectedReceived = 0;
+  const expectedMissingPairs = [];
+  const expectedMissingByStudent = new Map(students.map(st => [st.id, 0]));
+
+  for (const lesson of lessons) {
+    if (!lesson.homework?.requiresSubmission || !lesson.homework?.due) continue;
+    expectedWorkCount++;
+    const eligible = students.filter(st =>
+      String(st.classId ?? '') === String(lesson.classId ?? '') &&
+      (!lesson.group || String(st.group || '') === String(lesson.group))
+    );
+    const receivedIds = new Set(
+      submissions.filter(sub => sub.lessonId === lesson.id).map(sub => String(sub.studentId))
+    );
+    for (const st of eligible) {
+      expectedStudents++;
+      if (receivedIds.has(st.id)) expectedReceived++;
+      else {
+        expectedMissingPairs.push(lesson.id + ':' + st.id);
+        expectedMissingByStudent.set(st.id, expectedMissingByStudent.get(st.id) + 1);
+      }
+    }
+  }
+
+  const stats = context.v101SubmissionStats();
+  equal(stats.works, expectedWorkCount, 'Scénario ' + seed + ' : nombre de travaux à dépôt');
+  equal(stats.expected, expectedStudents, 'Scénario ' + seed + ' : nombre de rendus attendus');
+  equal(stats.received, expectedReceived, 'Scénario ' + seed + ' : nombre de rendus reçus sans doublons');
+  equal(stats.missing, expectedStudents - expectedReceived, 'Scénario ' + seed + ' : conservation attendus = reçus + manquants');
+
+  const actualMissingPairs = Array.from(context.v103MissingWorkList(), x => x.lesson.id + ':' + x.student.id).sort();
+  equal(
+    JSON.stringify(actualMissingPairs),
+    JSON.stringify(expectedMissingPairs.slice().sort()),
+    'Scénario ' + seed + ' : le tableau enseignant des retards doit correspondre aux paires manquantes'
+  );
+
+  for (const st of students) {
+    equal(
+      context.studentActivitySummary(st.id).missing,
+      expectedMissingByStudent.get(st.id),
+      'Scénario ' + seed + ' : le suivi élève doit compter uniquement ses devoirs de classe/groupe pour ' + st.id
+    );
+  }
+}
+
+console.log('OK — ' + checks + ' invariants testés : barèmes, moyennes, publication, ciblage, groupes, rendus et cohérence élève/professeur.');
