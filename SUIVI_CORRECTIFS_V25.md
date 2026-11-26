@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 26/11/2026 :** V25.1.1 est publiée sous le tag `v25.1.1` et le premier passage depuis V25.0.23 a été confirmé fonctionnel sur le Mac de référence. La CI post-fusion #1844 et le workflow de publication #4 sont entièrement réussis. Les entrées précédentes restent un journal historique : elles décrivent l'état au moment des diagnostics, pas nécessairement celui du code courant.
+> **État courant — 26/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; sa tête fonctionnelle c474f771 a passé 3/3 jobs (Linux, macOS Apple Silicon/launchd et Firefox réel). Les constantes de version ont été alignées sur V25.2.0 après cette validation et doivent être retestées sur la tête finale. Les entrées antérieures restent historiques ; la recette sur l'installation physique n'est pas remplacée par la CI hébergée.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -859,3 +859,32 @@ Le test Firefox exerce notamment la création d’un compte professeur dans l’
 - Dépôt : 97 fichiers de tests (57 JavaScript, 40 Python).
 
 La PR #20 demeure ouverte, non fusionnée et non publiée. Aucune installation locale ni donnée réelle n’a été modifiée. La recette sur les comptes et données physiques reste nécessaire.
+
+
+## Candidat V25.2.0 — cycle des devoirs, vie scolaire et administration — 26 novembre 2026
+
+### Cycle des devoirs
+- Les états « brouillon » et « transmis » sont distingués dans les vues élève/professeur et les notifications.
+- Les compteurs de rendus reçus et à corriger sont recalculés depuis les soumissions réellement transmises.
+- Les listes de travaux manquants restent distinctes des retards : une échéance future peut figurer dans le suivi global sans être présentée comme déjà en retard.
+- Les identifiants historiques texte/nombre sont acceptés dans les opérations de dépôt, recherche et correction.
+- Le parcours professeur → élève → dépôt → correction → restitution est exercé par un test de scénario ciblé.
+
+### Cycle de vie scolaire
+- Les appels sont retrouvés par identifiants normalisés pour la classe, le cours, l'élève et l'appel lui-même.
+- L'enregistrement conserve les statuts/motifs non touchés lors d'une modification partielle ; l'édition d'une date ou d'un créneau ne provoque pas de perte de saisie.
+- Les saisies non confirmées sont isolées ; l'annulation et le changement de contexte sont couverts par des tests.
+- La file à traiter, la justification, la date de traitement et les décomptes absences/retards sont recalculés après sauvegarde.
+- Les synthèses par classe ne doublonnent pas un élève dont les identifiants historiques ont des types différents.
+
+### Administration, affectations et données
+- Les formulaires de compte professeur conservent les affectations existantes.
+- Les vues Direction/Professeur principal et classes enseignées normalisent et dédupliquent les identifiants.
+- Les suppressions d'élèves nettoient les références liées.
+- Le centre de notifications et les permissions de bulletin retrouvent les objets avec identifiants texte/nombre.
+
+### Vérification
+- La tête fonctionnelle c474f77131f4df4e379f4c5f73d377cfe241e01c a passé le run [45864215881](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45864215881), Linux, macOS Apple Silicon/launchd et Firefox réel : **3/3 jobs réussis**.
+- VERSION.txt, APP_VERSION et MC_VERSION ont été alignés sur V25.2.0 après ce run ; la validation automatisée doit donc être relancée sur la tête versionnée.
+- La PR #20 demeure ouverte, non fusionnée et non publiée. La dernière version stable reste V25.1.1.
+- La recette de l'installation physique, des vrais comptes et des appareils clients reste à confirmer ; les états des anomalies ne passent pas à « Corrigé » sur la seule base de CI.
