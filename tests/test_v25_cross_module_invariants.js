@@ -16,6 +16,7 @@ const modelNames = [
   'evaluationModelCoefficient',
   'evaluationModelTerms',
   'evaluationModelTerm',
+  'evaluationModelDate',
   'evaluationModelInTerm',
   'evaluationModelPublished',
   'evaluationModelTargetStudents',
