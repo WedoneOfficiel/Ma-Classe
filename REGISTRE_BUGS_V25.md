@@ -2,7 +2,7 @@
 
 **Document de référence des anomalies signalées, des correctifs et des recettes restantes.**  
 Version de référence : `V25.1.1`, publiée le 26 novembre 2026 ([release v25.1.1](https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.1)). Les PR #13 à #19 ont intégré la stabilisation V25.1.0, les correctifs HTTPS/macOS, le rollback et le gestionnaire de mise à jour.
-Dernière synchronisation : 26 novembre 2026 — la dernière tête de PR #20 (`eae1433c8c12bb7e84ae0b9749633864fa2388c1`) a passé les trois environnements dans le run [45822162433](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45822162433) : Linux, macOS Apple Silicon/launchd et Firefox réel. La matrice croisée a confirmé 860 invariants. EVAL-05 à EVAL-14 et WORK-01 sont « Supposé résolu » dans le candidat ; la recette avec les comptes et données de l'installation physique reste distincte.
+Dernière synchronisation : 26 novembre 2026 — le candidat V25.2.0 reprend le travail fonctionnel de la PR #20. La tête c474f77131f4df4e379f4c5f73d377cfe241e01c a passé les trois environnements dans le run [45864215881](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45864215881). La version candidate est maintenant alignée sur V25.2.0 dans VERSION.txt, APP_VERSION et MC_VERSION ; la validation de cette tête versionnée reste à effectuer. La recette sur l'installation physique est distincte.
 
 ## Règles de suivi
 
@@ -316,3 +316,19 @@ Le workflow [#1763](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/457
 ### Niveau de preuve et réserve
 
 Les états ci-dessus sont **corrigés dans la branche et validés par CI**, pas encore confirmés sur l’installation physique. La campagne utilise des comptes et une base temporaires isolés ; elle ne modifie pas les données de l’installation utilisateur. La recette sur les vrais comptes et la vraie base reste distincte.
+
+
+## Complément de campagne V25.2.0 — 26/11/2026
+
+Les anomalies supplémentaires ci-dessous ont un correctif dans la branche et des tests ciblés. Leur état demeure **Supposé résolu** tant que les essais sur l'installation de référence n'ont pas été confirmés par l'utilisateur.
+
+| Identifiant | Module | Défaut constaté | Correction engagée | Validation disponible |
+|---|---|---|---|---|
+| WORK-02 | Travail scolaire — rendus | Les brouillons et les travaux transmis pouvaient être confondus dans les listes, les compteurs ou les notifications. | Normalisation des états de soumission, séparation brouillon/rendu, réutilisation des critères d'éligibilité classe/groupe et compatibilité des anciens enregistrements. | Test de cycle de devoir, matrice inter-modules et suites Linux/macOS/Firefox. |
+| VIE-02 | Vie scolaire — appels et justifications | Identifiants de classe, d'élève et de créneau de types différents ; édition partielle pouvant perdre un statut ou un motif. | Normalisation des recherches, conservation de l'état non modifié, isolation avant sauvegarde, traitement des absences/retards et compteurs cohérents. | Test de cycle d'appel et scénarios d'annulation, suite complète de la PR. |
+| ADM-01 | Administration — affectations | L'édition d'un compte professeur pouvait perdre certaines affectations existantes ou ne pas les retrouver avec des identifiants mixtes. | Conservation des affectations dans le formulaire, recherches normalisées et accès PP/classes enseignées harmonisés. | Tests isolés de gestion de classe, formulaire professeur et permissions. |
+| DATA-01 | Fiches élèves | Des références liées pouvaient rester après la suppression d'un élève. | Nettoyage des données associées dans le parcours de suppression. | Test dédié de suppression et vérification des références résiduelles. |
+| NOTIF-01 | Centre de notifications | Les événements associés à un élève pouvaient ne pas être retrouvés si les identifiants historiques différaient de type. | Normalisation des clés et des recherches dans le flux de notifications. | Test dédié avec identifiants numériques et textuels. |
+| PROF-01 | Professeurs / PP | Profils et accès classe pouvaient compter deux fois une classe ou oublier une classe accessible via une responsabilité/affectation. | Normalisation des classes et déduplication des identifiants dans les vues de profil et de pilotage PP. | Tests de portée professeur/PP et CI de la PR #20. |
+
+Le candidat interne est V25.2.0. La dernière release stable publique reste V25.1.1. La publication ne sera autorisée qu'après fusion dans main, CI de la tête fusionnée, recette physique, et validation par le workflow officiel de release signée.
