@@ -26,6 +26,7 @@ const singleDelete=src.slice(singleDeleteStart,singleDeleteEnd);
 assert(singleDelete.indexOf("await api('/api/cloud-delete'")<singleDelete.indexOf('db.cloudItems=db.cloudItems.filter'), 'physical Cloud deletion must succeed before metadata removal');
 const start=src.lastIndexOf('function subjectAverage('),end=src.indexOf('\nfunction bulletinAttendance',start);
 assert(start>=0&&end>start,'active bulletin subjectAverage found');
+const sameIdStart=src.indexOf('function sameId('),sameIdEnd=src.indexOf('\nfunction ',sameIdStart+10);
 const modelStart=src.indexOf('function gradeNumber('),modelEnd=src.indexOf('function classAverage(',modelStart);
 const context={db:{students:[{id:'s1',classId:'c1',group:'A'}],evaluations:[
  {id:'e1',classId:'c1',subject:'Maths',date:'2026-10-01',published:true,maxScore:10,coefficient:2,grades:[{studentId:'s1',value:'8'}]},
@@ -34,6 +35,6 @@ const context={db:{students:[{id:'s1',classId:'c1',group:'A'}],evaluations:[
  {id:'e4',classId:'c1',subject:'Maths',date:'2026-10-04',published:true,publishAt:'2999-01-01',maxScore:20,coefficient:1,grades:[{studentId:'s1',value:'20'}]}
  ]},term:()=>({start:'2026-09-01',end:'2026-12-31'}),student:id=>({id:'s1',classId:'c1',group:'A'}),iso:()=> '2026-11-12'};
 vm.createContext(context);
-vm.runInContext(src.slice(modelStart,modelEnd)+'\n'+src.slice(start,end),context);
+vm.runInContext(src.slice(sameIdStart,sameIdEnd)+'\n'+src.slice(modelStart,modelEnd)+'\n'+src.slice(start,end),context);
 assert.strictEqual(context.subjectAverage('s1','c1','Maths','t1'),'16.00','8/10 must become 16/20; unpublished, future and other-group grades excluded');
 console.log('OK — V25 regressions: normalized bulletin average, publication/group filtering, save serialization and defensive collections.');
