@@ -1,4 +1,4 @@
-const fs=require('fs'),assert=require('assert'),path=require('path');
+const fs=require('fs'),assert=require('assert'),path=require('path'),vm=require('vm');
 const root=path.join(__dirname,'..');
 const app=fs.readFileSync(path.join(root,'_all.js'),'utf8');
 const server=fs.readFileSync(path.join(root,'server.py'),'utf8');
@@ -6,6 +6,8 @@ const helper=fs.readFileSync(path.join(root,'establishment_import.py'),'utf8');
 const schema=JSON.parse(fs.readFileSync(path.join(root,'docs/templates/establishment-import.v1.schema.json'),'utf8'));
 const example=JSON.parse(fs.readFileSync(path.join(root,'docs/templates/establishment-import.v1.example.json'),'utf8'));
 const guide=fs.readFileSync(path.join(root,'docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md'),'utf8');
+new vm.Script(app,{filename:'_all.js'});
+assert.strictEqual((app.match(/function openStudentAccountEditor\(/g)||[]).length,1,'Le point d’entrée de création du compte élève ne doit exister qu’une seule fois.');
 assert.strictEqual(example.format,'maclasse-establishment');
 assert.strictEqual(example.version,1);
 assert(schema.properties.classes&&schema.properties.students&&schema.properties.teachers&&schema.properties.rooms&&schema.properties.schedule);
