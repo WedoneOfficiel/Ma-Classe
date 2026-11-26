@@ -46,10 +46,12 @@ La valeur du secret n'est jamais affichée par le workflow. Avant de publier, le
 Le workflow `.github/workflows/publish-release.yml` :
 1. attend le succès des tests Linux, macOS et Firefox ;
 2. vérifie la cohérence du tag et de `VERSION.txt` ;
-3. construit l'archive et le manifeste ;
-4. signe le manifeste avec le secret GitHub Actions ;
-5. publie les trois assets.
+3. choisit les notes versionnées dans `.github/release-notes/<tag>.md` lorsqu'elles existent, sinon utilise les notes générées par GitHub ;
+4. construit l'archive et le manifeste avec ces mêmes notes ;
+5. signe le manifeste avec le secret GitHub Actions ;
+6. publie les trois assets et utilise le même fichier de notes pour le corps de la release.
 
+Pour une release qui nécessite une description rédigée, ajouter le fichier correspondant avant de créer le tag (par exemple `.github/release-notes/v25.1.1.md`). Ainsi, le texte affiché sur GitHub et le champ `release_notes` du manifeste signé restent identiques. Les releases sans fichier dédié conservent le comportement générique de génération automatique.
 Côté client, le gestionnaire exige exactement un asset de signature et valide Ed25519 avant de parser le manifeste ou de préparer l'archive. L'absence de la clé publique, du secret, de la signature ou une incohérence entre les deux clés bloque la mise à jour.
 
 ## 5. Pont de migration des anciennes installations
