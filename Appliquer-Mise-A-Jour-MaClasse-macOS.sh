@@ -241,7 +241,7 @@ stop_service_and_confirm() {
         echo "DEBUG updater: impossible de confirmer l'arrêt des processus du dossier courant." >&2
         return 1
       fi
-      if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)";
+      if server_pids="$(/usr/bin/pgrep -f '[p]ython.*(network_supervisor|server)[.]py' 2>/dev/null)"; then
         echo "DEBUG updater: processus serveur encore actif après bootout : $server_pids" >&2
         return 1
       else
