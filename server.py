@@ -23,6 +23,8 @@ SESSION_TTL=12*60*60
 ROOT=os.path.dirname(os.path.abspath(__file__))
 BACKUP_RETENTION_DAYS=30
 BACKUP_INTERVAL_SECONDS=6*60*60
+MAX_BACKUP_ARCHIVE_BYTES=512*1024*1024
+MAX_BACKUP_UNCOMPRESSED_BYTES=500*1024*1024
 DATA_DIR=os.path.abspath(os.environ.get('MACLASSE_DATA_DIR') or os.path.join(ROOT,'data'))
 DATA_FILE=os.path.join(DATA_DIR,'maclasse.json')
 UPLOADS=os.path.join(DATA_DIR,'uploads')
@@ -408,7 +410,7 @@ def _restore_backup_archive(raw_bytes):
                 if info.flag_bits & 0x1:
                     raise ValueError('Les archives chiffrées ne sont pas acceptées.')
                 total_size += info.file_size
-                if total_size > 500 * 1024 * 1024:
+                if total_size > MAX_BACKUP_UNCOMPRESSED_BYTES:
                     raise ValueError('Archive décompressée trop volumineuse (500 Mo maximum).')
                 if info.file_size > 0 and info.compress_size == 0:
                     raise ValueError('Archive invalide.')
@@ -2583,7 +2585,7 @@ class Handler(SimpleHTTPRequestHandler):
         elif path in ('/api/admin/establishment-import/validate','/api/admin/establishment-import/apply'):
             max_length=25*1024*1024
         elif path=='/api/backup/restore':
-            max_length=100*1024*1024
+            max_length=MAX_BACKUP_ARCHIVE_BYTES
         elif path in ('/api/data','/api/save'):
             max_length=20*1024*1024
         else:
@@ -3106,7 +3108,7 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as exc: return self._json({'error':'Modification du compte élève impossible : '+str(exc)},500)
         if path=='/api/backup/restore':
             if user.get('role')!='admin': return self._json({'error':'La restauration complète est réservée à la direction.'},403)
-            if length>100*1024*1024: return self._json({'error':'Archive trop volumineuse (100 Mo maximum).'},413)
+            if length>MAX_BACKUP_ARCHIVE_BYTES: return self._json({'error':'Archive trop volumineuse (512 Mo maximum).'},413)
             try:
                 # Restoration must exclude uploads and database writes for the whole
                 # operation, including archive validation and staging.

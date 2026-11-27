@@ -1221,7 +1221,7 @@ function settings(){const rooms=Array.isArray(db.settings.rooms)?db.settings.roo
 async function restoreZipBackup(file){
  if(!file)return;
  if(!authCanManage())return toast('La restauration complète est réservée à la direction.');
- if(file.size>100*1024*1024)return toast('Archive trop volumineuse (100 Mo maximum).');
+ if(file.size>512*1024*1024)return toast('Archive trop volumineuse (512 Mo maximum).');
  confirmModal('Cette opération remplacera la base MaClasse ET les fichiers téléversés par le contenu de cette archive. Une sauvegarde complète de l’état actuel sera créée avant la restauration.','Restaurer l’archive complète',async()=>{
   const button=document.querySelector('.modalfoot .btn.primary');if(button){button.disabled=true;button.textContent='Restauration…'}
   try{
