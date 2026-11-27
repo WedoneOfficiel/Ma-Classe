@@ -2917,7 +2917,7 @@ class Handler(SimpleHTTPRequestHandler):
                     occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students','teachers'))
                     if occupied: return self._json({'error':'La première configuration a déjà été effectuée. Connecte-toi avec le compte direction.'},409)
                     account={'id':secrets.token_urlsafe(18),'role':'admin','username':username,'name':name,'first':first,'last':last,'active':True,'passwordHash':_password_hash(password)}
-                    data['users']=[account]; data.setdefault('teachers',[]); data['schemaVersion']=25011
+                    data['users']=[account]; data['schemaVersion']=25011
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE)
