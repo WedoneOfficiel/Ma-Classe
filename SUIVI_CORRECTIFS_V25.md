@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 26/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; le dernier commit fonctionnel testé est `3522e5dd2d09facd1d694b218a2a6e5718350cf3`, validé dans le run [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692), 3/3 jobs réussis (Linux, macOS Apple Silicon/launchd et Firefox réel). Les constantes VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. La suite compte 109 fichiers de tests (67 JavaScript, 42 Python). Les entrées antérieures restent historiques ; la recette sur l'installation physique n'est pas remplacée par la CI hébergée.
+> **État courant — 27/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; la tête `c0d8d34e682751188b460a0d71ebfd2ad4147395` a passé le workflow [#2072 / run 45915519830](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45915519830), **3/3 jobs réussis** : installateur et suites Linux, installateur Apple Silicon avec vrai `launchd`, parcours Firefox réel. La passe compte 109 fichiers de tests (67 JavaScript, 42 Python), dont 860 invariants intermodules et les nouveaux contrôles d'import de salles/groupes. Les captures Firefox ont été publiées comme artefact et inspectées. La recette de l'installation physique, des vrais comptes et des appareils clients reste distincte et nécessaire.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -920,3 +920,37 @@ Le validateur acceptait jusqu'à 50 000 créneaux mais comparait initialement to
 4. **Accessibilité :** poursuivre les tests clavier, focus et lecteur d'écran.
 
 Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corrigé. Ils seront traités dans une branche dédiée après la recette réelle du candidat V25.2.0.
+
+
+## Stabilisation finale V25.2.0 — 27 novembre 2026
+
+**Branche :** `fix/v25.1.2-cross-module-consistency`  
+**PR :** [#20 — V25.2.0](https://github.com/WedoneOfficiel/Ma-Classe/pull/20)  
+**Tête validée automatiquement :** `c0d8d34e682751188b460a0d71ebfd2ad4147395`
+
+### Défauts supplémentaires identifiés et corrigés
+
+- **Écran des nouveautés — ouverture automatique :** `release_notes.js` s'exécute en mode strict. `openAutomatic()` affectait `pendingAutomaticPayload` sans déclaration, ce qui levait une `ReferenceError` et empêchait l'annonce du premier accès. La variable est maintenant déclarée dans la portée du module ; un test unitaire exerce l'ouverture automatique, le chargement de l'historique et le rendu du modal.
+- **Tests de publication déterministes :** la matrice de publication des évaluations dépendait de la date réelle du runner. Une date future dans le cas de test devenait le jour courant selon l'heure du job. L'horloge du test est maintenant figée avant l'initialisation du modèle, sans changer l'horloge de production.
+- **Tests de Paramètres :** un contrôle de grille était placé après `unittest.main()` et n'était donc pas découvert par le runner. Il est réintégré dans la classe de tests ; les assertions utilisent les sélecteurs CSS effectivement appliqués.
+- **Firefox / Playwright :** suppression d'une déclaration `free_port()` dupliquée ; les deux appels de rendu des Paramètres (desktop et mobile) transmettent désormais un seul objet à `Page.evaluate()`, comme l'exige l'API Playwright.
+- **Grille Direction — carte Données :** `grid-column:auto!important` annulait le placement `grid-area:data` et faisait retomber la carte dans la première colonne. La déclaration contradictoire est retirée ; la carte reste dans la colonne de droite, sous Version, tandis que le responsive conserve ses zones à deux colonnes et à une colonne.
+- **Import d'établissement — groupes implicites multi-niveaux :** la capacité d'une salle ne comptait que le champ `group` explicite des élèves, alors que `build_data()` génère un groupe `NomClasse/Niveau` lorsque le JSON ne le fournit pas. Le calcul du validateur utilise maintenant le même groupe effectif que l'import final.
+- **Import d'établissement — cours partagés :** la capacité était contrôlée par classe séparément alors qu'un créneau partagé crée plusieurs enregistrements liés dans la même salle. Le calcul additionne les élèves de toutes les classes ciblées (ou de leur groupe commun) avant de comparer la capacité ; l'équipement de la salle n'est contrôlé qu'une fois pour le créneau.
+
+### Preuves de validation
+
+- Workflow final [#2072 / run 45915519830](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45915519830), commit `c0d8d34e682751188b460a0d71ebfd2ad4147395) : **Linux, macOS Apple Silicon et Firefox réel réussis (3/3)**.
+- Linux : installateur réel, vérification JavaScript, compilation Python et tous les tests JavaScript/Python.
+- macOS : installateur Apple Silicon, suites JavaScript/Python et véritable démarrage du service `launchd`.
+- Firefox : scénarios Direction, Professeur et Élève, journal des versions, générateur et géométrie des Paramètres sur desktop/mobile ; captures des modules en thèmes clair et sombre.
+- Les captures ont été téléchargées depuis l'artefact `maclasse-v25-product-screenshots` (113 fichiers) et inspectées. La carte Données est maintenant alignée sous Version dans la colonne de droite ; les vues mobiles restent sans débordement horizontal du contenu principal.
+- Aucun changement de schéma ni migration de données. Aucune donnée de l'installation locale n'a été modifiée.
+
+### Vérification complémentaire de l'archive de release
+
+Un test supplémentaire vérifie que le workflow officiel utilise `git archive` sur le commit validé et que le ZIP généré contient le runtime, la note V25.2.0, l'historique consolidé et les trois sources historiques utilisées par le journal. Ce contrôle sera intégré à la prochaine exécution CI sur la nouvelle tête.
+
+### Limites avant publication
+
+La V25.2.0 n'est pas encore fusionnée ni publiée. La CI hébergée ne remplace pas la sauvegarde et la recette sur une copie représentative des données réelles, puis la vérification sur le Mac et les appareils clients avec les vrais comptes. La dernière version stable reste V25.1.1 ; aucun tag ni asset V25.2.0 n'a été créé.
