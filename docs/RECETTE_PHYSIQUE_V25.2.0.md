@@ -16,17 +16,29 @@ Cette procédure est le dernier contrôle avant fusion et publication. Tous les 
 
 **Arrêt immédiat :** si la sauvegarde n'est pas vérifiée, si le chemin des données est incertain, si une instance utilise encore le dossier cloné ou si le service de production risque d'être remplacé, ne pas poursuivre.
 
-## 2. Migration, sauvegarde et retour arrière sur la copie
+## 2. Essais préalables sur la copie — avant publication
 
-- [ ] Démarrer la copie de test en V25.1.1 et noter des éléments représentatifs : classes, élèves, professeurs, pièces jointes et objets métier.
-- [ ] Préparer V25.2.0 dans la copie et exécuter le parcours supervisé de l'environnement de test. Vérifier les notifications de maintenance, le compte à rebours, l'arrêt gracieux et le redémarrage.
-- [ ] Confirmer que la version active affichée est V25.2.0 et que l'API de santé confirme une base lisible.
-- [ ] Comparer avant/après les élèves, classes, comptes, rôles, affectations, EDT, évaluations, notes, bulletins, appels, justifications, devoirs, rendus, messages, Cloud, salles, couleurs, paramètres et fichiers.
-- [ ] Simuler un échec de démarrage/contrôle de santé sur la copie, déclencher le retour arrière, puis confirmer le retour à la version précédente et la conservation de la base et des pièces jointes.
-- [ ] Redémarrer une nouvelle fois et vérifier que le service démarre sans intervention ni double instance.
+La V25.2.0 candidate n'est pas encore une GitHub Release stable ; le gestionnaire officiel ne doit donc pas être supposé pouvoir la télécharger. Avant la publication, tester le code de la branche candidate dans la copie isolée (sans basculer la production et sans utiliser le mécanisme de mise à jour stable).
+
+- [ ] Démarrer la copie de travail sur le code candidat, en conservant la copie externe intacte et la production arrêtée ou isolée.
+- [ ] Vérifier que la base se charge et que l'API de santé confirme une base lisible.
+- [ ] Comparer les enregistrements et pièces jointes aux éléments notés avant l'essai : élèves, classes, comptes, rôles, affectations, EDT, évaluations, notes, bulletins, appels, justifications, devoirs, rendus, messages, Cloud, salles, couleurs et paramètres.
+- [ ] Tester sur cette copie les notifications de maintenance, le compte à rebours, l'arrêt gracieux, le redémarrage et la reprise de service.
+- [ ] Simuler une erreur de santé avec le banc de test / les fixtures de validation du gestionnaire ; vérifier que le retour arrière restaure code et base. Ne jamais provoquer une panne sur le service de production.
 - [ ] Vérifier que les sauvegardes sont présentes, lisibles et distinctes de la base active.
 
+## 3. Mise à jour officielle signée — après publication, toujours sur la copie
+
+Une fois la PR fusionnée et la GitHub Release signée publiée, le gestionnaire officiel peut enfin trouver le tag stable V25.2.0. Ce test ne doit pas être déplacé avant publication.
+
+- [ ] Sur la copie isolée, vérifier que le gestionnaire détecte V25.2.0, valide la signature Ed25519 et le SHA-256, puis prépare l'archive.
+- [ ] Exécuter la mise à jour supervisée depuis V25.1.1 vers V25.2.0 sur la copie ; vérifier notifications, compte à rebours, arrêt gracieux, bascule et redémarrage.
+- [ ] Confirmer la version active et la santé de la base ; comparer les éléments métier et fichiers avec la sauvegarde de référence.
+- [ ] Sur cette copie uniquement, simuler un échec de santé contrôlé et confirmer le retour à la version précédente ainsi que la conservation de la base et des pièces jointes.
+- [ ] Redémarrer à nouveau. Si la vérification signée, l'installation, la restauration ou la reprise échoue, ne pas mettre à jour la production ; ouvrir une correction et refaire les essais sur copie avant toute diffusion en production.
+
 ## 3. Parcours des trois rôles
+- [ ] Sur Firefox/macOS, vérifier l'affichage et la saisie des dates de périodes scolaires ; le format natif dépend du navigateur et de la plateforme (le rendu du runner Linux ne vaut pas validation macOS).
 
 - [ ] Direction : connexions, paramètres, classes/salles, import établissement, bulletins, sauvegardes, gestionnaire de versions et maintenance.
 - [ ] Professeur titulaire : EDT, séances, devoirs, pièces jointes, évaluations, appréciations et bulletins sur les matières autorisées.
@@ -76,7 +88,7 @@ Tant que cette recette n'est pas passée, l'objectif « aucune configuration man
 
 ## État de la livraison au 27 novembre 2026
 
-- CI du candidat : workflow #2117, 3/3 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel.
+- CI du candidat : workflow #2121, 3/3 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel.
 - Dernière release stable : V25.1.1 (v25.1.1).
 - V25.2.0 : candidate, PR #20 ouverte, non fusionnée, non taguée et non publiée.
 - Recette physique : non effectuée dans cette campagne ; les cases doivent être cochées à partir de résultats réels, pas supposées validées.

@@ -1,6 +1,6 @@
 # Réseau local HTTPS — MaClasse V25
 
-**État au 27/11/2026 :** le superviseur réseau est commun à Linux et macOS. Le workflow #2117 valide la tête `7714b65` sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). La rotation ACME garde le listener courant pendant le déploiement progressif, puis vérifie la paire certificat/clé à partir des mêmes octets avant de basculer. La validation sur le Wi-Fi cible, le DNS/routeur, le pare-feu Fedora et au moins deux appareils clients reste à effectuer.
+**État au 27/11/2026 :** le superviseur réseau est commun à Linux et macOS. Le workflow #2121 valide la tête `8bea31f` sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). La rotation ACME valide et empreinte le certificat et la clé à partir d'un même instantané ; si le client ACME les remplace séparément, une paire temporairement incohérente ne remplace pas le listener courant. La validation sur le Wi-Fi cible, le DNS/routeur, le pare-feu Fedora et au moins deux appareils clients reste à effectuer.
 
 **Deux modes de confiance existent :** le mode AC privée par défaut nécessite encore d'approuver/importer `data/tls/ca.crt` sur chaque appareil (ou de la distribuer centralement). Le mode facultatif TLS public DNS, documenté ci-dessous, permet d'éviter cette étape par poste si le domaine, le renouvellement ACME et le DNS local sont configurés au niveau de l'établissement. Il n'est pas encore activé ni recetté sur le réseau cible ; ne pas le considérer comme opérationnel avant le test de deux appareils.
 
@@ -24,7 +24,7 @@ Aucune redirection de port 80/443/8765 vers le serveur MaClasse n'est nécessair
 
 ### Configuration du certificat dans MaClasse
 
-Après avoir installé MaClasse, créé le compte Direction et préparé le répertoire `data/tls/`, place le certificat complet (`fullchain.pem`) et sa clé privée dans des fichiers lisibles uniquement par le compte qui exécute le service. Le renouvellement ACME doit recopier/remplacer ces deux fichiers de façon atomique, puis attribuer les fichiers au compte qui exécute MaClasse et appliquer `chmod 600` à la clé privée. Sur Linux, un hook de déploiement Certbot/acme.sh peut copier les fichiers depuis le répertoire ACME protégé vers un répertoire TLS dédié accessible au compte systemd utilisateur ; sur macOS, le client ACME peut fonctionner sous le compte de session qui lance le LaunchAgent. Le superviseur refuse une clé privée lisible par le groupe ou les autres utilisateurs. Exemple de configuration :
+Après avoir installé MaClasse, créé le compte Direction et préparé le répertoire `data/tls/`, place le certificat complet (`fullchain.pem`) et sa clé privée dans des fichiers lisibles uniquement par le compte qui exécute le service. Le hook ACME devrait de préférence publier la paire complète de façon atomique, puis attribuer les fichiers au compte qui exécute MaClasse et appliquer `chmod 600` à la clé privée. Le superviseur tolère aussi un déploiement en deux remplacements : il valide/empreinte chaque paire depuis les mêmes octets et conserve le listener courant tant que les deux fichiers ne correspondent pas. Sur Linux, un hook de déploiement Certbot/acme.sh peut copier les fichiers depuis le répertoire ACME protégé vers un répertoire TLS dédié accessible au compte systemd utilisateur ; sur macOS, le client ACME peut fonctionner sous le compte de session qui lance le LaunchAgent. Le superviseur refuse une clé privée lisible par le groupe ou les autres utilisateurs. Exemple de configuration :
 
 ```json
 {
@@ -45,7 +45,7 @@ Les chemins du certificat et de la clé doivent être absolus. La clé doit êtr
 
 Au démarrage, le superviseur vérifie le nom DNS dans le SAN du certificat, sa validité (plus de 24 heures restantes), la correspondance de la clé privée et les permissions du fichier de configuration. Le serveur accepte le FQDN configuré dans les contrôles stricts `Host` et `Origin` tout en restant lié à l'adresse IPv4 privée détectée. L'URL annoncée devient `https://maclasse.exemple.fr:8765`.
 
-Le superviseur surveille les fichiers toutes les cinq secondes. Quand le client ACME renouvelle le certificat et remplace les fichiers configurés, il détecte leur nouvelle empreinte SHA-256, arrête proprement l'ancien listener et redémarre avec la nouvelle chaîne TLS. Une configuration ou un certificat invalide fait échouer le démarrage : aucun repli vers HTTP ni exception de certificat n'est créé. Sans le fichier `public-certificate.json`, le mode historique AC privée reste actif.
+Le superviseur surveille les fichiers toutes les cinq secondes. Quand le client ACME renouvelle le certificat et remplace les fichiers configurés, il détecte leur empreinte SHA-256. Si la paire est encore incohérente pendant le déploiement, le listener actuel reste actif ; dès qu'une paire valide correspondante est disponible, le superviseur bascule proprement vers la nouvelle chaîne TLS. Une configuration ou un certificat invalide fait échouer le démarrage : aucun repli vers HTTP ni exception de certificat n'est créé. Sans le fichier `public-certificate.json`, le mode historique AC privée reste actif.
 
 ### Limites opérationnelles
 

@@ -45,6 +45,7 @@ REQUIRED_RELEASE_FILES = {
     "docs/archives/ETATS_AUDITS_ET_RECETTES_ANTERIEURS.md",
     "docs/archives/README_PRE_REORGANISATION.md",
     "docs/releases/v25.2.0.md",
+    "docs/RECETTE_PHYSIQUE_V25.2.0.md",
 }
 
 
