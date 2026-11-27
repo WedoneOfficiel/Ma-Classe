@@ -1,6 +1,8 @@
 # Réseau local HTTPS — MaClasse V25
 
-**État au 25/11/2026 :** le superviseur réseau est commun à Linux et macOS. La CI #1727 valide les tests Linux, macOS Apple Silicon et Firefox réel. La vérification sur un vrai réseau Wi-Fi, le pare-feu Fedora et les appareils clients reste à effectuer sur le matériel cible.
+**État au 27/11/2026 :** le superviseur réseau est commun à Linux et macOS. La CI finale candidate #2092 valide Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). La vérification sur un vrai réseau Wi-Fi, le pare-feu Fedora et les appareils clients reste à effectuer sur le matériel cible.
+
+**Limite de confiance HTTPS côté client — non résolue :** MaClasse utilise actuellement une autorité de certification privée créée sur le serveur. Chaque nouvel appareil ou navigateur doit approuver/importer une fois le certificat public `data/tls/ca.crt`. Le serveur ne peut pas ajouter silencieusement une autorité privée au magasin de confiance d'un appareil arbitraire. Cette architecture ne satisfait donc pas une exigence de zéro réglage de certificat par ordinateur ; ne pas la présenter comme résolue par la CI.
 
 ## Principe
 
