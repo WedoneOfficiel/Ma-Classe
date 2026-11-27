@@ -377,6 +377,7 @@ def _restore_backup_archive(raw_bytes):
     old_json = os.path.join(stage_root, 'maclasse-before-restore.json')
     moved_old_uploads = False
     installed_new_uploads = False
+    preserve_stage_root = False
     try:
         try:
             archive = zipfile.ZipFile(io.BytesIO(raw_bytes), 'r')
@@ -446,31 +447,51 @@ def _restore_backup_archive(raw_bytes):
         os.makedirs(DATA_DIR, exist_ok=True)
         # Keep uploads, backup creation and restoration on one lock. Build the
         # restored tree off-line above, then swap both stores as one critical section.
-        with UPLOADS_LOCK:
+        with DATA_LOCK, UPLOADS_LOCK:
             try:
                 if os.path.exists(UPLOADS):
                     os.replace(UPLOADS, old_uploads)
                     moved_old_uploads = True
                 os.replace(stage_uploads, UPLOADS)
                 installed_new_uploads = True
-                shutil.copy2(DATA_FILE, old_json) if os.path.exists(DATA_FILE) else None
+                if os.path.exists(DATA_FILE):
+                    # Never use a partially copied database as the rollback source.
+                    old_json_tmp = old_json + '.tmp'
+                    shutil.copy2(DATA_FILE, old_json_tmp)
+                    os.replace(old_json_tmp, old_json)
                 os.replace(staged_json, DATA_FILE)
                 return {'classes': len(restored.get('classes', []) or []), 'students': len(restored.get('students', []) or []), 'files': sum(1 for base, _, files in os.walk(UPLOADS) for _ in files)}
-            except Exception:
-                # Roll back before releasing the upload lock: no concurrent upload
-                # can land in the temporary restored tree and then be discarded.
-                try:
-                    if installed_new_uploads and os.path.exists(UPLOADS):
+            except Exception as restore_error:
+                # Roll back before releasing either lock. If any rollback step fails,
+                # retain the staging directory because it contains the only safe copy
+                # of the old uploads and/or database needed for manual recovery.
+                rollback_errors = []
+                if installed_new_uploads and os.path.exists(UPLOADS):
+                    try:
                         shutil.rmtree(UPLOADS)
-                    if moved_old_uploads and os.path.exists(old_uploads):
+                    except OSError as error:
+                        rollback_errors.append(f'impossible de retirer le dossier restauré : {error}')
+                if moved_old_uploads and os.path.exists(old_uploads):
+                    try:
                         os.replace(old_uploads, UPLOADS)
-                    if os.path.exists(old_json):
+                    except OSError as error:
+                        rollback_errors.append(f'impossible de remettre les anciennes pièces jointes : {error}')
+                if os.path.exists(old_json):
+                    try:
                         os.replace(old_json, DATA_FILE)
-                except OSError:
-                    pass
+                    except OSError as error:
+                        rollback_errors.append(f'impossible de restaurer l’ancienne base : {error}')
+                if rollback_errors:
+                    preserve_stage_root = True
+                    details = '; '.join(rollback_errors)
+                    raise RuntimeError(
+                        'Le retour arrière est incomplet. Le dossier de récupération contenant les anciennes données '
+                        f'est conservé à {stage_root}. Détails : {details}'
+                    ) from restore_error
                 raise
     finally:
-        shutil.rmtree(stage_root, ignore_errors=True)
+        if not preserve_stage_root:
+            shutil.rmtree(stage_root, ignore_errors=True)
 
 
 def _database_revision():
@@ -2363,8 +2384,9 @@ class Handler(SimpleHTTPRequestHandler):
     def _backup_dir(self):
         d=os.path.join(DATA_DIR,'backups'); os.makedirs(d,exist_ok=True); return d
     def _create_backup(self, force=False):
-        # Serialise the database + attachments snapshot against every file mutation.
-        with UPLOADS_LOCK:
+        # Lock order is always database first, then attachments. This keeps the
+        # JSON and physical files in one coherent snapshot without blocking reads.
+        with DATA_LOCK, UPLOADS_LOCK:
             return self._create_backup_locked(force)
     def _create_backup_locked(self, force=False):
         if not os.path.exists(DATA_FILE): return None
@@ -2378,16 +2400,32 @@ class Handler(SimpleHTTPRequestHandler):
             return None
         stamp=time.strftime('%Y%m%d-%H%M%S') + f'-{time.time_ns()%1000000:06d}'
         backup_path=os.path.join(backup_dir,f'maclasse-{stamp}.json')
-        shutil.copy2(DATA_FILE,backup_path)
-        # Complete portable snapshot: database JSON plus physical uploads.
+        backup_tmp=backup_path+'.tmp'
+        try:
+            shutil.copy2(DATA_FILE,backup_tmp)
+            os.replace(backup_tmp,backup_path)
+        finally:
+            try:
+                if os.path.exists(backup_tmp): os.remove(backup_tmp)
+            except OSError: pass
+        # Publish the full portable ZIP only after its central directory has been
+        # written successfully. A failed backup must never leave a valid-looking
+        # but truncated maclasse-*.zip file in the backup directory.
         archive_path=os.path.join(backup_dir,f'maclasse-{stamp}.zip')
-        with zipfile.ZipFile(archive_path,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.write(DATA_FILE,'data/maclasse.json')
-            if os.path.isdir(UPLOADS):
-                for base,_,files in os.walk(UPLOADS):
-                    for filename in files:
-                        full=os.path.join(base,filename)
-                        archive.write(full,os.path.join('data','uploads',os.path.relpath(full,UPLOADS)))
+        archive_tmp=archive_path+'.tmp'
+        try:
+            with zipfile.ZipFile(archive_tmp,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.write(DATA_FILE,'data/maclasse.json')
+                if os.path.isdir(UPLOADS):
+                    for base,_,files in os.walk(UPLOADS):
+                        for filename in files:
+                            full=os.path.join(base,filename)
+                            archive.write(full,os.path.join('data','uploads',os.path.relpath(full,UPLOADS)))
+            os.replace(archive_tmp,archive_path)
+        finally:
+            try:
+                if os.path.exists(archive_tmp): os.remove(archive_tmp)
+            except OSError: pass
         cutoff=now-BACKUP_RETENTION_DAYS*86400
         for pattern in ('maclasse-*.json','maclasse-*.zip'):
             for stale in glob.glob(os.path.join(backup_dir,pattern)):
