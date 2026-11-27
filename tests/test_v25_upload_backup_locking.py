@@ -148,6 +148,13 @@ def test_every_upload_mutation_route_uses_the_shared_lock():
         route = source[start:end]
         assert "with UPLOADS_LOCK:" in route, f"Route non verrouillée : {start_marker}"
 
+    restore_start = source.index("if path=='/api/backup/restore':")
+    restore_end = source.index("if path=='/api/bulletin-pdf':", restore_start)
+    restore_route = source[restore_start:restore_end]
+    assert "with DATA_LOCK, UPLOADS_LOCK:" in restore_route, (
+        "La restauration doit exclure les écritures concurrentes pendant tout le staging."
+    )
+
 
 def test_restore_rolls_back_both_stores_if_database_swap_fails():
     with tempfile.TemporaryDirectory() as temporary:
