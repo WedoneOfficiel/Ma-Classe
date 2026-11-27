@@ -1530,7 +1530,7 @@ def _student_visible_data(data,user,now=None):
     student_fields=('id','first','last','birth','sex','classId','group','email','phone')
     out['students']=[{k:v for k,v in student_record.items() if k in student_fields}]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
-    schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
+    schedule_fields=('id','classId','group','subject','teacherId','teacherIds','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
     # Même périmètre que la messagerie côté serveur : classe, co-enseignement,
     # séances et affectations actives doivent tous apparaître dans les destinataires.
