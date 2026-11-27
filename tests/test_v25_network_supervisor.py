@@ -338,6 +338,67 @@ class NetworkSupervisorTests(unittest.TestCase):
             self.assertEqual(processes[0].signals, [signal.SIGTERM])
             self.assertEqual(processes[1].signals, [signal.SIGTERM])
 
+
+    def test_public_certificate_pair_rotation_keeps_live_listener_until_pair_is_valid(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            app = Path(temp) / "app"
+            data = Path(temp) / "data"
+            root.mkdir()
+            app.mkdir()
+            tls = data / "tls"
+            tls.mkdir(parents=True)
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            next_cert = tls / "next-fullchain.pem"
+            next_key = tls / "next-privkey.pem"
+            write_test_certificate(cert, san_dns=["maclasse.example.test"], private_key_path=key)
+            write_test_certificate(next_cert, san_dns=["maclasse.example.test"], private_key_path=next_key)
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+            processes = []
+
+            class AtomicRenewalWindow:
+                def __init__(self):
+                    self.calls = 0
+
+                def is_set(self):
+                    return False
+
+                def wait(self, _seconds):
+                    self.calls += 1
+                    if self.calls == 1:
+                        # Simulate the deploy hook replacing fullchain before privkey.
+                        cert.write_bytes(next_cert.read_bytes())
+                        return False
+                    if self.calls == 2:
+                        key.write_bytes(next_key.read_bytes())
+                        key.chmod(0o600)
+                        return False
+                    return True
+
+            def spawn(command, **kwargs):
+                process = FakeProcess(command, **kwargs)
+                processes.append(process)
+                return process
+
+            result = supervisor.run_supervisor(
+                root, app, data, "/usr/bin/python3",
+                stop_event=AtomicRenewalWindow(),
+                detect_ip=lambda: "192.168.1.24",
+                spawn=spawn,
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(len(processes), 2)
+            # Old listener is stopped only after the new cert/key pair matches.
+            self.assertEqual(processes[0].signals, [signal.SIGTERM])
+            self.assertEqual(processes[1].signals, [signal.SIGTERM])
+
     def test_rebind_stops_old_listener_before_starting_new_address(self):
         processes = []
         ensured = []
