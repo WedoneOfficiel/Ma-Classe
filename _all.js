@@ -1005,7 +1005,7 @@ function accessibleTeachersForStudent(sid){
   const s=student(sid);if(!s)return[];
   // Un compte élève reçoit du serveur une liste déjà limitée aux enseignants
   // joignables : ne pas la filtrer une seconde fois avec les seuls titulaires.
-  if(authUser?.role==='student')return (db.teachers||[]).filter(t=>t.active!==false&&!!teacherAccount(t.id));
+  if(authUser?.role==='student')return (db.teachers||[]).filter(t=>t.active!==false&&t.hasAccount!==false);
   const classId=String(s.classId||''),group=String(s.group||''),today=iso(new Date());
   const ids=new Set((cls(s.classId)?.teacherIds||[]).map(String));
   (db.schedule||[]).filter(x=>String(x.classId||'')===classId&&(!x.group||String(x.group)===group)).forEach(x=>[x.teacherId,...(x.teacherIds||[])].filter(Boolean).forEach(id=>ids.add(String(id))));
