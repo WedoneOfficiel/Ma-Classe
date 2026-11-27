@@ -3065,10 +3065,13 @@ class Handler(SimpleHTTPRequestHandler):
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
                     if not isinstance(data,dict): return self._json({'error':'Base de données invalide.'},500)
                     accounts=data.get('users') if isinstance(data.get('users'),list) else []
+                    profiles=data.get('teachers') if isinstance(data.get('teachers'),list) else []
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None) if ident else None
-                    if ident and not target: return self._json({'error':'Compte professeur introuvable.'},404)
+                    profile_record=next((x for x in profiles if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None) if ident else None
+                    if ident and not target and not profile_record: return self._json({'error':'Fiche professeur introuvable.'},404)
+                    creating_account=target is None
                     temporary_password=''
-                    if not ident and not password:
+                    if creating_account and not password:
                         temporary_password=secrets.token_urlsafe(8)
                         password=temporary_password
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=ident for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
@@ -3076,9 +3079,13 @@ class Handler(SimpleHTTPRequestHandler):
                     valid_ids={str(x.get('id')) for x in classes if isinstance(x,dict)}
                     assigned={str(x) for x in class_ids}; principal={str(x) for x in pp_ids}
                     if not assigned.issubset(valid_ids) or not principal.issubset(valid_ids): return self._json({'error':'Une classe sélectionnée est introuvable.'},400)
-                    created=not bool(ident)
-                    if created:
-                        ident=secrets.token_urlsafe(18); target={'id':ident,'role':'teacher','active':True,'mustChangePassword':True}; accounts.append(target)
+                    created=creating_account
+                    if creating_account:
+                        if not ident:
+                            ident=secrets.token_urlsafe(18)
+                        target=dict(profile_record or {'id':ident,'role':'teacher','active':True,'mustChangePassword':True})
+                        target.update({'id':ident,'role':'teacher','active':target.get('active') is not False})
+                        accounts.append(target)
                     target.update({'id':ident,'role':'teacher','username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(x.strip() for x in subjects if x.strip())),'profileNotes':notes,'active':target.get('active') is not False})
                     if password:
                         target['passwordHash']=_password_hash(password); target['mustChangePassword']=True
@@ -3091,7 +3098,13 @@ class Handler(SimpleHTTPRequestHandler):
                         if str(record.get('id')) in assigned or str(record.get('id')) in principal: record['teacherIds'].append(ident)
                         if str(record.get('id')) in principal: record['principalTeacherId']=ident
                         elif str(record.get('principalTeacherId') or '')==ident: record['principalTeacherId']=''
-                    data['users']=accounts; data.pop('teachers',None)
+                    profile_fields=('id','teacherId','role','first','last','name','email','phone','subjects','profileNotes','active','scheduleUnavailable')
+                    profile_payload={key:target[key] for key in profile_fields if key in target}
+                    profile_payload['id']=ident; profile_payload['teacherId']=ident; profile_payload['role']='teacher'
+                    profile_index=next((index for index,item in enumerate(profiles) if isinstance(item,dict) and str(item.get('id'))==ident),None)
+                    if profile_index is None: profiles.append(profile_payload)
+                    else: profiles[profile_index]={**profiles[profile_index],**profile_payload}
+                    data['users']=accounts; data['teachers']=profiles
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
