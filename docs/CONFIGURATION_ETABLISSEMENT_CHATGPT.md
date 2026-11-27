@@ -1,74 +1,49 @@
-# Créer un dossier d'établissement Ma Classe avec ChatGPT
+# Configurer un établissement Ma Classe avec ChatGPT
 
-Cette fonction est réservée à la Direction. **Ma Classe ne se connecte jamais à ChatGPT** : la préparation se fait dans une conversation ChatGPT normale, puis le fichier JSON est téléchargé et importé manuellement dans Ma Classe.
+Cette fonction est réservée à la Direction. **Ma Classe ne se connecte jamais à ChatGPT** : aucune API ni aucun transfert automatique n'est utilisé. La Direction prépare les paramètres dans Ma Classe, copie un seul bloc de consignes et de données, le colle dans une conversation ChatGPT normale, puis importe le fichier JSON produit.
 
-Le fichier JSON peut atteindre **25 Mo maximum**. Cette limite est vérifiée dans le navigateur et de nouveau par le serveur sur les routes de prévalidation et d'import confirmé ; les fichiers trop volumineux sont rejetés avant validation.
+## Parcours prévu : aucun fichier à joindre à ChatGPT
 
-## Parcours en quatre étapes
+1. Dans **Paramètres → Configuration de l'établissement**, compléter le formulaire de cadrage.
+2. Cliquer sur **Enregistrer le formulaire dans Ma Classe**. Les réponses sont conservées dans les paramètres ; elles restent disponibles après fermeture de la fenêtre et redémarrage.
+3. Cliquer sur **Copier les consignes et les données pour ChatGPT**, puis coller le texte obtenu dans une conversation ChatGPT. Il contient à la fois le rôle à donner au modèle, les règles de génération, les contraintes du format et les informations saisies dans le formulaire. Aucun modèle, schéma ou fichier d'instructions n'a besoin d'être importé dans ChatGPT.
+4. Demander à ChatGPT de produire **un seul fichier JSON téléchargeable**. Si des informations indispensables manquent, il doit les demander avant de le créer et ne jamais tronquer le résultat.
+5. Dans Ma Classe, choisir ce fichier JSON, examiner le rapport de prévalidation puis confirmer séparément l'import.
 
-1. Dans Ma Classe, ouvrir **Administration → Configuration d'établissement** et télécharger le modèle JSON, le schéma JSON et les instructions. Pour un établissement déjà configuré, exporter également le contexte anonymisé.
-2. Dans ChatGPT, décrire librement l'établissement : classes, niveaux, effectifs, matières, professeurs, spécialités, contraintes, salles et horaires.
-3. Demander à ChatGPT de produire un fichier JSON conforme au format « maclasse-establishment », version 1.
-4. Dans Ma Classe, sélectionner ce JSON, lire le rapport de validation, puis confirmer l'import.
+Le seul fichier que l'utilisateur doit ensuite sélectionner dans Ma Classe est donc le JSON final produit par ChatGPT. Le fichier est limité à 25 Mo et le schéma peut contenir jusqu'à 300 classes, 20 000 fiches élèves, 3 000 enseignants, 2 000 salles et 50 000 créneaux.
 
-Le dossier de contexte exporté par Ma Classe ne contient ni nom d'élève, ni email, ni téléphone, ni identifiant de compte : seulement les effectifs agrégés, les niveaux/groupes, les matières, des libellés de professeurs anonymisés, les salles et les créneaux existants. Ne transmettez pas de données sensibles ou inutiles à ChatGPT. Les identifiants internes et mots de passe créés lors de l'import sont toujours générés localement par Ma Classe.
+## Contenu du formulaire
 
-## Prompt prêt à copier dans ChatGPT
+Le formulaire guide la Direction sur les éléments nécessaires à la création d'un établissement complet, de la petite section à la terminale :
 
-> Tu es un assistant expert en organisation d'établissement scolaire et en construction d'emplois du temps.
->
-> À partir de ma description, prépare une configuration complète importable dans Ma Classe au format JSON « maclasse-establishment », version 1. Si je joins un dossier contexte-etablissement-maclasse-anonymise.json, utilise-le pour éviter les doublons et comprendre les niveaux, effectifs agrégés, affectations, salles et créneaux existants. La V1 est additive : ne génère que les nouvelles classes, nouveaux comptes professeurs et nouvelles salles/cours ; ne prétends pas modifier ou réutiliser les objets existants.
->
-> **Tu dois produire un seul fichier JSON**, sans commentaire ni texte autour du JSON, et respecter exactement le schéma establishment-import.v1.schema.json.
->
-> Commence par identifier les informations qui manquent et pose uniquement les questions indispensables. Ne devine jamais les contraintes importantes : effectifs, matières, volumes horaires, compétences des professeurs, indisponibilités, capacité des salles, équipements, horaires de l'établissement et date de début des cours.
->
-> Le fichier final doit contenir :
-> - toutes les classes, y compris les classes multi-niveaux et leurs groupes ;
-> - une fiche par élève, avec une clé unique, sa classe, son niveau et son groupe ;
-> - les professeurs, les matières qu'ils peuvent enseigner et les classes qui leur sont attribuées ;
-> - un professeur principal par classe lorsque cela est demandé ;
-> - les salles, leur capacité, leur type, leurs équipements et leurs indisponibilités ;
-> - tous les cours, leurs durées, jours, heures, classes/groupes, professeurs, salles et récurrences ;
-> - les volumes horaires par matière dans subjectRequirements, lorsqu'ils sont fournis.
->
-> **Emploi du temps :**
-> - aucun professeur ne peut avoir deux cours simultanés ;
-> - une classe ou un même groupe ne peut pas avoir deux cours simultanés ;
-> - une salle ne peut pas être utilisée deux fois simultanément ;
-> - chaque professeur doit être affecté uniquement aux matières qu'il enseigne et aux classes qui lui sont attribuées ;
-> - les volumes horaires demandés doivent être respectés ;
-> - les salles doivent être suffisamment grandes et posséder les équipements requis ;
-> - respecter les indisponibilités déclarées ;
-> - éviter les trous, les journées inutilement longues et les matières mal réparties.
->
-> Les jours sont monday, tuesday, wednesday, thursday ou friday (ou les entiers 0 à 4, lundi = 0). Les heures suivent HH:MM. startDate est la date à partir de laquelle le cours peut commencer ; Ma Classe calcule la première occurrence correspondant au jour demandé. Les récurrences possibles sont weekly, biweekly, triweekly, custom (avec intervalWeeks) et once.
->
-> N'invente jamais un professeur, une salle ou un groupe dans une affectation sans le déclarer dans sa rubrique. Chaque key doit être unique dans sa rubrique et toutes les références doivent exister. Pour une classe à plusieurs niveaux, indique le niveau de chaque élève ; Ma Classe créera un groupe de niveau si nécessaire.
->
-> Utilise des noms fictifs si je demande un établissement de démonstration. Ne crée aucun mot de passe, compte technique, identifiant interne Ma Classe ni champ non prévu par le schéma : Ma Classe générera les identifiants et mots de passe provisoires lors de l'import.
->
-> Avant de produire le fichier, contrôle le nombre d'élèves par classe, les volumes horaires, les conflits de professeurs/classes/salles, les groupes, les capacités et les trous. Si une contrainte est impossible à satisfaire, signale-le et demande une décision au lieu de produire un planning mensonger.
+- nom de l'établissement et structure des classes : niveau, nombre de classes, nom des classes et effectifs prévus ;
+- création ou non des fiches élèves, avec des pseudonymes générés ;
+- nombre de professeurs et répartition facultative par matières/classes ;
+- création ou non des profils et comptes professeurs ;
+- matières, volumes horaires et éventuels groupes ;
+- nombre de salles, capacités, types, équipements et indisponibilités ;
+- génération ou non des emplois du temps, jours, horaires et contraintes d'organisation.
 
-## Comment lire le résultat dans Ma Classe
+Les consignes copiées précisent les relations entre ces données. Elles demandent de vérifier la cohérence de tous les emplois du temps simultanément : aucun chevauchement de classe/groupe, d'enseignant ou de salle, respect des compétences, affectations, capacités, équipements, indisponibilités et volumes horaires.
 
-Le contexte anonymisé sert uniquement à informer ChatGPT. La V1 de l'import est additive : elle crée de nouvelles classes, de nouveaux comptes professeurs, de nouvelles salles et leurs cours ; elle ne modifie pas les classes, comptes, salles ou cours déjà présents et ne réutilise pas leurs identifiants. Le prompt doit donc demander uniquement les nouveaux objets à créer.
+## Comptes professeurs et fiches élèves facultatifs
 
-Le premier passage est une prévisualisation : il ne modifie aucune donnée. Ma Classe signale les erreurs bloquantes, les avertissements et les indicateurs de trous dans les emplois du temps. L'import n'est possible qu'en l'absence d'erreur bloquante.
+Le choix **Créer les profils et comptes professeurs ? — Non** signifie que ChatGPT doit retourner `createTeacherAccounts: false`, une liste `teachers: []`, et ne renseigner aucune affectation de professeur dans les classes ou les créneaux. Le moteur d'import n'ajoute alors aucun compte professeur ; les profils et affectations pourront être créés ensuite dans Ma Classe. Par défaut, les anciens fichiers qui ne contiennent pas cette propriété conservent le comportement historique et créent les comptes professeurs.
 
-À la confirmation, Ma Classe crée les classes, les élèves, les profils et comptes professeurs, les salles et les créneaux. Chaque compte professeur reçoit un identifiant et un mot de passe provisoire générés localement ; le mot de passe n'est affiché qu'une fois. Aucun compte élève n'est créé automatiquement.
+Le choix **Créer les fiches élèves ? — Non** signifie que ChatGPT retourne `createStudentProfiles: false` et `students: []`. Les effectifs prévus restent indiqués au niveau de chaque classe ; ils servent notamment à contrôler la capacité des salles. Les fiches nominatives seront complétées ensuite dans Ma Classe. Par défaut, les anciens fichiers continuent de créer les fiches élèves.
 
-L'import ajoute des éléments et ne remplace jamais silencieusement les classes ou les salles déjà présentes. Une sauvegarde de sécurité est créée avant toute écriture.
+Lorsque les fiches élèves sont demandées, ChatGPT doit créer une ligne par élève avec des pseudonymes stables, par exemple « Élève 6A-001 ». Il ne doit jamais inventer ou utiliser l'identité réelle d'un élève ou d'un personnel.
 
+## Confidentialité
 
-## Générateur guidé — parcours actuel en trois étapes
+Ne saisis et ne transmets jamais à ChatGPT de vrais noms ou prénoms d'élèves/personnels, dates de naissance, emails, téléphones, identifiants de connexion, mots de passe, commentaires individuels ou autres données personnelles. Le formulaire doit utiliser des effectifs agrégés et des pseudonymes. Les identités réelles et coordonnées sont ajoutées ensuite directement dans Ma Classe.
 
-1. **Décrire la structure** : télécharger le modèle JSON, le schéma, les instructions, et éventuellement le contexte structurel anonymisé exporté par Ma Classe.
-2. **Générer le JSON manuellement dans ChatGPT** : joindre uniquement ces éléments structurels, indiquer les classes, niveaux, groupes, effectifs agrégés, matières, volumes horaires, contraintes de salles et disponibilités. Aucun transfert automatique ni appel d'API n'existe.
-3. **Vérifier et importer** : sélectionner le fichier dans Ma Classe, lire les erreurs et avertissements de la prévalidation, puis confirmer séparément l'import. Aucune modification n'est écrite pendant la prévisualisation.
+Les mots de passe provisoires des comptes professeurs, lorsqu'ils sont demandés, sont générés et hachés localement au moment de l'import. ChatGPT ne doit produire aucun mot de passe ni identifiant interne Ma Classe.
 
-### Confidentialité des personnes
+## Prévalidation et import
 
-Ne transmettez jamais à ChatGPT de vrais noms ou prénoms d'élèves/personnels, dates de naissance, emails, téléphones, identifiants de connexion, mots de passe, commentaires individuels ou autres données sensibles. Utilisez des pseudonymes stables tels que « Élève 6A-001 » et « Professeur 01 », avec des effectifs agrégés. Les identités réelles et coordonnées se complètent ensuite localement dans Ma Classe.
+Le fichier JSON est envoyé au validateur de Ma Classe avant toute écriture. Le rapport affiche le nombre de classes, fiches élèves, professeurs, salles et créneaux, ainsi que les erreurs bloquantes, avertissements et indicateurs de trous dans les emplois du temps. En présence d'une erreur bloquante, l'import reste impossible et aucune donnée n'est modifiée.
 
-Le contexte exporté par Ma Classe est structurel et pseudonymisé : il ne contient ni noms ni coordonnées d'élèves, et pseudonymise les professeurs. Les comptes et mots de passe provisoires des professeurs sont créés localement au moment de l'import.
+À la confirmation, Ma Classe crée une sauvegarde de sécurité puis ajoute les éléments validés. L'import est additif : il ne remplace jamais silencieusement les classes, salles ou cours déjà présents. Les identifiants internes et les mots de passe provisoires sont générés localement. Les identifiants des comptes professeurs, lorsqu'ils existent, ne sont affichés qu'une seule fois après l'import.
+
+Ma Classe ne peut pas garantir qu'un grand emploi du temps sera optimisé par ChatGPT sans arbitrage humain. Le contrôle serveur bloque les incohérences détectables ; la Direction doit aussi examiner le rapport, les contraintes réelles et les éventuels avertissements avant confirmation.
