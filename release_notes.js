@@ -1,6 +1,6 @@
 (function(global){
 'use strict';
-var currentVersion='',historyPromise=null,attemptedAccounts=Object.create(null),showingAutomatic=false;
+var currentVersion='',historyPromise=null,attemptedAccounts=Object.create(null),showingAutomatic=false,pendingAutomaticPayload=null;
 function escapeHtml(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function markerFromLine(line){
  var value=String(line||'').trim();if(!value)return null;
