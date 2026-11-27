@@ -32,6 +32,7 @@ REQUIRED_RELEASE_FILES = {
     "Installer-Mise-A-Jour-Directe-MaClasse-macOS.sh",
     "Lancer-MaClasse.command",
     "Lancer-MaClasse-Reseau.command",
+    "Lancer-MaClasse-Reseau.sh",
     "Mettre-A-Jour-MaClasse-Linux.sh",
     "Mettre-A-Jour-MaClasse.command",
     "Installer-Service-MaClasse-macOS.sh",
@@ -78,6 +79,18 @@ class ReleasePackageContentsTests(unittest.TestCase):
                 "The generated git archive must not contain a corrupt ZIP member.",
             )
 
+        root_launchers = {
+            item.name
+            for item in ROOT.iterdir()
+            if item.is_file() and item.suffix.lower() in {".sh", ".command"}
+        }
+        missing_launchers = sorted(root_launchers - names)
+        self.assertFalse(
+            missing_launchers,
+            "The release archive must include every root-level launcher: "
+            + ", ".join(missing_launchers),
+        )
+
     def test_release_archive_never_contains_local_data_or_private_credentials(self):
         process = subprocess.run(
             ["git", "archive", "--format=zip", "HEAD"],
@@ -99,7 +112,7 @@ class ReleasePackageContentsTests(unittest.TestCase):
             "server.key",
         }
         forbidden_suffixes = {
-            ".sqlite", ".sqlite3", ".db", ".pem", ".p12", ".pfx",
+            ".sqlite", ".sqlite3", ".db", ".pem", ".p12", ".pfx", ".key",
         }
         for name in sorted(names):
             parts = Path(name).parts

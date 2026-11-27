@@ -9,7 +9,7 @@ MaClasse est une application web de gestion scolaire destinée à un établissem
 | Dernière release GitHub publiée | **V25.1.1** (`v25.1.1`), publiée le 26/11/2026 |
 | Candidat suivant | **V25.2.0**, PR #20 ouverte ; non fusionnée et non publiée |
 | CI du candidat | Run #2088 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel (3/3) |
-| Branche `main` | **V25.1.1**, commit `b5cc07d` |
+| Branche `main` | **V25.1.1**, HEAD `710c184` (commit documentaire après le commit de release `b5cc07d`) |
 | Publication | Workflow #4 réussi : validation Linux, macOS Apple Silicon/launchd, Firefox, archive, manifeste et signature |
 | Installation de référence | Premier passage depuis V25.0.23 effectué sur macOS ; fonctionnement confirmé par l'utilisateur |
 
@@ -37,7 +37,7 @@ La signature Ed25519 du manifeste est implémentée côté client et dans le wor
 
 Le candidat V25.2.0 harmonise les règles de publication des évaluations et bulletins, les parcours « Travail à faire » et vie scolaire, les affectations, les salles et les créneaux partagés. Il ajoute un générateur manuel de configuration d'établissement (JSON jusqu'à 25 Mo), un écran des nouveautés par compte et un journal historique. Les sources historiques et la clé publique Ed25519 nécessaires à ces fonctions sont contrôlées dans le paquet de mise à jour.
 
-La CI #2088 passe sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). La PR reste candidate : la recette sur une copie représentative des données, les vrais comptes et les appareils clients est nécessaire avant fusion et publication. Voir les [notes candidates V25.2.0](docs/releases/v25.2.0.md), le [guide du générateur](docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md) et le [registre des anomalies](REGISTRE_BUGS_V25.md).
+La CI #2088 passe sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3) ; le contrôle de sécurité du ZIP (absence de données locales et clefs privées) passe également dans la CI #2091. La PR reste candidate : la recette sur une copie représentative des données, les vrais comptes et les appareils clients est nécessaire avant fusion et publication. Voir les [notes candidates V25.2.0](docs/releases/v25.2.0.md), le [guide du générateur](docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md) et le [registre des anomalies](REGISTRE_BUGS_V25.md).
 
 ## Installation et démarrage
 
