@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 27/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; la tête `c0d8d34e682751188b460a0d71ebfd2ad4147395` a passé le workflow [#2072 / run 45915519830](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45915519830), **3/3 jobs réussis** : installateur et suites Linux, installateur Apple Silicon avec vrai `launchd`, parcours Firefox réel. La passe compte 109 fichiers de tests (67 JavaScript, 42 Python), dont 860 invariants intermodules et les nouveaux contrôles d'import de salles/groupes. Les captures Firefox ont été publiées comme artefact et inspectées. La recette de l'installation physique, des vrais comptes et des appareils clients reste distincte et nécessaire.
+> **État courant — 27/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; la tête `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23` a passé le workflow [#2079 / run 45916061332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45916061332), **3/3 jobs réussis** : installateur et suites Linux, installateur Apple Silicon avec vrai `launchd`, parcours Firefox réel. L'arbre de tests contient 112 fichiers (68 JavaScript, 44 Python), dont 860 invariants intermodules ; les nouveaux contrôles portent sur les capacités d'import et la composition des archives de release. Les captures Firefox, y compris le bas du générateur après défilement, ont été publiées et inspectées. La recette de l'installation physique, des vrais comptes et des appareils clients reste distincte et nécessaire.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -926,7 +926,7 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 
 **Branche :** `fix/v25.1.2-cross-module-consistency`  
 **PR :** [#20 — V25.2.0](https://github.com/WedoneOfficiel/Ma-Classe/pull/20)  
-**Tête validée automatiquement :** `c0d8d34e682751188b460a0d71ebfd2ad4147395`
+**Tête validée automatiquement :** `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23`
 
 ### Défauts supplémentaires identifiés et corrigés
 
@@ -940,7 +940,7 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 
 ### Preuves de validation
 
-- Workflow final [#2072 / run 45915519830](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45915519830), commit `c0d8d34e682751188b460a0d71ebfd2ad4147395) : **Linux, macOS Apple Silicon et Firefox réel réussis (3/3)**.
+- Workflow final [#2079 / run 45916061332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45916061332), commit `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23` : **Linux, macOS Apple Silicon et Firefox réel réussis (3/3)**.
 - Linux : installateur réel, vérification JavaScript, compilation Python et tous les tests JavaScript/Python.
 - macOS : installateur Apple Silicon, suites JavaScript/Python et véritable démarrage du service `launchd`.
 - Firefox : scénarios Direction, Professeur et Élève, journal des versions, générateur et géométrie des Paramètres sur desktop/mobile ; captures des modules en thèmes clair et sombre.
@@ -949,7 +949,7 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 
 ### Vérification complémentaire de l'archive de release
 
-Un test supplémentaire vérifie que le workflow officiel utilise `git archive` sur le commit validé et que le ZIP généré contient le runtime, la note V25.2.0, l'historique consolidé et les trois sources historiques utilisées par le journal. Ce contrôle sera intégré à la prochaine exécution CI sur la nouvelle tête.
+Un test supplémentaire vérifie que le workflow officiel utilise `git archive` sur le commit validé et que le ZIP généré contient le runtime, la note V25.2.0, l'historique consolidé et les trois sources historiques utilisées par le journal. Le contrôle a passé la CI #2079 : l'archive générée contient le runtime, les notes et les trois sources historiques requises.
 
 ### Limites avant publication
 
