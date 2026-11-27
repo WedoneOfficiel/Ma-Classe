@@ -12,6 +12,8 @@ Cette fonction est réservée à la Direction. **Ma Classe ne se connecte jamais
 
 Le seul fichier que l'utilisateur doit ensuite sélectionner dans Ma Classe est donc le JSON final produit par ChatGPT. Le fichier est limité à 25 Mo et le schéma peut contenir jusqu'à 300 classes, 20 000 fiches élèves, 3 000 enseignants, 2 000 salles et 50 000 créneaux.
 
+Les champs **Nombre de professeurs à prévoir** et **Nombre de salles à prévoir** sont facultatifs : un champ laissé vide signifie « non précisé », pas zéro. Lorsqu'un nombre est saisi, les consignes demandent à ChatGPT de créer exactement ce nombre de profils ou de salles. Si le nombre est indispensable mais absent du formulaire et impossible à déduire sans inventer, ChatGPT doit demander une précision avant de générer le JSON.
+
 ## Contenu du formulaire
 
 Le formulaire guide la Direction sur les éléments nécessaires à la création d'un établissement complet, de la petite section à la terminale :
