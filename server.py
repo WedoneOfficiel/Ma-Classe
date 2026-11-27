@@ -2637,6 +2637,12 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(visible,headers={'X-MaClasse-Revision':revision})
         if not self._safe_static_path(path):
             return self.send_error(404)
+        if path.startswith('/data/uploads/'):
+            # Keep the attachment directory stable until SimpleHTTPRequestHandler
+            # has opened and streamed the file. A restore must wait for active
+            # downloads instead of swapping uploads between path resolution/open.
+            with UPLOADS_LOCK:
+                return super().do_GET()
         return super().do_GET()
     def do_POST(self):
         if not self._require_local_origin(): return
