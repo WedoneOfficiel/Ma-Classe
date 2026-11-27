@@ -102,7 +102,7 @@ const roomActionContext={
  },
  FormData:function(){return Object.entries({action:'room',scheduleId:'s1',capacity:'0',equipment:'vidéoprojecteur'})[Symbol.iterator]()},
  sameId:(a,b)=>String(a??'').trim()===String(b??'').trim(),
- cls(id){return this.db.classes.find(x=>x.id===id)},
+ cls(id){return {name:id==='6B'?'6e B':'6e A'}},
  DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
  plannerClassStudentCount(){return 26},
  plannerRoomOptions(...args){capturedPlannerCall=args;return [{name:'Salle 301',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]},
