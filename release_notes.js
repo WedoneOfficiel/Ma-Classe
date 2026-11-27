@@ -43,7 +43,7 @@ function versionCompare(a,b){
 function parseHistory(docs){
  var all=[];
  (docs||[]).forEach(function(d){parseDocument(d.markdown,d.path,d.label).forEach(function(e){
-  e.date=dateFromText(e.title)||dateFromText(e.content);
+  e.date=dateFromText(e.title);
   if(e.version){var old=all.find(function(x){return x.version===e.version});if(old){if(e.content&&old.content.indexOf(e.content)<0)old.content+='\n\n#### Autre trace conservée : '+e.sourceFile+'\n\n'+e.content;if(e.sourceFile&&old.sourceFile.indexOf(e.sourceFile)<0)old.sourceFile+=' · '+e.sourceFile;if(!old.date&&e.date)old.date=e.date}else all.push(e)}
   else if(e.content)all.push(e);
  })});
