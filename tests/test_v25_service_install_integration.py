@@ -22,6 +22,10 @@ class ServiceInstallIntegrationTests(unittest.TestCase):
             fakebin = base / "bin"
             (program / ".venv" / "bin").mkdir(parents=True)
             (program / "data").mkdir(parents=True)
+            tls = program / "data" / "tls"
+            tls.mkdir()
+            for name in ("server.crt", "server.key", "ca.crt"):
+                (tls / name).write_text("fixture TLS placeholder", encoding="utf-8")
             home.mkdir()
             fakebin.mkdir()
             (program / ".venv" / "bin" / "python").write_text("#!/bin/sh\n", encoding="utf-8")
