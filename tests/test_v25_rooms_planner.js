@@ -64,39 +64,83 @@ assert(savedRoom&&savedRoom.name==='Nouvelle salle de test','Une salle enregistr
 const savedRoomOptions=Array.from(context.plannerRoomOptions(30,['vidéoprojecteur'],1,'08:30','09:30')).map(x=>x.name);
 assert(savedRoomOptions.includes('Nouvelle salle de test'),'Une salle créée dans Paramètres doit être disponible dans la recherche Planner si elle satisfait les critères.');
 
+const openPlannerUi=sliceBetween(app,'function openPlanner(){','function runPlanner(e)');
+const plannerUiContext={
+ db:{classes:[{id:'6A',name:'6e A'}],teachers:[{id:'t1',first:'Élodie',last:'Martin'}],schedule:[]},
+ DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
+ esc:roomTestEsc,teacherName:t=>t.first+' '+t.last,
+ plannerCourseOptions(){return [{slot:{id:'s1'},label:'Mardi · 09:00–10:00 · 6e A · SES · Sans salle'}]},
+ plannerToggleAction(){},openModal(title,body){capturedRoomModal={title,body}}
+};
+vm.createContext(plannerUiContext);
+vm.runInContext(openPlannerUi,plannerUiContext);
+plannerUiContext.openPlanner();
+assert(capturedRoomModal.body.includes('Trouver un créneau pour un nouveau cours'),'Le premier parcours doit clairement créer un nouveau cours.');
+assert(capturedRoomModal.body.includes('Trouver ou changer la salle d’un cours existant'),'Le second parcours doit clairement concerner un cours déjà inscrit.');
+assert(capturedRoomModal.body.includes('name="scheduleId"'),'Le choix de salle doit demander de sélectionner un cours existant.');
+assert(!capturedRoomModal.body.includes('Préparer un cours'),'L’action redondante Préparer un cours doit disparaître.');
+
 const runPlannerUi=sliceBetween(app,'function runPlanner(e)','function plannerCreateDraft(');
-assert(runPlannerUi.includes('Choisir cette salle'),'Chaque salle trouvée doit proposer une action de sélection, pas seulement une ligne de texte.');
-assert(runPlannerUi.includes('plannerCreateDraft('),'La sélection d’une salle doit ouvrir la préparation du cours.');
-let capturedRoomModal=null;
-const roomTestEsc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const roomFinderContext={
- FormData:function(){return Object.entries({action:'room',capacity:'20',equipment:'vidéoprojecteur',day:'0',time:'14:00',duration:'60',classId:'6A',teacherId:'t1',subject:'SES'})[Symbol.iterator]()},
+assert(runPlannerUi.includes('plannerSetExistingRoom('),'Le remplacement de salle doit ouvrir le créneau existant.');
+assert(runPlannerUi.includes('plannerCreateDraft('),'Le parcours de création doit ouvrir un nouveau cours avec la salle choisie.');
+let capturedPlannerCall=null,openedScheduleEdit=null;
+const roomActionContext={
+ db:{
+  classes:[{id:'6A',name:'6e A'},{id:'6B',name:'6e B'}],
+  students:Array.from({length:26},(_,i)=>({id:'stu'+i,classId:'6A'})),
+  schedule:[
+   {id:'s1',sharedSlotId:'shared-1',classId:'6A',day:1,time:'09:00',endTime:'10:00',subject:'SES',teacherId:'t1',teacherIds:['t1'],room:'A101'},
+   {id:'s2',sharedSlotId:'shared-1',classId:'6B',day:1,time:'09:00',endTime:'10:00',subject:'SES',teacherId:'t1',teacherIds:['t1'],room:'A101'},
+   {id:'other',classId:'5A',day:1,time:'09:00',endTime:'10:00',subject:'Histoire',teacherId:'t2',room:'B204'}
+  ]
+ },
+ FormData:function(){return Object.entries({action:'room',scheduleId:'s1',capacity:'0',equipment:'vidéoprojecteur'})[Symbol.iterator]()},
+ sameId:(a,b)=>String(a??'').trim()===String(b??'').trim(),
+ cls(id){return this.db.classes.find(x=>x.id===id)},
+ DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
+ plannerClassStudentCount(ids){return this.db.students.filter(s=>ids.includes(s.classId)).length},
+ plannerRoomOptions(...args){capturedPlannerCall=args;return [{name:'Salle 301',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]},
+ esc:roomTestEsc,
+ jsArg(value){return roomTestEsc(JSON.stringify(String(value??'')))},
+ openSchedule(...args){openedScheduleEdit=args},
+ openModal(title,body){capturedRoomModal={title,body}},
+ toast(message){throw Error(message)}
+};
+vm.createContext(roomActionContext);
+vm.runInContext(runPlannerUi,roomActionContext);
+roomActionContext.runPlanner({preventDefault(){},target:{}});
+assert.strictEqual(capturedPlannerCall[0],26,'La recherche de remplacement doit reprendre l’effectif réel du ou des cours.');
+assert.strictEqual(capturedPlannerCall[2],1,'La recherche de remplacement doit conserver le jour du cours.');
+assert.strictEqual(capturedPlannerCall[3],'09:00','La recherche de remplacement doit conserver l’heure de début.');
+assert.strictEqual(capturedPlannerCall[4],'10:00','La recherche de remplacement doit conserver l’heure de fin.');
+assert.deepStrictEqual(Array.from(capturedPlannerCall[5]),['s1','s2'],'Les créneaux existants du cours partagé doivent être ignorés, pas considérés comme des conflits.');
+assert(capturedRoomModal.title.includes('Salles disponibles pour ce cours')&&capturedRoomModal.body.includes('SES'),'La recherche doit présenter les informations du cours sélectionné, sans demander un nouvel intitulé.');
+assert(capturedRoomModal.body.includes('plannerSetExistingRoom(&quot;s1&quot;,&quot;Salle 301&quot;)'),'Le résultat doit proposer le remplacement de salle sur le cours sélectionné.');
+roomActionContext.plannerSetExistingRoom('s1','Salle 301');
+assert.deepStrictEqual(openedScheduleEdit,['s1',null,'Salle 301'],'Choisir une salle doit ouvrir le formulaire de modification du cours existant avec sa nouvelle salle.');
+
+let newCourseModal=null,newCourseRoomArgs=null;
+const newCourseContext={
+ db:{classes:[{id:'6A',name:'6e A'}],students:Array.from({length:26},(_,i)=>({id:'stu'+i,classId:'6A'})),schedule:[]},
+ FormData:function(){return Object.entries({action:'find',classId:'6A',subject:'SES',teacherId:'t1',day:'0',time:'14:00',duration:'60',capacity:'0',equipment:'vidéoprojecteur'})[Symbol.iterator]()},
  mins(value){const p=String(value||'0:0').split(':').map(Number);return (p[0]||0)*60+(p[1]||0)},
- plannerRoomOptions(){return [{name:'B204',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]},
- plannerFindSlots(){return []},
+ plannerClassStudentCount(){return 26},
+ plannerFindSlots(){return [{day:1,time:'09:00',endTime:'10:00'}]},
+ plannerRoomOptions(...args){newCourseRoomArgs=args;return [{name:'Labo',type:'science',capacity:30,equipment:['vidéoprojecteur']}]},
  DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
  esc:roomTestEsc,
  jsArg(value){return roomTestEsc(JSON.stringify(String(value??'')))},
- openModal(title,body){capturedRoomModal={title,body}}
+ openModal(title,body){newCourseModal={title,body}},
+ toast(message){throw Error(message)}
 };
-vm.createContext(roomFinderContext);
-vm.runInContext(runPlannerUi,roomFinderContext);
-roomFinderContext.runPlanner({preventDefault(){},target:{}});
-assert(capturedRoomModal.body.includes('B204')&&capturedRoomModal.body.includes('Choisir cette salle'),'Le résultat doit afficher la salle créée et un bouton de sélection.');
-assert(capturedRoomModal.body.includes('plannerCreateDraft(&quot;0&quot;,&quot;14:00&quot;,&quot;15:00&quot;,&quot;6A&quot;,&quot;t1&quot;,&quot;SES&quot;,&quot;B204&quot;)'),'Le bouton doit transmettre le créneau, la classe, le professeur, la matière et la salle dans un attribut HTML correctement échappé.');
-const draftStart=app.indexOf('function plannerCreateDraft('),draftEnd=app.indexOf('\n',draftStart);
-assert(draftStart>=0&&draftEnd>draftStart,'Le passage du Planner au formulaire de cours doit exister.');
-let openedPlannerDraft=null;
-const draftWindow={};
-const draftContext={window:draftWindow,selectedWeek:new Date('2026-11-23T12:00:00'),iso(){return '2026-11-23'},closeModal(){},openSchedule(){openedPlannerDraft=draftWindow._scheduleDraft}};
-vm.createContext(draftContext);
-vm.runInContext(app.slice(draftStart,draftEnd),draftContext);
-draftContext.plannerCreateDraft(0,'14:00','15:00','6A','t1','SES','B204');
-assert.deepStrictEqual(JSON.parse(JSON.stringify(openedPlannerDraft)),{
- day:0,time:'14:00',endTime:'15:00',classId:'6A',classIds:['6A'],teacherId:'t1',teacherIds:['t1'],
- subject:'SES',room:'B204',recurrence:'weekly',startDate:'2026-11-23',endDate:'',exceptions:[]
-},'Le formulaire doit recevoir les vrais noms de champs classIds/teacherIds et la salle choisie.');
-
+vm.createContext(newCourseContext);
+vm.runInContext(runPlannerUi,newCourseContext);
+newCourseContext.runPlanner({preventDefault(){},target:{}});
+assert.strictEqual(newCourseRoomArgs[0],26,'Le nouveau cours doit utiliser l’effectif de sa classe pour filtrer les salles.');
+assert.strictEqual(newCourseRoomArgs[2],1,'Le moteur doit chercher les salles sur chacun des créneaux proposés.');
+assert(newCourseModal.title.includes('Créneaux et salles compatibles'),'La recherche d’un nouveau créneau doit aussi présenter les salles.');
+assert(newCourseModal.body.includes('Choisir Labo'),'Chaque créneau proposé doit offrir un choix de salle.');
+assert(newCourseModal.body.includes('plannerCreateDraft(&quot;1&quot;,&quot;09:00&quot;,&quot;10:00&quot;,&quot;6A&quot;,&quot;t1&quot;,&quot;SES&quot;,&quot;Labo&quot;)'),'La création doit transmettre le créneau, la classe, le professeur, la matière et la salle au nouveau formulaire.');
 assert(app.includes('scheduleAvailabilityConflicts(c)'),'La validation du formulaire de cours doit aussi vérifier les indisponibilités.');
 assert(app.includes('slot.room=name;slot.roomId=roomId'),'Renommer une salle doit préserver les liens de ses créneaux.');
 assert(app.includes("confirmModal(message,'Supprimer la salle'"),'La suppression d’une salle liée doit demander confirmation.');
