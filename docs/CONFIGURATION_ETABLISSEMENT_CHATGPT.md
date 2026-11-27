@@ -28,7 +28,7 @@ Les consignes copiées précisent les relations entre ces données. Elles demand
 
 ## Comptes professeurs et fiches élèves facultatifs
 
-Le choix **Créer les profils et comptes professeurs ? — Non** signifie que ChatGPT doit retourner `createTeacherAccounts: false`, une liste `teachers: []`, et ne renseigner aucune affectation de professeur dans les classes ou les créneaux. Le moteur d'import n'ajoute alors aucun compte professeur ; les profils et affectations pourront être créés ensuite dans Ma Classe. Par défaut, les anciens fichiers qui ne contiennent pas cette propriété conservent le comportement historique et créent les comptes professeurs.
+Le choix **Créer les comptes de connexion des professeurs ? — Non** signifie que ChatGPT doit retourner `createTeacherAccounts: false`, mais doit toujours renseigner tous les professeurs pseudonymisés dans `teachers` et toutes leurs affectations dans les classes, les responsabilités de professeur principal et les créneaux. Ma Classe crée et conserve alors les fiches professeurs ainsi que les emplois du temps, sans ajouter d'utilisateur de connexion ni de mot de passe. La Direction peut ouvrir ultérieurement un compte depuis la fiche du professeur. Par défaut, les anciens fichiers qui ne contiennent pas cette propriété conservent le comportement historique et créent aussi les comptes professeurs.
 
 Le choix **Créer les fiches élèves ? — Non** signifie que ChatGPT retourne `createStudentProfiles: false` et `students: []`. Les effectifs prévus restent indiqués au niveau de chaque classe ; ils servent notamment à contrôler la capacité des salles. Les fiches nominatives seront complétées ensuite dans Ma Classe. Par défaut, les anciens fichiers continuent de créer les fiches élèves.
 
@@ -38,7 +38,7 @@ Lorsque les fiches élèves sont demandées, ChatGPT doit créer une ligne par �
 
 Ne saisis et ne transmets jamais à ChatGPT de vrais noms ou prénoms d'élèves/personnels, dates de naissance, emails, téléphones, identifiants de connexion, mots de passe, commentaires individuels ou autres données personnelles. Le formulaire doit utiliser des effectifs agrégés et des pseudonymes. Les identités réelles et coordonnées sont ajoutées ensuite directement dans Ma Classe.
 
-Les mots de passe provisoires des comptes professeurs, lorsqu'ils sont demandés, sont générés et hachés localement au moment de l'import. ChatGPT ne doit produire aucun mot de passe ni identifiant interne Ma Classe.
+Les profils professeurs sont stockés séparément des comptes de connexion. Lorsqu'un compte est demandé, les mots de passe provisoires sont générés et hachés localement au moment de l'import. ChatGPT ne doit produire aucun mot de passe ni identifiant interne Ma Classe.
 
 ## Prévalidation et import
 
