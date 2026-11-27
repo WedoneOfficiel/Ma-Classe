@@ -1,6 +1,7 @@
 """HTTPS LAN guard and secure-cookie integration test for MaClasse V25."""
 import json, os, shutil, socket, ssl, subprocess, sys, tempfile, time, urllib.request, urllib.error
 from pathlib import Path
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -22,7 +23,7 @@ def request(url, method='GET', payload=None, origin=None, context=None, cookie=N
     if host_header is not None:
         headers['Host']=host_header
     req=urllib.request.Request(url,data=body,headers=headers,method=method)
-    opener=urllib.request.build_opener(urllib.request.HTTPSHandler(context=context)) if context else urllib.request.build_opener()
+    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),urllib.request.HTTPSHandler(context=context)) if context else urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
         with opener.open(req,timeout=4) as response:
             return response.status,response.headers,response.read()
@@ -32,9 +33,7 @@ def request(url, method='GET', payload=None, origin=None, context=None, cookie=N
 
 def create_dns_certificate(certificate_path, key_path, hostname):
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, hostname)
-    ])
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, hostname)])
     now = datetime.now(timezone.utc)
     certificate = (
         x509.CertificateBuilder()
@@ -44,6 +43,7 @@ def create_dns_certificate(certificate_path, key_path, hostname):
         .serial_number(x509.random_serial_number())
         .not_valid_before((now - timedelta(days=1)).replace(tzinfo=None))
         .not_valid_after((now + timedelta(days=30)).replace(tzinfo=None))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
         .add_extension(
             x509.SubjectAlternativeName([x509.DNSName(hostname)]),
             critical=False,
@@ -63,14 +63,14 @@ def run_public_dns_hostname_mode():
     temporary = Path(tempfile.mkdtemp(prefix='maclasse-v25-public-tls-'))
     app = temporary / 'app'
     shutil.copytree(SOURCE, app)
-    certificate = temporary / 'fullchain.pem'
+    certificate = temporary / 'trusted-test-root.pem'
     private_key = temporary / 'privkey.pem'
     hostname = 'maclasse.example.test'
     create_dns_certificate(certificate, private_key, hostname)
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
         port = sock.getsockname()[1]
-    url = f'https://127.0.0.1:{port}'
+    url = f'https://{hostname}:{port}'
     dns_host = f'{hostname}:{port}'
     env = os.environ.copy()
     env.update({
@@ -84,47 +84,56 @@ def run_public_dns_hostname_mode():
         ['python3', 'server.py'], cwd=app, env=env,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
-    context = ssl._create_unverified_context()
+    context = ssl.create_default_context(cafile=str(certificate))
+    assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+    original_getaddrinfo = socket.getaddrinfo
+
+    def resolve_test_dns(host, port_value, *args, **kwargs):
+        if host == hostname:
+            host = '127.0.0.1'
+        return original_getaddrinfo(host, port_value, *args, **kwargs)
+
     try:
         ready = False
-        for _ in range(60):
-            try:
-                status, _, _ = request(
-                    url + '/api/auth/setup-status',
-                    context=context,
-                    host_header=dns_host,
-                )
-                if status == 200:
-                    ready = True
-                    break
-            except Exception:
-                time.sleep(0.1)
-        assert ready, 'TLS listener did not accept the configured DNS Host.'
+        with patch('socket.getaddrinfo', side_effect=resolve_test_dns):
+            for _ in range(60):
+                try:
+                    status, _, _ = request(
+                        url + '/api/auth/setup-status',
+                        context=context,
+                        host_header=dns_host,
+                    )
+                    if status == 200:
+                        ready = True
+                        break
+                except Exception:
+                    time.sleep(0.1)
+            assert ready, 'TLS listener did not present a trusted certificate for the configured DNS hostname.'
 
-        status, _, body = request(
-            url + '/api/auth/setup',
-            method='POST',
-            payload={
-                'first': 'Test', 'last': 'DNS',
-                'username': 'dns-admin',
-                'password': 'MotDePasseDNSLongEtSolide!',
-            },
-            origin=f'https://{dns_host}',
-            context=context,
-            host_header=dns_host,
-        )
-        assert status == 201, body.decode('utf-8', 'replace')
+            status, _, body = request(
+                url + '/api/auth/setup',
+                method='POST',
+                payload={
+                    'first': 'Test', 'last': 'DNS',
+                    'username': 'dns-admin',
+                    'password': 'MotDePasseDNSLongEtSolide!',
+                },
+                origin=f'https://{dns_host}',
+                context=context,
+                host_header=dns_host,
+            )
+            assert status == 201, body.decode('utf-8', 'replace')
 
-        attacker = f'attacker.example.test:{port}'
-        status, _, _ = request(
-            url + '/api/auth/login',
-            method='POST',
-            payload={'username': 'dns-admin', 'password': 'MotDePasseDNSLongEtSolide!'},
-            origin=f'https://{attacker}',
-            context=context,
-            host_header=attacker,
-        )
-        assert status == 403, 'Un Host/Origin DNS non configuré doit être refusé.'
+            attacker = f'attacker.example.test:{port}'
+            status, _, _ = request(
+                url + '/api/auth/login',
+                method='POST',
+                payload={'username': 'dns-admin', 'password': 'MotDePasseDNSLongEtSolide!'},
+                origin=f'https://{attacker}',
+                context=context,
+                host_header=attacker,
+            )
+            assert status == 403, 'Un Host/Origin DNS non configuré doit être refusé.'
     finally:
         process.terminate()
         try:
@@ -133,7 +142,7 @@ def run_public_dns_hostname_mode():
             process.kill()
             process.wait(timeout=5)
         shutil.rmtree(temporary, ignore_errors=True)
-    print('OK — TLS avec nom DNS explicite, Host/Origin autorisés et DNS rebinding arbitraire refusé.')
+    print('OK — TLS public DNS avec validation du nom, chaîne explicitement approuvée et anti-rebinding Host/Origin.')
 
 
 def run():

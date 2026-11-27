@@ -51,7 +51,7 @@ assert(helper.includes('function closeJournal()'),'Closing the full journal from
         json:async()=>({
           current_version:'25.2.0',
           history_documents:docs,
-          current_release_markdown:'# V25.2.0\\n\\n## Nouveautés\\n\\n- Écran des nouveautés par compte'
+          current_release_markdown:fs.readFileSync(path.join(__dirname,'..','docs/releases/v25.2.0.md'),'utf8')
         })
       };
       throw new Error('Unexpected release-notes request: '+url);
@@ -65,7 +65,7 @@ assert(helper.includes('function closeJournal()'),'Closing the full journal from
   assert(opened,'A new account must receive the automatic release announcement.');
   assert(opened.title.includes('25.2.0'),'The automatic announcement must identify the installed version.');
   assert(opened.title.includes('Nouveautés de MaClasse'),'The automatic announcement heading must appear in the modal title.');
-  assert(opened.body.includes('Écran des nouveautés par compte'),'The automatic announcement must render the current release content.');
+  assert(opened.body.includes('pseudonymes stables'),'The first-run announcement must show privacy guidance from the actual release notes.');
   assert(modal.classList.added.includes('releaseNotesModal'),'The modal must receive its dedicated styling class.');
   assert.deepStrictEqual(calls,['/api/release-notes/state','/api/release-notes/history']);
   console.log('OK — ouverture automatique des nouveautés par compte en mode strict.');

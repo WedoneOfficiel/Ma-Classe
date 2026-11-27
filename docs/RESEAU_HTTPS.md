@@ -24,7 +24,7 @@ Aucune redirection de port 80/443/8765 vers le serveur MaClasse n'est nécessair
 
 ### Configuration du certificat dans MaClasse
 
-Après avoir installé MaClasse, créé le compte Direction et préparé le répertoire `data/tls/`, place le certificat complet (`fullchain.pem`) et sa clé privée dans des fichiers lisibles uniquement par le compte qui exécute le service. Le renouvellement ACME doit recopier/remplacer ces deux fichiers de façon atomique et préserver leurs permissions. Exemple de configuration :
+Après avoir installé MaClasse, créé le compte Direction et préparé le répertoire `data/tls/`, place le certificat complet (`fullchain.pem`) et sa clé privée dans des fichiers lisibles uniquement par le compte qui exécute le service. Le renouvellement ACME doit recopier/remplacer ces deux fichiers de façon atomique, puis attribuer les fichiers au compte qui exécute MaClasse et appliquer `chmod 600` à la clé privée. Sur Linux, un hook de déploiement Certbot/acme.sh peut copier les fichiers depuis le répertoire ACME protégé vers un répertoire TLS dédié accessible au compte systemd utilisateur ; sur macOS, le client ACME peut fonctionner sous le compte de session qui lance le LaunchAgent. Le superviseur refuse une clé privée lisible par le groupe ou les autres utilisateurs. Exemple de configuration :
 
 ```json
 {
