@@ -169,6 +169,21 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertIn("trop petite", errors)
         self.assertIn("ne possède pas", errors)
 
+    def test_room_capacity_counts_all_classes_in_a_shared_lesson(self):
+        bundle = sample_bundle()
+        bundle["teachers"][0]["subjects"].append("Arts")
+        bundle["rooms"][0]["capacity"] = 2
+        bundle["schedule"].append({
+            "key": "SHARED-CLASSES",
+            "day": "thursday", "start": "08:00", "end": "09:00",
+            "subject": "Arts", "classes": ["6A", "5A"],
+            "teacher": "t1", "room": "R1",
+            "startDate": "2026-09-10",
+        })
+        errors = "\\n".join(self.validate(bundle)["errors"])
+        self.assertIn("3 élèves", errors)
+        self.assertIn("trop petite", errors)
+
     def test_room_capacity_counts_implicit_multi_level_student_groups(self):
         bundle = sample_bundle()
         # build_data() assigns students without an explicit group to
