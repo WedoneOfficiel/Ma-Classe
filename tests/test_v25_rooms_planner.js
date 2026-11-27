@@ -99,7 +99,7 @@ const roomActionContext={
  sameId:(a,b)=>String(a??'').trim()===String(b??'').trim(),
  cls(id){return this.db.classes.find(x=>x.id===id)},
  DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
- plannerClassStudentCount(ids){return this.db.students.filter(s=>ids.includes(s.classId)).length},
+ plannerClassStudentCount(){return 26},
  plannerRoomOptions(...args){capturedPlannerCall=args;return [{name:'Salle 301',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]},
  esc:roomTestEsc,
  jsArg(value){return roomTestEsc(JSON.stringify(String(value??'')))},
