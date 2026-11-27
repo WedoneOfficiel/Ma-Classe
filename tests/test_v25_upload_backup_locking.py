@@ -350,6 +350,80 @@ def test_backup_refuses_a_snapshot_larger_than_the_restore_limit():
         assert not list(backup_dir.glob("maclasse-*.zip"))
 
 
+def test_backup_archive_is_always_restorable_with_repetitive_attachments():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        database = data_dir / "maclasse.json"
+        original_database = {"classes": [{"id": "6A"}], "students": []}
+        database.write_text(json.dumps(original_database), encoding="utf-8")
+        repetitive = "A" * (2 * 1024 * 1024)
+        attachment = uploads / "repetitive.txt"
+        attachment.write_text(repetitive, encoding="utf-8")
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database)
+        server.UPLOADS = str(uploads)
+
+        name = BackupHarness()._create_backup(force=True)
+        archive_path = data_dir / "backups" / name
+        raw = archive_path.read_bytes()
+        with zipfile.ZipFile(archive_path) as archive:
+            members = {item.filename: item for item in archive.infolist()}
+            member = members["data/uploads/repetitive.txt"]
+            assert member.compress_type == zipfile.ZIP_STORED
+            assert member.file_size == member.compress_size
+            assert member.file_size / member.compress_size <= 200
+
+        database.write_text(json.dumps({"classes": [{"id": "after"}], "students": []}), encoding="utf-8")
+        attachment.unlink()
+        (uploads / "new.txt").write_text("nouveau contenu", encoding="utf-8")
+        server._restore_backup_archive(raw)
+
+        assert json.loads(database.read_text(encoding="utf-8")) == original_database
+        assert (uploads / "repetitive.txt").read_text(encoding="utf-8") == repetitive
+        assert not (uploads / "new.txt").exists()
+
+
+def test_backup_rejects_entry_count_and_ambiguous_paths_before_publishing():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        database = data_dir / "maclasse.json"
+        database.write_text(json.dumps({"classes": [], "students": []}), encoding="utf-8")
+        (uploads / "one.txt").write_text("1", encoding="utf-8")
+        (uploads / "two.txt").write_text("2", encoding="utf-8")
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database)
+        server.UPLOADS = str(uploads)
+        with patch.object(server, "MAX_BACKUP_ARCHIVE_ENTRIES", 2):
+            try:
+                BackupHarness()._create_backup(force=True)
+                raise AssertionError("Une archive dépassant le nombre d'entrées autorisé aurait dû être refusée.")
+            except ValueError as error:
+                assert "plus de 2 fichiers" in str(error)
+        backup_dir = data_dir / "backups"
+        assert not list(backup_dir.glob("maclasse-*.json"))
+        assert not list(backup_dir.glob("maclasse-*.zip"))
+
+        (uploads / "two.txt").unlink()
+        ambiguous = uploads / "bad\\name.txt"
+        try:
+            ambiguous.write_text("x", encoding="utf-8")
+        except OSError:
+            return
+        try:
+            BackupHarness()._create_backup(force=True)
+            raise AssertionError("Un nom contenant un séparateur ambigu aurait dû être refusé.")
+        except ValueError as error:
+            assert "séparateur ambigu" in str(error)
+        assert not list(backup_dir.glob("maclasse-*.json"))
+        assert not list(backup_dir.glob("maclasse-*.zip"))
+
+
 def test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttle():
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -405,4 +479,6 @@ if __name__ == "__main__":
     test_backup_rejects_symlinked_upload_files_and_directories()
     test_backup_refuses_a_snapshot_larger_than_the_restore_limit()
     test_backup_refuses_symlinked_database_and_backup_directory_paths()
-    print("OK — verrouillage, snapshots atomiques privés, refus des liens symboliques et tailles non restaurables, rollback et conservation du dossier de récupération.")
+    test_backup_archive_is_always_restorable_with_repetitive_attachments()
+    test_backup_rejects_entry_count_and_ambiguous_paths_before_publishing()
+    print("OK — snapshots atomiques privés et toujours restaurables, téléchargement verrouillé, refus des liens symboliques, chemins ambigus et tailles non restaurables.")

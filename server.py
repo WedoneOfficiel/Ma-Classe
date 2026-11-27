@@ -25,6 +25,7 @@ BACKUP_RETENTION_DAYS=30
 BACKUP_INTERVAL_SECONDS=6*60*60
 MAX_BACKUP_ARCHIVE_BYTES=512*1024*1024
 MAX_BACKUP_UNCOMPRESSED_BYTES=500*1024*1024
+MAX_BACKUP_ARCHIVE_ENTRIES=10000
 DATA_DIR=os.path.abspath(os.environ.get('MACLASSE_DATA_DIR') or os.path.join(ROOT,'data'))
 DATA_FILE=os.path.join(DATA_DIR,'maclasse.json')
 UPLOADS=os.path.join(DATA_DIR,'uploads')
@@ -387,7 +388,7 @@ def _restore_backup_archive(raw_bytes):
             raise ValueError('Archive ZIP invalide.') from exc
         with archive:
             infos = archive.infolist()
-            if not infos or len(infos) > 10000:
+            if not infos or len(infos) > MAX_BACKUP_ARCHIVE_ENTRIES:
                 raise ValueError('Archive vide ou contenant trop d’éléments.')
             seen = set()
             total_size = 0
@@ -2426,6 +2427,7 @@ class Handler(SimpleHTTPRequestHandler):
         # Inventory uploads without following links. A symlink could otherwise
         # make a backup include a file outside data/uploads, leaking local files.
         upload_entries=[]
+        archive_names={'data/maclasse.json'}
         total_uncompressed=database_stat.st_size
         if os.path.lexists(UPLOADS):
             uploads_stat=os.lstat(UPLOADS)
@@ -2447,10 +2449,30 @@ class Handler(SimpleHTTPRequestHandler):
                     total_uncompressed+=entry_stat.st_size
                     if total_uncompressed>MAX_BACKUP_UNCOMPRESSED_BYTES:
                         raise ValueError('Sauvegarde complète impossible : la base et les pièces jointes dépassent la limite de restauration autorisée.')
-                    archive_name=os.path.join('data','uploads',os.path.relpath(full,UPLOADS))
+                    relative=os.path.relpath(full,UPLOADS)
+                    # Backslashes are path separators in the restore validator;
+                    # accepting them in a POSIX filename would change its path.
+                    if '\\' in relative:
+                        raise ValueError('Sauvegarde refusée : un nom de pièce jointe contient un séparateur ambigu.')
+                    archive_name='data/uploads/'+relative.replace(os.sep,'/')
+                    parts=archive_name.split('/')
+                    if archive_name.startswith('/') or any(part in ('','.','..') for part in parts) or re.match(r'^[A-Za-z]:',archive_name):
+                        raise ValueError('Sauvegarde refusée : un chemin de pièce jointe ne peut pas être restauré sans ambiguïté.')
+                    if archive_name in archive_names:
+                        raise ValueError('Sauvegarde refusée : deux pièces jointes produisent le même chemin d’archive.')
+                    archive_names.add(archive_name)
                     upload_entries.append((full,archive_name,entry_stat))
+                    if len(upload_entries)+1>MAX_BACKUP_ARCHIVE_ENTRIES:
+                        raise ValueError(f'Sauvegarde complète impossible : plus de {MAX_BACKUP_ARCHIVE_ENTRIES} fichiers dans la base et les pièces jointes.')
         if total_uncompressed>MAX_BACKUP_UNCOMPRESSED_BYTES:
             raise ValueError('Sauvegarde complète impossible : la base et les pièces jointes dépassent la limite de restauration autorisée.')
+        # ZIP_STORED keeps every member's compression ratio at 1:1, so a backup
+        # produced here can never be rejected by the restore bomb-ratio guard.
+        # Account conservatively for local headers, data descriptors and the
+        # central directory before creating the standalone JSON snapshot.
+        archive_overhead=32+sum(100+2*len(name.encode('utf-8')) for name in archive_names)
+        if total_uncompressed+archive_overhead>MAX_BACKUP_ARCHIVE_BYTES:
+            raise ValueError('Sauvegarde complète impossible : les métadonnées et les fichiers dépassent la limite de restauration autorisée.')
 
         # Validate the database while its identity is still pinned to the same
         # regular file that will be copied into both backup representations.
@@ -2497,7 +2519,7 @@ class Handler(SimpleHTTPRequestHandler):
             # through a world-readable intermediate or final backup.
             archive_descriptor=os.open(archive_tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
             os.close(archive_descriptor)
-            with zipfile.ZipFile(archive_tmp,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+            with zipfile.ZipFile(archive_tmp,'w',compression=zipfile.ZIP_STORED) as archive:
                 with open_snapshot_source(DATA_FILE,database_stat) as source, archive.open('data/maclasse.json','w') as target:
                     shutil.copyfileobj(source,target)
                 for full,archive_name,expected_stat in upload_entries:
