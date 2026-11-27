@@ -362,7 +362,10 @@ def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
     output_dir.mkdir(parents=True,exist_ok=True)
     page.screenshot(path=str(output_dir/f"settings-{role}-desktop.png"),full_page=True,animations="disabled")
     page.set_viewport_size({"width":390,"height":844})
-    page.evaluate("(p,s) => { page=p; appSpace=s; render(); }", desktop_page, desktop_space)
+    page.evaluate(
+        "(values) => { page=values.page; appSpace=values.space; render(); }",
+        {"page": desktop_page, "space": desktop_space},
+    )
     mobile = page.locator(selector)
     mobile_state = mobile.evaluate("""el => ({
       display:getComputedStyle(el).display,
