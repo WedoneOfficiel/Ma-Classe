@@ -72,10 +72,10 @@ function loadHistory(){
  historyPromise=fetch('/api/release-notes/history',{credentials:'same-origin',cache:'no-store'}).then(function(r){if(!r.ok)throw Error('Journal indisponible ('+r.status+').');return r.json()}).then(function(p){currentVersion=String(p.current_version||currentVersion||'');return p}).catch(function(e){historyPromise=null;throw e});
  return historyPromise;
 }
-function currentEntry(p){var v=String(p.current_version||currentVersion||''),md=String(p.current_release_markdown||''),candidate=/candidat de livraison|candidat\b/i.test(md);return {version:v,title:'V'+v+' — '+(md.match(/^#\\s+V[^\\n]+[—–-]\\s*([^\\n]+)/m)||[])[1]||'Version actuelle',date:'',dateLabel:candidate?'Candidat · publication à confirmer':'Date de publication à confirmer',status:candidate?'Candidat':'Version actuelle',content:cleanCurrentRelease(md),sourceFile:'docs/releases/v'+v+'.md'}}
+function currentEntry(p){var v=String(p.current_version||currentVersion||''),md=String(p.current_release_markdown||''),candidate=/candidat de livraison|candidat\b/i.test(md);return {version:v,title:'V'+v+' — '+(md.match(/^#\s+V[^\n]+[—–-]\s*([^\n]+)/m)||[])[1]||'Version actuelle',date:'',dateLabel:candidate?'Candidat · publication à confirmer':'Date de publication à confirmer',status:candidate?'Candidat':'Version actuelle',content:cleanCurrentRelease(md),sourceFile:'docs/releases/v'+v+'.md'}}
 function journalEntries(p){var c=currentEntry(p);return (c.content?[c]:[]).concat(parseHistory(p.history_documents||[]))}
 function entryDateLabel(e){if(e.date)return 'Le '+e.date.split('-').reverse().join('/');return e.dateLabel||'Date non documentée'}
-function entryTitle(e){return (e.version?'V'+e.version+' — ':'')+String(e.title||'').replace(/^V\\d+(?:\\.\\d+){1,2}\\s*[·—–-]?\\s*/i,'')}
+function entryTitle(e){return (e.version?'V'+e.version+' — ':'')+String(e.title||'').replace(/^V\d+(?:\.\d+){1,2}\s*[·—–-]?\s*/i,'')}
 function articleMarkup(e){return '<div class="releaseNotesEntryMeta"><span class="releaseNotesStar">✦ Quoi de neuf ?</span><span class="releaseNotesDate">'+escapeHtml(entryDateLabel(e))+'</span></div><h3>'+escapeHtml(entryTitle(e))+'</h3>'+(e.content?renderMarkdown(e.content):'<p>Aucune note détaillée n’est conservée pour cette entrée.</p>')+'<p class="releaseNotesSource">Source : '+escapeHtml(e.sourceFile||e.source||'documents historiques du dépôt')+'</p>'}
 function selectEntry(i){
  var e=(global.__mcReleaseEntries||[])[i];if(!e)return;var nav=document.getElementById('releaseNotesNav');
