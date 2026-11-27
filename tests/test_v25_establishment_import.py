@@ -169,6 +169,27 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertIn("trop petite", errors)
         self.assertIn("ne possède pas", errors)
 
+    def test_room_capacity_counts_implicit_multi_level_student_groups(self):
+        bundle = sample_bundle()
+        # build_data() assigns students without an explicit group to
+        # "<class name>/<level>" for multi-level classes.
+        bundle["students"].append({
+            "key": "s4", "first": "Dina", "last": "Test",
+            "class": "5A", "level": "5e",
+        })
+        bundle["rooms"][1]["capacity"] = 1
+        bundle["schedule"].append({
+            "key": "MULTI-LEVEL-GROUP",
+            "day": "friday", "start": "10:00", "end": "11:00",
+            "subject": "Mathématiques", "class": "5A",
+            "group": "5e A/5e", "teacher": "t2", "room": "R2",
+            "startDate": "2026-09-11",
+        })
+        errors = "\\n".join(self.validate(bundle)["errors"])
+        self.assertIn("Info", errors)
+        self.assertIn("2 élèves", errors)
+        self.assertIn("trop petite", errors)
+
     def test_rejects_room_and_teacher_unavailability(self):
         bundle = sample_bundle()
         bundle["rooms"][0]["unavailable"] = [{"day": "monday", "start": "08:00", "end": "10:00"}]
