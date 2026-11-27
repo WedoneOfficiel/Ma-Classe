@@ -784,21 +784,30 @@ def main() -> None:
                   page='classes';appSpace='teacher';render();
                   const card=[...document.querySelectorAll('.classHubCard')].find(x=>(x.innerText||'').includes('6e A'));
                   if(!card)throw new Error('La classe accessible doit apparaître dans le module Classes unifié.');
-                  const action=[...card.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='Voir le suivi');
-                  if(!action)throw new Error('La fiche de suivi doit rester accessible depuis la carte de classe.');
+                  const action=[...card.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='Ouvrir la classe et son suivi');
+                  if(!action)throw new Error('La classe et son suivi doivent être accessibles depuis une même fiche.');
                   action.click();
-                  const main=document.getElementById('main');
+                  const detail=document.getElementById('main');
+                  const detailState={
+                    title:detail?.querySelector('.top h1')?.innerText||'',
+                    hasClass:(detail?.innerText||'').includes('6e A'),
+                    hasStudents:(detail?.innerText||'').includes('Élèves'),
+                    hasAttendance:(detail?.innerText||'').includes('Assiduité récente'),
+                    hasUpcoming:(detail?.innerText||'').includes('Prochaines échéances'),
+                    hasError:(detail?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
+                  };
+                  const back=[...(detail?.querySelectorAll('.classHubHeaderActions button')||[])].find(x=>(x.innerText||'').trim()==='← Retour au module Classes');
+                  if(!back)throw new Error('La fiche de suivi doit proposer un retour visible au module Classes.');
+                  back.click();
+                  const list=document.getElementById('main');
                   return {
-                    title:main?.querySelector('.top h1')?.innerText||'',
-                    hasClass:(main?.innerText||'').includes('6e A'),
-                    hasStudents:(main?.innerText||'').includes('Élèves'),
-                    hasAttendance:(main?.innerText||'').includes('Assiduité récente'),
-                    hasUpcoming:(main?.innerText||'').includes('Prochaines échéances'),
-                    hasError:(main?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
+                    ...detailState,
+                    hasReturn:true,
+                    returnedToClassList:!!list?.querySelector('.classHubCard')&&!window.classContext
                   };
                 }""")
-                if tracking_state["title"] != "Classes" or not tracking_state["hasClass"] or tracking_state["hasError"] or not tracking_state["hasStudents"] or not tracking_state["hasAttendance"] or not tracking_state["hasUpcoming"]:
-                    raise AssertionError("Le module Classes unifié ne s'affiche pas correctement dans Firefox : "+repr(tracking_state))
+                if tracking_state["title"] != "Classes" or not tracking_state["hasClass"] or tracking_state["hasError"] or not tracking_state["hasStudents"] or not tracking_state["hasAttendance"] or not tracking_state["hasUpcoming"] or not tracking_state["hasReturn"] or not tracking_state["returnedToClassList"]:
+                    raise AssertionError("Le parcours Classes → suivi → retour ne fonctionne pas correctement dans Firefox : "+repr(tracking_state))
 
                 # Manual theme choices must override the operating-system preference.
                 teacher_page.emulate_media(color_scheme="light")
