@@ -12,7 +12,12 @@ assert "if not parts: return self._json({'error':'Chemin invalide'},400)" in ser
 assert "BACKUP_RETENTION_DAYS=30" in server
 assert "BACKUP_INTERVAL_SECONDS=6*60*60" in server
 assert "for pattern in ('maclasse-*.json','maclasse-*.zip')" in server
-assert "archive.write(DATA_FILE,'data/maclasse.json')" in server
+assert "with open_snapshot_source(DATA_FILE,database_stat) as source, archive.open('data/maclasse.json','w') as target:" in server
+assert "archive.open(archive_name,'w')" in server
+assert "followlinks=False" in server
+assert "getattr(os,'O_NOFOLLOW',0)" in server
+assert "MAX_BACKUP_ARCHIVE_BYTES=512*1024*1024" in server
+assert "MAX_BACKUP_UNCOMPRESSED_BYTES=500*1024*1024" in server
 assert 'DATA_LOCK=threading.RLock()' in server
 assert 'bulletinSetView(\'overview\')' in js
 assert 'bulletinSetView(\'subject\')' in js
