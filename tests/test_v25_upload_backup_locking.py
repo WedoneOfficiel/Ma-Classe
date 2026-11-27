@@ -280,6 +280,50 @@ def test_backup_rejects_symlinked_upload_files_and_directories():
         assert not list(backup_dir.glob("*.tmp")), "Aucun fichier temporaire ne doit subsister."
 
 
+def test_backup_refuses_symlinked_database_and_backup_directory_paths():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        outside = root / "outside.json"
+        outside.write_text(json.dumps({"classes": [], "students": []}), encoding="utf-8")
+        database_link = data_dir / "maclasse.json"
+        try:
+            database_link.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            return
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database_link)
+        server.UPLOADS = str(uploads)
+        try:
+            BackupHarness()._create_backup(force=True)
+            raise AssertionError("Une base symbolique aurait dû être refusée.")
+        except ValueError as error:
+            assert "base doit être un fichier normal" in str(error)
+        assert outside.read_text(encoding="utf-8") == json.dumps({"classes": [], "students": []})
+        database_link.unlink()
+
+        server.DATA_FILE = str(outside)
+        server.DATA_DIR = str(data_dir)
+        server.UPLOADS = str(uploads)
+        external_backups = root / "external-backups"
+        external_backups.mkdir()
+        (external_backups / "keep.txt").write_text("ne pas toucher", encoding="utf-8")
+        backup_link = data_dir / "backups"
+        try:
+            backup_link.symlink_to(external_backups, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            return
+        try:
+            BackupHarness()._create_backup(force=True)
+            raise AssertionError("Un dossier backups symbolique aurait dû être refusé.")
+        except ValueError as error:
+            assert "dossier backups" in str(error)
+        assert (external_backups / "keep.txt").read_text(encoding="utf-8") == "ne pas toucher"
+        assert not list(external_backups.glob("maclasse-*"))
+
+
 def test_backup_refuses_a_snapshot_larger_than_the_restore_limit():
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -357,4 +401,5 @@ if __name__ == "__main__":
     test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttle()
     test_backup_rejects_symlinked_upload_files_and_directories()
     test_backup_refuses_a_snapshot_larger_than_the_restore_limit()
-    print("OK — verrouillage, snapshots atomiques, refus des liens symboliques et tailles non restaurables, rollback et conservation du dossier de récupération.")
+    test_backup_refuses_symlinked_database_and_backup_directory_paths()
+    print("OK — verrouillage, snapshots atomiques privés, refus des liens symboliques et tailles non restaurables, rollback et conservation du dossier de récupération.")

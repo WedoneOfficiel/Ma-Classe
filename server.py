@@ -2477,7 +2477,7 @@ class Handler(SimpleHTTPRequestHandler):
         backup_tmp=backup_path+'.tmp'
         try:
             descriptor=os.open(backup_tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-            with open_snapshot_source(DATA_FILE,database_stat) as source, os.fdopen(descriptor,'wb') as target:
+            with os.fdopen(descriptor,'wb') as target, open_snapshot_source(DATA_FILE,database_stat) as source:
                 shutil.copyfileobj(source,target)
                 target.flush()
                 os.fsync(target.fileno())
