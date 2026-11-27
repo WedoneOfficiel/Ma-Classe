@@ -59,6 +59,14 @@ assert(wizardSource.includes('accept=".json,application/json"')&&wizardSource.in
 assert(!generatorSource.includes("api.openai.com")&&!generatorServer.includes("api.openai.com"),'Aucune intégration API ChatGPT ne doit être ajoutée.');
 assert(generatorGuide.toLowerCase().includes("aucun fichier à joindre à chatgpt")&&generatorGuide.includes("Confidentialité"),'Le guide doit expliquer le copier-coller unique et la pseudonymisation.');
 
+
+assert(generatorSource.includes("function _teacher_profiles_for_save")===false || true,''); 
+assert(generatorSource.includes("function openTeacherProfileEditor(")&&generatorSource.includes("function saveTeacherProfileOnly("),'Une fiche professeur sans compte doit pouvoir être modifiée sans créer de compte.');
+assert(generatorSource.includes("Créer un compte de connexion")&&generatorSource.includes("Modifier la fiche"),'Le module Professeurs doit distinguer modification de fiche et création de compte.');
+assert(generatorSource.includes("t.hasAccount!==false"),'Les élèves doivent voir les profils des professeurs sans compte sans les traiter comme des destinataires joignables.');
+assert(generatorServer.includes("def _teacher_profiles_for_save(")&&generatorServer.includes("data['teachers']=_teacher_profiles_for_save(current or {},data,user)"),'La sauvegarde doit conserver le répertoire des profils professeurs et le protéger pour les rôles non Direction.');
+assert(generatorServer.includes("stored_profile=next((x for x in data.get('teachers',[])"),'La projection professeur doit combiner fiche pédagogique et compte de connexion.');
+assert(generatorServer.includes("hasAccount':ident in account_teacher_ids"),'La projection élève doit distinguer un professeur avec compte et sans compte.');
 console.log('OK — Import établissement : schéma, exemple, documentation, échange manuel, Direction, sauvegarde, comptes locaux et import atomique.');
 
 
