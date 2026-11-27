@@ -342,3 +342,21 @@ Le candidat interne est V25.2.0. La dernière release stable publique reste V25.
 ### Mise à jour du statut de signature des releases — 26/11/2026
 
 Les notes historiques AUDIT-S2 / workflow #1759 indiquant que la clé de signature n'était pas provisionnée décrivaient un état antérieur. Depuis, la release stable publique v25.1.1 existe et contient bien les trois assets attendus, dont maclasse-update.sig. Cela confirme qu'un workflow de publication signé a abouti pour cette release. L'état courant de la valeur secrète GitHub n'est pas lisible depuis cette revue ; le workflow de publication devra donc rester l'autorité et vérifier la signature lors d'une future release. Ne pas supprimer ni remplacer la clé publique épinglée sans procédure explicite de rotation.
+
+
+## Recette utilisateur sur copie V25.2.0 — 27/11/2026
+
+Premiers retours manuels recueillis auprès de l'utilisateur sur la copie isolée du candidat :
+
+- L'écran initial des nouveautés et la navigation générale paraissent corrects.
+- Le parcours « Travail à faire » fonctionne lors de l'essai.
+- Les notes et bulletins paraissent corrects à ce stade ; cette observation visuelle ne vaut pas validation exhaustive des droits ni des calculs.
+- Trois anomalies restent à traiter :
+
+| Identifiant | Module | Constat utilisateur | Analyse / correction engagée | État |
+|---|---|---|---|---|
+| DIR-EDT-01 | Espace Direction — emploi du temps | Aucun accès à l'EDT n'est proposé dans la navigation Direction. | Le menu Direction ne contenait effectivement que Utilisateurs, Professeurs, Classes et Paramètres, alors que le rendu EDT est disponible. Ajout d'une entrée « Emploi du temps » qui ouvre la route existante. | Correctif codé sur la PR #20 ; CI et nouvel essai Direction en attente. |
+| CLASS-UX-01 | Classes et suivi de classe | L'accès au suivi est présenté comme un bouton menant à une vue séparée ; le retour au module Classes n'est pas assez évident. | La liste présente maintenant l'action « Ouvrir la classe et son suivi » ; la fiche détaillée expose un bouton explicite « Retour au module Classes » dans l'en-tête. Les outils de gestion et indicateurs restent dans le même parcours. | Ajustement ergonomique codé sur la PR #20 ; CI et nouvel essai en attente. |
+| PLANNER-ROOM-01 | Paramètres — salles / Planner | Une salle peut être créée dans Paramètres, mais le résultat de recherche du Planner ne permet pas de la sélectionner. | Le résultat « Trouver une salle » affichait seulement des lignes textuelles. Chaque salle compatible dispose maintenant d'un bouton de sélection qui ouvre la préparation du cours. Le brouillon transmet les champs réels du formulaire (classIds, teacherIds) ainsi que la salle choisie ; un test couvre aussi la remontée d'une salle créée dans settings.rooms. | Correctif codé sur la PR #20 ; CI et nouvel essai utilisateur en attente. |
+
+Ne pas passer ces lignes à « Corrigé » avant confirmation de l'utilisateur dans la copie et contrôle de persistance après redémarrage.
