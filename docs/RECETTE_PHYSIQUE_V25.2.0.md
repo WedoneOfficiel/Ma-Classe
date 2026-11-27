@@ -88,7 +88,7 @@ Tant que cette recette n'est pas passée, l'objectif « aucune configuration man
 
 ## État de la livraison au 27 novembre 2026
 
-- CI du code candidat : workflow #2121, 3/3 réussi ; tête documentaire exacte de la PR : workflow #2122, 3/3 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel.
+- CI de la tête exacte de la PR : Workflow #2143 / run 46002490475, commit `1596fc422645e27a67b5858eca2c48552315bed9` : Linux (tests), macOS Apple Silicon avec installateur et `launchd` réels, et Firefox réel — **3/3 jobs réussis**. L'arbre contient 113 fichiers de tests (68 JavaScript, 45 Python) et 860 invariants intermodules.
 - Dernière release stable : V25.1.1 (v25.1.1).
-- V25.2.0 : candidate, PR #20 ouverte, non fusionnée, non taguée et non publiée.
+- V25.2.0 : candidate, PR #20 ouverte, non fusionnée, non taguée et non publiée ; la dernière tête CI vérifie aussi la sauvegarde/restauration complète et la sécurité du paquet.
 - Recette physique : non effectuée dans cette campagne ; les cases doivent être cochées à partir de résultats réels, pas supposées validées.
