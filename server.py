@@ -2395,7 +2395,13 @@ class Handler(SimpleHTTPRequestHandler):
         if current is None: return None
         backup_dir=self._backup_dir()
         now=time.time()
-        backups=sorted(glob.glob(os.path.join(backup_dir,'maclasse-*.json')),key=os.path.getmtime,reverse=True)
+        # Only a paired JSON + ZIP snapshot is complete enough to satisfy the backup interval.
+        backups=sorted(
+            (path for path in glob.glob(os.path.join(backup_dir,'maclasse-*.json'))
+             if os.path.isfile(path[:-5]+'.zip')),
+            key=os.path.getmtime,
+            reverse=True,
+        )
         if not force and backups and now-os.path.getmtime(backups[0])<BACKUP_INTERVAL_SECONDS:
             return None
         stamp=time.strftime('%Y%m%d-%H%M%S') + f'-{time.time_ns()%1000000:06d}'
