@@ -1,6 +1,6 @@
 # Réseau local HTTPS — MaClasse V25
 
-**État au 27/11/2026 :** le superviseur réseau est commun à Linux et macOS. Le workflow #2114 valide la tête `559c866` sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). Le test de renouvellement ACME vérifie que le listener reste actif pendant le remplacement progressif d'une paire certificat/clé, puis s'arrête proprement lorsque la paire valide est prête. La validation sur le Wi-Fi cible, le DNS/routeur, le pare-feu Fedora et au moins deux appareils clients reste à effectuer.
+**État au 27/11/2026 :** le superviseur réseau est commun à Linux et macOS. Le workflow #2117 valide la tête `7714b65` sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). La rotation ACME garde le listener courant pendant le déploiement progressif, puis vérifie la paire certificat/clé à partir des mêmes octets avant de basculer. La validation sur le Wi-Fi cible, le DNS/routeur, le pare-feu Fedora et au moins deux appareils clients reste à effectuer.
 
 **Deux modes de confiance existent :** le mode AC privée par défaut nécessite encore d'approuver/importer `data/tls/ca.crt` sur chaque appareil (ou de la distribuer centralement). Le mode facultatif TLS public DNS, documenté ci-dessous, permet d'éviter cette étape par poste si le domaine, le renouvellement ACME et le DNS local sont configurés au niveau de l'établissement. Il n'est pas encore activé ni recetté sur le réseau cible ; ne pas le considérer comme opérationnel avant le test de deux appareils.
 
