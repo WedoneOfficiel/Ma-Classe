@@ -64,7 +64,8 @@ assert(helper.includes('function closeJournal()'),'Closing the full journal from
   await new Promise(resolve=>setTimeout(resolve,0));
   assert(opened,'A new account must receive the automatic release announcement.');
   assert(opened.title.includes('25.2.0'),'The automatic announcement must identify the installed version.');
-  assert(opened.body.includes('Nouveautés de MaClasse'),'The automatic announcement must render its heading.');
+  assert(opened.title.includes('Nouveautés de MaClasse'),'The automatic announcement heading must appear in the modal title.');
+  assert(opened.body.includes('Écran des nouveautés par compte'),'The automatic announcement must render the current release content.');
   assert(modal.classList.added.includes('releaseNotesModal'),'The modal must receive its dedicated styling class.');
   assert.deepStrictEqual(calls,['/api/release-notes/state','/api/release-notes/history']);
   console.log('OK — ouverture automatique des nouveautés par compte en mode strict.');
