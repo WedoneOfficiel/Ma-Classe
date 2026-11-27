@@ -50,6 +50,7 @@ const modelNames = [
   'v101StudentAverage',
   'evaluationGradeLabel'
 ];
+const exactNow = '2026-11-26T10:00:00.000Z';
 class FixedDate extends Date {
   constructor(...args) { super(...(args.length ? args : [exactNow])); }
   static now() { return Date.parse(exactNow); }
@@ -148,7 +149,6 @@ equal(context.evaluationGradeLabel({ maxScore: 10 }, { value: '7,5' }), '7,5 /10
 setData([makeEvaluation('comma-grade', '7,5', 10)]);
 equal(average(), '15.00', 'Une virgule décimale est convertie correctement sur 20');
 
-const exactNow = '2026-11-26T10:00:00.000Z';
 
 // 3) Overall averages must use the same publication, class, group and period
 // rules as subject averages. Drafts, future publications and invalid scores
