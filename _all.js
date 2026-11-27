@@ -1129,9 +1129,9 @@ function downloadEstablishmentPrompt(){if(!establishmentImportAdminOnly())return
 function collectEstablishmentBrief(form){
  const values=Object.fromEntries(new FormData(form));
  return {name:String(values.name||'').trim(),classPlan:String(values.classPlan||'').trim(),createStudents:values.createStudents==='yes',
-  teacherCount:Math.max(0,Math.min(300,Number(values.teacherCount||0))),teacherPlan:String(values.teacherPlan||'').trim(),
+  teacherCount:values.teacherCount===''?null:Math.max(0,Math.min(300,Number(values.teacherCount))),teacherPlan:String(values.teacherPlan||'').trim(),
   createTeacherAccounts:values.createTeacherAccounts==='yes',subjectPlan:String(values.subjectPlan||'').trim(),
-  roomCount:Math.max(0,Math.min(2000,Number(values.roomCount||0))),roomPlan:String(values.roomPlan||'').trim(),
+  roomCount:values.roomCount===''?null:Math.max(0,Math.min(2000,Number(values.roomCount))),roomPlan:String(values.roomPlan||'').trim(),
   createSchedule:values.createSchedule==='yes',schoolDays:String(values.schoolDays||'').trim(),
   schoolHours:String(values.schoolHours||'').trim(),constraints:String(values.constraints||'').trim()};
 }
@@ -1150,9 +1150,11 @@ function establishmentBriefPrompt(brief){
   'Aucun fichier de modèle, de schéma ou de consignes n’est à joindre : le présent message contient le cahier des charges et les données de cadrage.',
   'FORMAT STRICT : format=\"maclasse-establishment\", version=1, avec les rubriques establishment, classes, teachers, students, rooms et schedule, et les propriétés facultatives createTeacherAccounts et createStudentProfiles (booléens, true par défaut). Clés uniques et références toujours cohérentes.',
   'classes : chaque objet contient key, name, levels (liste des niveaux), éventuellement groups, teachers, principalTeacher, attendanceMode, periodMode, expectedStudentCount et subjectRequirements (subject, hoursPerWeek, group).',
+  'NOMBRE DE PROFESSEURS : teacherCount='+(brief.teacherCount===null?'non précisé':String(brief.teacherCount))+'. Si un nombre est renseigné, crée exactement ce nombre de profils ; utilise teacherPlan comme répartition prioritaire des noms fictifs/pseudonymes, matières et classes. Si teacherCount est non précisé mais teacherPlan contient des professeurs, crée exactement les profils listés. Si le nombre est indispensable pour un planning cohérent et reste inconnu, pose la question avant de générer.',
   'teachers : chaque objet contient key, first, last, subjects, classes et éventuellement username, profileNotes et unavailable. Profils pseudonymisés uniquement. Aucun mot de passe, email réel ni téléphone.',
   'NOMBRE DE PROFESSEURS : teacherCount='+String(brief.teacherCount)+'. Si le nombre est supérieur à zéro, crée exactement ce nombre de profils dans teachers, sauf impossibilité ou contradiction explicite avec teacherPlan ; dans ce cas, explique le point à arbitrer avant de produire le fichier. Chaque professeur doit être affecté aux classes/matières indiquées et son volume de cours doit être plausible.',
   'students : si la création des fiches est demandée, crée une fiche distincte par élève avec key, first, last, class, level et group si nécessaire. Identités fictives stables uniquement, par exemple « Élève 6A-001 » (first=\"Élève\", last=\"6A-001\"). N’invente jamais de vraies identités.',
+  'NOMBRE DE SALLES : roomCount='+(brief.roomCount===null?'non précisé':String(brief.roomCount))+'. Si un nombre est renseigné, crée exactement ce nombre de salles. Utilise roomPlan comme liste prioritaire ; si le nombre est non précisé, déduis uniquement les salles indispensables aux emplois du temps, aux effectifs, aux équipements et aux disponibilités. Demande une précision si les contraintes ne permettent pas de déterminer les ressources nécessaires sans inventer.',
   'rooms : chaque objet contient key, name, type, capacity, equipment et éventuellement unavailable.',
   'NOMBRE DE SALLES : roomCount='+String(brief.roomCount)+'. Si le nombre est supérieur à zéro, crée exactement ce nombre de salles dans rooms, sauf contradiction avec roomPlan ; dans ce cas, demande un arbitrage au lieu de changer silencieusement le nombre.',
   'schedule : chaque cours contient key, day (0=lundi à 4=vendredi ou nom anglais du jour), start, end, subject, class ou classes, group, teacher ou teachers, room, recurrence, startDate, éventuellement endDate, exceptions et equipment. Récurrences : weekly, biweekly, triweekly, custom avec intervalWeeks ou once.',
