@@ -2483,6 +2483,8 @@ class Handler(SimpleHTTPRequestHandler):
             max_length=1*1024*1024
         elif path=='/api/upload':
             max_length=50*1024*1024
+        elif path in ('/api/admin/establishment-import/validate','/api/admin/establishment-import/apply'):
+            max_length=25*1024*1024
         elif path=='/api/backup/restore':
             max_length=100*1024*1024
         elif path in ('/api/data','/api/save'):
