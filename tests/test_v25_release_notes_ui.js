@@ -29,3 +29,44 @@ assert(current.includes('## Classes')&&!current.includes('Candidat')&&!current.i
 console.log('OK — journal : historique extrait des archives présentes, lacunes préservées, source et rendu sûrs.');
 
 assert(helper.includes('function closeJournal()'),'Closing the full journal from the automatic announcement must preserve the pending announcement.');
+
+(async function testAutomaticAnnouncementInStrictMode(){
+  const modal={classList:{added:[],add(name){this.added.push(name)}}};
+  const calls=[];
+  const automaticContext={
+    window:{},
+    console,
+    document:{
+      getElementById(id){return id==='modal'?modal:null},
+      querySelector(){return null}
+    },
+    fetch:async url=>{
+      calls.push(url);
+      if(url==='/api/release-notes/state')return {
+        ok:true,
+        json:async()=>({version:'25.2.0',seen_version:''})
+      };
+      if(url==='/api/release-notes/history')return {
+        ok:true,
+        json:async()=>({
+          current_version:'25.2.0',
+          history_documents:docs,
+          current_release_markdown:'# V25.2.0\\n\\n## Nouveautés\\n\\n- Écran des nouveautés par compte'
+        })
+      };
+      throw new Error('Unexpected release-notes request: '+url);
+    }
+  };
+  vm.runInNewContext(helper,automaticContext);
+  let opened=null;
+  automaticContext.window.openModal=(title,body)=>{opened={title,body}};
+  automaticContext.window.MCReleaseNotes.maybeShow('V25.2.0','admin-test');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert(opened,'A new account must receive the automatic release announcement.');
+  assert(opened.title.includes('25.2.0'),'The automatic announcement must identify the installed version.');
+  assert(opened.body.includes('Nouveautés de MaClasse'),'The automatic announcement must render its heading.');
+  assert(modal.classList.added.includes('releaseNotesModal'),'The modal must receive its dedicated styling class.');
+  assert.deepStrictEqual(calls,['/api/release-notes/state','/api/release-notes/history']);
+  console.log('OK — ouverture automatique des nouveautés par compte en mode strict.');
+})().catch(error=>{console.error(error);process.exitCode=1});
+
