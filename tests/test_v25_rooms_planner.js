@@ -146,7 +146,36 @@ assert.strictEqual(newCourseRoomArgs[0],26,'Le nouveau cours doit utiliser l’e
 assert.strictEqual(newCourseRoomArgs[2],1,'Le moteur doit chercher les salles sur chacun des créneaux proposés.');
 assert(newCourseModal.title.includes('Créneaux et salles compatibles'),'La recherche d’un nouveau créneau doit aussi présenter les salles.');
 assert(newCourseModal.body.includes('Choisir Labo'),'Chaque créneau proposé doit offrir un choix de salle.');
+
 assert(newCourseModal.body.includes('plannerCreateDraft(&quot;1&quot;,&quot;09:00&quot;,&quot;10:00&quot;,&quot;6A&quot;,&quot;t1&quot;,&quot;SES&quot;,&quot;Labo&quot;)'),'La création doit transmettre le créneau, la classe, le professeur, la matière et la salle au nouveau formulaire.');
+
+const roomSearchSlots=Array.from({length:9},(_,i)=>({
+ day:Math.floor(i/4),time:String(8+Math.floor((i%4)*1)).padStart(2,'0')+':00',
+ endTime:String(9+Math.floor((i%4)*1)).padStart(2,'0')+':00'
+}));
+let searchedSlots=0,lateRoomModal=null;
+const laterCompatibleRoomContext={
+ db:{classes:[{id:'6A',name:'6e A'}],students:[],schedule:[]},
+ FormData:function(){return Object.entries({action:'find',classId:'6A',subject:'SES',teacherId:'',day:'0',time:'08:00',duration:'60',capacity:'0',equipment:'vidéoprojecteur'})[Symbol.iterator]()},
+ mins(value){const p=String(value||'0:0').split(':').map(Number);return (p[0]||0)*60+(p[1]||0)},
+ plannerClassStudentCount(){return 0},
+ plannerFindSlots(){return roomSearchSlots},
+ plannerRoomOptions(...args){
+  searchedSlots++;
+  return searchedSlots===9?[{name:'Salle enfin disponible',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]:[];
+ },
+ DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
+ esc:roomTestEsc,
+ jsArg(value){return roomTestEsc(JSON.stringify(String(value??'')))},
+ openModal(title,body){lateRoomModal={title,body}},
+ toast(message){throw Error(message)}
+};
+vm.createContext(laterCompatibleRoomContext);
+vm.runInContext(runPlannerUi,laterCompatibleRoomContext);
+laterCompatibleRoomContext.runPlanner({preventDefault(){},target:{}});
+assert.strictEqual(searchedSlots,9,'La recherche doit examiner les créneaux suivants lorsque les premiers ne disposent d’aucune salle compatible.');
+assert(lateRoomModal.body.includes('Salle enfin disponible'),'Un créneau ultérieur disposant d’une salle doit être proposé même si les huit premiers en sont dépourvus.');
+
 assert(app.includes('scheduleAvailabilityConflicts(c)'),'La validation du formulaire de cours doit aussi vérifier les indisponibilités.');
 assert(app.includes('slot.room=name;slot.roomId=roomId'),'Renommer une salle doit préserver les liens de ses créneaux.');
 assert(app.includes("confirmModal(message,'Supprimer la salle'"),'La suppression d’une salle liée doit demander confirmation.');
