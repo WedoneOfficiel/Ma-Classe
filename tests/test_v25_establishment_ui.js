@@ -40,11 +40,11 @@ const generatorGuide = fs.readFileSync('docs/CONFIGURATION_ETABLISSEMENT_CHATGPT
 const generatorServer = fs.readFileSync('server.py','utf8');
 assert(generatorSource.includes("Configurateur de l’établissement avec ChatGPT"),'Le configurateur doit être présenté comme un outil guidé.');
 const adminUsersStart=generatorSource.indexOf('function adminUsers(){');
-const adminUsersEnd=generatorSource.indexOf('\\nfunction ',adminUsersStart);
+const adminUsersEnd=generatorSource.indexOf('\nfunction ',adminUsersStart);
 const adminUsersSource=generatorSource.slice(adminUsersStart,adminUsersEnd);
 assert(!adminUsersSource.includes('openEstablishmentImport')&&!adminUsersSource.includes('Générateur de configuration d’établissement'),'Le configurateur ne doit plus figurer dans Administration → Utilisateurs.');
 const settingsStart=generatorSource.indexOf('function settings(){');
-const settingsEnd=generatorSource.indexOf('\\nfunction ',settingsStart);
+const settingsEnd=generatorSource.indexOf('\nfunction ',settingsStart);
 assert(generatorSource.slice(settingsStart,settingsEnd).includes('settingsEstablishmentCard'),'Le configurateur doit être accessible dans Paramètres.');
 assert(generatorSource.includes('Enregistrer le formulaire dans Ma Classe')&&generatorSource.includes('Copier les consignes et les données pour ChatGPT'),'Le formulaire doit être enregistré puis copié en un seul bloc.');
 assert(generatorSource.includes('await flushPendingSave()')&&generatorSource.includes('db.settings.establishmentBrief'),'Le configurateur doit conserver les réponses dans les données enregistrées.');
