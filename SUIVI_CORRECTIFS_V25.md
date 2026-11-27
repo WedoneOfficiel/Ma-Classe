@@ -990,3 +990,14 @@ Cette architecture ne satisfait donc pas l'objectif de zéro réglage manuel du 
 - Préremplissage des champs de classe, professeur, matière, jour, horaires et salle.
 
 **État de preuve :** les corrections sont codées ; elles restent à valider par la CI sur la tête courante de la PR, puis par un nouvel essai utilisateur sur la copie. Aucun défaut n'est déclaré « Corrigé » à ce stade.
+
+
+### Ajustements métier du 27 novembre — Planner et configurateur établissement
+
+- **PLANNER-UX-02 — Nouveau cours :** le formulaire « Trouver un créneau » conserve les informations nécessaires au cours à créer (classe, matière, professeur facultatif, jour de départ, durée). Pour chaque créneau sans conflit, le moteur recherche les salles libres en appliquant l'effectif de la classe, les contraintes de capacité, les équipements, les indisponibilités et les réservations. Le choix d'une salle ouvre ensuite le formulaire de création prérempli.
+- **PLANNER-UX-02 — Salle d'un cours existant :** le parcours « Trouver une salle » demande uniquement de choisir un cours présent dans l'EDT et des contraintes de salle. Il reprend le jour et les horaires du cours, tient compte des classes d'un créneau partagé et ignore ce même créneau lors de la recherche. Choisir une salle ouvre la modification du cours existant ; cela ne crée pas un doublon.
+- **CFG-UX-01 — Emplacement :** configurateur déplacé de la page Utilisateurs vers une carte séparée et Direction-only dans Paramètres ; espacement et responsive harmonisés.
+- **CFG-CHATGPT-01 — Transfert simplifié :** formulaire enregistré explicitement dans Ma Classe puis bouton de copie d'un prompt complet à coller dans ChatGPT. Aucun fichier modèle, schéma, instructions ou contexte n'est demandé à joindre à ChatGPT ; un unique JSON final est récupéré puis importé dans Ma Classe.
+- **CFG-IMPORT-01 — Création facultative :** le JSON peut indiquer createTeacherAccounts=false (liste teachers vide et aucune affectation professeur) ou createStudentProfiles=false (liste students vide). Dans ce dernier cas, expectedStudentCount reste le référentiel pour les contrôles de capacité. L'absence de ces propriétés conserve le comportement historique, pour ne pas casser les anciens fichiers.
+
+**Preuve actuelle :** correctifs codés, tests unitaires/serveur/navigateur ajustés. La validation CI de la tête finale de PR #20 est en cours ; aucun de ces points ne doit être déclaré « Corrigé » avant confirmation sur la copie V25.2.0.
