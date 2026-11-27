@@ -68,14 +68,15 @@ const runPlannerUi=sliceBetween(app,'function runPlanner(e)','function plannerCr
 assert(runPlannerUi.includes('Choisir cette salle'),'Chaque salle trouvée doit proposer une action de sélection, pas seulement une ligne de texte.');
 assert(runPlannerUi.includes('plannerCreateDraft('),'La sélection d’une salle doit ouvrir la préparation du cours.');
 let capturedRoomModal=null;
+const roomTestEsc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const roomFinderContext={
  FormData:function(){return Object.entries({action:'room',capacity:'20',equipment:'vidéoprojecteur',day:'0',time:'14:00',duration:'60',classId:'6A',teacherId:'t1',subject:'SES'})[Symbol.iterator]()},
  mins(value){const p=String(value||'0:0').split(':').map(Number);return (p[0]||0)*60+(p[1]||0)},
  plannerRoomOptions(){return [{name:'B204',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]},
  plannerFindSlots(){return []},
  DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
- esc(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')},
- jsArg(value){return JSON.stringify(String(value??''))},
+ esc:roomTestEsc,
+ jsArg(value){return roomTestEsc(JSON.stringify(String(value??'')))},
  openModal(title,body){capturedRoomModal={title,body}}
 };
 vm.createContext(roomFinderContext);
