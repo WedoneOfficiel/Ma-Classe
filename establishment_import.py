@@ -640,9 +640,21 @@ def validate_bundle(bundle, existing_data=None):
     student_count_by_class = defaultdict(int)
     student_count_by_class_group = defaultdict(int)
     for student in students.values():
-        student_count_by_class[student["class"]] += 1
-        if student["group"]:
-            student_count_by_class_group[(student["class"], student["group"])] += 1
+        class_key = student["class"]
+        student_count_by_class[class_key] += 1
+        effective_group = student["group"]
+        classroom = classes.get(class_key)
+        if (
+            not effective_group
+            and classroom
+            and student["level"]
+            and len(classroom["levels"]) > 1
+        ):
+            # build_data() assigns this generated cohort when importing a
+            # multi-level student whose group was omitted from the JSON.
+            effective_group = f'{classroom["name"]}/{student["level"]}'
+        if effective_group:
+            student_count_by_class_group[(class_key, effective_group)] += 1
 
     # Les affectations de classe sont la réunion des listes classe/professeur
     # et des professeurs réellement présents dans les cours.
