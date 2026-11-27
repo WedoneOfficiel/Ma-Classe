@@ -301,7 +301,7 @@ def verify_planner_workflows(page) -> None:
     new_room.click()
     editor=page.locator("#modal form")
     expect(editor.locator('[name="subject"]')).to_have_value("Sciences")
-    expect(editor.locator('[name="classIds"]')).to_have_value(["firefox-class"])
+    expect(editor.locator('[name="classIds"]')).to_have_values(["firefox-class"])
     expect(editor.locator('[name="day"]')).to_have_value("0")
     expect(editor.locator('[name="time"]')).to_have_value("14:00")
     expect(editor.locator('[name="endTime"]')).to_have_value("15:00")
@@ -331,7 +331,7 @@ def verify_planner_workflows(page) -> None:
 
     editor=page.locator("#modal form")
     expect(editor.locator('[name="subject"]')).to_have_value("Français")
-    expect(editor.locator('[name="classIds"]')).to_have_value(["firefox-class"])
+    expect(editor.locator('[name="classIds"]')).to_have_values(["firefox-class"])
     expect(editor.locator('[name="day"]')).to_have_value("4")
     expect(editor.locator('[name="time"]')).to_have_value("09:00")
     expect(editor.locator('[name="endTime"]')).to_have_value("10:00")
