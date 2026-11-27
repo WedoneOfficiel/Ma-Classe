@@ -989,7 +989,7 @@ Cette architecture ne satisfait donc pas l'objectif de zéro réglage manuel du 
 - Présence du bouton de sélection et transmission des données au brouillon de cours.
 - Préremplissage des champs de classe, professeur, matière, jour, horaires et salle.
 
-**État de preuve :** les corrections sont codées ; elles restent à valider par la CI sur la tête courante de la PR, puis par un nouvel essai utilisateur sur la copie. Aucun défaut n'est déclaré « Corrigé » à ce stade.
+**État de preuve :** CI #2193 réussie (3/3 : tests Linux, Firefox réel et macOS Apple Silicon/launchd). Les captures Firefox ont été inspectées ; le configurateur est présent dans Paramètres avec une mise en page responsive. Les nouveaux parcours restent à confirmer par un essai utilisateur sur la copie, notamment la création/modification des cours et le copier-coller réel dans ChatGPT. Aucun défaut n'est déclaré « Corrigé » à ce stade.
 
 
 ### Ajustements métier du 27 novembre — Planner et configurateur établissement
@@ -1000,4 +1000,4 @@ Cette architecture ne satisfait donc pas l'objectif de zéro réglage manuel du 
 - **CFG-CHATGPT-01 — Transfert simplifié :** formulaire enregistré explicitement dans Ma Classe puis bouton de copie d'un prompt complet à coller dans ChatGPT. Aucun fichier modèle, schéma, instructions ou contexte n'est demandé à joindre à ChatGPT ; un unique JSON final est récupéré puis importé dans Ma Classe.
 - **CFG-IMPORT-01 — Création facultative :** le JSON peut indiquer createTeacherAccounts=false (liste teachers vide et aucune affectation professeur) ou createStudentProfiles=false (liste students vide). Dans ce dernier cas, expectedStudentCount reste le référentiel pour les contrôles de capacité. L'absence de ces propriétés conserve le comportement historique, pour ne pas casser les anciens fichiers.
 
-**Preuve actuelle :** correctifs codés, tests unitaires/serveur/navigateur ajustés. La validation CI de la tête finale de PR #20 est en cours ; aucun de ces points ne doit être déclaré « Corrigé » avant confirmation sur la copie V25.2.0.
+**Preuve actuelle :** correctifs codés, tests unitaires/serveur/navigateur ajustés. CI #2193 réussie sur la tête de PR #20 (3/3 : Linux, Firefox réel, macOS Apple Silicon/launchd). La recette réelle sur la copie V25.2.0 reste nécessaire avant tout passage au statut « Corrigé ».
