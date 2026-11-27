@@ -82,7 +82,7 @@ vm.createContext(roomFinderContext);
 vm.runInContext(runPlannerUi,roomFinderContext);
 roomFinderContext.runPlanner({preventDefault(){},target:{}});
 assert(capturedRoomModal.body.includes('B204')&&capturedRoomModal.body.includes('Choisir cette salle'),'Le résultat doit afficher la salle créée et un bouton de sélection.');
-assert(capturedRoomModal.body.includes('plannerCreateDraft(0,"14:00","15:00","6A","t1","SES","B204")'),'Le bouton doit transmettre le créneau, la classe, le professeur, la matière et la salle.');
+assert(capturedRoomModal.body.includes('plannerCreateDraft(&quot;0&quot;,&quot;14:00&quot;,&quot;15:00&quot;,&quot;6A&quot;,&quot;t1&quot;,&quot;SES&quot;,&quot;B204&quot;)'),'Le bouton doit transmettre le créneau, la classe, le professeur, la matière et la salle dans un attribut HTML correctement échappé.');
 const draftStart=app.indexOf('function plannerCreateDraft('),draftEnd=app.indexOf('\nfunction ',draftStart);
 assert(draftStart>=0&&draftEnd>draftStart,'Le passage du Planner au formulaire de cours doit exister.');
 let openedPlannerDraft=null;
