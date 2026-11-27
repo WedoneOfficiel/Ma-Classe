@@ -67,7 +67,7 @@ vm.runInContext(runPlannerUi,roomFinderContext);
 roomFinderContext.runPlanner({preventDefault(){},target:{}});
 assert(roomFinderContext.modal.body.includes('B204')&&roomFinderContext.modal.body.includes('Choisir cette salle'),'Le résultat doit afficher la salle créée et un bouton de sélection.');
 assert(roomFinderContext.modal.body.includes('plannerCreateDraft(0,"14:00","15:00","6A","t1","SES","B204")'),'Le bouton doit transmettre le créneau, la classe, le professeur, la matière et la salle.');
-const draftStart=app.indexOf('function plannerCreateDraft('),draftEnd=app.indexOf('\\nfunction ',draftStart);
+const draftStart=app.indexOf('function plannerCreateDraft('),draftEnd=app.indexOf('\nfunction ',draftStart);
 assert(draftStart>=0&&draftEnd>draftStart,'Le passage du Planner au formulaire de cours doit exister.');
 const draftContext={window:{},selectedWeek:new Date('2026-11-23T12:00:00'),iso(){return '2026-11-23'},closeModal(){},openSchedule(){this.openedDraft=this.window._scheduleDraft}};
 vm.createContext(draftContext);
