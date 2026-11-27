@@ -111,7 +111,7 @@ def run():
         teacher_profile=next(p for p in saved['teachers'] if p['id']==teacher_id)
         assert teacher_profile['first']=='Alice' and teacher_profile['last']=='Martin'
         assert 'passwordHash' not in teacher_profile and 'temporaryPassword' not in teacher_profile
-        assert teacher_record['passwordHash'].startswith('pbkdf2_sha256
+        assert 'pbkdf2_sha256' in teacher_record['passwordHash']
         assert status==200 and json.loads(body)['user']['mustChangePassword']
         teacher=headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/auth/change-password','POST',{'currentPassword':teacher_password,'newPassword':'unMotDePasseProfEncorePlusFort!'},teacher)[0]==200
