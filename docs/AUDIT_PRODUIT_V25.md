@@ -1,10 +1,10 @@
 # Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : candidat V25.2.0 — audit produit, correctifs fonctionnels et validation automatisée — 26 novembre 2026**
+**État : candidat V25.2.0 — audit produit, correctifs fonctionnels et validation automatisée — 27 novembre 2026**
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
-**Dernière tête fonctionnelle testée :** commit `3522e5dd2d09facd1d694b218a2a6e5718350cf3`, run [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692), trois jobs réussis : Linux (15/15 étapes), macOS Apple Silicon/launchd réel (17/17) et Firefox réel (9/9). La matrice croisée exécute 860 invariants ; le dépôt compte 109 fichiers de tests (67 JavaScript, 42 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. La PR n'est pas fusionnée et la release stable n'est pas publiée.
+**Dernière tête validée automatiquement :** commit `c0d8d34e682751188b460a0d71ebfd2ad4147395`, run [45915519830](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45915519830), trois jobs réussis : Linux, macOS Apple Silicon/launchd réel et Firefox réel (3/3). La matrice croisée exécute 860 invariants ; le dépôt compte 109 fichiers de tests (67 JavaScript, 42 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. Les captures Firefox ont été publiées et inspectées. La PR n'est pas fusionnée et la release stable n'est pas publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -25,7 +25,7 @@ La revue des contrats entre modules a mis en évidence plusieurs divergences qui
 | Publication le jour même | Des calculs navigateur transmettaient une date seule au filtre de publication ; un timestamp prévu plus tard dans la même journée pouvait être considéré comme déjà visible. Le filtre du PDF serveur comparait lui aussi le timestamp à une date par ordre lexical. | Passer l'instant ISO complet aux calculs navigateur et utiliser le contrôle serveur de date/heure dans la génération PDF. | Tests avant, à et après l'instant prévu, avec fuseaux horaires et dates historiques explicites. |
 | Notes négatives ou hors barème | Le moteur navigateur pouvait conserver une valeur négative dans son résultat de secours alors que le PDF serveur l'écartait. Une note invalide pouvait ainsi modifier une moyenne affichée. | Rejeter toute valeur inférieure à zéro ou supérieure au barème, comme le calcul serveur. | Tests de valeurs négatives, supérieures au maximum, non numériques et décimales françaises. |
 
-La CI de la PR a déjà révélé plusieurs défauts applicatifs réels, dont une note négative qui pouvait entrer dans une moyenne (par exemple, -1 et 12/20 produisaient 5,50). Le moteur commun a été corrigé sur la branche. La comparaison des rendus HTML/PDF a ensuite identifié un défaut de cloisonnement des compétences dans le bulletin navigateur ; le correctif et ses tests viennent d'être ajoutés. Les résultats du dernier commit restent à confirmer.
+La CI de la PR a révélé plusieurs défauts applicatifs réels, dont une note négative qui pouvait entrer dans une moyenne (par exemple, -1 et 12/20 produisaient 5,50). Le moteur commun et le cloisonnement des compétences du bulletin navigateur ont été corrigés. La tête `c0d8d34` a ensuite passé la CI complète Linux/macOS/Firefox ; la recette sur l'installation de référence reste distincte.
 
 ### Dette technique observée
 
@@ -580,3 +580,15 @@ La V25.2.0 reste le candidat à stabiliser ; ces pistes ne doivent pas retarder 
 - L'interface rappelle qu'aucune API ni connexion automatique à ChatGPT n'est utilisée.
 - La génération externe impose des pseudonymes et interdit l'envoi d'identités réelles, coordonnées, dates de naissance, comptes ou commentaires individuels. Le serveur continue de créer les comptes enseignants localement.
 - La recette Firefox ouvre le générateur depuis l'espace Direction, vérifie les trois étapes et l'avertissement de confidentialité, et inspecte le rendu en clair/sombre.
+
+
+## Vérification finale de la tête candidate — 27/11/2026
+
+- **CI complète :** commit `c0d8d34e682751188b460a0d71ebfd2ad4147395`, run [45915519830](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45915519830), Linux/macOS Apple Silicon avec vrai `launchd`/Firefox réel, **3/3 réussis**.
+- **Écran des nouveautés :** correction de la variable temporaire non déclarée en mode strict ; test d'ouverture automatique ajouté.
+- **Validité des tests :** horloge de la matrice de publication rendue déterministe ; contrôles de grille intégrés dans la classe `unittest` ; appels Playwright desktop/mobile conformes à l'API.
+- **Paramètres :** correction du placement de Données par `grid-area`, qui était annulé par une déclaration `grid-column:auto`. Les captures desktop et 390 px montrent la disposition sémantique attendue.
+- **Générateur d'établissement :** capacités de salles calculées avec les groupes implicites générés pour les classes multi-niveaux et avec l'effectif cumulé d'un créneau partagé entre plusieurs classes. Deux tests de régression couvrent ces cas.
+- **Archive distribuée :** un test dédié vérifie désormais que la commande `git archive` du workflow de publication inclut le runtime, les notes V25.2.0, l'historique consolidé et les trois archives sources du journal. Cette nouvelle vérification doit encore passer dans la CI de la tête postérieure à `c0d8d34`.
+
+La validation sur une copie de la base réelle, le réseau multi-appareils et les vrais comptes reste obligatoire avant fusion et publication. V25.1.1 demeure la dernière release stable.
