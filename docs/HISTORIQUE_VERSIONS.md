@@ -2,6 +2,27 @@
 
 > Registre historique consolidé le 26 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
 
+## V25.2.0 — harmonisation des modules et configuration d’établissement (27/11/2026)
+
+**Statut : candidat en recette — non publié.** Les modifications sont sur la PR #20 et doivent encore être acceptées sur la copie isolée avant fusion et publication.
+
+### Parcours de l’emploi du temps
+- Le module « Organiser » est ramené à deux actions sans chevauchement fonctionnel : rechercher un créneau pour un nouveau cours, ou rechercher une salle de remplacement pour un cours déjà inscrit.
+- La recherche d’un nouveau créneau propose, pour chaque horaire sans conflit, les salles libres compatibles avec l’effectif, les équipements, les indisponibilités et les réservations ; le choix préremplit le formulaire du nouveau cours.
+- La recherche d’une salle part de la sélection d’un cours existant et reprend ses classes, ses horaires et ses enseignants ; le remplacement ouvre la fiche existante et ne crée pas de doublon.
+
+### Configurateur d’établissement
+- Configurateur retiré de la page Administration → Utilisateurs et centralisé dans Paramètres, avec une présentation responsive.
+- Formulaire de cadrage enregistré dans Ma Classe, puis copie en un bloc des consignes, du format et des réponses à coller dans ChatGPT. Aucun fichier de contexte, modèle ou guide n’est à joindre dans ChatGPT ; un seul fichier JSON final revient dans Ma Classe.
+- Prise en compte d’établissements multi-niveaux, de la petite section à la terminale, avec classes, effectifs, fiches élèves pseudonymisées, professeurs, matières, salles et emplois du temps cohérents.
+- Fiches professeurs distinctes des comptes de connexion : les profils et leurs affectations pédagogiques sont conservés même si les comptes sont différés. La Direction peut créer un compte ultérieurement depuis la fiche, sans changer l’identifiant utilisé par les cours.
+- Création des fiches élèves facultative ; les effectifs prévus restent utilisés pour contrôler la capacité des salles. Les données personnelles réelles et mots de passe ne sont pas transmis à ChatGPT.
+
+### Preuves et limites
+- CI du candidat fonctionnel précédent : Linux/Python, Firefox réel et macOS Apple Silicon/launchd, 3/3 réussies. Les derniers changements de séparation profils/comptes et de sauvegarde sont soumis à une nouvelle CI.
+- Aucun changement n’est publié ni déployé en production à ce stade. Une importation représentative de taille réelle et la validation humaine des emplois du temps restent indispensables.
+- La copie en un bloc élimine les pièces jointes de contexte, mais ne supprime pas les limites d’usage, de contexte ou de génération de fichiers qui peuvent s’appliquer à ChatGPT gratuit.
+
 ## V25.1.1 — fiabilisation HTTPS et mises à jour macOS (26/11/2026)
 
 **Statut : release publiée et installée sur le Mac de référence.** Tag `v25.1.1`, commit `b5cc07d6747605f2eac6ad11dffb3ce0bbb9ec43`. La mise à jour depuis V25.0.23 a été confirmée fonctionnelle par l'utilisateur après recours au lanceur direct de premier passage.
