@@ -3373,9 +3373,14 @@ class Handler(SimpleHTTPRequestHandler):
                         return self._json({'error':'Les données ont été modifiées depuis votre dernier chargement. Recharge MaClasse avant de réessayer.','code':'REVISION_CONFLICT'},409,headers={'X-MaClasse-Revision':current_revision})
                     if current is not None:
                         data['users']=current.get('users',[]) if isinstance(current.get('users'),list) else []
-                        data.pop('teachers',None)
-                    else:
-                        data.pop('teachers',None)
+                        if user.get('role')!='admin':
+                            # Les profils enseignants sont un référentiel de Direction.
+                            # Un compte professeur/élève ne peut ni les supprimer ni les modifier.
+                            data['teachers']=current.get('teachers',[]) if isinstance(current.get('teachers'),list) else []
+                        elif not isinstance(data.get('teachers'),list):
+                            data['teachers']=current.get('teachers',[]) if isinstance(current.get('teachers'),list) else []
+                    elif not isinstance(data.get('teachers'),list):
+                        data['teachers']=[]
                     if current is not None:
                         old_students={str(x.get('id')):x for x in current.get('students',[]) or [] if isinstance(x,dict) and x.get('id')}
                         for student in data.get('students',[]) or []:
