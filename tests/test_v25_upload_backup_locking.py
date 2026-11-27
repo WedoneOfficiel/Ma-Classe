@@ -153,15 +153,10 @@ def test_every_upload_mutation_route_uses_the_shared_lock():
         "La restauration doit exclure les écritures concurrentes pendant tout le staging."
     )
 
-    download_route = (
-        "        if path.startswith('/data/uploads/'):\\n"
-        "            # Keep the attachment directory stable until SimpleHTTPRequestHandler\\n"
-        "            # has opened and streamed the file. A restore must wait for active\\n"
-        "            # downloads instead of swapping uploads between path resolution/open.\\n"
-        "            with UPLOADS_LOCK:\\n"
-        "                return super().do_GET()\\n"
-    )
-    assert download_route in source, (
+    download_start = source.rindex("        if path.startswith('/data/uploads/'):")
+    download_end = source.index("        return super().do_GET()", download_start)
+    download_route = source[download_start:download_end]
+    assert "with UPLOADS_LOCK:" in download_route, (
         "Le téléchargement d'une pièce jointe doit garder UPLOADS_LOCK pendant son envoi."
     )
 
