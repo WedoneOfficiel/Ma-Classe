@@ -136,19 +136,21 @@ def certificate_matches_host(certificate: Path | str, host: str) -> bool:
                 return False
             matches = False
             for candidate in san.get_values_for_type(x509.DNSName):
-                name = candidate.encode("idna").decode("ascii").lower().rstrip(".")
-                if name == expected_dns:
-                    matches = True
-                    break
-                if name.startswith("*."):
-                    suffix = name[2:]
+                if candidate.startswith("*."):
+                    suffix = _normalise_dns_hostname(candidate[2:])
                     labels = expected_dns.split(".")
                     if (
-                        len(labels) == len(suffix.split(".")) + 1
+                        suffix
+                        and len(labels) == len(suffix.split(".")) + 1
                         and ".".join(labels[1:]) == suffix
                     ):
                         matches = True
                         break
+                    continue
+                name = _normalise_dns_hostname(candidate)
+                if name == expected_dns:
+                    matches = True
+                    break
             if not matches:
                 return False
         else:
@@ -173,10 +175,10 @@ def load_public_certificate_config(data_dir: Path | str) -> dict | None:
     certificate/key paths. ACME credentials are not read or stored by MaClasse.
     """
     config_path = Path(data_dir) / "tls" / "public-certificate.json"
-    if not config_path.exists():
-        return None
     if config_path.is_symlink():
         raise RuntimeError("La configuration TLS publique ne peut pas être un lien symbolique.")
+    if not config_path.exists():
+        return None
     try:
         config_stat = config_path.stat()
         if not config_path.is_file():
