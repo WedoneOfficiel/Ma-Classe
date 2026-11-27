@@ -876,6 +876,11 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
     Only new records are created: existing classes/rooms are never overwritten.
     All identifiers and passwords are generated locally by the server.
     """
+    if existing_data is not None and not isinstance(existing_data, dict):
+        raise ValueError(
+            "Données existantes incompatibles : la racine de la base n'est pas un objet. "
+            "Aucune donnée n'a été remplacée."
+        )
     source_data = existing_data if isinstance(existing_data, dict) else {}
     collection_names = (
         "classes", "students", "users", "schedule", "teacherAssignments",

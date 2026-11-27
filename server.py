@@ -584,6 +584,25 @@ def _load_database():
         return {}
 
 
+def _load_database_for_establishment_import():
+    """Load persisted data without treating a malformed root as a new school."""
+    try:
+        with open(DATA_FILE, encoding='utf-8') as source:
+            data = json.load(source)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError, TypeError) as error:
+        raise ValueError(
+            "La base de données existante est illisible ; l'import est bloqué et aucune donnée n'a été remplacée."
+        ) from error
+    if not isinstance(data, dict):
+        raise ValueError(
+            "La racine de la base de données existante n'est pas un objet JSON ; "
+            "l'import est bloqué et aucune donnée n'a été remplacée."
+        )
+    return _sanitize_rich_data(data)
+
+
 def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_record, today=None):
     """Build the printable bulletin from canonical server-side records only."""
     if today is None or today == '':
@@ -2767,14 +2786,16 @@ class Handler(SimpleHTTPRequestHandler):
             if path.endswith('/validate'):
                 try:
                     with DATA_LOCK:
-                        current=_load_database()
+                        current=_load_database_for_establishment_import()
                         validation=establishment_import.validate_bundle(payload,current)
                     return self._json(establishment_import.public_validation(validation))
+                except ValueError as exc:
+                    return self._json({'error':str(exc)},409)
                 except Exception:
                     return self._json({'error':'Impossible de valider ce dossier d’établissement.'},500)
             try:
                 with DATA_LOCK:
-                    current=_load_database()
+                    current=_load_database_for_establishment_import()
                     validation=establishment_import.validate_bundle(payload,current)
                     if validation.get('errors'):
                         return self._json({

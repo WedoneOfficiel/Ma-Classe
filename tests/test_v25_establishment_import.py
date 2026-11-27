@@ -2,10 +2,13 @@ import copy
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import establishment_import as importer
+import server
 
 
 def sample_bundle():
@@ -301,6 +304,32 @@ class EstablishmentImportTests(unittest.TestCase):
         data, credentials, _ = importer.build_data(bundle, {}, password_hasher=lambda p: p, token_factory=tokens)
         names = [x["username"] for x in credentials]
         self.assertEqual(len(set(names)), len(names))
+
+    def test_import_database_loader_rejects_non_object_root_without_mutation(self):
+        for raw in ("[]", '"database"', "null", "{invalid json"):
+            with self.subTest(raw=raw), tempfile.TemporaryDirectory() as temp:
+                database = Path(temp) / "maclasse.json"
+                database.write_text(raw, encoding="utf-8")
+                with patch.object(server, "DATA_FILE", str(database)):
+                    with self.assertRaisesRegex(ValueError, "base de données existante|racine"):
+                        server._load_database_for_establishment_import()
+                self.assertEqual(database.read_text(encoding="utf-8"), raw)
+
+    def test_import_database_loader_accepts_absent_database_as_empty(self):
+        with tempfile.TemporaryDirectory() as temp:
+            database = Path(temp) / "missing.json"
+            with patch.object(server, "DATA_FILE", str(database)):
+                self.assertEqual(server._load_database_for_establishment_import(), {})
+
+    def test_build_data_rejects_non_object_existing_database(self):
+        for malformed in ([], "not-an-object", 42, False):
+            with self.subTest(malformed=malformed):
+                with self.assertRaisesRegex(ValueError, "racine de la base"):
+                    importer.build_data(
+                        sample_bundle(), malformed,
+                        password_hasher=lambda value: "HASH:" + value,
+                        token_factory=lambda size: "generated-token",
+                    )
 
     def test_refuses_to_replace_malformed_existing_data_during_import(self):
         malformed_records = [
