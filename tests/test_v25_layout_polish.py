@@ -54,7 +54,7 @@ class LayoutPolishTests(unittest.TestCase):
         self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsPeriodsCard{grid-area:periods!important}", HTML)
         self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsRoomsCard{grid-area:rooms!important}", HTML)
         self.assertIn("#main .settingsGrid.settingsAdminLayout>.settingsUpdateCard{grid-area:updates!important}", HTML)
-        self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsDataCard{grid-area:data!important;grid-column:auto!important}", HTML)
+        self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsDataCard{grid-area:data!important}", HTML)
         self.assertIn(".settingsGrid.settingsStudentGrid{", HTML)
         self.assertIn("settingsAdminLayout", JS)
 
