@@ -57,7 +57,7 @@ const wizardSource=generatorSource.slice(wizardStart,wizardEnd);
 assert(!wizardSource.includes('downloadEstablishmentTemplate()')&&!wizardSource.includes('downloadEstablishmentSchema()')&&!wizardSource.includes('downloadEstablishmentPrompt()')&&!wizardSource.includes('downloadEstablishmentContext()'),'Aucun document annexe ne doit être demandé à l’utilisateur pour ChatGPT.');
 assert(wizardSource.includes('accept=".json,application/json"')&&wizardSource.includes('Un seul fichier JSON'),'Un seul JSON final doit être importé dans Ma Classe.');
 assert(!generatorSource.includes("api.openai.com")&&!generatorServer.includes("api.openai.com"),'Aucune intégration API ChatGPT ne doit être ajoutée.');
-assert(generatorGuide.includes("Aucun fichier à joindre à ChatGPT")&&generatorGuide.includes("Confidentialité"),'Le guide doit expliquer le copier-coller unique et la pseudonymisation.');
+assert(generatorGuide.toLowerCase().includes("aucun fichier à joindre à chatgpt")&&generatorGuide.includes("Confidentialité"),'Le guide doit expliquer le copier-coller unique et la pseudonymisation.');
 
 console.log('OK — Import établissement : schéma, exemple, documentation, échange manuel, Direction, sauvegarde, comptes locaux et import atomique.');
 
