@@ -341,9 +341,38 @@ def run_supervisor(
     active_tls_hostname = None
     active_tls_fingerprint = None
     last_offline_log = 0.0
+    last_tls_config_error_log = 0.0
     try:
         while not stop_event.is_set():
-            public_config = load_public_certificate_config(data_dir)
+            if process is not None and process.poll() is not None:
+                code = process.returncode
+                print(
+                    f"Le serveur MaClasse s'est arrêté inopinément "
+                    f"(code {code}) ; le superviseur transmet l'échec au service.",
+                    file=sys.stderr, flush=True,
+                )
+                return code if isinstance(code, int) and code != 0 else 1
+
+            try:
+                public_config = load_public_certificate_config(data_dir)
+            except RuntimeError as error:
+                if process is None:
+                    raise
+                # During ACME deployment, fullchain and private key may be
+                # atomically replaced one after the other. Keep the last
+                # already-running TLS listener and retry on the next poll;
+                # never stop it or start with a mismatched pair.
+                now = time.monotonic()
+                if now - last_tls_config_error_log >= 60:
+                    print(
+                        f"Configuration TLS publique temporairement invalide ; "
+                        f"le listener courant est conservé et un nouvel essai sera effectué : {error}",
+                        file=sys.stderr, flush=True,
+                    )
+                    last_tls_config_error_log = now
+                if stop_event.wait(poll_seconds):
+                    break
+                continue
             if public_config:
                 cert_path = public_config["certificate"]
                 key_path = public_config["private_key"]
@@ -356,15 +385,6 @@ def run_supervisor(
                 certificate_identity = None
                 tls_hostname = ""
                 tls_fingerprint = None
-
-            if process is not None and process.poll() is not None:
-                code = process.returncode
-                print(
-                    f"Le serveur MaClasse s'est arrêté inopinément "
-                    f"(code {code}) ; le superviseur transmet l'échec au service.",
-                    file=sys.stderr, flush=True,
-                )
-                return code if isinstance(code, int) and code != 0 else 1
 
             host = detect_ip()
             if host is None:
