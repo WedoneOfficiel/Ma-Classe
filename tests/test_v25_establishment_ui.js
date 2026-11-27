@@ -50,7 +50,7 @@ console.log('OK — Import établissement : schéma, exemple, documentation, éc
 
 {
   const start=generatorSource.lastIndexOf('function downloadEstablishmentContext(');
-  const end=generatorSource.indexOf('\\nfunction ',start+10);
+  const end=generatorSource.indexOf('\nfunction ',start+10);
   assert(start>=0&&end>start,'La fonction d’export du contexte doit exister.');
   const sample={
     classes:[{id:'CLASS_ID_A',name:'6e A',level:'6e',levels:['6e'],groups:['Groupe A'],teacherIds:['TEACHER_ID_A'],principalTeacherId:'TEACHER_ID_A',subjectRequirements:[]}],
