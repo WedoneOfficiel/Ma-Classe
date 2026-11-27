@@ -332,7 +332,7 @@ def validate_bundle(bundle, existing_data=None):
     existing_data = existing_data if isinstance(existing_data, dict) else {}
     if not isinstance(bundle, dict):
         return {"errors": ["Le fichier doit contenir un objet JSON."], "warnings": [], "summary": {}, "quality": {}}
-    _check_fields(bundle, {"format", "version", "createTeacherAccounts", "establishment", "classes", "teachers", "students", "rooms", "schedule"}, "Racine", errors)
+    _check_fields(bundle, {"format", "version", "createTeacherAccounts", "createStudentProfiles", "establishment", "classes", "teachers", "students", "rooms", "schedule"}, "Racine", errors)
     for required in ("format", "version", "establishment", "classes", "teachers", "students", "rooms", "schedule"):
         if required not in bundle:
             errors.append(f"Propriété obligatoire manquante : {required}.")
@@ -344,6 +344,10 @@ def validate_bundle(bundle, existing_data=None):
     if not isinstance(create_teacher_accounts, bool):
         errors.append("createTeacherAccounts doit être un booléen (true ou false).")
         create_teacher_accounts = True
+    create_student_profiles = bundle.get("createStudentProfiles", True)
+    if not isinstance(create_student_profiles, bool):
+        errors.append("createStudentProfiles doit être un booléen (true ou false).")
+        create_student_profiles = True
     establishment = bundle.get("establishment", {})
     if not isinstance(establishment, dict):
         errors.append("establishment doit être un objet.")
@@ -359,6 +363,8 @@ def validate_bundle(bundle, existing_data=None):
     class_records = _unique_records(classes_raw, "classes", errors, {"key", "name", "levels", "groups", "attendanceMode", "periodMode", "principalTeacher", "teachers", "subjectRequirements", "expectedStudentCount"})
     teacher_records = _unique_records(teachers_raw, "teachers", errors, {"key", "first", "last", "email", "phone", "profileNotes", "subjects", "classes", "username", "unavailable"})
     student_records = _unique_records(students_raw, "students", errors, {"key", "first", "last", "class", "level", "group", "birth", "sex", "email", "phone", "notes"})
+    if not create_student_profiles and student_records:
+        errors.append("createStudentProfiles=false : students doit être une liste vide ; les identités seront ajoutées plus tard dans Ma Classe.")
     room_records = _unique_records(rooms_raw, "rooms", errors, {"key", "name", "type", "capacity", "equipment", "unavailable"})
     schedule_records = _unique_records(schedule_raw, "schedule", errors, {"key", "classes", "class", "day", "start", "end", "subject", "group", "teachers", "teacher", "room", "recurrence", "intervalWeeks", "startDate", "endDate", "exceptions", "equipment"})
 
@@ -568,9 +574,7 @@ def validate_bundle(bundle, existing_data=None):
     for key, record in classes.items():
         count = sum(1 for student in students.values() if student["class"] == key)
         expected = record["expectedStudentCount"]
-        if create_teacher_accounts is not None and bundle.get("createStudents", True) is False:
-            pass
-        if expected is not None and count != expected and bundle.get("createStudents", True) is not False:
+        if expected is not None and count != expected and create_student_profiles:
             errors.append(f"Classe {record['name']!r} : {expected} élèves attendus, {count} fiches fournies.")
         if count == 0:
             warnings.append(f"La classe {record['name']!r} ne contient aucun élève.")
@@ -706,7 +710,7 @@ def validate_bundle(bundle, existing_data=None):
                     student_count_by_class[class_key]
                     for class_key in lesson["classes"]
                 )
-            if student_count == 0 and bundle.get("createStudents", True) is False:
+            if student_count == 0 and not bundle.get("createStudentProfiles", True):
                 # With no imported student records, use the expected class sizes.
                 student_count = sum(
                     int(classes[class_key].get("expectedStudentCount") or 0)
@@ -873,7 +877,7 @@ def validate_bundle(bundle, existing_data=None):
         "summary": {
             "establishment": establishment_name,
             "classes": len(classes), "students": len(students),
-            "teachers": len(teachers) if create_teacher_accounts else 0, "rooms": len(rooms),
+            "teachers": len(teachers) if create_teacher_accounts else 0, "students": len(students) if create_student_profiles else 0, "rooms": len(rooms),
             "scheduleSlots": len(schedule),
         },
         "quality": quality,
@@ -881,6 +885,7 @@ def validate_bundle(bundle, existing_data=None):
             "establishment": {"name": establishment_name},
             "classes": classes, "students": students, "teachers": teachers,
             "createTeacherAccounts": create_teacher_accounts,
+            "createStudentProfiles": create_student_profiles,
             "rooms": rooms, "schedule": schedule,
         },
     }
