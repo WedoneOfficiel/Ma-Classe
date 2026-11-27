@@ -1,6 +1,6 @@
 # AMEL-01 — Gestionnaire de mises à jour MaClasse
 
-**État actualisé au 26/11/2026 :** la release stable V25.1.1 (v25.1.1) est publiée avec son archive, son manifeste et sa signature Ed25519. Le workflow de publication #4 (run 45806118500) a terminé avec succès ses quatre jobs. Le tag pointe sur le commit validé b5cc07d6747605f2eac6ad11dffb3ce0bbb9ec43.
+**État actualisé au 27/11/2026 :** la dernière release stable publiée reste V25.1.1 (v25.1.1), avec archive, manifeste et signature Ed25519. Le candidat V25.2.0 sur la PR #20 a passé le workflow #2117 (run 45988326470), 3/3 : tests Linux, installateur Apple Silicon et véritable `launchd` sur macOS, puis parcours Firefox réel. Cette validation CI ne remplace pas la recette physique sur une copie représentative des données. La PR reste ouverte et non fusionnée ; aucune release V25.2.0 ni aucun tag stable n'existe.
 
 **Correctifs V25.1.1 :** la PR #14 a remplacé l'analyse textuelle du SAN par le parseur X.509 de cryptography. Les PR #16, #18 et #19 ont renforcé l'arrêt et le rollback, le lanceur réseau LibreSSL, le démarrage LaunchAgent et les diagnostics. La version ajoute également une progression visible pendant la préparation de la mise à jour et un lanceur direct de premier passage depuis V25.0.23.
 
@@ -66,7 +66,9 @@ Le serveur Python ne doit pas tenter de remplacer ou redémarrer son propre proc
 - Le workflow échoue fermé si le secret de signature est absent ou si sa clé privée ne correspond pas à la clé publique versionnée.
 - Le gestionnaire n'écoute pas sur l'interface réseau et ne donne pas de privilèges généraux au serveur web.
 
-## État actuel constaté
+## Constat initial de la campagne — archive historique, état dépassé
+
+Les observations ci-dessous décrivent l'état du dépôt avant l'implémentation du gestionnaire. Elles sont conservées pour expliquer les décisions techniques et ne décrivent plus le fonctionnement actuel. Voir le résumé d'état en tête du document et le README pour le statut courant.
 
 - `VERSION.txt`, `server.py` et `_all.js` exposent un numéro de version, mais aucun contrôle de release n'est intégré.
 - Les scripts macOS et Linux font actuellement un `git fetch origin main` puis une avance rapide du clone local.

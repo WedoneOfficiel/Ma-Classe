@@ -9,6 +9,7 @@
 | [Gestion des mises à jour](GESTION_MISES_A_JOUR.md) | Architecture, vérifications, migration et limites du gestionnaire |
 | [Signature des releases](RELEASE_SIGNING.md) | Clé Ed25519 épinglée, secret GitHub Actions et vérification côté client |
 | [Configuration établissement avec ChatGPT](CONFIGURATION_ETABLISSEMENT_CHATGPT.md) | Préparer, anonymiser, prévalider et importer un JSON d'établissement (25 Mo maximum) |
+| [Recette physique V25.2.0](RECETTE_PHYSIQUE_V25.2.0.md) | Contrôles sur une copie de données avant fusion et publication |
 
 ## Qualité et suivi du produit
 

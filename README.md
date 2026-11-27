@@ -78,6 +78,7 @@ Pour la gestion des releases, des migrations et du retour arrière, voir [Gestio
 | [Index de la documentation](docs/INDEX.md) | Guides actifs et archives |
 | [Installation](docs/INSTALLATION.md) | Prérequis, installation, démarrage et sauvegardes |
 | [Réseau local HTTPS](docs/RESEAU_HTTPS.md) | Certificats, clients, DHCP et pare-feu |
+| [Recette physique V25.2.0](docs/RECETTE_PHYSIQUE_V25.2.0.md) | Protocole de validation sur copie avant fusion/publication |
 | [Gestion des mises à jour](docs/GESTION_MISES_A_JOUR.md) | Architecture du gestionnaire, migration et validation |
 | [Signature des releases](docs/RELEASE_SIGNING.md) | Génération de la clé éditeur et configuration du secret GitHub |
 | [Audit produit V25](docs/AUDIT_PRODUIT_V25.md) | Modules, expérience utilisateur, thèmes et recette |
