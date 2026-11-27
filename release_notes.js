@@ -30,12 +30,29 @@ function parseDocument(markdown,source,sourceLabel){
  });
  flush();return entries;
 }
+function dateFromText(value){
+ var s=String(value||''),m=s.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+ if(m)return m[3]+'-'+m[2]+'-'+m[1];
+ m=s.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);return m?m[0]:'';
+}
+function versionCompare(a,b){
+ var aa=String(a||'').split('.').map(Number),bb=String(b||'').split('.').map(Number);
+ for(var i=0;i<Math.max(aa.length,bb.length);i++){var x=aa[i]||0,y=bb[i]||0;if(x!==y)return y-x}
+ return 0;
+}
 function parseHistory(docs){
  var all=[];
  (docs||[]).forEach(function(d){parseDocument(d.markdown,d.path,d.label).forEach(function(e){
-  if(e.version){var old=all.find(function(x){return x.version===e.version});if(old){if(e.content&&old.content.indexOf(e.content)<0)old.content+='\n\n#### Autre trace conservée : '+e.sourceFile+'\n\n'+e.content;if(e.sourceFile&&old.sourceFile.indexOf(e.sourceFile)<0)old.sourceFile+=' · '+e.sourceFile}else all.push(e)}
+  e.date=dateFromText(e.title)||dateFromText(e.content);
+  if(e.version){var old=all.find(function(x){return x.version===e.version});if(old){if(e.content&&old.content.indexOf(e.content)<0)old.content+='\n\n#### Autre trace conservée : '+e.sourceFile+'\n\n'+e.content;if(e.sourceFile&&old.sourceFile.indexOf(e.sourceFile)<0)old.sourceFile+=' · '+e.sourceFile;if(!old.date&&e.date)old.date=e.date}else all.push(e)}
   else if(e.content)all.push(e);
  })});
+ all.sort(function(a,b){
+  if(a.version&&b.version)return versionCompare(a.version,b.version);
+  if(a.version&&!b.version)return -1;
+  if(!a.version&&b.version)return 1;
+  return String(b.date||'').localeCompare(String(a.date||''));
+ });
  return all;
 }
 function inlineMarkdown(v){return escapeHtml(v).replace(/\x60([^\x60]+)\x60/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>')}
@@ -55,14 +72,17 @@ function loadHistory(){
  historyPromise=fetch('/api/release-notes/history',{credentials:'same-origin',cache:'no-store'}).then(function(r){if(!r.ok)throw Error('Journal indisponible ('+r.status+').');return r.json()}).then(function(p){currentVersion=String(p.current_version||currentVersion||'');return p}).catch(function(e){historyPromise=null;throw e});
  return historyPromise;
 }
-function currentEntry(p){var v=String(p.current_version||currentVersion||'');return {version:v,title:'V'+v+' · Version actuelle',content:cleanCurrentRelease(p.current_release_markdown||''),sourceFile:'docs/releases/v'+v+'.md'}}
+function currentEntry(p){var v=String(p.current_version||currentVersion||''),md=String(p.current_release_markdown||''),candidate=/candidat de livraison|candidat\b/i.test(md);return {version:v,title:'V'+v+' — '+(md.match(/^#\\s+V[^\\n]+[—–-]\\s*([^\\n]+)/m)||[])[1]||'Version actuelle',date:'',dateLabel:candidate?'Candidat · publication à confirmer':'Date de publication à confirmer',status:candidate?'Candidat':'Version actuelle',content:cleanCurrentRelease(md),sourceFile:'docs/releases/v'+v+'.md'}}
 function journalEntries(p){var c=currentEntry(p);return (c.content?[c]:[]).concat(parseHistory(p.history_documents||[]))}
+function entryDateLabel(e){if(e.date)return 'Le '+e.date.split('-').reverse().join('/');return e.dateLabel||'Date non documentée'}
+function entryTitle(e){return (e.version?'V'+e.version+' — ':'')+String(e.title||'').replace(/^V\\d+(?:\\.\\d+){1,2}\\s*[·—–-]?\\s*/i,'')}
+function articleMarkup(e){return '<div class="releaseNotesEntryMeta"><span class="releaseNotesStar">✦ Quoi de neuf ?</span><span class="releaseNotesDate">'+escapeHtml(entryDateLabel(e))+'</span></div><h3>'+escapeHtml(entryTitle(e))+'</h3>'+(e.content?renderMarkdown(e.content):'<p>Aucune note détaillée n’est conservée pour cette entrée.</p>')+'<p class="releaseNotesSource">Source : '+escapeHtml(e.sourceFile||e.source||'documents historiques du dépôt')+'</p>'}
 function selectEntry(i){
  var e=(global.__mcReleaseEntries||[])[i];if(!e)return;var nav=document.getElementById('releaseNotesNav');
  if(nav)Array.prototype.forEach.call(nav.querySelectorAll('button'),function(b,n){b.classList.toggle('active',n===i);b.setAttribute('aria-current',n===i?'true':'false')});
- var article=document.getElementById('releaseNotesArticle');if(article)article.innerHTML='<h3>'+escapeHtml(e.title)+'</h3>'+(e.content?renderMarkdown(e.content):'<p>Aucune note détaillée n’est conservée pour cette entrée.</p>')+'<p class="releaseNotesSource">Source : '+escapeHtml(e.sourceFile||e.source||'documents historiques du dépôt')+'</p>';
+ var article=document.getElementById('releaseNotesArticle');if(article)article.innerHTML=articleMarkup(e);
 }
-function navMarkup(entries){return entries.map(function(e,i){var l=e.version?'Trace historique documentée':'Trace datée';if(i===0&&e.version)l='Version actuelle';return '<button type="button" class="'+(i===0?'active':'')+'" aria-current="'+(i===0?'true':'false')+'" onclick="window.MCReleaseNotes.selectEntry('+i+')">'+escapeHtml(e.title)+'<small>'+escapeHtml(l)+'</small></button>'}).join('')}
+function navMarkup(entries){return entries.map(function(e,i){var l=entryDateLabel(e);if(i===0&&e.status)l=e.status+' · '+l;return '<button type="button" class="'+(i===0?'active':'')+'" aria-current="'+(i===0?'true':'false')+'" onclick="window.MCReleaseNotes.selectEntry('+i+')"><span class="releaseNotesNavStar" aria-hidden="true">✦</span><span>'+escapeHtml(entryTitle(e))+'</span><small>'+escapeHtml(l)+'</small></button>'}).join('')}
 function styleModal(){var m=document.getElementById('modal');if(m)m.classList.add('releaseNotesModal')}
 function openJournal(){return loadHistory().then(function(p){
  var entries=journalEntries(p);global.__mcReleaseEntries=entries;
@@ -76,7 +96,7 @@ function acknowledge(){
 }
 function openAutomatic(v,p){
  currentVersion=String(v||p.current_version||'');pendingAutomaticPayload=p;var e=currentEntry(p);
- var body='<p class="releaseNotesLead">Voici les nouveautés de la version installée. Cet écran est présenté une fois par compte et par version.</p><div class="releaseNotesLayout"><div class="releaseNotesNav"><button type="button" class="active" aria-current="true">V'+escapeHtml(currentVersion)+'<small>Nouveautés de cette installation</small></button></div><article class="releaseNotesArticle">'+(e.content?renderMarkdown(e.content):'<p>Aucune note détaillée n’est conservée pour cette version.</p>')+'</article></div><div class="releaseNotesActions"><button type="button" class="btn" onclick="window.MCReleaseNotes.openJournal()">Voir le journal complet</button><button type="button" class="btn primary" onclick="window.MCReleaseNotes.acknowledge()">J’ai compris</button></div>';
+ var body='<p class="releaseNotesLead">Voici les nouveautés de la version installée. Cet écran est présenté une fois par compte et par version.</p><div class="releaseNotesLayout"><div class="releaseNotesNav"><button type="button" class="active" aria-current="true"><span class="releaseNotesNavStar" aria-hidden="true">✦</span><span>V'+escapeHtml(currentVersion)+'</span><small>'+escapeHtml(e.dateLabel||'Version installée')+'</small></button></div><article class="releaseNotesArticle">'+articleMarkup(e)+'</article></div><div class="releaseNotesActions"><button type="button" class="btn" onclick="window.MCReleaseNotes.openJournal()">Voir le journal complet</button><button type="button" class="btn primary" onclick="window.MCReleaseNotes.acknowledge()">J’ai compris</button></div>';
  if(typeof global.openModal!=='function')return;global.openModal('Nouveautés de MaClasse · V'+currentVersion,body);styleModal();
  var close=document.querySelector('#modal .modalhead .close');if(close)close.setAttribute('onclick','window.MCReleaseNotes.acknowledge()');showingAutomatic=true;
 }
