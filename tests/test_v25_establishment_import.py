@@ -356,6 +356,12 @@ class EstablishmentImportTests(unittest.TestCase):
         bundle["teachers"][1]["last"] = "Martin"
         result = self.validate(bundle)
         self.assertFalse(result["errors"])
+        bundle_without_accounts = sample_bundle()
+        bundle_without_accounts["createTeacherAccounts"] = False
+        bundle_without_accounts["teachers"][0]["username"] = "elodie.martin"
+        no_account_result = self.validate(bundle_without_accounts, existing)
+        self.assertFalse(no_account_result["errors"])
+        self.assertEqual(no_account_result["summary"]["teacherAccounts"], 0)
         counter = {"n": 0}
         def tokens(size):
             counter["n"] += 1
@@ -378,6 +384,7 @@ class EstablishmentImportTests(unittest.TestCase):
         malformed = [
             {"classes": {"legacy": {"name": "Classe conservée"}}},
             {"students": "not-a-list"},
+            {"teachers": {"legacy": {"id": "teacher-without-account"}}},
             {"settings": ["paramètres historiques"]},
             {"settings": {"rooms": {"legacy": {"name": "Salle conservée"}}}},
         ]
