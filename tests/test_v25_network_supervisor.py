@@ -175,6 +175,13 @@ class NetworkSupervisorTests(unittest.TestCase):
                 cert, "192.168.1.42"
             ))
 
+    def test_public_dns_certificate_supports_one_level_wildcard_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cert = Path(temp) / "fullchain.pem"
+            write_test_certificate(cert, san_dns=["*.example.test"])
+            self.assertTrue(supervisor.certificate_matches_host(cert, "ecole.example.test"))
+            self.assertFalse(supervisor.certificate_matches_host(cert, "a.b.example.test"))
+
     def test_public_certificate_config_checks_permissions_hostname_and_key_pair(self):
         with tempfile.TemporaryDirectory() as temp:
             data = Path(temp)
@@ -273,6 +280,63 @@ class NetworkSupervisorTests(unittest.TestCase):
             self.assertEqual(child_env["MACLASSE_TLS_KEY"], str(key.resolve()))
             self.assertEqual(child_env["MACLASSE_HOST"], "192.168.1.24")
             self.assertEqual(processes[0].signals, [signal.SIGTERM])
+
+
+    def test_public_certificate_renewal_restarts_the_https_child(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            app = Path(temp) / "app"
+            data = Path(temp) / "data"
+            root.mkdir()
+            app.mkdir()
+            tls = data / "tls"
+            tls.mkdir(parents=True)
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            config = tls / "public-certificate.json"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+            processes = []
+
+            class RenewAfterFirstWait:
+                def __init__(self):
+                    self.calls = 0
+
+                def is_set(self):
+                    return False
+
+                def wait(self, _seconds):
+                    self.calls += 1
+                    if self.calls == 1:
+                        write_test_certificate(
+                            cert, san_dns=["maclasse.example.test"],
+                            private_key_path=key
+                        )
+                        return False
+                    return True
+
+            def spawn(command, **kwargs):
+                process = FakeProcess(command, **kwargs)
+                processes.append(process)
+                return process
+
+            result = supervisor.run_supervisor(
+                root, app, data, "/usr/bin/python3",
+                stop_event=RenewAfterFirstWait(),
+                detect_ip=lambda: "192.168.1.24",
+                spawn=spawn,
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(len(processes), 2)
+            self.assertEqual(processes[0].signals, [signal.SIGTERM])
+            self.assertEqual(processes[1].signals, [signal.SIGTERM])
 
     def test_rebind_stops_old_listener_before_starting_new_address(self):
         processes = []
