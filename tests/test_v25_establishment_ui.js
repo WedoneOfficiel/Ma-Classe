@@ -50,9 +50,9 @@ assert(generatorSource.includes('Enregistrer le formulaire dans Ma Classe')&&gen
 assert(generatorSource.includes('await flushPendingSave()')&&generatorSource.includes('db.settings.establishmentBrief'),'Le configurateur doit conserver les réponses dans les données enregistrées.');
 assert(generatorSource.includes('Enregistre le formulaire avant de copier la demande'),'La copie doit être bloquée tant que le formulaire n’est pas enregistré.');
 assert(generatorSource.includes('createTeacherAccounts:values.createTeacherAccounts')&&generatorSource.includes('createStudentProfiles')&&generatorSource.includes('teachers:[]'),'Les options de création des comptes professeurs et des fiches élèves doivent être transmises à ChatGPT.');
-assert(generatorSource.includes('Élève 6A-001')&&generatorSource.includes('createTeacherAccounts=')&&generatorSource.includes('20 000 fiches élèves'),'Les consignes doivent couvrir les pseudonymes, les choix de création et les grands établissements.');
+assert(generatorSource.includes('Élève 6A-001')&&generatorSource.includes('createTeacherAccounts=')&&generatorSource.includes('createStudentProfiles=')&&generatorSource.includes('15 emplois du temps')&&generatorSource.includes('20 000 fiches élèves'),'Les consignes doivent couvrir les pseudonymes, les choix de création et les grands établissements.');
 const wizardStart=generatorSource.indexOf('function openEstablishmentImport(){');
-const wizardEnd=generatorSource.indexOf('\\nfunction establishmentImportList',wizardStart);
+const wizardEnd=generatorSource.indexOf('\nfunction establishmentImportList',wizardStart);
 const wizardSource=generatorSource.slice(wizardStart,wizardEnd);
 assert(!wizardSource.includes('downloadEstablishmentTemplate()')&&!wizardSource.includes('downloadEstablishmentSchema()')&&!wizardSource.includes('downloadEstablishmentPrompt()')&&!wizardSource.includes('downloadEstablishmentContext()'),'Aucun document annexe ne doit être demandé à l’utilisateur pour ChatGPT.');
 assert(wizardSource.includes('accept=".json,application/json"')&&wizardSource.includes('Un seul fichier JSON'),'Un seul JSON final doit être importé dans Ma Classe.');
