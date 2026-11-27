@@ -2,7 +2,7 @@
 
 **Document de référence des anomalies signalées, des correctifs et des recettes restantes.**  
 Version de référence : `V25.1.1`, publiée le 26 novembre 2026 ([release v25.1.1](https://github.com/WedoneOfficiel/Ma-Classe/releases/tag/v25.1.1)). Les PR #13 à #19 ont intégré la stabilisation V25.1.0, les correctifs HTTPS/macOS, le rollback et le gestionnaire de mise à jour.
-Dernière synchronisation : 27 novembre 2026 — candidat V25.2.0 sur la PR #20. Tête validée automatiquement : `c0d8d34e682751188b460a0d71ebfd2ad4147395`, run [45915519830](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45915519830), Linux, macOS Apple Silicon/launchd et Firefox réel, **3/3 jobs réussis**. VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0. La suite comprend 109 fichiers de tests (67 JavaScript, 42 Python) et 860 invariants intermodules. La recette sur l'installation physique, les vrais comptes et les appareils clients reste distincte ; aucun statut d'anomalie n'est passé à « Corrigé » sur la seule base de CI.
+Dernière synchronisation : 27 novembre 2026 — candidat V25.2.0 sur la PR #20. Tête validée automatiquement : `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23`, run [45916061332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45916061332), Linux, macOS Apple Silicon/launchd et Firefox réel, **3/3 jobs réussis**. VERSION.txt, APP_VERSION et MC_VERSION sont alignés sur V25.2.0. L'arbre de tests contient 112 fichiers (68 JavaScript, 44 Python) et 860 invariants intermodules. La recette sur l'installation physique, les vrais comptes et les appareils clients reste distincte ; aucun statut d'anomalie n'est passé à « Corrigé » sur la seule base de CI.
 
 ## Règles de suivi
 
