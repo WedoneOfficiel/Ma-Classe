@@ -470,6 +470,13 @@ def main() -> None:
                 verify_establishment_generator(page, Path("artifacts/browser-v25"))
                 page.evaluate("setAppearanceTheme('light')")
 
+                # The Direction workspace must expose the existing timetable route.
+                direction_schedule_link = page.locator('#nav button[title="Emploi du temps"]')
+                expect(direction_schedule_link).to_be_visible()
+                direction_schedule_link.click()
+                expect(page.locator("#main h1")).to_contain_text("Emploi du temps")
+                page.evaluate("page='adminUsers';appSpace='teacher';render()")
+
                 # Seed one recurring course through the real authenticated API.
                 page.evaluate(
                     """async () => {
