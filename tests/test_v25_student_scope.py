@@ -1,4 +1,5 @@
 """Tests de cloisonnement des comptes élèves et de leurs rendus."""
+import copy
 import json
 import datetime
 import os
