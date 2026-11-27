@@ -2,7 +2,7 @@
 
 Ce fichier est le journal de référence des problèmes remontés, des vérifications, des modifications et de leurs résultats. Il doit être mis à jour à chaque intervention, y compris lorsqu'un correctif échoue ou qu'un diagnostic invalide une hypothèse. Ne pas rouvrir un problème déjà résolu sans élément nouveau.
 
-> **État courant — 27/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; la tête `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23` a passé le workflow [#2079 / run 45916061332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45916061332), **3/3 jobs réussis** : installateur et suites Linux, installateur Apple Silicon avec vrai `launchd`, parcours Firefox réel. L'arbre de tests contient 112 fichiers (68 JavaScript, 44 Python), dont 860 invariants intermodules ; les nouveaux contrôles portent sur les capacités d'import et la composition des archives de release. Les captures Firefox, y compris le bas du générateur après défilement, ont été publiées et inspectées. La recette de l'installation physique, des vrais comptes et des appareils clients reste distincte et nécessaire.
+> **État courant — 27/11/2026 :** V25.1.1 reste la dernière version stable publiée. La PR #20 prépare le candidat V25.2.0 ; la tête `e4969e765a1faee2d5480768a62c1bb88b0aba84` a passé le workflow [#2088 / run 45917072089](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45917072089), **3/3 jobs réussis** : installateur et suites Linux, installateur Apple Silicon avec vrai `launchd`, parcours Firefox réel. L'arbre de tests contient 112 fichiers (68 JavaScript, 44 Python), dont 860 invariants intermodules. Les contrôles de paquet vérifient aussi la présence du superviseur, du gestionnaire de mises à jour, des dépendances Python et de la clé publique Ed25519 ; les deux routes d'import établissement sont bornées à 25 Mo côté serveur comme navigateur. Les captures Firefox, y compris le bas du générateur après défilement, ont été publiées et inspectées. La recette de l'installation physique, des vrais comptes et des appareils clients reste distincte et nécessaire.
 
 ## Campagne du 15 novembre 2026 — EDT, espace élève, messagerie et bulletins
 
@@ -926,7 +926,7 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 
 **Branche :** `fix/v25.1.2-cross-module-consistency`  
 **PR :** [#20 — V25.2.0](https://github.com/WedoneOfficiel/Ma-Classe/pull/20)  
-**Tête validée automatiquement :** `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23`
+**Tête validée automatiquement :** `e4969e765a1faee2d5480768a62c1bb88b0aba84`
 
 ### Défauts supplémentaires identifiés et corrigés
 
@@ -937,10 +937,11 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 - **Grille Direction — carte Données :** `grid-column:auto!important` annulait le placement `grid-area:data` et faisait retomber la carte dans la première colonne. La déclaration contradictoire est retirée ; la carte reste dans la colonne de droite, sous Version, tandis que le responsive conserve ses zones à deux colonnes et à une colonne.
 - **Import d'établissement — groupes implicites multi-niveaux :** la capacité d'une salle ne comptait que le champ `group` explicite des élèves, alors que `build_data()` génère un groupe `NomClasse/Niveau` lorsque le JSON ne le fournit pas. Le calcul du validateur utilise maintenant le même groupe effectif que l'import final.
 - **Import d'établissement — cours partagés :** la capacité était contrôlée par classe séparément alors qu'un créneau partagé crée plusieurs enregistrements liés dans la même salle. Le calcul additionne les élèves de toutes les classes ciblées (ou de leur groupe commun) avant de comparer la capacité ; l'équipement de la salle n'est contrôlé qu'une fois pour le créneau.
+- **Import établissement — taille des fichiers :** le navigateur et les deux routes serveur (prévalidation et import confirmé) imposaient auparavant 10 Mo, alors que le schéma permet des configurations volumineuses. La limite est maintenant de 25 Mo aux deux niveaux ; le test UI vérifie l'alignement des trois contrôles.
 
 ### Preuves de validation
 
-- Workflow final [#2079 / run 45916061332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45916061332), commit `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23` : **Linux, macOS Apple Silicon et Firefox réel réussis (3/3)**.
+- Workflow final [#2088 / run 45917072089](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45917072089), commit `e4969e765a1faee2d5480768a62c1bb88b0aba84` : **Linux, macOS Apple Silicon et Firefox réel réussis (3/3)**.
 - Linux : installateur réel, vérification JavaScript, compilation Python et tous les tests JavaScript/Python.
 - macOS : installateur Apple Silicon, suites JavaScript/Python et véritable démarrage du service `launchd`.
 - Firefox : scénarios Direction, Professeur et Élève, journal des versions, générateur et géométrie des Paramètres sur desktop/mobile ; captures des modules en thèmes clair et sombre.
@@ -949,7 +950,7 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 
 ### Vérification complémentaire de l'archive de release
 
-Un test supplémentaire vérifie que le workflow officiel utilise `git archive` sur le commit validé et que le ZIP généré contient le runtime, la note V25.2.0, l'historique consolidé et les trois sources historiques utilisées par le journal. Le contrôle a passé la CI #2079 : l'archive générée contient le runtime, les notes et les trois sources historiques requises.
+Le test `tests/test_v25_release_package_contents.py` reproduit la commande `git archive` du workflow officiel et vérifie que le ZIP contient le runtime, `requirements.txt`, `update_manager.py`, `network_supervisor.py`, `release_signing.py`, `release-signing-public-key.txt`, les modules JavaScript requis, les lanceurs essentiels Linux/macOS, la note V25.2.0, l'historique consolidé et les trois sources historiques utilisées par le journal. Le contrôle est passé dans la CI #2088.
 
 ### Limites avant publication
 

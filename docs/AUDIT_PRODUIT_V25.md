@@ -4,7 +4,7 @@
 **Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
 **Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
 **Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
-**Dernière tête validée automatiquement :** commit `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23`, run [#2079 / 45916061332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45916061332), trois jobs réussis : Linux, macOS Apple Silicon/launchd réel et Firefox réel (3/3). La matrice croisée exécute 860 invariants ; l'arbre de tests contient 112 fichiers (68 JavaScript, 44 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. Les captures Firefox ont été publiées et inspectées. La PR n'est pas fusionnée et la release stable n'est pas publiée.
+**Dernière tête validée automatiquement :** commit `e4969e765a1faee2d5480768a62c1bb88b0aba84`, run [#2088 / 45917072089](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45917072089), trois jobs réussis : Linux, macOS Apple Silicon/launchd réel et Firefox réel (3/3). La matrice croisée exécute 860 invariants ; l'arbre de tests contient 112 fichiers (68 JavaScript, 44 Python). Les métadonnées VERSION.txt, APP_VERSION et MC_VERSION sont alignées sur V25.2.0. Les contrôles de paquet couvrent les dépendances runtime et la clé publique Ed25519 ; les deux routes d'import sont limitées à 25 Mo. Les captures Firefox ont été publiées et inspectées. La PR n'est pas fusionnée et la release stable n'est pas publiée.
 ## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
 La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
@@ -584,12 +584,12 @@ La V25.2.0 reste le candidat à stabiliser ; ces pistes ne doivent pas retarder 
 
 ## Vérification finale de la tête candidate — 27/11/2026
 
-- **CI complète :** commit `0a1319d98ca5fdd2f12b151d0c1bc44fa79b4c23`, run [#2079 / 45916061332](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45916061332), Linux/macOS Apple Silicon avec vrai `launchd`/Firefox réel, **3/3 réussis**.
+- **CI complète :** commit `e4969e765a1faee2d5480768a62c1bb88b0aba84`, run [#2088 / 45917072089](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45917072089), Linux/macOS Apple Silicon avec vrai `launchd`/Firefox réel, **3/3 réussis**.
 - **Écran des nouveautés :** correction de la variable temporaire non déclarée en mode strict ; le test vérifie l'ouverture automatique, le contenu et l'identité de version.
 - **Validité des tests :** horloge de la matrice de publication rendue déterministe ; contrôles de grille intégrés dans la classe `unittest` ; appels Playwright desktop/mobile conformes à l'API.
 - **Paramètres :** correction du placement de Données par `grid-area`, qui était annulé par une déclaration `grid-column:auto`. Les captures desktop et 390 px montrent la disposition sémantique attendue.
 - **Générateur d'établissement :** capacités de salles calculées avec les groupes implicites générés pour les classes multi-niveaux et avec l'effectif cumulé d'un créneau partagé entre plusieurs classes. Deux tests de régression couvrent ces cas.
-- **Archive distribuée :** le test dédié passe ; le ZIP construit par `git archive` contient le runtime, les notes V25.2.0, l'historique consolidé et les trois archives sources du journal.
-- **Modale du générateur :** Firefox fait défiler le contenu jusqu'au bloc « Protection de l'import » et vérifie qu'il reste intégralement visible au-dessus du pied de fenêtre collant. La capture du bas de modale est jointe à l'artefact du run #2079.
+- **Archive distribuée :** le test dédié passe ; le ZIP construit par `git archive` contient le runtime, `requirements.txt`, le gestionnaire, le superviseur, le module et la clé publique Ed25519, les lanceurs essentiels, les notes V25.2.0, l'historique consolidé et les trois archives sources du journal.
+- **Modale du générateur :** Firefox fait défiler le contenu jusqu'au bloc « Protection de l'import » et vérifie qu'il reste intégralement visible au-dessus du pied de fenêtre collant. La capture du bas de modale est jointe à l'artefact du run #2088.
 
-La validation sur une copie de la base réelle, le réseau multi-appareils et les vrais comptes reste obligatoire avant fusion et publication. V25.1.1 demeure la dernière release stable.
+La limite des imports établissement est désormais de 25 Mo maximum, avec le même plafond au navigateur et au serveur sur les deux routes d'import ; le test UI vérifie cette cohérence. La validation sur une copie de la base réelle, le réseau multi-appareils et les vrais comptes reste obligatoire avant fusion et publication. V25.1.1 demeure la dernière release stable.

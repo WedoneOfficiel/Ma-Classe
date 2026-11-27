@@ -2,11 +2,13 @@
 
 MaClasse est une application web de gestion scolaire destinée à un établissement : classes et élèves, emploi du temps, séances et devoirs, évaluations, absences, bulletins, messagerie et espace documentaire. Elle est servie par un ordinateur hôte et utilisée depuis un navigateur.
 
-## État du projet — 26 novembre 2026
+## État du projet — 27 novembre 2026
 
 | Référence | État |
 |---|---|
 | Dernière release GitHub publiée | **V25.1.1** (`v25.1.1`), publiée le 26/11/2026 |
+| Candidat suivant | **V25.2.0**, PR #20 ouverte ; non fusionnée et non publiée |
+| CI du candidat | Run #2088 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel (3/3) |
 | Branche `main` | **V25.1.1**, commit `b5cc07d` |
 | Publication | Workflow #4 réussi : validation Linux, macOS Apple Silicon/launchd, Firefox, archive, manifeste et signature |
 | Installation de référence | Premier passage depuis V25.0.23 effectué sur macOS ; fonctionnement confirmé par l'utilisateur |
@@ -15,7 +17,7 @@ La recette réelle V25.0.23 → V25.1.0 sur macOS a révélé deux défauts de t
 
 La PR #19 est fusionnée dans `main`. La CI post-fusion #1844 a validé les 93 fichiers de tests (55 JavaScript et 38 Python) sur les runners adaptés, ainsi que Firefox réel et macOS Apple Silicon/launchd. Le workflow de publication #4 (run `45806118500`) a ensuite réussi ses quatre jobs et publié les trois assets signés. La mise à jour a enfin été installée sur le Mac de référence et confirmée fonctionnelle. Voir le [registre des branches et validations](docs/qualite/ARCHIVES_BRANCHES_ET_VALIDATIONS.md).
 
-### Changements récents du candidat V25.1.0
+### Évolutions livrées en V25.1.0
 
 - Intégrité des archives de mise à jour : contrôles de taille et de digest SHA-256 lorsque GitHub fournit ces métadonnées.
 - Superviseur réseau commun Linux/macOS : fermeture du listener lors d'une perte réseau et renouvellement du certificat serveur lors d'un changement d'IPv4 privée.
@@ -30,6 +32,12 @@ La PR #19 est fusionnée dans `main`. La CI post-fusion #1844 a validé les 93 f
 - La ressource JavaScript du nouveau module est explicitement autorisée par le serveur et couverte par un test de liste blanche.
 
 La signature Ed25519 du manifeste est implémentée côté client et dans le workflow de publication. La clé publique de production est épinglée dans le dépôt et le secret privé reste uniquement dans GitHub Actions ; la release V25.1.0 a été construite avec ses assets de manifeste et de signature.
+
+### Candidat V25.2.0 — PR #20
+
+Le candidat V25.2.0 harmonise les règles de publication des évaluations et bulletins, les parcours « Travail à faire » et vie scolaire, les affectations, les salles et les créneaux partagés. Il ajoute un générateur manuel de configuration d'établissement (JSON jusqu'à 25 Mo), un écran des nouveautés par compte et un journal historique. Les sources historiques et la clé publique Ed25519 nécessaires à ces fonctions sont contrôlées dans le paquet de mise à jour.
+
+La CI #2088 passe sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). La PR reste candidate : la recette sur une copie représentative des données, les vrais comptes et les appareils clients est nécessaire avant fusion et publication. Voir les [notes candidates V25.2.0](docs/releases/v25.2.0.md), le [guide du générateur](docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md) et le [registre des anomalies](REGISTRE_BUGS_V25.md).
 
 ## Installation et démarrage
 
@@ -112,4 +120,4 @@ Après l’installation d’une nouvelle version, chaque compte Direction, Profe
 Les entrées historiques sont issues des notes de version, des audits/recettes archivés et de l’ancien README conservés dans le dépôt. Les versions sans trace exploitable ne sont pas complétées par supposition.
 
 
-Le générateur d'établissement guide la Direction en trois étapes : modèle et schéma, génération manuelle d'un JSON avec ChatGPT, puis prévalidation et import confirmé. Ne transmets jamais d'identités ou données personnelles réelles à ChatGPT : utilise des pseudonymes puis complète les identités directement dans Ma Classe. Il n'existe aucune API ChatGPT ni aucun transfert automatique.
+Le générateur d'établissement guide la Direction en trois étapes, accepte un fichier JSON de 25 Mo maximum et effectue une prévalidation avant confirmation. Consulte le [guide du générateur](docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md). N'envoie jamais de données personnelles réelles à ChatGPT : utilise des pseudonymes puis complète les identités directement dans Ma Classe. Il n'existe aucune API ChatGPT ni aucun transfert automatique.

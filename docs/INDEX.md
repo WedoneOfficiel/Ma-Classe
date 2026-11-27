@@ -8,6 +8,7 @@
 | [Réseau local HTTPS](RESEAU_HTTPS.md) | Accès multi-appareils, certificats, adresse IP et pare-feu |
 | [Gestion des mises à jour](GESTION_MISES_A_JOUR.md) | Architecture, vérifications, migration et limites du gestionnaire |
 | [Signature des releases](RELEASE_SIGNING.md) | Clé Ed25519 épinglée, secret GitHub Actions et vérification côté client |
+| [Configuration établissement avec ChatGPT](CONFIGURATION_ETABLISSEMENT_CHATGPT.md) | Préparer, anonymiser, prévalider et importer un JSON d'établissement (25 Mo maximum) |
 
 ## Qualité et suivi du produit
 
