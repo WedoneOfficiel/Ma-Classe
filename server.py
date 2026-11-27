@@ -1321,22 +1321,24 @@ def _teacher_visible_data(data,user):
         out['settings']={key:settings[key] for key in shared_settings if key in settings}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword','role','username','active')} for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
-    # La fiche professeur est une projection du compte canonique, jamais un second enregistrement.
-    canonical=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
-    profile={k:v for k,v in (canonical or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
-    if profile:
-        profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
-        # Annuaire minimal des enseignants actifs pour les affectations, sans secrets ni coordonnées privées.
-        directory=[]
-        for account in data.get('users',[]) or []:
-            if isinstance(account,dict) and account.get('role')=='teacher' and account.get('active') is not False:
-                directory.append({k:account[k] for k in ('id','first','last','active','subjects') if k in account})
-        own={k:v for k,v in profile.items() if k not in ('passwordHash','password','mustChangePassword')}
-        own['id']=str(user.get('id') or tids); own['teacherId']=own['id']; own['classIds']=sorted(class_ids)
-        by_id={str(x.get('id')):x for x in directory}
-        by_id[own['id']]=own
-        out['teachers']=list(by_id.values())
-    else: out['teachers']=[]
+    # Les fiches enseignants existent indépendamment des comptes de connexion.
+    ident=str(user.get('id') or tids)
+    canonical=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None)
+    stored_profile=next((x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None)
+    profile={k:v for k,v in (stored_profile or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
+    profile.update({k:v for k,v in (canonical or {}).items() if k not in ('passwordHash','password','mustChangePassword')})
+    profile['id']=ident; profile['teacherId']=ident; profile['classIds']=sorted(class_ids)
+    # Annuaire minimal des profils enseignants actifs, avec ou sans compte.
+    by_id={}
+    for source in (data.get('teachers',[]) or [],data.get('users',[]) or []):
+        for record in source:
+            if not isinstance(record,dict) or record.get('role')!='teacher' or record.get('active') is False: continue
+            teacher_id=str(record.get('id') or '')
+            if not teacher_id: continue
+            item={k:record[k] for k in ('id','first','last','active','subjects') if k in record}
+            by_id[teacher_id]={**by_id.get(teacher_id,{}),**item}
+    by_id[ident]=profile
+    out['teachers']=list(by_id.values())
     visible_users=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     visible_user_ids={str(x.get('id') or '') for x in visible_users}
     out['users']=visible_users
