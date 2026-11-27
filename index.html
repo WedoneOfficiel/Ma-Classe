@@ -2341,6 +2341,15 @@ html[data-mc-theme="dark"] .bulletin::before{
 .releaseNotesArticle blockquote{margin:10px 0;padding:9px 12px;border-left:3px solid var(--blue);background:var(--blue2);border-radius:0 8px 8px 0}
 .releaseNotesActions{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);margin-top:14px;padding-top:13px;flex-wrap:wrap}
 .releaseNotesSource{color:var(--muted);font-size:10px;line-height:1.45}
+.releaseNotesEntryMeta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;flex-wrap:wrap}
+.releaseNotesStar{display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.02em}
+.releaseNotesDate{color:var(--muted);font-size:11px;font-weight:600}
+.releaseNotesNav button{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:5px;align-items:start}
+.releaseNotesNav button>span:nth-child(2){min-width:0;overflow-wrap:anywhere}
+.releaseNotesNavStar{color:var(--blue);font-size:13px;line-height:1.2}
+.releaseNotesNav small{grid-column:2}
+.releaseNotesArticle h3{margin:0 0 14px;font-size:19px;line-height:1.35}
+
 @media(max-width:700px){
  .modal.releaseNotesModal{padding:14px;max-height:94vh}
  .releaseNotesLayout{grid-template-columns:minmax(0,1fr);gap:9px}
