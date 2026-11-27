@@ -24,6 +24,7 @@ class BackupHarness:
         return str(path)
 
     _create_backup = server.Handler._create_backup
+    _create_backup_locked = server.Handler._create_backup_locked
 
 
 def make_archive(database, uploads):
@@ -51,11 +52,16 @@ def test_backup_waits_for_upload_mutations():
         started = threading.Event()
         finished = threading.Event()
         result = {}
+        errors = []
 
         def create_backup():
             started.set()
-            result["name"] = BackupHarness()._create_backup(force=True)
-            finished.set()
+            try:
+                result["name"] = BackupHarness()._create_backup(force=True)
+            except Exception as error:  # pragma: no cover - diagnostic path
+                errors.append(error)
+            finally:
+                finished.set()
 
         server.UPLOADS_LOCK.acquire()
         worker = threading.Thread(target=create_backup, daemon=True)
@@ -67,6 +73,7 @@ def test_backup_waits_for_upload_mutations():
             server.UPLOADS_LOCK.release()
         worker.join(timeout=5)
         assert not worker.is_alive(), "La sauvegarde n'a pas terminé après libération du verrou."
+        assert not errors, f"Erreur de sauvegarde : {errors!r}"
         backup_path = data_dir / "backups" / result["name"]
         assert backup_path.is_file()
         with zipfile.ZipFile(backup_path) as archive:
