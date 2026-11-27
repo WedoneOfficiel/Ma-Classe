@@ -280,6 +280,75 @@ def verify_release_journal(page, role: str, output_dir: Path) -> None:
     expect(modal).not_to_be_visible()
 
 
+def verify_planner_workflows(page) -> None:
+    """Exercise both real Organiser journeys in Firefox against a disposable school DB."""
+    page.evaluate("openPlanner()")
+    modal=page.locator("#modal")
+    expect(modal).to_contain_text("Trouver un créneau pour un nouveau cours")
+    expect(modal).to_contain_text("Trouver ou changer la salle d’un cours existant")
+    expect(modal).not_to_contain_text("Préparer un cours")
+    modal.locator('[name="classId"]').select_option("firefox-class")
+    modal.locator('[name="subject"]').fill("Sciences")
+    modal.locator('[name="day"]').select_option("0")
+    modal.locator('[name="time"]').fill("14:00")
+    modal.locator('[name="duration"]').select_option("60")
+    modal.get_by_role("button",name="Rechercher").click()
+
+    # Each returned time must include the compatible rooms. Pick one and confirm
+    # that the course editor receives all requested data plus the selected room.
+    new_room=modal.get_by_role("button",name="Choisir Salle 101").first
+    expect(new_room).to_be_visible()
+    new_room.click()
+    editor=page.locator("#modal form")
+    expect(editor.locator('[name="subject"]')).to_have_value("Sciences")
+    expect(editor.locator('[name="classIds"]')).to_have_value(["firefox-class"])
+    expect(editor.locator('[name="day"]')).to_have_value("0")
+    expect(editor.locator('[name="time"]')).to_have_value("14:00")
+    expect(editor.locator('[name="endTime"]')).to_have_value("15:00")
+    expect(editor.locator('[name="room"]')).to_have_value("Salle 101")
+    editor.get_by_role("button",name="Enregistrer").click()
+    expect(page.locator("#toast")).to_contain_text("Emploi du temps enregistré.",timeout=10_000)
+
+    created=page.evaluate("""() => (db.schedule||[])
+      .filter(x=>x.subject==='Sciences'&&x.classId==='firefox-class')
+      .map(x=>({id:x.id,day:x.day,time:x.time,endTime:x.endTime,room:x.room}))""")
+    if len(created)!=1 or created[0]["day"]!=0 or created[0]["time"]!="14:00" or created[0]["endTime"]!="15:00" or created[0]["room"]!="Salle 101":
+        raise AssertionError(f"Le nouveau cours n'a pas été créé avec le créneau et la salle choisis : {created!r}")
+
+    # The second path must disable all new-course fields and use an existing
+    # timetable record as its sole starting point.
+    page.evaluate("openPlanner()")
+    modal=page.locator("#modal")
+    modal.locator('[name="action"]').select_option("room")
+    expect(modal.locator('[name="classId"]')).to_be_disabled()
+    expect(modal.locator('[name="subject"]')).to_be_disabled()
+    expect(modal.locator('[name="scheduleId"]')).to_be_enabled()
+    modal.locator('[name="scheduleId"]').select_option("firefox-existing-course")
+    modal.get_by_role("button",name="Rechercher").click()
+    replacement=modal.get_by_role("button",name="Choisir cette salle")
+    expect(replacement).to_be_visible()
+    replacement.click()
+
+    editor=page.locator("#modal form")
+    expect(editor.locator('[name="subject"]')).to_have_value("Français")
+    expect(editor.locator('[name="classIds"]')).to_have_value(["firefox-class"])
+    expect(editor.locator('[name="day"]')).to_have_value("4")
+    expect(editor.locator('[name="time"]')).to_have_value("09:00")
+    expect(editor.locator('[name="endTime"]')).to_have_value("10:00")
+    expect(editor.locator('[name="room"]')).to_have_value("Salle 102")
+    onsubmit=editor.get_attribute("onsubmit") or ""
+    if "firefox-existing-course" not in onsubmit:
+        raise AssertionError(f"Le remplacement doit modifier le cours existant, pas créer un doublon : {onsubmit!r}")
+    editor.get_by_role("button",name="Enregistrer").click()
+    expect(page.locator("#toast")).to_contain_text("Emploi du temps enregistré.",timeout=10_000)
+
+    existing=page.evaluate("""() => (db.schedule||[])
+      .filter(x=>x.id==='firefox-existing-course')
+      .map(x=>({classId:x.classId,subject:x.subject,day:x.day,time:x.time,endTime:x.endTime,room:x.room}))""")
+    if existing!=[{"classId":"firefox-class","subject":"Français","day":4,"time":"09:00","endTime":"10:00","room":"Salle 102"}]:
+        raise AssertionError(f"Le cours existant a été dupliqué ou ses autres champs ont changé : {existing!r}")
+
+
 def verify_establishment_generator(page, output_dir: Path) -> None:
     """Open the Settings-only configurator and verify the saved copy/paste workflow."""
     page.evaluate("page='settings';appSpace='teacher';render()")
@@ -578,6 +647,8 @@ def main() -> None:
                       render();
                     }"""
                 )
+
+                verify_planner_workflows(page)
 
                 existing = page.locator('[data-schedule-id="firefox-existing-course"]')
                 try:
