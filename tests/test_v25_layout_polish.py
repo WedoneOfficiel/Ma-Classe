@@ -50,11 +50,11 @@ class LayoutPolishTests(unittest.TestCase):
 
 
     def test_v252_settings_use_semantic_layout_areas(self):
-        self.assertIn(".settingsGrid>.settingsAppearanceCard{grid-area:appearance!important}", HTML)
-        self.assertIn(".settingsGrid>.settingsPeriodsCard{grid-area:periods!important}", HTML)
-        self.assertIn(".settingsGrid>.settingsRoomsCard{grid-area:rooms!important}", HTML)
-        self.assertIn(".settingsGrid>.settingsUpdateCard{grid-area:updates!important}", HTML)
-        self.assertIn(".settingsGrid>.settingsDataCard{grid-area:data!important;grid-column:auto!important}", HTML)
+        self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsAppearanceCard{grid-area:appearance!important}", HTML)
+        self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsPeriodsCard{grid-area:periods!important}", HTML)
+        self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsRoomsCard{grid-area:rooms!important}", HTML)
+        self.assertIn("#main .settingsGrid.settingsAdminLayout>.settingsUpdateCard{grid-area:updates!important}", HTML)
+        self.assertIn("#main .settingsGrid:not(.settingsStudentGrid)>.settingsDataCard{grid-area:data!important;grid-column:auto!important}", HTML)
         self.assertIn(".settingsGrid.settingsStudentGrid{", HTML)
         self.assertIn("settingsAdminLayout", JS)
 
