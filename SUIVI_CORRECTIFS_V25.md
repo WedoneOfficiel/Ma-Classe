@@ -989,7 +989,7 @@ Cette architecture ne satisfait donc pas l'objectif de zéro réglage manuel du 
 - Présence du bouton de sélection et transmission des données au brouillon de cours.
 - Préremplissage des champs de classe, professeur, matière, jour, horaires et salle.
 
-**État de preuve :** CI #2193 réussie (3/3 : tests Linux, Firefox réel et macOS Apple Silicon/launchd). Les captures Firefox ont été inspectées ; le configurateur est présent dans Paramètres avec une mise en page responsive. Les nouveaux parcours restent à confirmer par un essai utilisateur sur la copie, notamment la création/modification des cours et le copier-coller réel dans ChatGPT. Aucun défaut n'est déclaré « Corrigé » à ce stade.
+**État de preuve :** CI #2250 réussie (3/3 : tests Linux, Firefox réel et macOS Apple Silicon/launchd). Les captures Firefox ont été inspectées ; le configurateur est présent dans Paramètres avec une mise en page responsive. Les nouveaux parcours restent à confirmer par un essai utilisateur sur la copie, notamment la création/modification des cours et le copier-coller réel dans ChatGPT. Aucun défaut n'est déclaré « Corrigé » à ce stade.
 
 
 ### Ajustements métier du 27 novembre — Planner et configurateur établissement
@@ -1000,9 +1000,21 @@ Cette architecture ne satisfait donc pas l'objectif de zéro réglage manuel du 
 - **CFG-CHATGPT-01 — Transfert simplifié :** formulaire enregistré explicitement dans Ma Classe puis bouton de copie d'un prompt complet à coller dans ChatGPT. Aucun fichier modèle, schéma, instructions ou contexte n'est demandé à joindre à ChatGPT ; un unique JSON final est récupéré puis importé dans Ma Classe.
 - **CFG-IMPORT-01 — Création facultative :** `createTeacherAccounts=false` conserve les fiches pédagogiques, les affectations aux classes et aux cours, mais n'ajoute aucun compte utilisateur ni mot de passe. `createStudentProfiles=false` laisse `students:[]` tout en conservant `expectedStudentCount` pour vérifier la capacité des salles. Les fiches professeurs sans compte peuvent être modifiées indépendamment ; un compte de connexion peut ensuite être créé sur le même identifiant de professeur. La sauvegarde serveur conserve la collection `teachers` et empêche un compte enseignant/élève de la modifier.
 
-**Preuve actuelle :** correctifs codés, tests unitaires/serveur/navigateur ajustés. CI #2193 réussie sur la tête de PR #20 (3/3 : Linux, Firefox réel, macOS Apple Silicon/launchd). La recette réelle sur la copie V25.2.0 reste nécessaire avant tout passage au statut « Corrigé ».
+**Preuve actuelle :** correctifs codés, tests unitaires/serveur/navigateur ajustés. CI #2250 réussie sur la tête de PR #20 (3/3 : Linux, Firefox réel, macOS Apple Silicon/launchd). La recette réelle sur la copie V25.2.0 reste nécessaire avant tout passage au statut « Corrigé ».
 
 
 ### Précision sur les fiches professeurs sans compte — 27 novembre 2026
 
 Le modèle de Ma Classe sépare désormais explicitement le profil pédagogique du compte d'authentification. Un établissement importé avec createTeacherAccounts=false conserve donc ses professeurs, leurs matières, indisponibilités, classes, rôles de professeur principal et affectations EDT. Aucun utilisateur de connexion ni mot de passe n'est créé pour eux. Dans le module Professeurs, la fiche porte le statut « Sans compte » et propose à la Direction « Créer un compte de connexion » ; la création ultérieure conserve le même identifiant interne pour ne pas casser les emplois du temps. L'API distingue les profils référencés dans les EDT des enseignants joignables par messagerie : seuls les profils disposant d'un compte sont des destinataires possibles. Les sauvegardes/restaurations conservent également la collection des fiches professeurs.
+
+
+### Preuve CI finale — 27 novembre 2026
+
+La tête de PR 7d4886fbd3071a2f04972882cc73e29ab3d4efc6 passe la campagne CI #2250, 3/3 : https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/46041366833
+- Linux : tests JavaScript et Python complets.
+- Firefox réel : parcours EDT et Planner, Configurateur Paramètres, conservation du formulaire après réouverture, contenu exact du bloc presse-papiers.
+- macOS Apple Silicon : installateur, tests JavaScript, démarrage launchd réel et tests Python complets.
+
+Le Planner parcourt maintenant tous les créneaux potentiellement libres, recherche les salles avant de retenir les huit propositions affichées et ne masque donc plus un créneau valide situé après les huit premiers créneaux sans salle. Le test navigateur valide également le calendrier mensuel après ajout d'un cours récurrent et remplacement de salle.
+
+État : validation automatique complète ; recette par la Direction sur la copie V25.2.0 encore requise. Aucun changement de production et aucune publication n'ont été faits.
