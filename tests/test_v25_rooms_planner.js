@@ -49,6 +49,35 @@ const tuesday=Array.from(context.plannerRoomOptions(20,['vidéoprojecteur'],1,'0
 assert.deepStrictEqual(tuesday,['B204','Labo'],'Le Planner vérifie le créneau exact et les réservations déjà planifiées.');
 const tooLarge=Array.from(context.plannerRoomOptions(40,[],1,'08:30','09:30'));
 assert.strictEqual(tooLarge.length,0,'Une salle de capacité insuffisante ne doit pas être recommandée.');
+const runPlannerUi=sliceBetween(app,'function runPlanner(e)','function plannerCreateDraft(');
+assert(runPlannerUi.includes('Choisir cette salle'),'Chaque salle trouvée doit proposer une action de sélection, pas seulement une ligne de texte.');
+assert(runPlannerUi.includes('plannerCreateDraft('),'La sélection d’une salle doit ouvrir la préparation du cours.');
+const roomFinderContext={
+ FormData:function(){return Object.entries({action:'room',capacity:'20',equipment:'vidéoprojecteur',day:'0',time:'14:00',duration:'60',classId:'6A',teacherId:'t1',subject:'SES'})[Symbol.iterator]()},
+ mins(value){const p=String(value||'0:0').split(':').map(Number);return (p[0]||0)*60+(p[1]||0)},
+ plannerRoomOptions(){return [{name:'B204',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]},
+ plannerFindSlots(){return []},
+ DAYS:['Lundi','Mardi','Mercredi','Jeudi','Vendredi'],
+ esc(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')},
+ jsArg(value){return JSON.stringify(String(value??''))},
+ openModal(title,body){this.modal={title,body}}
+};
+vm.createContext(roomFinderContext);
+vm.runInContext(runPlannerUi,roomFinderContext);
+roomFinderContext.runPlanner({preventDefault(){},target:{}});
+assert(roomFinderContext.modal.body.includes('B204')&&roomFinderContext.modal.body.includes('Choisir cette salle'),'Le résultat doit afficher la salle créée et un bouton de sélection.');
+assert(roomFinderContext.modal.body.includes('plannerCreateDraft(0,"14:00","15:00","6A","t1","SES","B204")'),'Le bouton doit transmettre le créneau, la classe, le professeur, la matière et la salle.');
+const draftStart=app.indexOf('function plannerCreateDraft('),draftEnd=app.indexOf('\\nfunction ',draftStart);
+assert(draftStart>=0&&draftEnd>draftStart,'Le passage du Planner au formulaire de cours doit exister.');
+const draftContext={window:{},selectedWeek:new Date('2026-11-23T12:00:00'),iso(){return '2026-11-23'},closeModal(){},openSchedule(){this.openedDraft=this.window._scheduleDraft}};
+vm.createContext(draftContext);
+vm.runInContext(app.slice(draftStart,draftEnd),draftContext);
+draftContext.plannerCreateDraft(0,'14:00','15:00','6A','t1','SES','B204');
+assert.deepStrictEqual(JSON.parse(JSON.stringify(draftContext.openedDraft)),{
+ day:0,time:'14:00',endTime:'15:00',classId:'6A',classIds:['6A'],teacherId:'t1',teacherIds:['t1'],
+ subject:'SES',room:'B204',recurrence:'weekly',startDate:'2026-11-23',endDate:'',exceptions:[]
+},'Le formulaire doit recevoir les vrais noms de champs classIds/teacherIds et la salle choisie.');
+
 assert(app.includes('scheduleAvailabilityConflicts(c)'),'La validation du formulaire de cours doit aussi vérifier les indisponibilités.');
 assert(app.includes('slot.room=name;slot.roomId=roomId'),'Renommer une salle doit préserver les liens de ses créneaux.');
 assert(app.includes("confirmModal(message,'Supprimer la salle'"),'La suppression d’une salle liée doit demander confirmation.');
