@@ -109,22 +109,17 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertEqual(summary["teachers"], 2)
         self.assertEqual(original, {"users": [{"id": "admin", "role": "admin", "username": "direction"}]})
 
-    def test_optional_profiles_can_be_created_later_in_ma_classe(self):
+    def test_teacher_profiles_are_preserved_without_login_accounts(self):
         bundle = sample_bundle()
         bundle["createTeacherAccounts"] = False
         bundle["createStudentProfiles"] = False
-        bundle["teachers"] = []
         bundle["students"] = []
-        for classroom in bundle["classes"]:
-            classroom.pop("teachers", None)
-            classroom.pop("principalTeacher", None)
-        for lesson in bundle["schedule"]:
-            lesson.pop("teacher", None)
 
         result = importer.validate_bundle(bundle)
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["summary"]["students"], 0)
-        self.assertEqual(result["summary"]["teachers"], 0)
+        self.assertEqual(result["summary"]["teachers"], 2)
+        self.assertEqual(result["summary"]["teacherAccounts"], 0)
 
         counter = {"n": 0}
         def token_factory(size):
@@ -138,11 +133,22 @@ class EstablishmentImportTests(unittest.TestCase):
             token_factory=token_factory,
         )
         self.assertEqual(credentials, [])
-        self.assertEqual(summary["teachers"], 0)
+        self.assertEqual(summary["teachers"], 2)
+        self.assertEqual(summary["teacherAccounts"], 0)
         self.assertEqual(len([u for u in data["users"] if u["role"] == "teacher"]), 0)
+        self.assertEqual(len(data["teachers"]), 2)
         self.assertEqual(data["students"], [])
-        self.assertTrue(all(not classroom["teacherIds"] for classroom in data["classes"]))
-        self.assertTrue(all(not slot["teacherIds"] and slot["teacherId"] == "" for slot in data["schedule"]))
+
+        teacher_ids = {teacher["id"] for teacher in data["teachers"]}
+        self.assertEqual(
+            {ident for classroom in data["classes"] for ident in classroom["teacherIds"]},
+            teacher_ids,
+        )
+        self.assertTrue(all(slot["teacherIds"] for slot in data["schedule"]))
+        self.assertTrue(all(set(slot["teacherIds"]).issubset(teacher_ids) for slot in data["schedule"]))
+        self.assertTrue(all(teacher["role"] == "teacher" for teacher in data["teachers"]))
+        self.assertTrue(all("username" not in teacher and "passwordHash" not in teacher for teacher in data["teachers"]))
+
 
     def test_expected_student_count_still_protects_room_capacity_without_student_profiles(self):
         bundle = sample_bundle()
