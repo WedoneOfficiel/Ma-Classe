@@ -311,7 +311,10 @@ def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
     desktop_page = "studentSettings" if is_student else "settings"
     desktop_space = "student" if is_student else "teacher"
     page.set_viewport_size({"width":1280,"height":800})
-    page.evaluate("(p,s) => { page=p; appSpace=s; render(); }", desktop_page, desktop_space)
+    page.evaluate(
+        "(values) => { page=values.page; appSpace=values.space; render(); }",
+        {"page": desktop_page, "space": desktop_space},
+    )
     selector = "#main .settingsStudentGrid" if is_student else "#main .settingsGrid"
     grid = page.locator(selector)
     expect(grid).to_be_visible()
