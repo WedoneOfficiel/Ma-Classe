@@ -669,7 +669,7 @@ def main() -> None:
                     raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
                 acknowledge_release_notes(teacher_page, "professeur")
                 verify_release_journal(teacher_page, "teacher", Path("artifacts/browser-v25"))
-                verify_settings_grid_geometry(teacher_page, "teacher", Path("artifacts/browser-v25"))                verify_release_journal(teacher_page, "teacher", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(teacher_page, "teacher", Path("artifacts/browser-v25"))
                 teacher_page.evaluate("page='schedule';appSpace='teacher';render()")
                 shared_cloud = teacher_page.evaluate("""async () => {
                   const folder='cloud/personal/users/'+authUser.id;
@@ -978,7 +978,7 @@ def main() -> None:
                     raise AssertionError("Student session not initialized: "+repr(student_state))
                 acknowledge_release_notes(student_page, "élève")
                 verify_release_journal(student_page, "student", Path("artifacts/browser-v25"))
-                verify_settings_grid_geometry(student_page, "student", Path("artifacts/browser-v25"))                verify_release_journal(student_page, "student", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(student_page, "student", Path("artifacts/browser-v25"))
                 student_page.evaluate("page='studentSchedule';appSpace='student';render()")
                 student_module_smoke = student_page.evaluate("""() => {
                   const modules=[
