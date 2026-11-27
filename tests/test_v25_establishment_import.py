@@ -109,6 +109,59 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertEqual(summary["teachers"], 2)
         self.assertEqual(original, {"users": [{"id": "admin", "role": "admin", "username": "direction"}]})
 
+    def test_optional_profiles_can_be_created_later_in_ma_classe(self):
+        bundle = sample_bundle()
+        bundle["createTeacherAccounts"] = False
+        bundle["createStudentProfiles"] = False
+        bundle["teachers"] = []
+        bundle["students"] = []
+        for classroom in bundle["classes"]:
+            classroom.pop("teachers", None)
+            classroom.pop("principalTeacher", None)
+        for lesson in bundle["schedule"]:
+            lesson.pop("teacher", None)
+
+        result = importer.validate_bundle(bundle)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["summary"]["students"], 0)
+        self.assertEqual(result["summary"]["teachers"], 0)
+
+        counter = {"n": 0}
+        def token_factory(size):
+            counter["n"] += 1
+            return f"generated-{counter['n']}"
+
+        data, credentials, summary = importer.build_data(
+            bundle,
+            {"users": [{"id": "admin", "role": "admin", "username": "direction"}]},
+            password_hasher=lambda value: "HASH:" + value,
+            token_factory=token_factory,
+        )
+        self.assertEqual(credentials, [])
+        self.assertEqual(summary["teachers"], 0)
+        self.assertEqual(len([u for u in data["users"] if u["role"] == "teacher"]), 0)
+        self.assertEqual(data["students"], [])
+        self.assertTrue(all(not classroom["teacherIds"] for classroom in data["classes"]))
+        self.assertTrue(all(not slot["teacherIds"] and slot["teacherId"] == "" for slot in data["schedule"]))
+
+    def test_expected_student_count_still_protects_room_capacity_without_student_profiles(self):
+        bundle = sample_bundle()
+        bundle["createStudentProfiles"] = False
+        bundle["students"] = []
+        bundle["classes"][0]["expectedStudentCount"] = 40
+        errors = "\n".join(importer.validate_bundle(bundle)["errors"])
+        self.assertIn("B204", errors)
+        self.assertIn("40 élèves", errors)
+        self.assertIn("trop petite", errors)
+
+    def test_rejects_non_boolean_profile_creation_options(self):
+        bundle = sample_bundle()
+        bundle["createTeacherAccounts"] = "non"
+        bundle["createStudentProfiles"] = 0
+        errors = "\n".join(importer.validate_bundle(bundle)["errors"])
+        self.assertIn("createTeacherAccounts doit être un booléen", errors)
+        self.assertIn("createStudentProfiles doit être un booléen", errors)
+
     def test_rejects_bad_format_version_unknown_fields_and_missing_root_fields(self):
         self.assertTrue(importer.validate_bundle({"format": "wrong", "version": 99})["errors"])
         bundle = sample_bundle()
