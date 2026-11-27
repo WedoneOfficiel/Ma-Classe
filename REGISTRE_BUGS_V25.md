@@ -360,3 +360,17 @@ Premiers retours manuels recueillis auprès de l'utilisateur sur la copie isolé
 | PLANNER-ROOM-01 | Paramètres — salles / Planner | Une salle peut être créée dans Paramètres, mais le résultat de recherche du Planner ne permet pas de la sélectionner. | Le résultat « Trouver une salle » affichait seulement des lignes textuelles. Chaque salle compatible dispose maintenant d'un bouton de sélection qui ouvre la préparation du cours. Le brouillon transmet les champs réels du formulaire (classIds, teacherIds) ainsi que la salle choisie ; un test couvre aussi la remontée d'une salle créée dans settings.rooms. | Correctif codé sur la PR #20 ; CI et nouvel essai utilisateur en attente. |
 
 Ne pas passer ces lignes à « Corrigé » avant confirmation de l'utilisateur dans la copie et contrôle de persistance après redémarrage.
+
+
+## Recette utilisateur complémentaire — organisation de l'EDT et configurateur — 27/11/2026
+
+Nouveaux retours transmis après le premier essai positif de la copie V25.2.0 :
+
+| Identifiant | Module | Constat utilisateur | Correction engagée | État |
+|---|---|---|---|---|
+| PLANNER-UX-02 | Organiser l'emploi du temps | « Préparer un cours » est redondant avec « Trouver un créneau ». « Trouver une salle » doit partir d'un cours déjà présent et ne pas redemander sa matière ou son horaire. | Suppression de l'action « Préparer un cours ». « Trouver un créneau » recherche les créneaux libres puis les salles compatibles avant d'ouvrir un nouveau cours. « Trouver une salle » demande un cours existant, ignore ses propres créneaux partagés pendant le calcul, puis ouvre la fiche existante avec la nouvelle salle préremplie. | Supposé résolu — tests/CI et nouvel essai manuel sur copie requis. |
+| CFG-UX-01 | Administration / Paramètres | Le configurateur d'établissement apparaît dans Utilisateurs alors qu'il concerne aussi les classes, professeurs, salles et EDT ; l'espacement des cartes est peu harmonieux. | Retrait de la carte de la page Utilisateurs et déplacement dans une carte Direction dédiée après la grille Paramètres ; espacement responsive ajouté. | Supposé résolu — CI et contrôle visuel sur copie requis. |
+| CFG-CHATGPT-01 | Configurateur ChatGPT | Le parcours demande plusieurs documents à joindre à ChatGPT, ce qui le rend pénible et peu adapté aux comptes non premium. | Remplacement du transfert multi-documents par un formulaire enregistré dans db.settings.establishmentBrief, puis un bouton qui copie en un bloc les consignes, le schéma descriptif et les données du formulaire. Aucun document source n'est demandé à importer dans ChatGPT ; seul le JSON final revient dans Ma Classe. | Supposé résolu — CI et essai réel du copier-coller requis. |
+| CFG-IMPORT-01 | Import de configuration établissement | La création de comptes professeurs et de fiches élèves ne doit pas être obligatoire ; les effectifs doivent toutefois rester utilisables pour la capacité des salles. | Ajout des options JSON facultatives createTeacherAccounts et createStudentProfiles, compatibles avec les anciens fichiers (valeur par défaut true). Sans comptes, aucune entrée utilisateur ni affectation professeur n'est créée. Sans fiches, expectedStudentCount sert au contrôle des capacités. | Supposé résolu — tests serveur et import volumineux représentatif requis. |
+
+Ces changements sont codés sur la PR #20. Les lignes restent « Supposé résolu » jusqu'à réussite de la CI et confirmation par l'utilisateur dans la copie isolée. Aucun changement de production n'est effectué.
