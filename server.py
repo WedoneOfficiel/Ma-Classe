@@ -3,6 +3,7 @@ import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime,
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
 import establishment_import
+import network_supervisor
 import socketserver
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
@@ -14,6 +15,7 @@ HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
 TLS_KEY=os.environ.get('MACLASSE_TLS_KEY','').strip()
+TLS_HOSTNAME=os.environ.get('MACLASSE_TLS_HOSTNAME','').strip().lower().rstrip('.')
 DATA_LOCK=threading.RLock()
 SESSIONS={}
 LOGIN_ATTEMPTS={}
@@ -2269,6 +2271,8 @@ class Handler(SimpleHTTPRequestHandler):
         host=self.headers.get('Host','').strip().lower()
         expected=f'{HOST}:{PORT}'.lower()
         allowed={expected}
+        if TLS_HOSTNAME:
+            allowed.add(f'{TLS_HOSTNAME}:{PORT}'.lower())
         if HOST in ('127.0.0.1','localhost','::1'):
             allowed.update({f'127.0.0.1:{PORT}',f'localhost:{PORT}',f'[::1]:{PORT}'})
         # Refuser les Host arbitraires (notamment les tentatives de DNS rebinding).
@@ -3333,6 +3337,13 @@ if __name__=='__main__':
     except ValueError as error:
         print(f'ERREUR DE SÉCURITÉ : {error}')
         raise SystemExit(2)
+    if TLS_HOSTNAME:
+        if not TLS_CERT or network_supervisor._normalise_dns_hostname(TLS_HOSTNAME) != TLS_HOSTNAME:
+            print('ERREUR DE SÉCURITÉ : MACLASSE_TLS_HOSTNAME exige un FQDN valide et un certificat TLS.')
+            raise SystemExit(2)
+        if not network_supervisor.certificate_matches_host(TLS_CERT, TLS_HOSTNAME):
+            print('ERREUR DE SÉCURITÉ : le certificat TLS ne couvre pas le nom DNS annoncé.')
+            raise SystemExit(2)
     if bool(TLS_CERT)!=bool(TLS_KEY):
         print('ERREUR DE SÉCURITÉ : MACLASSE_TLS_CERT et MACLASSE_TLS_KEY doivent être définis ensemble.')
         raise SystemExit(2)
@@ -3355,7 +3366,8 @@ if __name__=='__main__':
     if context: httpd.socket=context.wrap_socket(httpd.socket,server_side=True)
     scheme='https' if context else 'http'
     mode='réseau privé HTTPS' if HOST not in ('127.0.0.1','localhost','::1') else ('local HTTPS' if context else 'local HTTP')
-    print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{HOST}:{PORT}')
+    advertised_host=TLS_HOSTNAME or HOST
+    print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{advertised_host}:{PORT}')
     signal.signal(signal.SIGTERM,_stop_on_sigterm)
     try:
         httpd.serve_forever()
