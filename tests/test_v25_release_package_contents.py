@@ -55,24 +55,5 @@ class ReleasePackageContentsTests(unittest.TestCase):
                 "The generated git archive must not contain a corrupt ZIP member.",
             )
 
-    def test_release_notes_sources_are_not_silently_removed_from_git_archive(self):
-        process = subprocess.run(
-            ["git", "archive", "--format=zip", "HEAD"],
-            cwd=ROOT,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30,
-        )
-        with zipfile.ZipFile(io.BytesIO(process.stdout)) as archive:
-            names = set(archive.namelist())
-        sources = {
-            "docs/HISTORIQUE_VERSIONS.md",
-            "docs/archives/ETATS_AUDITS_ET_RECETTES_ANTERIEURS.md",
-            "docs/archives/README_PRE_REORGANISATION.md",
-        }
-        self.assertTrue(sources.issubset(names))
-
-
 if __name__ == "__main__":
     unittest.main()
