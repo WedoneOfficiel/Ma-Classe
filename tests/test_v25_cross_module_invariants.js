@@ -50,7 +50,13 @@ const modelNames = [
   'v101StudentAverage',
   'evaluationGradeLabel'
 ];
+class FixedDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [exactNow])); }
+  static now() { return Date.parse(exactNow); }
+}
+
 const context = {
+  Date: FixedDate,
   db: { students: [], evaluations: [], settings: { terms: [] }, lessons: [], submissions: [] },
   iso: function () { return '2026-11-26'; },
   esc: function (value) { return String(value ?? ''); },
