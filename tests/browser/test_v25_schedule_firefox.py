@@ -712,7 +712,10 @@ def main() -> None:
                 page.locator(".scheduleViewSwitch").get_by_role("button", name="Mois").click()
                 expect(page.locator(".scheduleMonthView")).to_be_visible()
                 month_counts = page.locator(".scheduleMonthCount")
-                expect(month_counts).to_have_count(3)
+                # The disposable school now contains two weekly courses:
+                # four Mondays from the new lesson (9, 16, 23, 30 Nov)
+                # and three Fridays from the original lesson (13, 20, 27 Nov).
+                expect(month_counts).to_have_count(7)
                 expect(month_counts.first).to_contain_text("cours")
 
                 page.locator(".scheduleViewSwitch").get_by_role("button", name="Semaine").click()
