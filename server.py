@@ -3,7 +3,6 @@ import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime,
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
 import establishment_import
-import network_supervisor
 import socketserver
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
@@ -3338,6 +3337,14 @@ if __name__=='__main__':
         print(f'ERREUR DE SÉCURITÉ : {error}')
         raise SystemExit(2)
     if TLS_HOSTNAME:
+        # Importer le superviseur uniquement pour le mode DNS public :
+        # les tests HTTP/TLS locaux et les installations sans certificat public
+        # n'ont pas besoin de charger cryptography au démarrage du serveur.
+        try:
+            import network_supervisor
+        except ImportError as error:
+            print(f'ERREUR DE SÉCURITÉ : validation TLS DNS indisponible : {error}')
+            raise SystemExit(2)
         if not TLS_CERT or network_supervisor._normalise_dns_hostname(TLS_HOSTNAME) != TLS_HOSTNAME:
             print('ERREUR DE SÉCURITÉ : MACLASSE_TLS_HOSTNAME exige un FQDN valide et un certificat TLS.')
             raise SystemExit(2)
