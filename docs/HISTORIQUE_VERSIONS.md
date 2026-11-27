@@ -2,7 +2,7 @@
 
 > Registre historique consolidé le 26 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
 
-## V25.2.0 — harmonisation des modules et configuration d’établissement (27/11/2026)
+## Candidat V25.2.0 — harmonisation des modules et configuration d’établissement (27/11/2026)
 
 **Statut : candidat en recette — non publié.** Les modifications sont sur la PR #20 et doivent encore être acceptées sur la copie isolée avant fusion et publication.
 
