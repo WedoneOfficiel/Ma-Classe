@@ -21,11 +21,7 @@ spec.loader.exec_module(server)
 
 
 class BackupHarness:
-    def _backup_dir(self):
-        path = Path(server.DATA_DIR) / "backups"
-        path.mkdir(parents=True, exist_ok=True)
-        return str(path)
-
+    _backup_dir = server.Handler._backup_dir
     _create_backup = server.Handler._create_backup
     _create_backup_locked = server.Handler._create_backup_locked
 
