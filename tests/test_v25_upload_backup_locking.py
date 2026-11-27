@@ -250,6 +250,57 @@ def test_restore_preserves_recovery_copy_if_rollback_itself_fails():
         assert not uploads.exists(), "Le dossier de récupération doit rester distinct du dossier actif manquant."
 
 
+def test_backup_rejects_symlinked_upload_files_and_directories():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        database = data_dir / "maclasse.json"
+        database.write_text(json.dumps({"classes": [], "students": []}), encoding="utf-8")
+        outside = root / "secret-outside-uploads.txt"
+        outside.write_text("ne doit jamais entrer dans l'archive", encoding="utf-8")
+        try:
+            (uploads / "leak.txt").symlink_to(outside)
+            (uploads / "linked-directory").symlink_to(root, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            return
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database)
+        server.UPLOADS = str(uploads)
+        try:
+            BackupHarness()._create_backup(force=True)
+            raise AssertionError("Une sauvegarde contenant des liens symboliques aurait dû être refusée.")
+        except ValueError as error:
+            assert "liens symboliques" in str(error) or "lien symbolique" in str(error)
+        backup_dir = data_dir / "backups"
+        assert not list(backup_dir.glob("maclasse-*.zip")), "Aucune archive ne doit être publiée."
+        assert not list(backup_dir.glob("*.tmp")), "Aucun fichier temporaire ne doit subsister."
+
+
+def test_backup_refuses_a_snapshot_larger_than_the_restore_limit():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        database = data_dir / "maclasse.json"
+        database.write_text(json.dumps({"classes": [{"id": "large"}], "students": []}), encoding="utf-8")
+        (uploads / "piece.txt").write_text("contenu", encoding="utf-8")
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database)
+        server.UPLOADS = str(uploads)
+        with patch.object(server, "MAX_BACKUP_UNCOMPRESSED_BYTES", 8):
+            try:
+                BackupHarness()._create_backup(force=True)
+                raise AssertionError("Une sauvegarde au-delà du plafond de restauration aurait dû être refusée.")
+            except ValueError as error:
+                assert "limite de restauration" in str(error)
+        backup_dir = data_dir / "backups"
+        assert not list(backup_dir.glob("maclasse-*.json"))
+        assert not list(backup_dir.glob("maclasse-*.zip"))
+
+
 def test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttle():
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -264,14 +315,14 @@ def test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttl
         server.UPLOADS = str(uploads)
         server.BACKUP_INTERVAL_SECONDS = 86400
         backup_dir = data_dir / "backups"
-        original_write = server.zipfile.ZipFile.write
+        original_open = server.zipfile.ZipFile.open
 
-        def fail_while_archiving_uploads(archive, filename, *args, **kwargs):
-            if str(filename).startswith(str(uploads)):
+        def fail_while_archiving_uploads(archive, name, mode="r", *args, **kwargs):
+            if isinstance(name, str) and name.startswith("data/uploads/"):
                 raise OSError("échec simulé pendant l'archivage des pièces jointes")
-            return original_write(archive, filename, *args, **kwargs)
+            return original_open(archive, name, mode, *args, **kwargs)
 
-        with patch.object(server.zipfile.ZipFile, "write", new=fail_while_archiving_uploads):
+        with patch.object(server.zipfile.ZipFile, "open", new=fail_while_archiving_uploads):
             try:
                 BackupHarness()._create_backup(force=True)
                 raise AssertionError("La panne d'archivage simulée aurait dû échouer.")
@@ -298,4 +349,6 @@ if __name__ == "__main__":
     test_restore_rolls_back_both_stores_if_database_swap_fails()
     test_restore_preserves_recovery_copy_if_rollback_itself_fails()
     test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttle()
-    print("OK — verrouillage, snapshots atomiques, rollback et conservation du dossier de récupération.")
+    test_backup_rejects_symlinked_upload_files_and_directories()
+    test_backup_refuses_a_snapshot_larger_than_the_restore_limit()
+    print("OK — verrouillage, snapshots atomiques, refus des liens symboliques et tailles non restaurables, rollback et conservation du dossier de récupération.")

@@ -2392,9 +2392,67 @@ class Handler(SimpleHTTPRequestHandler):
             return self._create_backup_locked(force)
     def _create_backup_locked(self, force=False):
         if not os.path.exists(DATA_FILE): return None
-        current=None
-        with open(DATA_FILE,encoding='utf-8') as f: current=json.load(f)
+
+        def open_snapshot_source(path, expected_stat):
+            # O_NOFOLLOW closes the gap between lstat() and open() on platforms
+            # that support it. fstat() then confirms we opened the same regular
+            # file whose size was included in the restore-limit preflight.
+            flags=os.O_RDONLY | getattr(os,'O_NOFOLLOW',0)
+            descriptor=os.open(path,flags)
+            stream=os.fdopen(descriptor,'rb')
+            opened=os.fstat(stream.fileno())
+            if (not stat.S_ISREG(opened.st_mode)
+                    or (opened.st_dev,opened.st_ino,opened.st_size)
+                    != (expected_stat.st_dev,expected_stat.st_ino,expected_stat.st_size)):
+                stream.close()
+                raise ValueError('Sauvegarde refusée : un fichier a changé pendant le contrôle préalable.')
+            return stream
+
+        try:
+            database_stat=os.lstat(DATA_FILE)
+        except OSError as error:
+            raise ValueError('Sauvegarde impossible : base de données inaccessible.') from error
+        if stat.S_ISLNK(database_stat.st_mode) or not stat.S_ISREG(database_stat.st_mode):
+            raise ValueError('Sauvegarde refusée : la base doit être un fichier normal, pas un lien symbolique.')
+
+        # Inventory uploads without following links. A symlink could otherwise
+        # make a backup include a file outside data/uploads, leaking local files.
+        upload_entries=[]
+        total_uncompressed=database_stat.st_size
+        if os.path.lexists(UPLOADS):
+            uploads_stat=os.lstat(UPLOADS)
+            if stat.S_ISLNK(uploads_stat.st_mode) or not stat.S_ISDIR(uploads_stat.st_mode):
+                raise ValueError('Sauvegarde refusée : le dossier des pièces jointes doit être un dossier normal.')
+            for base,dirnames,filenames in os.walk(UPLOADS,topdown=True,followlinks=False):
+                dirnames.sort()
+                filenames.sort()
+                for dirname in list(dirnames):
+                    full=os.path.join(base,dirname)
+                    entry_stat=os.lstat(full)
+                    if stat.S_ISLNK(entry_stat.st_mode) or not stat.S_ISDIR(entry_stat.st_mode):
+                        raise ValueError('Sauvegarde refusée : les liens symboliques et éléments non standards sont interdits dans les pièces jointes.')
+                for filename in filenames:
+                    full=os.path.join(base,filename)
+                    entry_stat=os.lstat(full)
+                    if stat.S_ISLNK(entry_stat.st_mode) or not stat.S_ISREG(entry_stat.st_mode):
+                        raise ValueError('Sauvegarde refusée : seuls les fichiers normaux sont autorisés dans les pièces jointes.')
+                    total_uncompressed+=entry_stat.st_size
+                    if total_uncompressed>MAX_BACKUP_UNCOMPRESSED_BYTES:
+                        raise ValueError('Sauvegarde complète impossible : la base et les pièces jointes dépassent la limite de restauration autorisée.')
+                    archive_name=os.path.join('data','uploads',os.path.relpath(full,UPLOADS))
+                    upload_entries.append((full,archive_name,entry_stat))
+        if total_uncompressed>MAX_BACKUP_UNCOMPRESSED_BYTES:
+            raise ValueError('Sauvegarde complète impossible : la base et les pièces jointes dépassent la limite de restauration autorisée.')
+
+        # Validate the database while its identity is still pinned to the same
+        # regular file that will be copied into both backup representations.
+        try:
+            with open_snapshot_source(DATA_FILE,database_stat) as source:
+                current=json.load(source)
+        except (OSError,UnicodeError,json.JSONDecodeError) as error:
+            raise ValueError('Sauvegarde impossible : la base JSON est illisible.') from error
         if current is None: return None
+
         backup_dir=self._backup_dir()
         now=time.time()
         # Only a paired JSON + ZIP snapshot is complete enough to satisfy the backup interval.
@@ -2410,7 +2468,10 @@ class Handler(SimpleHTTPRequestHandler):
         backup_path=os.path.join(backup_dir,f'maclasse-{stamp}.json')
         backup_tmp=backup_path+'.tmp'
         try:
-            shutil.copy2(DATA_FILE,backup_tmp)
+            with open_snapshot_source(DATA_FILE,database_stat) as source, open(backup_tmp,'xb') as target:
+                shutil.copyfileobj(source,target)
+                target.flush()
+                os.fsync(target.fileno())
             os.replace(backup_tmp,backup_path)
         finally:
             try:
@@ -2423,12 +2484,13 @@ class Handler(SimpleHTTPRequestHandler):
         archive_tmp=archive_path+'.tmp'
         try:
             with zipfile.ZipFile(archive_tmp,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-                archive.write(DATA_FILE,'data/maclasse.json')
-                if os.path.isdir(UPLOADS):
-                    for base,_,files in os.walk(UPLOADS):
-                        for filename in files:
-                            full=os.path.join(base,filename)
-                            archive.write(full,os.path.join('data','uploads',os.path.relpath(full,UPLOADS)))
+                with open_snapshot_source(DATA_FILE,database_stat) as source, archive.open('data/maclasse.json','w') as target:
+                    shutil.copyfileobj(source,target)
+                for full,archive_name,expected_stat in upload_entries:
+                    with open_snapshot_source(full,expected_stat) as source, archive.open(archive_name,'w') as target:
+                        shutil.copyfileobj(source,target)
+            if os.path.getsize(archive_tmp)>MAX_BACKUP_ARCHIVE_BYTES:
+                raise ValueError('Sauvegarde complète impossible : l’archive dépasse la limite de restauration autorisée.')
             os.replace(archive_tmp,archive_path)
         finally:
             try:

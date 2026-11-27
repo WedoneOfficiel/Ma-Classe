@@ -55,4 +55,11 @@ client_source = (ROOT / '_all.js').read_text(encoding='utf-8')
 assert 'file.size>512*1024*1024' in client_source
 assert 'Archive trop volumineuse (512 Mo maximum).' in client_source
 assert 'max_length=MAX_BACKUP_ARCHIVE_BYTES' in (ROOT / 'server.py').read_text(encoding='utf-8')
+# The application must be able to restore every full archive it creates.
+assert server.MAX_BACKUP_ARCHIVE_BYTES == 512 * 1024 * 1024
+assert server.MAX_BACKUP_UNCOMPRESSED_BYTES == 500 * 1024 * 1024
+client_source = (ROOT / '_all.js').read_text(encoding='utf-8')
+assert 'file.size>512*1024*1024' in client_source
+assert 'Archive trop volumineuse (512 Mo maximum).' in client_source
+assert 'max_length=MAX_BACKUP_ARCHIVE_BYTES' in (ROOT / 'server.py').read_text(encoding='utf-8')
 print('OK — restauration complète, plafond navigateur/serveur aligné, remplacement des fichiers et refus des archives malveillantes.')
