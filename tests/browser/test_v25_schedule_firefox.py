@@ -301,6 +301,21 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     page.evaluate("setAppearanceTheme('dark')")
     expect(page.locator("html")).to_have_attribute("data-mc-theme","dark")
     page.screenshot(path=str(output_dir/"establishment-generator-admin-dark.png"),full_page=True,animations="disabled")
+
+    # The protection details are below the first viewport on the modal. Verify
+    # that the modal scroll actually exposes them above the sticky footer.
+    protection = modal.locator(".notice.section").last
+    protection.scroll_into_view_if_needed()
+    expect(protection).to_be_visible()
+    geometry = protection.evaluate("""el => {
+      const r=el.getBoundingClientRect();
+      const modal=document.getElementById('modal').getBoundingClientRect();
+      const footer=document.querySelector('#modal .modalfoot').getBoundingClientRect();
+      return {top:r.top,bottom:r.bottom,modalTop:modal.top,modalBottom:modal.bottom,footerTop:footer.top};
+    }""")
+    if geometry["top"] < geometry["modalTop"] or geometry["bottom"] > geometry["footerTop"] + 2:
+        raise AssertionError(f"Les consignes de protection de l'import doivent rester accessibles au-dessus du pied de modale: {geometry!r}")
+    page.screenshot(path=str(output_dir/"establishment-generator-admin-dark-bottom.png"),full_page=True,animations="disabled")
     page.locator("#modal .modalhead .close").click()
     expect(modal).not_to_be_visible()
 
