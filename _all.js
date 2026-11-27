@@ -642,7 +642,7 @@ function downloadAuditLog(){const rows=Array.isArray(db.auditLog)?db.auditLog:[]
 function teachersModule(){
  const list=[...(db.teachers||[])].sort((a,b)=>teacherName(a).localeCompare(teacherName(b),'fr'));
  return shell('Structure','Professeurs','Une fiche par personne : identité, matières, classes et compte de connexion.',authUser?.role==='admin'?'':`<button class="btn" onclick="openTeacherProfile()">Mon profil</button>`)+
- `<div class="grid g3 section">${list.map(t=>{const u=teacherAccount(t.id),cs=teacherClasses(t.id),pp=teacherPPClasses(t.id);return `<div class="card"><div class="person"><div class="avatar">${initials(t)}</div><div><b>${esc(teacherName(t))}</b><small>${esc(t.email||u?.username||'Aucun e-mail')}</small></div></div><div class="section muted">${esc((t.subjects||[]).join(' · ')||'Matières non renseignées')}</div><div class="gradeStats section"><span class="pill blue">${countLabel(cs.length,'classe','classes')}</span><span class="pill purple">${pp.length} PP</span><span class="pill ${u?.active===false?'red':'green'}">${u?.active===false?'Compte désactivé':'Compte actif'}</span></div><div class="actions section"><button class="btn small" onclick="openTeacherAdminEditor(${jsArg(t.id)})">Modifier le compte et la fiche</button></div></div>`}).join('')||'<div class="card empty">Aucun professeur enregistré.</div>'}</div>`
+ `<div class="grid g3 section">${list.map(t=>{const u=teacherAccount(t.id),cs=teacherClasses(t.id),pp=teacherPPClasses(t.id);return `<div class="card"><div class="person"><div class="avatar">${initials(t)}</div><div><b>${esc(teacherName(t))}</b><small>${esc(t.email||u?.username||'Aucun e-mail')}</small></div></div><div class="section muted">${esc((t.subjects||[]).join(' · ')||'Matières non renseignées')}</div><div class="gradeStats section"><span class="pill blue">${countLabel(cs.length,'classe','classes')}</span><span class="pill purple">${pp.length} PP</span><span class="pill ${!u?'':u.active===false?'red':'green'}">${!u?'Sans compte':u.active===false?'Compte désactivé':'Compte actif'}</span></div><div class="actions section"><button class="btn small" onclick="openTeacherAdminEditor(${jsArg(t.id)})">${u?'Modifier le compte et la fiche':'Créer un compte de connexion'}</button></div></div>`}).join('')||'<div class="card empty">Aucun professeur enregistré.</div>'}</div>`
 }
 function openTeacherAdminEditor(id){return openUserEditor(id)}
 function manageClassGroups(id){
@@ -1005,7 +1005,7 @@ function accessibleTeachersForStudent(sid){
   const s=student(sid);if(!s)return[];
   // Un compte élève reçoit du serveur une liste déjà limitée aux enseignants
   // joignables : ne pas la filtrer une seconde fois avec les seuls titulaires.
-  if(authUser?.role==='student')return (db.teachers||[]).filter(t=>t.active!==false);
+  if(authUser?.role==='student')return (db.teachers||[]).filter(t=>t.active!==false&&!!teacherAccount(t.id));
   const classId=String(s.classId||''),group=String(s.group||''),today=iso(new Date());
   const ids=new Set((cls(s.classId)?.teacherIds||[]).map(String));
   (db.schedule||[]).filter(x=>String(x.classId||'')===classId&&(!x.group||String(x.group)===group)).forEach(x=>[x.teacherId,...(x.teacherIds||[])].filter(Boolean).forEach(id=>ids.add(String(id))));
@@ -1248,8 +1248,10 @@ function toggleStudentAccount(id,active){
  });
 }
 function openUserEditor(id=''){
- const u=id?db.users.find(x=>sameId(x.id,id)&&x.role==='teacher'):{id:'',first:'',last:'',username:'',email:'',phone:'',subjects:[],profileNotes:'',active:true};
- if(id&&!u)return toast('Compte professeur introuvable.');
+ const account=id?db.users.find(x=>sameId(x.id,id)&&x.role==='teacher'):null;
+ const profile=id?(db.teachers||[]).find(x=>sameId(x.id,id)&&x.role==='teacher'):null;
+ const u=id?(account||profile):{id:'',first:'',last:'',username:'',email:'',phone:'',subjects:[],profileNotes:'',active:true};
+ if(id&&!u)return toast('Fiche professeur introuvable.');
  const assigned=db.classes.filter(c=>(c.teacherIds||[]).some(teacherId=>sameId(teacherId,id))).map(c=>c.id),pp=db.classes.filter(c=>sameId(c.principalTeacherId,id)).map(c=>c.id);
  openModal(id?'Modifier le compte et la fiche professeur':'Créer un professeur',`<form onsubmit="saveUser(event,${jsArg(id)})"><div class="form">
  <div class="field"><label>Prénom *</label><input class="input" name="first" value="${esc(u.first||'')}" required></div><div class="field"><label>Nom *</label><input class="input" name="last" value="${esc(u.last||'')}" required></div>
