@@ -369,9 +369,6 @@ def validate_bundle(bundle, existing_data=None):
     schedule_records = _unique_records(schedule_raw, "schedule", errors, {"key", "classes", "class", "day", "start", "end", "subject", "group", "teachers", "teacher", "room", "recurrence", "intervalWeeks", "startDate", "endDate", "exceptions", "equipment"})
 
     classes, teachers, students, rooms, schedule = {}, {}, {}, {}, {}
-    if not create_teacher_accounts and teacher_records:
-        errors.append("createTeacherAccounts=false : teachers doit être une liste vide ; les profils et affectations seront créés plus tard dans Ma Classe.")
-
     for key, raw in class_records.items():
         name = _text(raw.get("name"), f"classes[{key}].name", errors, required=True, maximum=100)
         levels = _string_list(raw.get("levels"), f"classes[{key}].levels", errors, maximum_items=8, item_maximum=40)
@@ -598,7 +595,7 @@ def validate_bundle(bundle, existing_data=None):
         subject = _text(raw.get("subject"), f"Créneau {key} : subject", errors, required=True, maximum=80)
         group = _text(raw.get("group", ""), f"Créneau {key} : group", errors, maximum=80)
         teacher_keys = _key_list(raw.get("teachers", [raw.get("teacher")] if raw.get("teacher") else []), f"Créneau {key} : teachers", errors, maximum_items=20)
-        if not teacher_keys and create_teacher_accounts:
+        if not teacher_keys:
             errors.append(f"Créneau {key} : au moins un professeur est obligatoire.")
         for teacher_key in teacher_keys:
             if teacher_key not in teachers:
@@ -877,7 +874,7 @@ def validate_bundle(bundle, existing_data=None):
         "summary": {
             "establishment": establishment_name,
             "classes": len(classes), "students": len(students) if create_student_profiles else 0,
-            "teachers": len(teachers) if create_teacher_accounts else 0, "rooms": len(rooms),
+            "teachers": len(teachers), "teacherAccounts": len(teachers) if create_teacher_accounts else 0, "rooms": len(rooms),
             "scheduleSlots": len(schedule),
         },
         "quality": quality,
@@ -904,7 +901,7 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
         )
     source_data = existing_data if isinstance(existing_data, dict) else {}
     collection_names = (
-        "classes", "students", "users", "schedule", "teacherAssignments",
+        "classes", "students", "users", "teachers", "schedule", "teacherAssignments",
         "lessons", "evaluations", "attendance", "bulletins", "submissions",
     )
     # Do not silently replace malformed existing records with empty lists.
@@ -945,8 +942,20 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
     teacher_ids = {}
     teacher_credentials = []
     used_usernames = {str(user.get("username", "")).casefold() for user in data["users"] if isinstance(user, dict)}
-    for key, teacher in (normalized["teachers"].items() if normalized.get("createTeacherAccounts", True) else ()): 
+    for key, teacher in normalized["teachers"].items():
         user_id = token_factory(18)
+        teacher_profile = {
+            "id": user_id, "teacherId": user_id, "role": "teacher",
+            "first": teacher["first"], "last": teacher["last"],
+            "name": f"{teacher['first']} {teacher['last']}".strip(),
+            "email": teacher["email"], "phone": teacher["phone"],
+            "subjects": teacher["subjects"], "profileNotes": teacher["profileNotes"],
+            "active": True, "scheduleUnavailable": teacher["unavailable"],
+        }
+        data["teachers"].append(teacher_profile)
+        teacher_ids[key] = user_id
+        if not normalized.get("createTeacherAccounts", True):
+            continue
         username = teacher["username"] or _username_base(teacher)
         base = username
         suffix = 2
@@ -958,18 +967,13 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
             suffix += 1
         used_usernames.add(username.casefold())
         temporary_password = token_factory(10)
-        profile = {
-            "id": user_id, "role": "teacher", "username": username,
-            "first": teacher["first"], "last": teacher["last"],
-            "name": f"{teacher['first']} {teacher['last']}".strip(),
-            "email": teacher["email"], "phone": teacher["phone"],
-            "subjects": teacher["subjects"], "profileNotes": teacher["profileNotes"],
-            "active": True, "mustChangePassword": True,
-            "scheduleUnavailable": teacher["unavailable"],
+        account = {
+            **teacher_profile,
+            "username": username,
+            "mustChangePassword": True,
             "passwordHash": password_hasher(temporary_password),
         }
-        data["users"].append(profile)
-        teacher_ids[key] = user_id
+        data["users"].append(account)
         teacher_credentials.append({
             "first": teacher["first"], "last": teacher["last"],
             "username": username, "temporaryPassword": temporary_password,
@@ -1053,7 +1057,6 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
         "detail": normalized["establishment"]["name"] or f"{len(class_ids)} classe(s)",
     })
     data["auditLog"] = audit[:300]
-    data.pop("teachers", None)
     return data, teacher_credentials, validation["summary"]
 
 
