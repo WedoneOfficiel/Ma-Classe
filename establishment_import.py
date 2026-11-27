@@ -818,7 +818,7 @@ def validate_bundle(bundle, existing_data=None):
     if not students:
         warnings.append("Aucune fiche élève ne sera créée.")
     if not teachers:
-        warnings.append("Aucun compte professeur ne sera créé.")
+        warnings.append("Aucun profil professeur ni compte de connexion ne sera créé.")
     if not schedule:
         warnings.append("Aucun créneau d'emploi du temps ne sera créé.")
 
