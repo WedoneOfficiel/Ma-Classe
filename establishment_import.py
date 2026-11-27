@@ -683,23 +683,28 @@ def validate_bundle(bundle, existing_data=None):
                     groups.update(f"{class_record['name']}/{level}" for level in class_record["levels"])
                 if lesson["group"] not in groups:
                     errors.append(f"Créneau {lesson['key']} : groupe {lesson['group']!r} non défini dans {class_record['name']!r}.")
-            if lesson["room"] and lesson["room"] in rooms:
-                room = rooms[lesson["room"]]
-                student_count = (
-                    student_count_by_class[class_key]
-                    if not lesson["group"]
-                    else student_count_by_class_group[(class_key, lesson["group"])]
-                )
-                if room["capacity"] and student_count > room["capacity"]:
-                    errors.append(f"Créneau {lesson['key']} : la salle {room['name']!r} ({room['capacity']} places) est trop petite pour {student_count} élèves.")
-                missing_equipment = [
-                    need for need in lesson["equipment"]
-                    if not any(need.casefold() in offered.casefold() for offered in room["equipment"])
-                ]
-                if missing_equipment:
-                    errors.append(f"Créneau {lesson['key']} : la salle {room['name']!r} ne possède pas : {', '.join(missing_equipment)}.")
         if lesson["room"] and lesson["room"] in rooms:
             room = rooms[lesson["room"]]
+            # A shared lesson can target several classes. Capacity applies to
+            # the combined cohort, not independently to each generated row.
+            if lesson["group"]:
+                student_count = sum(
+                    student_count_by_class_group[(class_key, lesson["group"])]
+                    for class_key in lesson["classes"]
+                )
+            else:
+                student_count = sum(
+                    student_count_by_class[class_key]
+                    for class_key in lesson["classes"]
+                )
+            if room["capacity"] and student_count > room["capacity"]:
+                errors.append(f"Créneau {lesson['key']} : la salle {room['name']!r} ({room['capacity']} places) est trop petite pour {student_count} élèves.")
+            missing_equipment = [
+                need for need in lesson["equipment"]
+                if not any(need.casefold() in offered.casefold() for offered in room["equipment"])
+            ]
+            if missing_equipment:
+                errors.append(f"Créneau {lesson['key']} : la salle {room['name']!r} ne possède pas : {', '.join(missing_equipment)}.")
             for unavailable in room["unavailable"]:
                 if unavailable["day"] == lesson["day"] and unavailable["startMinutes"] is not None and unavailable["endMinutes"] is not None:
                     if lesson["startMinutes"] < unavailable["endMinutes"] and unavailable["startMinutes"] < lesson["endMinutes"]:
