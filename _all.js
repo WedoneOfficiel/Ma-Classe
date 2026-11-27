@@ -2437,12 +2437,16 @@ function plannerToggleAction(action){
  if(roomFields){roomFields.style.display=action==='room'?'':'none';roomFields.querySelectorAll('input,select,textarea').forEach(el=>{el.disabled=action!=='room';if(el.name==='scheduleId')el.required=action==='room'})}
 }
 function plannerFindSlots(classId,teacherId,dateDay,timeStart,timeEnd,room=''){
- const candidates=[],base=Number(dateDay);
- for(let d=0;d<5;d++){const day=(base+d)%5;for(let m=8*60;m<=17*60;m+=30){
-  const end=m+(mins(timeEnd)-mins(timeStart)||60);if(end>18*60)continue;
-  const c={classId,teacherId,day,time:String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),endTime:String(Math.floor(end/60)).padStart(2,'0')+':'+String(end%60).padStart(2,'0'),room};
-  if(!plannerConflicts(c).length)candidates.push(c);if(candidates.length>=8)return candidates;
- }}
+ const candidates=[],base=Number(dateDay),duration=mins(timeEnd)-mins(timeStart)||60;
+ for(let d=0;d<5;d++){
+  const day=(base+d)%5,start=d===0?Math.max(8*60,Math.ceil(mins(timeStart)/30)*30):8*60;
+  for(let m=start;m<=17*60;m+=30){
+   const end=m+duration;if(end>18*60)continue;
+   const c={classId,teacherId,day,time:String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),endTime:String(Math.floor(end/60)).padStart(2,'0')+':'+String(end%60).padStart(2,'0'),room};
+   if(!plannerConflicts(c).length)candidates.push(c);
+   if(candidates.length>=8)return candidates;
+  }
+ }
  return candidates;
 }
 function openPlanner(){
