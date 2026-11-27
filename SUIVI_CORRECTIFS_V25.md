@@ -926,7 +926,7 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 
 **Branche :** `fix/v25.1.2-cross-module-consistency`  
 **PR :** [#20 — V25.2.0](https://github.com/WedoneOfficiel/Ma-Classe/pull/20)  
-**Tête validée automatiquement :** `e4969e765a1faee2d5480768a62c1bb88b0aba84`
+**Tête validée automatiquement :** `1596fc422645e27a67b5858eca2c48552315bed9`
 
 ### Défauts supplémentaires identifiés et corrigés
 
@@ -938,20 +938,21 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 - **Import d'établissement — groupes implicites multi-niveaux :** la capacité d'une salle ne comptait que le champ `group` explicite des élèves, alors que `build_data()` génère un groupe `NomClasse/Niveau` lorsque le JSON ne le fournit pas. Le calcul du validateur utilise maintenant le même groupe effectif que l'import final.
 - **Import d'établissement — cours partagés :** la capacité était contrôlée par classe séparément alors qu'un créneau partagé crée plusieurs enregistrements liés dans la même salle. Le calcul additionne les élèves de toutes les classes ciblées (ou de leur groupe commun) avant de comparer la capacité ; l'équipement de la salle n'est contrôlé qu'une fois pour le créneau.
 - **Import établissement — taille des fichiers :** le navigateur et les deux routes serveur (prévalidation et import confirmé) imposaient auparavant 10 Mo, alors que le schéma permet des configurations volumineuses. La limite est maintenant de 25 Mo aux deux niveaux ; le test UI vérifie l'alignement des trois contrôles.
+- **Sauvegardes — restauration des archives complètes :** une pièce jointe très compressible pouvait produire une archive refusée par le garde-fou anti-bombe de la restauration. Les snapshots utilisent maintenant ZIP_STORED, contrôlent les chemins, les liens symboliques, le nombre d'entrées et les tailles avant écriture ; le ZIP est publié atomiquement avec permissions privées. Un test restaure la base et les pièces jointes après modification/suppression des fichiers actifs.
 - **Archive de release — couverture complète :** le test `test_v25_release_package_contents.py` vérifie maintenant dynamiquement que tous les scripts `.sh` et `.command` à la racine se trouvent dans le ZIP, et interdit aussi les fichiers `.key`. La tête `f22f4b9` a passé la CI #2092, 3/3.
 
 ### Preuves de validation
 
-- Workflow final [#2088 / run 45917072089](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45917072089), commit `e4969e765a1faee2d5480768a62c1bb88b0aba84` : **Linux, macOS Apple Silicon et Firefox réel réussis (3/3)**.
+- Workflow final [#2143 / run 46002490475](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/46002490475), commit `1596fc422645e27a67b5858eca2c48552315bed9` : **Linux, macOS Apple Silicon et Firefox réel réussis (3/3)**.
 - Linux : installateur réel, vérification JavaScript, compilation Python et tous les tests JavaScript/Python.
 - macOS : installateur Apple Silicon, suites JavaScript/Python et véritable démarrage du service `launchd`.
-- Firefox : scénarios Direction, Professeur et Élève, journal des versions, générateur et géométrie des Paramètres sur desktop/mobile ; captures des modules en thèmes clair et sombre.
-- Les captures ont été téléchargées depuis l'artefact `maclasse-v25-product-screenshots` (113 fichiers) et inspectées. La carte Données est maintenant alignée sous Version dans la colonne de droite ; les vues mobiles restent sans débordement horizontal du contenu principal.
+- Firefox : scénarios Direction, Professeur et Élève, journal des versions, générateur et géométrie des Paramètres sur desktop/mobile ; les captures de la campagne navigateur sont publiées comme artefact du workflow.
+- L'arbre contient 113 fichiers de tests (68 JavaScript, 45 Python) et la matrice intermodules conserve 860 invariants.
 - Aucun changement de schéma ni migration de données. Aucune donnée de l'installation locale n'a été modifiée.
 
 ### Vérification complémentaire de l'archive de release
 
-Le test `tests/test_v25_release_package_contents.py` reproduit la commande `git archive` du workflow officiel et vérifie que le ZIP contient le runtime, `requirements.txt`, `update_manager.py`, `network_supervisor.py`, `release_signing.py`, `release-signing-public-key.txt`, les modules JavaScript requis, les lanceurs essentiels Linux/macOS, la note V25.2.0, l'historique consolidé et les trois sources historiques utilisées par le journal. Le contrôle de présence des composants est passé dans la CI #2088 ; le contrôle complémentaire d'exclusion des dossiers `data/`, bases locales, certificats et clefs privées a passé la CI #2091 sur le commit de test `5f2b4ab`.
+Le test `tests/test_v25_release_package_contents.py` reproduit la commande `git archive` du workflow officiel et vérifie que le ZIP contient le runtime, `requirements.txt`, `update_manager.py`, `network_supervisor.py`, `release_signing.py`, `release-signing-public-key.txt`, les modules JavaScript requis, les lanceurs essentiels Linux/macOS, la note V25.2.0, l'historique consolidé et les trois sources historiques utilisées par le journal. Le contrôle de présence et d'exclusion est désormais inclus dans le test de paquet et repasse dans la CI #2143 sur la tête finale.
 
 ### Limites avant publication
 
