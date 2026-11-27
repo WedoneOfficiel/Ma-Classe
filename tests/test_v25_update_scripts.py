@@ -173,5 +173,32 @@ class UpdateScriptSafetyTests(unittest.TestCase):
                 self.assertIn("MC_VERSION=", source)
 
 
+
+    def test_public_dns_tls_mode_is_wired_through_launchers_services_and_update_healthchecks(self):
+        names = (
+            "Lancer-MaClasse-Reseau.command",
+            "Lancer-MaClasse-Reseau.sh",
+            "Installer-Service-MaClasse-macOS.sh",
+            "Installer-Service-MaClasse-Linux.sh",
+            "Appliquer-Mise-A-Jour-MaClasse-macOS.sh",
+            "Appliquer-Mise-A-Jour-MaClasse-Linux.sh",
+        )
+        for name in names:
+            with self.subTest(script=name):
+                source = (ROOT / name).read_text(encoding="utf-8")
+                self.assertIn("public-certificate.json", source)
+                result = subprocess.run(
+                    ["bash", "-n", str(ROOT / name)],
+                    capture_output=True, text=True, timeout=10,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+        linux_updater = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-Linux.sh").read_text(encoding="utf-8")
+        macos_updater = (ROOT / "Appliquer-Mise-A-Jour-MaClasse-macOS.sh").read_text(encoding="utf-8")
+        self.assertIn("--resolve", linux_updater)
+        self.assertIn("--resolve", macos_updater)
+        self.assertIn("network_supervisor import detect_lan_ipv4", linux_updater)
+        self.assertIn("network_supervisor import detect_lan_ipv4", macos_updater)
+
 if __name__ == "__main__":
     unittest.main()
