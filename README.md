@@ -8,7 +8,7 @@ MaClasse est une application web de gestion scolaire destinée à un établissem
 |---|---|
 | Dernière release GitHub publiée | **V25.1.1** (`v25.1.1`), publiée le 26/11/2026 |
 | Candidat suivant | **V25.2.0**, PR #20 ouverte ; non fusionnée et non publiée |
-| CI du candidat | Run #2092 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel (3/3) |
+| CI du candidat | Run #2114 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel (3/3), tête `559c866` |
 | Branche `main` | **V25.1.1**, HEAD `710c184` (commit documentaire après le commit de release `b5cc07d`) |
 | Publication | Workflow #4 réussi : validation Linux, macOS Apple Silicon/launchd, Firefox, archive, manifeste et signature |
 | Installation de référence | Premier passage depuis V25.0.23 effectué sur macOS ; fonctionnement confirmé par l'utilisateur |
@@ -37,7 +37,7 @@ La signature Ed25519 du manifeste est implémentée côté client et dans le wor
 
 Le candidat V25.2.0 harmonise les règles de publication des évaluations et bulletins, les parcours « Travail à faire » et vie scolaire, les affectations, les salles et les créneaux partagés. Il ajoute un générateur manuel de configuration d'établissement (JSON jusqu'à 25 Mo), un écran des nouveautés par compte et un journal historique. Les sources historiques et la clé publique Ed25519 nécessaires à ces fonctions sont contrôlées dans le paquet de mise à jour.
 
-La CI #2092 passe sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). Le contrôle de sécurité du ZIP interdit les données locales et clefs privées ; la couverture de tous les lanceurs racine est également testée. **Limite HTTPS client :** le certificat de l'AC privée doit encore être approuvé/importé sur chaque appareil, ou distribué par un outil de gestion centralisée. L'objectif de zéro réglage manuel par ordinateur n'est donc pas atteint. La PR reste candidate : la recette sur une copie représentative des données, les vrais comptes et les appareils clients est nécessaire avant fusion et publication. Voir les [notes candidates V25.2.0](docs/releases/v25.2.0.md), le [guide du générateur](docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md) et le [registre des anomalies](REGISTRE_BUGS_V25.md).
+Le workflow #2114 passe sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3) sur la tête `559c866`. Les contrôles de paquet excluent les données locales, bases, certificats et clés privées ; tous les lanceurs racine sont vérifiés. Le candidat inclut un mode TLS public DNS facultatif : avec un domaine contrôlé, un certificat public renouvelé par ACME DNS-01 et un DNS local distribué aux appareils via DHCP, les postes peuvent ouvrir MaClasse sans importer l'AC privée. Ce mode n'est pas configuré ni recetté sur le réseau cible ; sans ces prérequis, le mode AC privée par défaut demande toujours une approbation par appareil. La recette sur une copie représentative des données, les vrais comptes et au moins deux appareils clients reste nécessaire avant fusion et publication. Voir les [notes candidates V25.2.0](docs/releases/v25.2.0.md), le [guide HTTPS](docs/RESEAU_HTTPS.md), le [guide du générateur](docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md) et le [registre des anomalies](REGISTRE_BUGS_V25.md).
 
 ## Installation et démarrage
 

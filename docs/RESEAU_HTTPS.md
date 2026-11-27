@@ -1,8 +1,8 @@
 # Réseau local HTTPS — MaClasse V25
 
-**État au 27/11/2026 :** le superviseur réseau est commun à Linux et macOS. La CI finale candidate #2092 valide Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). La vérification sur un vrai réseau Wi-Fi, le pare-feu Fedora et les appareils clients reste à effectuer sur le matériel cible.
+**État au 27/11/2026 :** le superviseur réseau est commun à Linux et macOS. Le workflow #2114 valide la tête `559c866` sur Linux, macOS Apple Silicon avec `launchd` réel et Firefox réel (3/3). Le test de renouvellement ACME vérifie que le listener reste actif pendant le remplacement progressif d'une paire certificat/clé, puis s'arrête proprement lorsque la paire valide est prête. La validation sur le Wi-Fi cible, le DNS/routeur, le pare-feu Fedora et au moins deux appareils clients reste à effectuer.
 
-**Limite de confiance HTTPS côté client — non résolue :** MaClasse utilise actuellement une autorité de certification privée créée sur le serveur. Chaque nouvel appareil ou navigateur doit approuver/importer une fois le certificat public `data/tls/ca.crt`. Le serveur ne peut pas ajouter silencieusement une autorité privée au magasin de confiance d'un appareil arbitraire. Cette architecture ne satisfait donc pas une exigence de zéro réglage de certificat par ordinateur ; ne pas la présenter comme résolue par la CI.
+**Deux modes de confiance existent :** le mode AC privée par défaut nécessite encore d'approuver/importer `data/tls/ca.crt` sur chaque appareil (ou de la distribuer centralement). Le mode facultatif TLS public DNS, documenté ci-dessous, permet d'éviter cette étape par poste si le domaine, le renouvellement ACME et le DNS local sont configurés au niveau de l'établissement. Il n'est pas encore activé ni recetté sur le réseau cible ; ne pas le considérer comme opérationnel avant le test de deux appareils.
 
 ## Principe
 
