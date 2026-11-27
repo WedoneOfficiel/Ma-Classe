@@ -10,6 +10,50 @@ Un seul ordinateur héberge le serveur MaClasse. Les autres ordinateurs ouvrent 
 
 Le serveur refuse maintenant de démarrer sur une adresse LAN en HTTP. Les sessions utilisent des cookies `HttpOnly`, `SameSite=Strict` et `Secure` lorsqu'elles sont servies en HTTPS. TLS 1.2 est le minimum.
 
+## Option : certificat publiquement reconnu avec nom DNS (sans import sur les clients)
+
+Le mode AC privée décrit ci-dessus reste le mode par défaut. Un mode facultatif peut utiliser un certificat publiquement reconnu pour un nom DNS de l'établissement. Il permet aux navigateurs de faire confiance au certificat via leur magasin public habituel, sans importer `ca.crt` sur chaque ordinateur.
+
+Cette option exige trois éléments qui doivent être configurés une fois au niveau de l'établissement :
+
+1. **Un nom de domaine contrôlé par l'établissement**, par exemple `maclasse.exemple.fr`.
+2. **Un certificat public renouvelé automatiquement.** Le challenge ACME DNS-01 permet de prouver le contrôle du domaine avec un enregistrement TXT, sans exposer le port web MaClasse sur Internet. Utilise un client ACME externe (Certbot, acme.sh ou équivalent) et un jeton API DNS à portée minimale, stocké dans le fichier d'identifiants propre à ce client, jamais dans MaClasse. Le serveur MaClasse ne demande ni ne stocke le jeton DNS.
+3. **Une résolution DNS locale (split-horizon ou surcharge DNS sur le routeur)** qui fait résoudre `maclasse.exemple.fr` vers l'adresse IPv4 privée du Mac sur le réseau de l'établissement. Distribue ce DNS par DHCP afin que les postes le reçoivent automatiquement ; aucun fichier hosts ni réglage individuel n'est nécessaire. Sans DNS local contrôlé par le routeur ou un serveur DNS interne, l'accès sans configuration par poste n'est pas garanti.
+
+Aucune redirection de port 80/443/8765 vers le serveur MaClasse n'est nécessaire avec DNS-01. Ne publie pas le port 8765 sur Internet.
+
+### Configuration du certificat dans MaClasse
+
+Après avoir installé MaClasse, créé le compte Direction et préparé le répertoire `data/tls/`, place le certificat complet (`fullchain.pem`) et sa clé privée dans des fichiers lisibles uniquement par le compte qui exécute le service. Le renouvellement ACME doit recopier/remplacer ces deux fichiers de façon atomique et préserver leurs permissions. Exemple de configuration :
+
+```json
+{
+  "hostname": "maclasse.exemple.fr",
+  "certificate": "/chemin/protege/fullchain.pem",
+  "private_key": "/chemin/protege/privkey.pem"
+}
+```
+
+Enregistre cet objet dans `data/tls/public-certificate.json`, puis protège le fichier de configuration et la clé :
+
+```bash
+chmod 600 data/tls/public-certificate.json
+chmod 600 /chemin/protege/privkey.pem
+```
+
+Les chemins du certificat et de la clé doivent être absolus. La clé doit être lisible par le compte du service, sans être lisible par les autres utilisateurs. Le fichier JSON ne contient que le nom DNS et des chemins ; il ne contient ni clé privée ni identifiant ACME/DNS.
+
+Au démarrage, le superviseur vérifie le nom DNS dans le SAN du certificat, sa validité (plus de 24 heures restantes), la correspondance de la clé privée et les permissions du fichier de configuration. Le serveur accepte le FQDN configuré dans les contrôles stricts `Host` et `Origin` tout en restant lié à l'adresse IPv4 privée détectée. L'URL annoncée devient `https://maclasse.exemple.fr:8765`.
+
+Le superviseur surveille les fichiers toutes les cinq secondes. Quand le client ACME renouvelle le certificat et remplace les fichiers configurés, il détecte leur nouvelle empreinte SHA-256, arrête proprement l'ancien listener et redémarre avec la nouvelle chaîne TLS. Une configuration ou un certificat invalide fait échouer le démarrage : aucun repli vers HTTP ni exception de certificat n'est créé. Sans le fichier `public-certificate.json`, le mode historique AC privée reste actif.
+
+### Limites opérationnelles
+
+- MaClasse ne choisit pas le fournisseur DNS, n'émet pas le certificat et n'exécute pas le client ACME. La configuration du fournisseur, du jeton à portée minimale et du renouvellement doit être réalisée sur le serveur.
+- Le routeur/DNS interne doit distribuer le nom DNS vers l'adresse privée. Si le routeur ne propose pas de surcharge DNS locale, il faut un DNS interne géré par l'établissement ; modifier manuellement chaque poste ne répondrait pas à l'objectif.
+- Cette configuration doit être testée depuis au moins deux appareils clients avec le vrai certificat public et le DNS local avant de considérer la confiance HTTPS comme résolue.
+- Le mode AC privée reste disponible sans changement pour les installations qui ne possèdent pas de domaine public ou de DNS local adapté.
+
 ## Installer sur le serveur
 
 ### Fedora / Linux
