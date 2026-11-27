@@ -60,7 +60,6 @@ assert(!generatorSource.includes("api.openai.com")&&!generatorServer.includes("a
 assert(generatorGuide.toLowerCase().includes("aucun fichier à joindre à chatgpt")&&generatorGuide.includes("Confidentialité"),'Le guide doit expliquer le copier-coller unique et la pseudonymisation.');
 
 
-assert(generatorSource.includes("function _teacher_profiles_for_save")===false || true,''); 
 assert(generatorSource.includes("function openTeacherProfileEditor(")&&generatorSource.includes("function saveTeacherProfileOnly("),'Une fiche professeur sans compte doit pouvoir être modifiée sans créer de compte.');
 assert(generatorSource.includes("Créer un compte de connexion")&&generatorSource.includes("Modifier la fiche"),'Le module Professeurs doit distinguer modification de fiche et création de compte.');
 assert(generatorSource.includes("t.hasAccount!==false"),'Les élèves doivent voir les profils des professeurs sans compte sans les traiter comme des destinataires joignables.');
