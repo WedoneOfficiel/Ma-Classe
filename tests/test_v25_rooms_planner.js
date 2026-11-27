@@ -86,7 +86,8 @@ assert(capturedRoomModal.body.includes('plannerCreateDraft(0,"14:00","15:00","6A
 const draftStart=app.indexOf('function plannerCreateDraft('),draftEnd=app.indexOf('\nfunction ',draftStart);
 assert(draftStart>=0&&draftEnd>draftStart,'Le passage du Planner au formulaire de cours doit exister.');
 let openedPlannerDraft=null;
-const draftContext={window:{},selectedWeek:new Date('2026-11-23T12:00:00'),iso(){return '2026-11-23'},closeModal(){},openSchedule(){openedPlannerDraft=window._scheduleDraft}};
+const draftWindow={};
+const draftContext={window:draftWindow,selectedWeek:new Date('2026-11-23T12:00:00'),iso(){return '2026-11-23'},closeModal(){},openSchedule(){openedPlannerDraft=draftWindow._scheduleDraft}};
 vm.createContext(draftContext);
 vm.runInContext(app.slice(draftStart,draftEnd),draftContext);
 draftContext.plannerCreateDraft(0,'14:00','15:00','6A','t1','SES','B204');
