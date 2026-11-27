@@ -964,3 +964,29 @@ La V25.2.0 n'est pas encore fusionnée ni publiée. La CI hébergée ne remplace
 Le mode réseau actuel crée une autorité de certification privée sur le serveur. Chaque poste ou navigateur qui ne connaît pas déjà cette autorité doit approuver/importer le certificat public `data/tls/ca.crt` une fois. Les tests de CI valident le listener TLS, les cookies Secure, la supervision réseau et le renouvellement du certificat serveur ; ils ne peuvent pas rendre une AC privée automatiquement fiable dans le magasin de confiance d'un appareil tiers.
 
 Cette architecture ne satisfait donc pas l'objectif de zéro réglage manuel du certificat sur chaque ordinateur. Ne pas contourner le contrôle par une exception TLS automatique ni par un retour HTTP. Il faut arbitrer une vraie solution : certificat reconnu publiquement pour un nom DNS contrôlé avec résolution LAN adaptée, ou déploiement centralisé de l'AC via MDM/gestion de parc. Le contrôle depuis de vrais appareils et cette décision restent à faire avant de déclarer l'accès multi-postes conforme à l'objectif.
+
+
+## Retours de recette utilisateur et corrections d'interface — 27 novembre 2026
+
+### Observations de l'utilisateur sur la copie V25.2.0
+
+- Accueil, écran des nouveautés et navigation générale : première impression satisfaisante.
+- « Travail à faire » : parcours essayé, fonctionne.
+- Notes et bulletins : semblent corrects à l'observation ; les droits et calculs ne sont pas déclarés exhaustivement validés.
+- Trois anomalies remontées : absence d'accès EDT dans l'espace Direction, séparation peu claire entre Classes et Suivi, et salles impossibles à sélectionner depuis le résultat du Planner.
+
+### Corrections codées sur la PR #20
+
+1. **DIR-EDT-01 — Navigation Direction :** ajout d'un accès « Emploi du temps » dans le menu Direction, relié à la route EDT déjà présente.
+2. **CLASS-UX-01 — Fiche de classe unifiée :** remplacement du libellé « Voir le suivi » par « Ouvrir la classe et son suivi » ; déplacement du retour « Retour au module Classes » dans l'en-tête de la fiche détaillée, avec adaptation responsive.
+3. **PLANNER-ROOM-01 — Sélection d'une salle :** les résultats de « Trouver une salle » proposent maintenant « Choisir cette salle ». La sélection ouvre le formulaire de cours avec jour, horaires, classe, professeur, matière et salle préremplis. Le brouillon utilise classIds et teacherIds, qui correspondent aux véritables champs du formulaire ; l'ancien code ciblait des champs inexistants classId et teacherId.
+
+### Tests ajoutés
+
+- Accès EDT depuis la navigation Direction.
+- Présentation unifiée et retour visible dans le parcours Classes/Suivi.
+- Création d'une salle dans settings.rooms puis disponibilité dans les résultats Planner selon capacité, équipements, indisponibilités et réservations.
+- Présence du bouton de sélection et transmission des données au brouillon de cours.
+- Préremplissage des champs de classe, professeur, matière, jour, horaires et salle.
+
+**État de preuve :** les corrections sont codées ; elles restent à valider par la CI sur la tête courante de la PR, puis par un nouvel essai utilisateur sur la copie. Aucun défaut n'est déclaré « Corrigé » à ce stade.
