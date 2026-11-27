@@ -2384,7 +2384,15 @@ class Handler(SimpleHTTPRequestHandler):
             return True
         return path.startswith('/data/uploads/')
     def _backup_dir(self):
-        d=os.path.join(DATA_DIR,'backups'); os.makedirs(d,exist_ok=True); return d
+        d=os.path.join(DATA_DIR,'backups')
+        os.makedirs(d,exist_ok=True)
+        info=os.lstat(d)
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise ValueError('Sauvegarde refusée : le dossier backups doit être un dossier normal.')
+        # School records and attachments are sensitive; do not leave local
+        # snapshots readable by other OS accounts on the host computer.
+        os.chmod(d,0o700)
+        return d
     def _create_backup(self, force=False):
         # Lock order is always database first, then attachments. This keeps the
         # JSON and physical files in one coherent snapshot without blocking reads.
@@ -2468,7 +2476,8 @@ class Handler(SimpleHTTPRequestHandler):
         backup_path=os.path.join(backup_dir,f'maclasse-{stamp}.json')
         backup_tmp=backup_path+'.tmp'
         try:
-            with open_snapshot_source(DATA_FILE,database_stat) as source, open(backup_tmp,'xb') as target:
+            descriptor=os.open(backup_tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+            with open_snapshot_source(DATA_FILE,database_stat) as source, os.fdopen(descriptor,'wb') as target:
                 shutil.copyfileobj(source,target)
                 target.flush()
                 os.fsync(target.fileno())
@@ -2483,6 +2492,11 @@ class Handler(SimpleHTTPRequestHandler):
         archive_path=os.path.join(backup_dir,f'maclasse-{stamp}.zip')
         archive_tmp=archive_path+'.tmp'
         try:
+            # Create the temporary archive with owner-only permissions before
+            # zipfile opens it; never expose student records or file contents
+            # through a world-readable intermediate or final backup.
+            archive_descriptor=os.open(archive_tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+            os.close(archive_descriptor)
             with zipfile.ZipFile(archive_tmp,'w',compression=zipfile.ZIP_DEFLATED) as archive:
                 with open_snapshot_source(DATA_FILE,database_stat) as source, archive.open('data/maclasse.json','w') as target:
                     shutil.copyfileobj(source,target)

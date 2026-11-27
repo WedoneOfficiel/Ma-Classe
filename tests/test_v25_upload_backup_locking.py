@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import stat
 from pathlib import Path
 import tempfile
 import threading
@@ -339,6 +341,10 @@ def test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttl
         with zipfile.ZipFile(backup_dir / name) as archive:
             assert archive.read("data/uploads/piece.txt") == "pièce complète".encode()
             assert archive.testzip() is None
+        json_backup = backup_dir / (Path(name).stem + ".json")
+        assert stat.S_IMODE(os.stat(backup_dir).st_mode) == 0o700
+        assert stat.S_IMODE(os.stat(json_backup).st_mode) == 0o600
+        assert stat.S_IMODE(os.stat(backup_dir / name).st_mode) == 0o600
 
 
 
