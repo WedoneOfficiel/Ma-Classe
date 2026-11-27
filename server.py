@@ -16,6 +16,7 @@ TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
 TLS_KEY=os.environ.get('MACLASSE_TLS_KEY','').strip()
 TLS_HOSTNAME=os.environ.get('MACLASSE_TLS_HOSTNAME','').strip().lower().rstrip('.')
 DATA_LOCK=threading.RLock()
+UPLOADS_LOCK=threading.RLock()
 SESSIONS={}
 LOGIN_ATTEMPTS={}
 SESSION_TTL=12*60*60
@@ -443,26 +444,31 @@ def _restore_backup_archive(raw_bytes):
                 raise ValueError(f'La collection {key} est invalide.')
         restored.pop('teachers',None)
         os.makedirs(DATA_DIR, exist_ok=True)
-        if os.path.exists(UPLOADS):
-            os.replace(UPLOADS, old_uploads)
-            moved_old_uploads = True
-        os.replace(stage_uploads, UPLOADS)
-        installed_new_uploads = True
-        shutil.copy2(DATA_FILE, old_json) if os.path.exists(DATA_FILE) else None
-        os.replace(staged_json, DATA_FILE)
-        return {'classes': len(restored.get('classes', []) or []), 'students': len(restored.get('students', []) or []), 'files': sum(1 for base, _, files in os.walk(UPLOADS) for _ in files)}
-    except Exception:
-        # Roll back the filesystem pair if any final replacement failed.
-        try:
-            if installed_new_uploads and os.path.exists(UPLOADS):
-                shutil.rmtree(UPLOADS)
-            if moved_old_uploads and os.path.exists(old_uploads):
-                os.replace(old_uploads, UPLOADS)
-            if os.path.exists(old_json):
-                os.replace(old_json, DATA_FILE)
-        except OSError:
-            pass
-        raise
+        # Keep uploads, backup creation and restoration on one lock. Build the
+        # restored tree off-line above, then swap both stores as one critical section.
+        with UPLOADS_LOCK:
+            try:
+                if os.path.exists(UPLOADS):
+                    os.replace(UPLOADS, old_uploads)
+                    moved_old_uploads = True
+                os.replace(stage_uploads, UPLOADS)
+                installed_new_uploads = True
+                shutil.copy2(DATA_FILE, old_json) if os.path.exists(DATA_FILE) else None
+                os.replace(staged_json, DATA_FILE)
+                return {'classes': len(restored.get('classes', []) or []), 'students': len(restored.get('students', []) or []), 'files': sum(1 for base, _, files in os.walk(UPLOADS) for _ in files)}
+            except Exception:
+                # Roll back before releasing the upload lock: no concurrent upload
+                # can land in the temporary restored tree and then be discarded.
+                try:
+                    if installed_new_uploads and os.path.exists(UPLOADS):
+                        shutil.rmtree(UPLOADS)
+                    if moved_old_uploads and os.path.exists(old_uploads):
+                        os.replace(old_uploads, UPLOADS)
+                    if os.path.exists(old_json):
+                        os.replace(old_json, DATA_FILE)
+                except OSError:
+                    pass
+                raise
     finally:
         shutil.rmtree(stage_root, ignore_errors=True)
 
@@ -2357,6 +2363,10 @@ class Handler(SimpleHTTPRequestHandler):
     def _backup_dir(self):
         d=os.path.join(DATA_DIR,'backups'); os.makedirs(d,exist_ok=True); return d
     def _create_backup(self, force=False):
+        # Serialise the database + attachments snapshot against every file mutation.
+        with UPLOADS_LOCK:
+            return self._create_backup_locked(force)
+    def _create_backup_locked(self, force=False):
         if not os.path.exists(DATA_FILE): return None
         current=None
         with open(DATA_FILE,encoding='utf-8') as f: current=json.load(f)
@@ -3214,16 +3224,18 @@ class Handler(SimpleHTTPRequestHandler):
                 if parent_path:
                     if not parent_path.startswith('cloud/') or not _cloud_path_allowed(user,parent_path,write=True): return self._json({'error':'Création dans ce dossier refusée.'},403)
                     pp=[x for x in parent_path.split('/') if x not in ('','.','..')]
-                    base=_safe_upload_path(parent_path)
-                    if not os.path.isdir(base): return self._json({'error':'Dossier parent introuvable.'},400)
-                    target_dir=os.path.realpath(os.path.join(base,safe(obj.get('name','folder'))))
-                    uploads_root=os.path.realpath(UPLOADS)
-                    if os.path.commonpath([target_dir,uploads_root])!=uploads_root: return self._json({'error':'Chemin invalide'},400)
-                    os.makedirs(target_dir,exist_ok=False)
-                    return self._json({'ok':True,'path':_uploads_relative(target_dir)})
+                    with UPLOADS_LOCK:
+                        base=_safe_upload_path(parent_path)
+                        if not os.path.isdir(base): return self._json({'error':'Dossier parent introuvable.'},400)
+                        target_dir=os.path.realpath(os.path.join(base,safe(obj.get('name','folder'))))
+                        uploads_root=os.path.realpath(UPLOADS)
+                        if os.path.commonpath([target_dir,uploads_root])!=uploads_root: return self._json({'error':'Chemin invalide'},400)
+                        os.makedirs(target_dir,exist_ok=False)
+                        return self._json({'ok':True,'path':_uploads_relative(target_dir)})
                 parts += ['folders',safe(obj.get('id','folder'))]
-                target_dir=_safe_upload_path('/'.join(parts)); os.makedirs(target_dir,exist_ok=False)
-                return self._json({'ok':True,'path':'/'.join(parts)})
+                with UPLOADS_LOCK:
+                    target_dir=_safe_upload_path('/'.join(parts)); os.makedirs(target_dir,exist_ok=False)
+                    return self._json({'ok':True,'path':'/'.join(parts)})
             except FileExistsError: return self._json({'error':'Ce dossier physique existe déjà.'},409)
             except Exception as e: return self._json({'error':str(e)},400)
         if path=='/api/cloud-rename':
@@ -3232,12 +3244,13 @@ class Handler(SimpleHTTPRequestHandler):
                 if not _cloud_path_allowed(user,rel,write=True) or not _cloud_known_item_path(rel): return self._json({'error':'Modification de ce fichier refusée.'},403)
                 if not rel or not new or new in ('.','..') or '/' in new or '\\' in new: return self._json({'error':'Nom invalide'},400)
                 parts=[x for x in rel.split('/') if x not in ('','.','..')]
-                target=_safe_upload_path(rel); base=os.path.dirname(target); dest=_safe_upload_path(_uploads_relative(base)+'/'+new)
-                if not os.path.exists(target): return self._json({'error':'Le fichier physique est introuvable.'},404)
-                if os.path.exists(dest): return self._json({'error':'Un fichier portant ce nom existe déjà.'},409)
-                os.rename(target,dest)
-                newrel=_uploads_relative(dest)
-                return self._json({'ok':True,'path':newrel})
+                with UPLOADS_LOCK:
+                    target=_safe_upload_path(rel); base=os.path.dirname(target); dest=_safe_upload_path(_uploads_relative(base)+'/'+new)
+                    if not os.path.exists(target): return self._json({'error':'Le fichier physique est introuvable.'},404)
+                    if os.path.exists(dest): return self._json({'error':'Un fichier portant ce nom existe déjà.'},409)
+                    os.rename(target,dest)
+                    newrel=_uploads_relative(dest)
+                    return self._json({'ok':True,'path':newrel})
             except Exception as e: return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-move':
@@ -3246,11 +3259,12 @@ class Handler(SimpleHTTPRequestHandler):
                 if not source or not destination or not name or '/' in name or '\\' in name: return self._json({'error':'Chemin invalide'},400)
                 if not _cloud_path_allowed(user,source,write=True) or not _cloud_known_item_path(source) or not _cloud_path_allowed(user,destination,write=True): return self._json({'error':'Déplacement Cloud non autorisé.'},403)
                 clean=lambda r:[x for x in r.split('/') if x not in ('','.','..')]
-                sp=_safe_upload_path(source); dp=_safe_upload_path(destination+'/'+name)
-                if not os.path.exists(sp): return self._json({'error':'Source physique introuvable.'},404)
-                if os.path.exists(dp): return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
-                os.makedirs(os.path.dirname(dp),exist_ok=True); os.rename(sp,dp)
-                return self._json({'ok':True,'path':_uploads_relative(dp)})
+                with UPLOADS_LOCK:
+                    sp=_safe_upload_path(source); dp=_safe_upload_path(destination+'/'+name)
+                    if not os.path.exists(sp): return self._json({'error':'Source physique introuvable.'},404)
+                    if os.path.exists(dp): return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
+                    os.makedirs(os.path.dirname(dp),exist_ok=True); os.rename(sp,dp)
+                    return self._json({'ok':True,'path':_uploads_relative(dp)})
             except Exception as e: return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-copy':
@@ -3259,13 +3273,14 @@ class Handler(SimpleHTTPRequestHandler):
                 if not source or not destination or not name or '/' in name or '\\' in name:return self._json({'error':'Chemin invalide'},400)
                 if not _cloud_path_allowed(user,source,write=False) or not _cloud_known_item_path(source) or not _cloud_path_allowed(user,destination,write=True): return self._json({'error':'Copie Cloud non autorisée.'},403)
                 clean=lambda r:[x for x in r.split('/') if x not in ('','.','..')]
-                spath=_safe_upload_path(source); dpath=_safe_upload_path(destination+'/'+name)
-                if not os.path.exists(spath):return self._json({'error':'Source physique introuvable.'},404)
-                if os.path.exists(dpath):return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
-                os.makedirs(os.path.dirname(dpath),exist_ok=True)
-                if os.path.isdir(spath):shutil.copytree(spath,dpath)
-                else:shutil.copy2(spath,dpath)
-                return self._json({'ok':True,'path':_uploads_relative(dpath)})
+                with UPLOADS_LOCK:
+                    spath=_safe_upload_path(source); dpath=_safe_upload_path(destination+'/'+name)
+                    if not os.path.exists(spath):return self._json({'error':'Source physique introuvable.'},404)
+                    if os.path.exists(dpath):return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
+                    os.makedirs(os.path.dirname(dpath),exist_ok=True)
+                    if os.path.isdir(spath):shutil.copytree(spath,dpath)
+                    else:shutil.copy2(spath,dpath)
+                    return self._json({'ok':True,'path':_uploads_relative(dpath)})
             except Exception as e:return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-delete':
@@ -3277,24 +3292,27 @@ class Handler(SimpleHTTPRequestHandler):
                 clean=lambda r:[x for x in r.split('/') if x not in ('','.','..')]
                 parts=clean(rel)
                 if not parts: return self._json({'error':'Chemin invalide'},400)
-                if not os.path.exists(target):return self._json({'ok':True,'missing':True})
-                if os.path.isdir(target):shutil.rmtree(target)
-                else:os.remove(target)
-                return self._json({'ok':True})
+                with UPLOADS_LOCK:
+                    target=_safe_upload_path(rel)
+                    if not os.path.exists(target):return self._json({'ok':True,'missing':True})
+                    if os.path.isdir(target):shutil.rmtree(target)
+                    else:os.remove(target)
+                    return self._json({'ok':True})
             except Exception as e:return self._json({'error':str(e)},400)
 
         if path=='/api/delete-upload':
             try:
                 obj=json.loads(body.decode('utf-8')); name=str(obj.get('name','')).replace('\\','/').lstrip('/')
                 parts=[x for x in name.split('/') if x not in ('','.','..')]
-                target=_safe_upload_path(name) if parts else ''
                 if not parts: return self._json({'error':'Chemin invalide.'},400)
                 can_write=_student_can_access_upload(user,name,write=True) if user.get('role')=='student' else _teacher_can_access_upload(user,name,write=True)
                 can_read=_student_can_access_upload(user,name,write=False) if user.get('role')=='student' else _teacher_can_access_upload(user,name,write=False)
                 if name.startswith('cloud/') or not can_write or not can_read:
                     return self._json({'error':'Suppression de ce fichier non autorisée. Utilisez la commande Cloud dédiée pour les éléments Cloud.'},403)
-                if os.path.exists(target): shutil.rmtree(target) if os.path.isdir(target) else os.remove(target)
-                return self._json({'ok':True})
+                with UPLOADS_LOCK:
+                    target=_safe_upload_path(name)
+                    if os.path.exists(target): shutil.rmtree(target) if os.path.isdir(target) else os.remove(target)
+                    return self._json({'ok':True})
             except Exception:
                 return self._json({'ok':False},400)
         if path=='/api/reset':
@@ -3330,15 +3348,16 @@ class Handler(SimpleHTTPRequestHandler):
                 if folder!=f'submissions/{sid}': return self._json({'error':'Les élèves peuvent uniquement déposer des fichiers dans leur propre espace de rendu.'},403)
             elif not _teacher_can_access_upload(user,folder,write=True):
                 return self._json({'error':'Téléversement dans ce dossier non autorisé.'},403)
-            target_dir=_safe_upload_path(folder) if folder else os.path.realpath(UPLOADS)
-            os.makedirs(target_dir,exist_ok=True)
-            base,ext=os.path.splitext(name); candidate=name; n=1
-            while os.path.exists(os.path.join(target_dir,candidate)):
-                candidate=f'{base}_{n}{ext}'; n+=1
-            target=os.path.join(target_dir,candidate)
-            with open(target,'wb') as f: f.write(body)
-            rel='/'.join([folder,candidate]) if folder else candidate
-            return self._json({'name':rel,'url':'/data/uploads/'+rel,'size':len(body)})
+            with UPLOADS_LOCK:
+                target_dir=_safe_upload_path(folder) if folder else os.path.realpath(UPLOADS)
+                os.makedirs(target_dir,exist_ok=True)
+                base,ext=os.path.splitext(name); candidate=name; n=1
+                while os.path.exists(os.path.join(target_dir,candidate)):
+                    candidate=f'{base}_{n}{ext}'; n+=1
+                target=os.path.join(target_dir,candidate)
+                with open(target,'xb') as f: f.write(body)
+                rel='/'.join([folder,candidate]) if folder else candidate
+                return self._json({'name':rel,'url':'/data/uploads/'+rel,'size':len(body)})
         self.send_error(404)
 
 def _assert_loopback_host(host):
