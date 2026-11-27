@@ -69,7 +69,7 @@ assert(helper.includes('function closeJournal()'),'Closing the full journal from
   assert(opened.title.includes('Nouveautés de MaClasse'),'The automatic announcement heading must appear in the modal title.');
   assert(opened.body.includes('pseudonymes stables'),'The first-run announcement must show privacy guidance from the actual release notes.');
   assert(opened.body.includes('✦ Quoi de neuf ?'),'The automatic announcement must use the shared star-led release-note heading.');
-  assert(opened.body.includes('Candidat · publication à confirmer'),'An unpublished candidate must not be assigned a fabricated publication date.');
+  assert(opened.body.includes('Préparée le 27/11/2026 · publication à confirmer'),'An unpublished candidate must not be assigned a fabricated publication date.');
   assert(modal.classList.added.includes('releaseNotesModal'),'The modal must receive its dedicated styling class.');
   assert.deepStrictEqual(calls,['/api/release-notes/state','/api/release-notes/history']);
   console.log('OK — ouverture automatique des nouveautés par compte en mode strict.');
