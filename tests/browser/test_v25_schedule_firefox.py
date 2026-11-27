@@ -447,11 +447,6 @@ def main() -> None:
                 verify_settings_grid_geometry(page, "admin", Path("artifacts/browser-v25"))
                 page.evaluate("page='adminUsers';appSpace='teacher';render()")
                 verify_establishment_generator(page, Path("artifacts/browser-v25"))
-                page.evaluate("setAppearanceTheme('light')")                verify_release_journal(page, "admin", Path("artifacts/browser-v25"))
-                page.evaluate("page='adminUsers';appSpace='teacher';render()")
-
-                page.evaluate("page='adminUsers';appSpace='teacher';render()")
-                verify_establishment_generator(page, Path("artifacts/browser-v25"))
                 page.evaluate("setAppearanceTheme('light')")
 
                 # Seed one recurring course through the real authenticated API.
