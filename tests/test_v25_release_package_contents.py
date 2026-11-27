@@ -78,5 +78,49 @@ class ReleasePackageContentsTests(unittest.TestCase):
                 "The generated git archive must not contain a corrupt ZIP member.",
             )
 
+    def test_release_archive_never_contains_local_data_or_private_credentials(self):
+        process = subprocess.run(
+            ["git", "archive", "--format=zip", "HEAD"],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+        )
+        with zipfile.ZipFile(io.BytesIO(process.stdout)) as archive:
+            names = set(archive.namelist())
+
+        forbidden_names = {
+            ".env",
+            "maclasse.json",
+            "release-signing-private-key.b64",
+            "release-signing-private-key.txt",
+            "ca.key",
+            "server.key",
+        }
+        forbidden_suffixes = {
+            ".sqlite", ".sqlite3", ".db", ".pem", ".p12", ".pfx",
+        }
+        for name in sorted(names):
+            parts = Path(name).parts
+            self.assertFalse(
+                parts and parts[0] == "data",
+                f"Local MaClasse data must never be shipped: {name}",
+            )
+            self.assertNotIn(
+                Path(name).name,
+                forbidden_names,
+                f"Private data or credentials must never be shipped: {name}",
+            )
+            self.assertFalse(
+                Path(name).suffix.lower() in forbidden_suffixes,
+                f"Local database or private-key material must never be shipped: {name}",
+            )
+            self.assertNotIn(
+                "release-signing-private-key",
+                name.lower(),
+                f"Private release-signing key material must never be shipped: {name}",
+            )
+
 if __name__ == "__main__":
     unittest.main()
