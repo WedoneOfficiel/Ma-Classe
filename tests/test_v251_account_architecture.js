@@ -12,7 +12,7 @@ assert(server.includes("if path=='/api/admin/teacher'")&&server.includes("if pat
 assert(server.includes("data['teachers']=_teacher_profiles_for_save(current or {},data,user)"),'ordinary saves must preserve independent teacher profiles.');
 assert(server.includes("stored_profile=next((x for x in data.get('teachers',[])"),'teacher access projections must merge a pedagogical profile with its optional login account.');
 assert(server.includes("profile['hasAccount']=True")&&server.includes("'hasAccount':ident in account_teacher_ids"),'teacher and student projections must distinguish profiles from login accounts.');
-assert(server.includes("x.get('role')=='teacher' and str(x.get('id')) in teacher_ids"),'student teacher names must come from canonical user accounts');
+assert(server.includes("for profile in data.get('teachers',[]) or []:")&&server.includes("account_teacher_ids={str(account.get('id') or '') for account in data.get('users',[]) or [] if isinstance(account,dict) and account.get('role')=='teacher'}"),'student teacher names must come from pedagogical profiles while account availability remains separate.');
 assert(server.includes("data['users']=current.get('users'"),'general saves must preserve server-managed accounts');
 assert(server.includes("must_change=user.get('mustChangePassword') is True"),'login must not depend on universal default passwords');
 assert(lan.includes('Aucun compte enseignant n\'est nécessaire'),'LAN launcher must not require a dummy teacher');
