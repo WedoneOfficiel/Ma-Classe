@@ -2475,7 +2475,6 @@ function plannerFindSlots(classId,teacherId,dateDay,timeStart,timeEnd,room=''){
    const end=m+duration;if(end>18*60)continue;
    const c={classId,teacherId,day,time:String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'),endTime:String(Math.floor(end/60)).padStart(2,'0')+':'+String(end%60).padStart(2,'0'),room};
    if(!plannerConflicts(c).length)candidates.push(c);
-   if(candidates.length>=8)return candidates;
   }
  }
  return candidates;
@@ -2520,7 +2519,7 @@ function runPlanner(e){
   const rooms=plannerRoomOptions(capacity,equipment,x.day,x.time,x.endTime);if(!rooms.length)return '';
   const choices=rooms.map(r=>'<button type="button" class="btn small" onclick="plannerCreateDraft('+jsArg(x.day)+','+jsArg(x.time)+','+jsArg(x.endTime)+','+jsArg(o.classId)+','+jsArg(o.teacherId||'')+','+jsArg(o.subject)+','+jsArg(r.name)+')">Choisir '+esc(r.name)+'</button>').join('');
   return '<div class="metric plannerSlotResult" style="margin-bottom:10px"><b>'+esc(DAYS[x.day])+' · '+esc(x.time)+'–'+esc(x.endTime)+'</b><div class="muted">Classe et professeur disponibles · '+rooms.length+' salle(s) compatible(s)</div><div class="actions section">'+choices+'</div></div>';
- }).join('');
+ }).filter(Boolean).slice(0,8).join('');
  const empty='<div class="empty">Aucun créneau ne dispose à la fois d’une classe libre, d’un professeur disponible (si sélectionné) et d’une salle compatible.</div>';
  openModal('Créneaux et salles compatibles',rows||empty+'<div class="notice warn section">Vérifie l’effectif, les équipements demandés et les disponibilités des salles. Aucun cours n’a été créé.</div>');
 }
