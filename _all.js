@@ -1276,6 +1276,7 @@ function openUserEditor(id=''){
  const profile=id?(db.teachers||[]).find(x=>sameId(x.id,id)&&x.role==='teacher'):null;
  const u=id?(account||profile):{id:'',first:'',last:'',username:'',email:'',phone:'',subjects:[],profileNotes:'',active:true};
  if(id&&!u)return toast('Fiche professeur introuvable.');
+ const hasLoginAccount=!!account;
  const assigned=db.classes.filter(c=>(c.teacherIds||[]).some(teacherId=>sameId(teacherId,id))).map(c=>c.id),pp=db.classes.filter(c=>sameId(c.principalTeacherId,id)).map(c=>c.id);
  openModal(id?(account?'Modifier le compte et la fiche professeur':'Créer un compte de connexion pour ce professeur'):'Créer un professeur',`<form onsubmit="saveUser(event,${jsArg(id)})"><div class="form">
  <div class="field"><label>Prénom *</label><input class="input" name="first" value="${esc(u.first||'')}" required></div><div class="field"><label>Nom *</label><input class="input" name="last" value="${esc(u.last||'')}" required></div>
@@ -1284,7 +1285,7 @@ function openUserEditor(id=''){
  <div class="field full"><label>Informations complémentaires</label><textarea name="profileNotes">${esc(u.profileNotes||'')}</textarea></div>
  <div class="field full"><label>Classes enseignées</label><div class="recipientGrid">${db.classes.map(c=>`<label class="recipientCheck"><input type="checkbox" name="classIds" value="${esc(c.id)}" ${assigned.includes(c.id)?'checked':''}> ${esc(c.name)}</label>`).join('')||'<span class="muted">Crée d’abord une classe pour attribuer un professeur.</span>'}</div></div>
  <div class="field full"><label>Classes dont ce professeur est PP</label><div class="recipientGrid">${db.classes.map(c=>`<label class="recipientCheck"><input type="checkbox" name="ppIds" value="${esc(c.id)}" ${pp.includes(c.id)?'checked':''}> ${esc(c.name)}</label>`).join('')||'<span class="muted">Aucune classe.</span>'}</div></div>
- <div class="field full"><label>${id?'Réinitialiser le mot de passe (facultatif)':'Mot de passe provisoire'}</label><input class="input" type="password" name="password" minlength="8" ${id?'':'autocomplete="new-password"'} autocomplete="new-password"><small class="hint">${id?'Laisser vide pour conserver le mot de passe actuel.':'Laisser vide pour générer un mot de passe aléatoire, affiché après la création. Le professeur devra le remplacer à sa première connexion.'}</small></div>
+ <div class="field full"><label>${hasLoginAccount?'Réinitialiser le mot de passe (facultatif)':'Mot de passe provisoire'}</label><input class="input" type="password" name="password" minlength="8" ${id?'':'autocomplete="new-password"'} autocomplete="new-password"><small class="hint">${hasLoginAccount?'Laisser vide pour conserver le mot de passe actuel.':'Laisser vide pour générer un mot de passe aléatoire, affiché après la création. Le professeur devra le remplacer à sa première connexion.'}</small></div>
  </div><div class="modalfoot"><button type="button" class="btn" onclick="closeModal()">Annuler</button><button class="btn primary">Enregistrer le professeur</button></div></form>`)
 }
 async function saveUser(e,id){
