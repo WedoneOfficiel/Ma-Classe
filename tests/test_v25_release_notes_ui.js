@@ -13,6 +13,8 @@ const entries=api.parseHistory(docs);
 const versions=entries.map(x=>x.version).filter(Boolean);
 const expected=['25.1.1','25.1.0','25.0.25','25.0.24','25.0.23','25.0.18','25.0.17','25.0.15','25.0.13','25.0.12','25.0.10','25.0.9','25.0.7','25.0.6','25.0.5','25.0.4','25.0.3','25.0.2','25.0.1','21.22','21.21','21.20','21.19','21.18','21.17.1','21.17','21.16.1','21.16','21.15','21.14','21.13','21.12','21.11.3','21.09','21.04','21.05','21.06','20.10','20.9','20.8','20.7','20.6','20.5','20.4','20.3','20.2','20.1','20.0.0','19.9','19.8','19.7'];
 for(const version of expected)assert(versions.includes(version),'Missing source-backed history entry: '+version);
+const position=v=>versions.indexOf(v);
+assert(position('25.1.1')<position('25.1.0')&&position('25.1.0')<position('25.0.25')&&position('25.0.25')<position('21.22'),'Version entries must be displayed in descending chronological version order.');
 assert(!versions.includes('25.2.1')&&!versions.includes('25.2.0')&&!versions.includes('25.0.20'),'Candidate, future and undocumented versions must not be presented as archived releases.');
 assert(entries.some(x=>x.sourceFile.includes('ETATS_AUDITS')),'Archived audits must keep their source attribution.');
 assert(entries.some(x=>x.sourceFile.includes('README_PRE')),'The legacy README must keep its source attribution.');
@@ -66,6 +68,8 @@ assert(helper.includes('function closeJournal()'),'Closing the full journal from
   assert(opened.title.includes('25.2.0'),'The automatic announcement must identify the installed version.');
   assert(opened.title.includes('Nouveautés de MaClasse'),'The automatic announcement heading must appear in the modal title.');
   assert(opened.body.includes('pseudonymes stables'),'The first-run announcement must show privacy guidance from the actual release notes.');
+  assert(opened.body.includes('✦ Quoi de neuf ?'),'The automatic announcement must use the shared star-led release-note heading.');
+  assert(opened.body.includes('Candidat · publication à confirmer'),'An unpublished candidate must not be assigned a fabricated publication date.');
   assert(modal.classList.added.includes('releaseNotesModal'),'The modal must receive its dedicated styling class.');
   assert.deepStrictEqual(calls,['/api/release-notes/state','/api/release-notes/history']);
   console.log('OK — ouverture automatique des nouveautés par compte en mode strict.');
