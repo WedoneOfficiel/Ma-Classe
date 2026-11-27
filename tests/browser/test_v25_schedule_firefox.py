@@ -281,41 +281,59 @@ def verify_release_journal(page, role: str, output_dir: Path) -> None:
 
 
 def verify_establishment_generator(page, output_dir: Path) -> None:
-    """Open the real Direction generator and verify its privacy-first workflow."""
-    page.evaluate("page='adminUsers';appSpace='teacher';render()")
-    expect(page.get_by_role("heading",name="Générateur de configuration d’établissement")).to_be_visible()
-    page.get_by_role("button",name="Ouvrir le générateur").click()
+    """Open the Settings-only configurator and verify the saved copy/paste workflow."""
+    page.evaluate("page='settings';appSpace='teacher';render()")
+    expect(page.get_by_role("heading",name="Configuration de l’établissement")).to_be_visible()
+    expect(page.get_by_role("heading",name="Générateur de configuration d’établissement")).to_have_count(0)
+    page.get_by_role("button",name="Ouvrir le configurateur").click()
     modal=page.locator("#modal")
-    expect(modal).to_contain_text("Générateur de configuration d’établissement")
-    expect(modal).to_contain_text("1. Décrire l’établissement")
-    expect(modal).to_contain_text("2. Générer le JSON dans ChatGPT")
-    expect(modal).to_contain_text("3. Vérifier et importer")
-    expect(modal).to_contain_text("ne transmets aucune identité réelle")
-    expect(modal).to_contain_text("aucun fichier à un service externe")
-    expect(modal.get_by_role("button",name="Télécharger le modèle JSON")).to_be_visible()
-    expect(modal.get_by_role("button",name="Télécharger le schéma JSON")).to_be_visible()
-    expect(modal.get_by_role("button",name="Télécharger les instructions")).to_be_visible()
-    expect(modal.get_by_role("button",name="Exporter le contexte anonymisé")).to_be_visible()
+    expect(modal).to_contain_text("Configurateur de l’établissement avec ChatGPT")
+    expect(modal).to_contain_text("Aucun document à importer dans ChatGPT")
+    expect(modal).to_contain_text("Enregistrer le formulaire dans Ma Classe")
+    expect(modal).to_contain_text("Copier les consignes et les données pour ChatGPT")
+    expect(modal).to_contain_text("un seul fichier JSON")
+    expect(modal).to_contain_text("aucun vrai nom")
+    expect(modal.get_by_role("button",name="Télécharger le modèle JSON")).to_have_count(0)
+    expect(modal.get_by_role("button",name="Télécharger le schéma JSON")).to_have_count(0)
+    expect(modal.get_by_role("button",name="Télécharger les instructions")).to_have_count(0)
+    expect(modal.get_by_role("button",name="Exporter le contexte anonymisé")).to_have_count(0)
+
+    modal.locator('[name="name"]').fill("Établissement de recette")
+    modal.locator('[name="classPlan"]').fill("6A | 1 classe | 26 élèves | 6A")
+    modal.locator('[name="createStudents"]').select_option("no")
+    modal.locator('[name="teacherCount"]').fill("20")
+    modal.locator('[name="createTeacherAccounts"]').select_option("no")
+    modal.locator('[name="subjectPlan"]').fill("6A | SES | 2 heures")
+    modal.locator('[name="roomCount"]').fill("30")
+    modal.locator('[name="roomPlan"]').fill("Salle 101 | 30 | classe | tableau")
+    modal.get_by_role("button",name="Enregistrer le formulaire dans Ma Classe").click()
+    expect(page.locator("#toast")).to_contain_text("Formulaire de configuration enregistré")
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).not_to_be_visible()
+
+    page.get_by_role("button",name="Ouvrir le configurateur").click()
+    expect(modal.locator('[name="name"]')).to_have_value("Établissement de recette")
+    expect(modal.locator('[name="classPlan"]')).to_have_value("6A | 1 classe | 26 élèves | 6A")
+    expect(modal.locator('[name="createStudents"]')).to_have_value("no")
+    expect(modal.locator('[name="createTeacherAccounts"]')).to_have_value("no")
     output_dir.mkdir(parents=True,exist_ok=True)
-    page.screenshot(path=str(output_dir/"establishment-generator-admin-light.png"),full_page=True,animations="disabled")
+    page.screenshot(path=str(output_dir/"establishment-configurator-settings-light.png"),full_page=True,animations="disabled")
     page.evaluate("setAppearanceTheme('dark')")
     expect(page.locator("html")).to_have_attribute("data-mc-theme","dark")
-    page.screenshot(path=str(output_dir/"establishment-generator-admin-dark.png"),full_page=True,animations="disabled")
+    page.screenshot(path=str(output_dir/"establishment-configurator-settings-dark.png"),full_page=True,animations="disabled")
 
-    # The protection details are below the first viewport on the modal. Verify
-    # that the modal scroll actually exposes them above the sticky footer.
-    protection = modal.locator(".notice.section").last
+    protection=modal.locator(".establishmentPrivacyNotice")
     protection.scroll_into_view_if_needed()
     expect(protection).to_be_visible()
-    geometry = protection.evaluate("""el => {
+    geometry=protection.evaluate("""el => {
       const r=el.getBoundingClientRect();
       const modal=document.getElementById('modal').getBoundingClientRect();
       const footer=document.querySelector('#modal .modalfoot').getBoundingClientRect();
-      return {top:r.top,bottom:r.bottom,modalTop:modal.top,modalBottom:modal.bottom,footerTop:footer.top};
+      return {top:r.top,bottom:r.bottom,modalTop:modal.top,footerTop:footer.top};
     }""")
-    if geometry["top"] < geometry["modalTop"] or geometry["bottom"] > geometry["footerTop"] + 2:
-        raise AssertionError(f"Les consignes de protection de l'import doivent rester accessibles au-dessus du pied de modale: {geometry!r}")
-    page.screenshot(path=str(output_dir/"establishment-generator-admin-dark-bottom.png"),full_page=True,animations="disabled")
+    if geometry["top"]<geometry["modalTop"] or geometry["bottom"]>geometry["footerTop"]+2:
+        raise AssertionError(f"Les consignes de confidentialité doivent rester accessibles au-dessus du pied de modale: {geometry!r}")
+    page.screenshot(path=str(output_dir/"establishment-configurator-settings-dark-bottom.png"),full_page=True,animations="disabled")
     page.locator("#modal .modalhead .close").click()
     expect(modal).not_to_be_visible()
 
