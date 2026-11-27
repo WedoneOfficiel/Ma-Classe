@@ -1337,7 +1337,10 @@ def _teacher_visible_data(data,user):
             if not teacher_id: continue
             item={k:record[k] for k in ('id','first','last','active','subjects') if k in record}
             by_id[teacher_id]={**by_id.get(teacher_id,{}),**item}
+    profile['hasAccount']=True
     by_id[ident]=profile
+    for teacher_id,item in by_id.items():
+        item['hasAccount']=any(isinstance(account,dict) and account.get('role')=='teacher' and str(account.get('id') or '')==teacher_id for account in data.get('users',[]) or [])
     out['teachers']=list(by_id.values())
     visible_users=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     visible_user_ids={str(x.get('id') or '') for x in visible_users}
@@ -1517,7 +1520,8 @@ def _student_visible_data(data,user,now=None):
     for account in data.get('users',[]) or []:
         if isinstance(account,dict) and account.get('role')=='teacher' and str(account.get('id') or '') in teacher_ids:
             teacher_profiles[str(account.get('id'))]={**teacher_profiles.get(str(account.get('id')),{}),**account}
-    out['teachers']=[{'id':ident,'first':profile.get('first',''),'last':profile.get('last','')} for ident,profile in teacher_profiles.items()]
+    account_teacher_ids={str(account.get('id') or '') for account in data.get('users',[]) or [] if isinstance(account,dict) and account.get('role')=='teacher'}
+    out['teachers']=[{'id':ident,'first':profile.get('first',''),'last':profile.get('last',''),'hasAccount':ident in account_teacher_ids} for ident,profile in teacher_profiles.items()]
     out['lessons']=[]
     for item in data.get('lessons',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or (item.get('group') and str(item.get('group'))!=str(student_record.get('group') or '')): continue
@@ -2675,8 +2679,10 @@ class Handler(SimpleHTTPRequestHandler):
                     ident=str(account.get('id') or '')
                     teacher_profiles[ident]={**teacher_profiles.get(ident,{}),**{k:v for k,v in account.items() if k not in ('passwordHash','password','mustChangePassword')}}
                 visible['teachers']=[]
+                account_teacher_ids={str(account.get('id') or '') for account in data.get('users',[]) or [] if isinstance(account,dict) and account.get('role')=='teacher'}
                 for ident,profile in teacher_profiles.items():
                     profile['id']=ident; profile['teacherId']=ident
+                    profile['hasAccount']=ident in account_teacher_ids
                     profile['classIds']=sorted(_teacher_class_ids(data,profile))
                     visible['teachers'].append(profile)
             return self._json(visible,headers={'X-MaClasse-Revision':revision})
@@ -3129,6 +3135,14 @@ class Handler(SimpleHTTPRequestHandler):
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
                     target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes})
                     if subjects is not None: target['subjects']=list(dict.fromkeys(str(v).strip() for v in subjects if str(v).strip()))
+                    profiles=data.get('teachers') if isinstance(data.get('teachers'),list) else []
+                    profile_fields=('id','teacherId','role','first','last','name','email','phone','subjects','profileNotes','active','scheduleUnavailable')
+                    profile_payload={key:target[key] for key in profile_fields if key in target}
+                    profile_payload['id']=str(target.get('id') or user.get('id')); profile_payload['teacherId']=profile_payload['id']; profile_payload['role']='teacher'
+                    profile_index=next((index for index,item in enumerate(profiles) if isinstance(item,dict) and str(item.get('id'))==profile_payload['id']),None)
+                    if profile_index is None: profiles.append(profile_payload)
+                    else: profiles[profile_index]={**profiles[profile_index],**profile_payload}
+                    data['teachers']=profiles
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
