@@ -2,6 +2,8 @@
 
 Cette fonction est réservée à la Direction. **Ma Classe ne se connecte jamais à ChatGPT** : la préparation se fait dans une conversation ChatGPT normale, puis le fichier JSON est téléchargé et importé manuellement dans Ma Classe.
 
+Le fichier JSON peut atteindre **25 Mo maximum**. Cette limite est vérifiée dans le navigateur et de nouveau par le serveur sur les routes de prévalidation et d'import confirmé ; les fichiers trop volumineux sont rejetés avant validation.
+
 ## Parcours en quatre étapes
 
 1. Dans Ma Classe, ouvrir **Administration → Configuration d'établissement** et télécharger le modèle JSON, le schéma JSON et les instructions. Pour un établissement déjà configuré, exporter également le contexte anonymisé.
