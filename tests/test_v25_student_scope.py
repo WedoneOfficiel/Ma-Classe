@@ -69,6 +69,7 @@ class StudentScopeTests(unittest.TestCase):
         self.assertIn('t3',by_id)
         self.assertEqual(by_id['t3']['first'],'Prof')
         self.assertFalse(by_id['t3']['hasAccount'])
+        self.assertIn('t3',view['schedule'][0]['teacherIds'],'The pupil timetable must retain co-teacher profile IDs so names can be rendered from the teacher directory.')
         self.assertEqual(server._student_accessible_teacher_ids(data,data['students'][0]),{'t1'})
 
     def test_student_cloud_projection_limits_class_group_and_explicit_shares(self):
