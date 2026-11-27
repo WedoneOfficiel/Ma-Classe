@@ -302,6 +302,24 @@ class EstablishmentImportTests(unittest.TestCase):
         names = [x["username"] for x in credentials]
         self.assertEqual(len(set(names)), len(names))
 
+    def test_refuses_to_replace_malformed_existing_data_during_import(self):
+        malformed_records = [
+            {"classes": {"legacy-record": {"name": "Classe conservée"}}},
+            {"settings": ["paramètre historique"]},
+            {"settings": {"rooms": {"legacy-room": {"name": "Salle conservée"}}}},
+            {"users": {"legacy-user": {"username": "ancien.compte"}}},
+        ]
+        for existing in malformed_records:
+            with self.subTest(existing=existing):
+                before = copy.deepcopy(existing)
+                with self.assertRaisesRegex(ValueError, "Données existantes incompatibles"):
+                    importer.build_data(
+                        sample_bundle(), existing,
+                        password_hasher=lambda value: "HASH:" + value,
+                        token_factory=lambda size: "generated-token",
+                    )
+                self.assertEqual(existing, before)
+
     def test_never_mutates_input_and_strips_internal_normalized_data(self):
         bundle = sample_bundle()
         before = copy.deepcopy(bundle)

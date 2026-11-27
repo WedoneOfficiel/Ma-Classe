@@ -876,20 +876,45 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
     Only new records are created: existing classes/rooms are never overwritten.
     All identifiers and passwords are generated locally by the server.
     """
-    validation = validate_bundle(bundle, existing_data)
+    source_data = existing_data if isinstance(existing_data, dict) else {}
+    collection_names = (
+        "classes", "students", "users", "schedule", "teacherAssignments",
+        "lessons", "evaluations", "attendance", "bulletins", "submissions",
+    )
+    # Do not silently replace malformed existing records with empty lists.
+    # An import is additive: if a persisted collection has an unexpected
+    # shape, fail before validation/building rather than discard user data.
+    for name in collection_names:
+        if name in source_data and not isinstance(source_data[name], list):
+            raise ValueError(
+                f"Données existantes incompatibles : le champ {name!r} n'est pas une liste. "
+                "Aucune donnée n'a été remplacée."
+            )
+    if "settings" in source_data and not isinstance(source_data["settings"], dict):
+        raise ValueError(
+            "Données existantes incompatibles : les paramètres ne sont pas un objet. "
+            "Aucune donnée n'a été remplacée."
+        )
+    existing_settings = source_data.get("settings", {})
+    if (
+        isinstance(existing_settings, dict)
+        and "rooms" in existing_settings
+        and not isinstance(existing_settings["rooms"], list)
+    ):
+        raise ValueError(
+            "Données existantes incompatibles : la liste des salles est invalide. "
+            "Aucune donnée n'a été remplacée."
+        )
+
+    validation = validate_bundle(bundle, source_data)
     if validation["errors"]:
         raise ValueError(validation["errors"][0])
     normalized = validation["_normalized"]
-    data = copy.deepcopy(existing_data if isinstance(existing_data, dict) else {})
-    for name in ("classes", "students", "users", "schedule", "teacherAssignments", "lessons", "evaluations", "attendance", "bulletins", "submissions"):
-        if not isinstance(data.get(name), list):
-            data[name] = []
+    data = copy.deepcopy(source_data)
+    for name in collection_names:
+        data.setdefault(name, [])
     data.setdefault("settings", {})
-    if not isinstance(data["settings"], dict):
-        data["settings"] = {}
     data["settings"].setdefault("rooms", [])
-    if not isinstance(data["settings"]["rooms"], list):
-        data["settings"]["rooms"] = []
 
     teacher_ids = {}
     teacher_credentials = []
