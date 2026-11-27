@@ -600,6 +600,27 @@ def _load_database_for_establishment_import():
             "La racine de la base de données existante n'est pas un objet JSON ; "
             "l'import est bloqué et aucune donnée n'a été remplacée."
         )
+    collection_names = (
+        "classes", "students", "users", "schedule", "teacherAssignments",
+        "lessons", "evaluations", "attendance", "bulletins", "submissions",
+    )
+    for name in collection_names:
+        if name in data and not isinstance(data[name], list):
+            raise ValueError(
+                f"Données existantes incompatibles : le champ {name!r} n'est pas une liste. "
+                "L'aperçu et l'import sont bloqués ; aucune donnée n'a été remplacée."
+            )
+    settings = data.get("settings", {})
+    if not isinstance(settings, dict):
+        raise ValueError(
+            "Données existantes incompatibles : les paramètres ne sont pas un objet. "
+            "L'aperçu et l'import sont bloqués ; aucune donnée n'a été remplacée."
+        )
+    if "rooms" in settings and not isinstance(settings["rooms"], list):
+        raise ValueError(
+            "Données existantes incompatibles : la liste des salles est invalide. "
+            "L'aperçu et l'import sont bloqués ; aucune donnée n'a été remplacée."
+        )
     return _sanitize_rich_data(data)
 
 

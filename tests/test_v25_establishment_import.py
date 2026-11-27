@@ -315,6 +315,23 @@ class EstablishmentImportTests(unittest.TestCase):
                         server._load_database_for_establishment_import()
                 self.assertEqual(database.read_text(encoding="utf-8"), raw)
 
+    def test_import_database_loader_rejects_malformed_collections_before_preview(self):
+        malformed = [
+            {"classes": {"legacy": {"name": "Classe conservée"}}},
+            {"students": "not-a-list"},
+            {"settings": ["paramètres historiques"]},
+            {"settings": {"rooms": {"legacy": {"name": "Salle conservée"}}}},
+        ]
+        for saved in malformed:
+            with self.subTest(saved=saved), tempfile.TemporaryDirectory() as temp:
+                database = Path(temp) / "maclasse.json"
+                raw = json.dumps(saved, ensure_ascii=False)
+                database.write_text(raw, encoding="utf-8")
+                with patch.object(server, "DATA_FILE", str(database)):
+                    with self.assertRaisesRegex(ValueError, "Données existantes incompatibles"):
+                        server._load_database_for_establishment_import()
+                self.assertEqual(database.read_text(encoding="utf-8"), raw)
+
     def test_import_database_loader_accepts_absent_database_as_empty(self):
         with tempfile.TemporaryDirectory() as temp:
             database = Path(temp) / "missing.json"
