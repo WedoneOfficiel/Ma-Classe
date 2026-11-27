@@ -3108,7 +3108,9 @@ class Handler(SimpleHTTPRequestHandler):
             if user.get('role')!='admin': return self._json({'error':'La restauration complète est réservée à la direction.'},403)
             if length>100*1024*1024: return self._json({'error':'Archive trop volumineuse (100 Mo maximum).'},413)
             try:
-                with DATA_LOCK:
+                # Restoration must exclude uploads and database writes for the whole
+                # operation, including archive validation and staging.
+                with DATA_LOCK, UPLOADS_LOCK:
                     backup_name=self._create_backup(force=True) if os.path.exists(DATA_FILE) else None
                     restored=_restore_backup_archive(body)
                     revision=_database_revision()
