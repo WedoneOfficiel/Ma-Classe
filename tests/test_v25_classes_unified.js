@@ -6,6 +6,10 @@ const routes=app.slice(app.indexOf('const NAV=['),app.indexOf('const DAYS='));
 assert(routes.includes("['classes','□','Classes']"),'La navigation principale doit afficher Classes.');
 assert(!routes.includes("['ppDashboard'"),'Suivi de classe ne doit plus créer un doublon de navigation.');
 assert(app.includes("onclick=\"go('classes')\""),'La Direction doit disposer du même point d’entrée Classes.');
+const adminNavStart=app.indexOf("if(authUser?.role==='admin'){");
+const adminNavEnd=app.indexOf("if(appSpace==='student'||authUser?.role==='student')",adminNavStart);
+const adminNav=app.slice(adminNavStart,adminNavEnd);
+assert(adminNav.includes('title="Emploi du temps"')&&adminNav.includes("onclick=\"go('schedule')\""),'La Direction doit disposer d’un accès direct à l’EDT.');
 assert(app.includes('classes:classes,ppDashboard:classes'),'L’ancienne route ppDashboard reste un alias de compatibilité.');
 assert(app.includes("ppDashboard:['Scolarité','Classes'"),'Les métadonnées de l’ancienne route doivent pointer vers Classes.');
 assert(tracking.includes("window.classTracking=classTracking;"),'Le rendu unifié doit être exporté.');
@@ -27,4 +31,7 @@ assert(tracking.includes('openClass('),'La création et la modification des clas
 assert(tracking.includes('bilan-classe-'),'Le bilan de classe doit être exportable en CSV.');
 assert(tracking.includes('Les travaux et évaluations affichés sont limités'),'Le périmètre matière du professeur doit rester rappelé.');
 assert(tracking.includes('showClassTrackingList()'),'Le détail doit permettre de revenir à la liste unifiée.');
+assert(tracking.includes('Ouvrir la classe et son suivi'),'La liste doit présenter Classes et Suivi comme une seule fiche.');
+assert(tracking.includes('← Retour au module Classes'),'La fiche détaillée doit proposer un retour clairement visible au module Classes.');
+
 console.log('OK — Classes unifiées : navigation, compatibilité, recherche fluide, filtres, PP, gestion, permissions et export.');
