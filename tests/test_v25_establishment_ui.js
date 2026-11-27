@@ -46,3 +46,35 @@ assert(!generatorSource.includes("api.openai.com")&&!generatorServer.includes("a
 assert(generatorGuide.includes("Générateur guidé — parcours actuel en trois étapes")&&generatorGuide.includes("Confidentialité des personnes"),'Le guide doit expliciter les trois étapes et la pseudonymisation.');
 
 console.log('OK — Import établissement : schéma, exemple, documentation, échange manuel, Direction, sauvegarde, comptes locaux et import atomique.');
+
+
+{
+  const start=generatorSource.lastIndexOf('function downloadEstablishmentContext(');
+  const end=generatorSource.indexOf('\\nfunction ',start+10);
+  assert(start>=0&&end>start,'La fonction d’export du contexte doit exister.');
+  const sample={
+    classes:[{id:'CLASS_ID_A',name:'6e A',level:'6e',levels:['6e'],groups:['Groupe A'],teacherIds:['TEACHER_ID_A'],principalTeacherId:'TEACHER_ID_A',subjectRequirements:[]}],
+    teachers:[{id:'TEACHER_ID_A',first:'NAME_A',last:'SURNAME_A',email:'EMAIL_A',phone:'PHONE_A',subjects:['Français']}],
+    users:[{id:'TEACHER_ID_A',role:'teacher',username:'USERNAME_A',first:'NAME_A',last:'SURNAME_A',email:'EMAIL_A',phone:'PHONE_A',scheduleUnavailable:[]}],
+    students:[{id:'STUDENT_ID_A',first:'STUDENT_NAME_A',last:'STUDENT_SURNAME_A',email:'STUDENT_EMAIL_A',phone:'STUDENT_PHONE_A',classId:'CLASS_ID_A',group:'Groupe A'}],
+    settings:{rooms:[{id:'ROOM_ID_A',name:'Salle 101',type:'classroom',capacity:30,equipment:[],unavailable:[]}]},
+    schedule:[{id:'SCHEDULE_ID_A',classId:'CLASS_ID_A',teacherId:'TEACHER_ID_A',roomId:'ROOM_ID_A',room:'Salle 101',day:1,time:'08:00',endTime:'09:00',subject:'Français',group:'Groupe A',recurrence:'weekly',startDate:'2026-09-01',exceptions:[]}]
+  };
+  const exportState={db:sample,authUser:{role:'admin'},establishmentImportAdminOnly:()=>true,
+    sameId:(a,b)=>String(a??'')===String(b??''),
+    downloadText:(filename,content,mime)=>{exportState.download={filename,content,mime};}
+  };
+  vm.createContext(exportState);
+  vm.runInContext(generatorSource.slice(start,end),exportState);
+  vm.runInContext('downloadEstablishmentContext()',exportState);
+  assert(exportState.download,'L’export du contexte doit être déclenché.');
+  const exported=JSON.parse(exportState.download.content);
+  const serialized=JSON.stringify(exported);
+  for(const secret of ['NAME_A','SURNAME_A','EMAIL_A','PHONE_A','USERNAME_A','STUDENT_NAME_A','STUDENT_SURNAME_A','STUDENT_EMAIL_A','STUDENT_PHONE_A','TEACHER_ID_A','STUDENT_ID_A','CLASS_ID_A','ROOM_ID_A','SCHEDULE_ID_A']) {
+    assert(!serialized.includes(secret),'Le contexte ne doit pas exporter : '+secret);
+  }
+  assert.strictEqual(exported.classes[0].studentCount,1,'Seul l’effectif agrégé doit être exporté.');
+  assert.strictEqual(exported.teachers[0].label,'Enseignant 1','Le professeur doit être pseudonymisé.');
+  assert.strictEqual(exported.schedule[0].teachers[0],'professeur_1','Les références professeur doivent être pseudonymisées.');
+  console.log('OK — export réel du contexte établissement sans identité ni coordonnée.');
+}
