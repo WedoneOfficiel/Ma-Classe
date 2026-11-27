@@ -64,6 +64,7 @@ assert(savedRoom&&savedRoom.name==='Nouvelle salle de test','Une salle enregistr
 const savedRoomOptions=Array.from(context.plannerRoomOptions(30,['vidéoprojecteur'],1,'08:30','09:30')).map(x=>x.name);
 assert(savedRoomOptions.includes('Nouvelle salle de test'),'Une salle créée dans Paramètres doit être disponible dans la recherche Planner si elle satisfait les critères.');
 
+const roomTestEsc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const openPlannerUi=sliceBetween(app,'function openPlanner(){','function runPlanner(e)');
 const plannerUiContext={
  db:{classes:[{id:'6A',name:'6e A'}],teachers:[{id:'t1',first:'Élodie',last:'Martin'}],schedule:[]},
@@ -102,7 +103,7 @@ const roomActionContext={
  plannerRoomOptions(...args){capturedPlannerCall=args;return [{name:'Salle 301',type:'classroom',capacity:30,equipment:['vidéoprojecteur']}]},
  esc:roomTestEsc,
  jsArg(value){return roomTestEsc(JSON.stringify(String(value??'')))},
- openSchedule(...args){openedScheduleEdit=args},
+ openSchedule(...args){openedScheduleEdit=Array.from(args)},
  openModal(title,body){capturedRoomModal={title,body}},
  toast(message){throw Error(message)}
 };
