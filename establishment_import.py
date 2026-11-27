@@ -488,7 +488,7 @@ def validate_bundle(bundle, existing_data=None):
     requested_usernames = set()
     for key, record in teachers.items():
         username = record["username"]
-        if username:
+        if create_teacher_accounts and username:
             if username in existing_usernames or username in requested_usernames:
                 errors.append(f"Identifiant professeur {username!r} déjà utilisé.")
             requested_usernames.add(username)
