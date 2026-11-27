@@ -38,6 +38,11 @@ const availabilityConflicts=Array.from(context.scheduleAvailabilityConflicts({
 }));
 assert(availabilityConflicts.some(x=>x.includes('Professeur Élodie Martin')));
 assert(availabilityConflicts.some(x=>x.includes('Salle B204')));
+const findSlots=sliceBetween(app,'function plannerFindSlots(','function openPlanner()');
+vm.runInContext(findSlots,context);
+const requestedStart=Array.from(context.plannerFindSlots('6A','',0,'14:00','15:00'));
+assert(requestedStart.length>0&&requestedStart[0].day===0&&requestedStart[0].time==='14:00',
+ 'Le premier créneau doit respecter l’horaire de départ choisi ; la recherche ne doit pas proposer automatiquement des heures antérieures.');
 const parallel=Array.from(context.plannerConflicts({
  classId:'6A',group:'Groupe B',day:0,time:'08:00',endTime:'09:00',
  teacherId:'t2',teacherIds:['t2'],room:'Labo'
