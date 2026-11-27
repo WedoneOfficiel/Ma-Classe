@@ -443,10 +443,9 @@ def _restore_backup_archive(raw_bytes):
             raise ValueError('Le fichier de données de la sauvegarde est invalide.') from exc
         if not isinstance(restored, dict):
             raise ValueError('La base de données doit être un objet JSON.')
-        for key in ('classes', 'students', 'users'):
+        for key in ('classes', 'students', 'users', 'teachers'):
             if key in restored and not isinstance(restored[key], list):
                 raise ValueError(f'La collection {key} est invalide.')
-        restored.pop('teachers',None)
         os.makedirs(DATA_DIR, exist_ok=True)
         # Keep uploads, backup creation and restoration on one lock. Build the
         # restored tree off-line above, then swap both stores as one critical section.
