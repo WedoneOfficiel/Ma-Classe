@@ -120,11 +120,10 @@ def _normalise_dns_hostname(value: str) -> str | None:
     return hostname
 
 
-def certificate_matches_host(certificate: Path | str, host: str) -> bool:
-    """Validate an IPv4 or DNS SAN and more than 24 hours of certificate validity."""
-    certificate = Path(certificate)
+def _certificate_bytes_match_host(certificate_pem: bytes, host: str) -> bool:
+    """Validate an already-read PEM certificate against an IPv4 or DNS identity."""
     try:
-        parsed = x509.load_pem_x509_certificate(certificate.read_bytes())
+        parsed = x509.load_pem_x509_certificate(certificate_pem)
         san = parsed.extensions.get_extension_for_class(
             x509.SubjectAlternativeName
         ).value
@@ -164,8 +163,17 @@ def certificate_matches_host(certificate: Path | str, host: str) -> bool:
             parsed.not_valid_before_utc <= now
             and parsed.not_valid_after_utc > now + timedelta(hours=24)
         )
-    except (OSError, ValueError, TypeError, UnicodeError, x509.ExtensionNotFound):
+    except (ValueError, TypeError, UnicodeError, x509.ExtensionNotFound):
         return False
+
+
+def certificate_matches_host(certificate: Path | str, host: str) -> bool:
+    """Validate a certificate path against a host, returning false on read errors."""
+    try:
+        certificate_pem = Path(certificate).read_bytes()
+    except OSError:
+        return False
+    return _certificate_bytes_match_host(certificate_pem, host)
 
 
 def load_public_certificate_config(data_dir: Path | str) -> dict | None:
@@ -214,12 +222,22 @@ def load_public_certificate_config(data_dir: Path | str) -> dict | None:
             raise RuntimeError("La clé privée TLS doit être lisible uniquement par le compte de service.")
         paths[field] = resolved
 
-    if not certificate_matches_host(paths["certificate"], hostname):
+    # Read each file exactly once. ACME deploy hooks replace certificate and
+    # key independently; validating and fingerprinting the same byte snapshots
+    # avoids mixing two rotations or leaking a raw FileNotFoundError if a file
+    # disappears between repeated reads.
+    try:
+        certificate_pem = paths["certificate"].read_bytes()
+        private_key_pem = paths["private_key"].read_bytes()
+    except OSError as error:
+        raise RuntimeError("La paire TLS publique est temporairement indisponible ; nouvel essai requis.") from error
+
+    if not _certificate_bytes_match_host(certificate_pem, hostname):
         raise RuntimeError("Le certificat public ne couvre pas le nom DNS ou expire dans moins de 24 heures.")
     try:
-        certificate = x509.load_pem_x509_certificate(paths["certificate"].read_bytes())
+        certificate = x509.load_pem_x509_certificate(certificate_pem)
         private_key = serialization.load_pem_private_key(
-            paths["private_key"].read_bytes(), password=None
+            private_key_pem, password=None
         )
         cert_public = certificate.public_key().public_bytes(
             serialization.Encoding.DER,
@@ -229,19 +247,19 @@ def load_public_certificate_config(data_dir: Path | str) -> dict | None:
             serialization.Encoding.DER,
             serialization.PublicFormat.SubjectPublicKeyInfo,
         )
-    except (OSError, ValueError, TypeError) as error:
+    except (ValueError, TypeError) as error:
         raise RuntimeError("Le certificat ou la clé privée TLS ne peut pas être lu.") from error
     if not hmac.compare_digest(cert_public, key_public):
         raise RuntimeError("Le certificat public et la clé privée TLS ne correspondent pas.")
 
     fingerprint = hashlib.sha256(
         str(paths["certificate"]).encode("utf-8")
-        + b"\0"
-        + paths["certificate"].read_bytes()
-        + b"\0"
+        + b"\\0"
+        + certificate_pem
+        + b"\\0"
         + str(paths["private_key"]).encode("utf-8")
-        + b"\0"
-        + paths["private_key"].read_bytes()
+        + b"\\0"
+        + private_key_pem
     ).hexdigest()
     return {
         "hostname": hostname,

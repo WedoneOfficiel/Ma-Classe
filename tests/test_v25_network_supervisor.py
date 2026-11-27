@@ -209,6 +209,67 @@ class NetworkSupervisorTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 supervisor.load_public_certificate_config(data)
 
+    def test_public_certificate_config_reads_each_pair_file_once(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp)
+            tls = data / "tls"
+            tls.mkdir()
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+
+            original_read_bytes = Path.read_bytes
+            reads = {cert.resolve(): 0, key.resolve(): 0}
+
+            def counted_read_bytes(path):
+                if path in reads:
+                    reads[path] += 1
+                return original_read_bytes(path)
+
+            with patch.object(Path, "read_bytes", counted_read_bytes):
+                loaded = supervisor.load_public_certificate_config(data)
+
+            self.assertEqual(reads, {cert.resolve(): 1, key.resolve(): 1})
+            self.assertEqual(len(loaded["fingerprint"]), 64)
+
+    def test_public_certificate_config_wraps_pair_read_race_for_supervisor_retry(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp)
+            tls = data / "tls"
+            tls.mkdir()
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+
+            original_read_bytes = Path.read_bytes
+
+            def disappearing_certificate(path):
+                if path == cert.resolve():
+                    raise FileNotFoundError(str(path))
+                return original_read_bytes(path)
+
+            with patch.object(Path, "read_bytes", disappearing_certificate):
+                with self.assertRaisesRegex(RuntimeError, "nouvel essai requis"):
+                    supervisor.load_public_certificate_config(data)
+
     def test_public_certificate_config_rejects_mismatched_private_key(self):
         with tempfile.TemporaryDirectory() as temp:
             data = Path(temp)
