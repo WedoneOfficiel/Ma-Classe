@@ -926,7 +926,7 @@ Ces éléments constituent un backlog proposé ; aucun n'est annoncé comme corr
 
 **Branche :** `fix/v25.1.2-cross-module-consistency`  
 **PR :** [#20 — V25.2.0](https://github.com/WedoneOfficiel/Ma-Classe/pull/20)  
-**Tête validée automatiquement :** `1596fc422645e27a67b5858eca2c48552315bed9`
+**Tête validée automatiquement :** `829fd19181994648ac38f3dcb9dfebd80c77ca31` — [CI 46008158550, 3/3 jobs réussis](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/46008158550)
 
 ### Défauts supplémentaires identifiés et corrigés
 
