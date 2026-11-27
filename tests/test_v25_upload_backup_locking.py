@@ -10,6 +10,7 @@ import threading
 import time
 import zipfile
 import importlib.util
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("maclasse_server_upload_locks", ROOT / "server.py")
@@ -139,7 +140,7 @@ def test_every_upload_mutation_route_uses_the_shared_lock():
         ("if path=='/api/cloud-copy':", "if path=='/api/cloud-delete':"),
         ("if path=='/api/cloud-delete':", "if path=='/api/delete-upload':"),
         ("if path=='/api/delete-upload':", "if path=='/api/reset':"),
-        ("if path=='/api/upload':", "self.send_error(404)"),
+        ("\n        if path=='/api/upload':", "\n        self.send_error(404)"),
     ]
     for start_marker, end_marker in route_markers:
         start = source.index(start_marker)
@@ -148,8 +149,146 @@ def test_every_upload_mutation_route_uses_the_shared_lock():
         assert "with UPLOADS_LOCK:" in route, f"Route non verrouillée : {start_marker}"
 
 
+def test_restore_rolls_back_both_stores_if_database_swap_fails():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        database = data_dir / "maclasse.json"
+        original_json = json.dumps({"classes": [{"id": "before"}], "students": []}).encode()
+        database.write_bytes(original_json)
+        (uploads / "keep.txt").write_text("ancienne pièce jointe", encoding="utf-8")
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database)
+        server.UPLOADS = str(uploads)
+
+        raw = make_archive(
+            {"classes": [{"id": "after"}], "students": [{"id": "s1"}], "users": []},
+            {"new.txt": "nouvelle pièce jointe"},
+        )
+        real_replace = server.os.replace
+        failed = {"value": False}
+
+        def fail_new_database_once(source, destination):
+            if (
+                not failed["value"]
+                and Path(destination) == database
+                and Path(source).name == "maclasse.json"
+                and "maclasse-restore-" in str(source)
+            ):
+                failed["value"] = True
+                raise OSError("échec simulé du remplacement de la base")
+            return real_replace(source, destination)
+
+        with patch.object(server.os, "replace", side_effect=fail_new_database_once):
+            try:
+                server._restore_backup_archive(raw)
+                raise AssertionError("Une erreur de bascule simulée aurait dû échouer.")
+            except OSError as error:
+                assert "échec simulé" in str(error)
+
+        assert failed["value"], "Le test doit échouer précisément au remplacement final de la base."
+        assert database.read_bytes() == original_json
+        assert (uploads / "keep.txt").read_text(encoding="utf-8") == "ancienne pièce jointe"
+        assert not list(data_dir.glob("maclasse-restore-*")), "Un rollback réussi doit nettoyer son staging."
+
+
+def test_restore_preserves_recovery_copy_if_rollback_itself_fails():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        database = data_dir / "maclasse.json"
+        original_json = json.dumps({"classes": [{"id": "before"}], "students": []}).encode()
+        database.write_bytes(original_json)
+        (uploads / "keep.txt").write_text("ancienne pièce jointe", encoding="utf-8")
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database)
+        server.UPLOADS = str(uploads)
+
+        raw = make_archive(
+            {"classes": [{"id": "after"}], "students": [{"id": "s1"}], "users": []},
+            {"new.txt": "nouvelle pièce jointe"},
+        )
+        real_replace = server.os.replace
+
+        def fail_swap_and_upload_rollback(source, destination):
+            source_name = Path(source).name
+            if (
+                Path(destination) == database
+                and source_name == "maclasse.json"
+                and "maclasse-restore-" in str(source)
+            ):
+                raise OSError("échec simulé de la bascule")
+            if source_name == "uploads-before-restore" and Path(destination) == uploads:
+                raise OSError("échec simulé du retour des pièces jointes")
+            return real_replace(source, destination)
+
+        with patch.object(server.os, "replace", side_effect=fail_swap_and_upload_rollback):
+            try:
+                server._restore_backup_archive(raw)
+                raise AssertionError("Le retour arrière incomplet aurait dû être signalé.")
+            except RuntimeError as error:
+                message = str(error).lower()
+                assert "retour arrière est incomplet" in message
+                assert "dossier de récupération" in message
+
+        recovery_dirs = list(data_dir.glob("maclasse-restore-*"))
+        assert len(recovery_dirs) == 1, "Le staging doit être conservé après échec du rollback."
+        saved_upload = recovery_dirs[0] / "uploads-before-restore" / "keep.txt"
+        assert saved_upload.read_text(encoding="utf-8") == "ancienne pièce jointe"
+        assert database.read_bytes() == original_json
+        assert not uploads.exists(), "Le dossier de récupération doit rester distinct du dossier actif manquant."
+
+
+def test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttle():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        data_dir = root / "data"
+        uploads = data_dir / "uploads"
+        uploads.mkdir(parents=True)
+        database = data_dir / "maclasse.json"
+        database.write_text(json.dumps({"classes": [{"id": "6A"}], "students": []}), encoding="utf-8")
+        (uploads / "piece.txt").write_text("pièce complète", encoding="utf-8")
+        server.DATA_DIR = str(data_dir)
+        server.DATA_FILE = str(database)
+        server.UPLOADS = str(uploads)
+        server.BACKUP_INTERVAL_SECONDS = 86400
+        backup_dir = data_dir / "backups"
+        original_write = server.zipfile.ZipFile.write
+
+        def fail_while_archiving_uploads(archive, filename, *args, **kwargs):
+            if str(filename).startswith(str(uploads)):
+                raise OSError("échec simulé pendant l'archivage des pièces jointes")
+            return original_write(archive, filename, *args, **kwargs)
+
+        with patch.object(server.zipfile.ZipFile, "write", new=fail_while_archiving_uploads):
+            try:
+                BackupHarness()._create_backup(force=True)
+                raise AssertionError("La panne d'archivage simulée aurait dû échouer.")
+            except OSError as error:
+                assert "échec simulé" in str(error)
+
+        assert len(list(backup_dir.glob("maclasse-*.json"))) == 1, "La copie JSON complète reste disponible."
+        assert not list(backup_dir.glob("maclasse-*.zip")), "Un ZIP incomplet ne doit jamais être publié."
+        assert not list(backup_dir.glob("*.tmp")), "Les fichiers temporaires doivent être nettoyés."
+
+        time.sleep(0.002)
+        name = BackupHarness()._create_backup(force=False)
+        assert name and (backup_dir / name).is_file(), "Un JSON orphelin ne doit pas retarder la prochaine sauvegarde complète."
+        with zipfile.ZipFile(backup_dir / name) as archive:
+            assert archive.read("data/uploads/piece.txt") == "pièce complète".encode()
+            assert archive.testzip() is None
+
+
+
 if __name__ == "__main__":
     test_backup_waits_for_upload_mutations()
     test_restore_waits_for_upload_mutations()
     test_every_upload_mutation_route_uses_the_shared_lock()
-    print("OK — sauvegarde, restauration et mutations de pièces jointes partagent un verrou de cohérence.")
+    test_restore_rolls_back_both_stores_if_database_swap_fails()
+    test_restore_preserves_recovery_copy_if_rollback_itself_fails()
+    test_backup_publishes_zip_atomically_and_incomplete_attempt_does_not_throttle()
+    print("OK — verrouillage, snapshots atomiques, rollback et conservation du dossier de récupération.")
