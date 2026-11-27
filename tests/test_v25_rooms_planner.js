@@ -49,6 +49,21 @@ const tuesday=Array.from(context.plannerRoomOptions(20,['vidéoprojecteur'],1,'0
 assert.deepStrictEqual(tuesday,['B204','Labo'],'Le Planner vérifie le créneau exact et les réservations déjà planifiées.');
 const tooLarge=Array.from(context.plannerRoomOptions(40,[],1,'08:30','09:30'));
 assert.strictEqual(tooLarge.length,0,'Une salle de capacité insuffisante ne doit pas être recommandée.');
+const saveRoomFn=sliceBetween(app,'function savePlannerRoom(','function deletePlannerRoom(');
+const newRoomForm={name:'Nouvelle salle de test',type:'classroom',capacity:'40',equipment:'ordinateurs, vidéoprojecteur',unavailable:''};
+context.FormData=function(){return Object.entries(newRoomForm)[Symbol.iterator]()};
+context.uid=()=> 'room-test-id';
+context.save=()=>{};
+context.closeModal=()=>{};
+context.render=()=>{};
+context.toast=()=>{};
+vm.runInContext(saveRoomFn,context);
+context.savePlannerRoom({preventDefault(){},target:{}});
+const savedRoom=context.db.settings.rooms.find(r=>r.id==='room-test-id');
+assert(savedRoom&&savedRoom.name==='Nouvelle salle de test','Une salle enregistrée dans Paramètres doit rester dans settings.rooms.');
+const savedRoomOptions=Array.from(context.plannerRoomOptions(30,['vidéoprojecteur'],1,'08:30','09:30')).map(x=>x.name);
+assert(savedRoomOptions.includes('Nouvelle salle de test'),'Une salle créée dans Paramètres doit être disponible dans la recherche Planner si elle satisfait les critères.');
+
 const runPlannerUi=sliceBetween(app,'function runPlanner(e)','function plannerCreateDraft(');
 assert(runPlannerUi.includes('Choisir cette salle'),'Chaque salle trouvée doit proposer une action de sélection, pas seulement une ligne de texte.');
 assert(runPlannerUi.includes('plannerCreateDraft('),'La sélection d’une salle doit ouvrir la préparation du cours.');
