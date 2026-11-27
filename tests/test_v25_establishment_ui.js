@@ -17,7 +17,7 @@ assert(app.includes("api('/api/admin/establishment-import/validate'"),'L’aper�
 assert(app.includes("api('/api/admin/establishment-import/apply'"),'La confirmation doit passer par la route dédiée.');
 assert(app.includes("if(authUser?.role!=='admin')"),'L’outil doit vérifier le rôle Direction côté interface.');
 assert(app.includes('file.size>25*1024*1024'),'Le fichier JSON doit accepter les imports volumineux jusqu’à 25 Mo.');
-assert(server.includes("elif path in ('/api/admin/establishment-import/validate','/api/admin/establishment-import/apply'):\\n            max_length=25*1024*1024"),'Les deux routes d’import doivent avoir une limite HTTP dédiée de 25 Mo.');
+assert(server.includes("elif path in ('/api/admin/establishment-import/validate','/api/admin/establishment-import/apply'):\n            max_length=25*1024*1024"),'Les deux routes d’import doivent avoir une limite HTTP dédiée de 25 Mo.');
 assert(app.includes('previewEstablishmentImport(this.files&&this.files[0]);this.value=String()'),'Le sélecteur de fichier doit se réinitialiser sans casser la chaîne HTML/JavaScript.');
 assert(app.includes("window.establishmentImportCredentials=[]"),'Les secrets doivent être effacés à la fermeture de la fenêtre.');
 assert(app.includes('downloadEstablishmentCredentials'),'La Direction doit pouvoir enregistrer les identifiants générés.');
