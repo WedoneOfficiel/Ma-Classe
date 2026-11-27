@@ -332,7 +332,7 @@ def validate_bundle(bundle, existing_data=None):
     existing_data = existing_data if isinstance(existing_data, dict) else {}
     if not isinstance(bundle, dict):
         return {"errors": ["Le fichier doit contenir un objet JSON."], "warnings": [], "summary": {}, "quality": {}}
-    _check_fields(bundle, {"format", "version", "establishment", "classes", "teachers", "students", "rooms", "schedule"}, "Racine", errors)
+    _check_fields(bundle, {"format", "version", "createTeacherAccounts", "establishment", "classes", "teachers", "students", "rooms", "schedule"}, "Racine", errors)
     for required in ("format", "version", "establishment", "classes", "teachers", "students", "rooms", "schedule"):
         if required not in bundle:
             errors.append(f"Propriété obligatoire manquante : {required}.")
@@ -340,6 +340,10 @@ def validate_bundle(bundle, existing_data=None):
         errors.append(f"Format incorrect : format attendu {FORMAT_NAME!r}.")
     if isinstance(bundle.get("version"), bool) or not isinstance(bundle.get("version"), int) or bundle.get("version") != FORMAT_VERSION:
         errors.append(f"Version de format non prise en charge : version {FORMAT_VERSION} attendue.")
+    create_teacher_accounts = bundle.get("createTeacherAccounts", True)
+    if not isinstance(create_teacher_accounts, bool):
+        errors.append("createTeacherAccounts doit être un booléen (true ou false).")
+        create_teacher_accounts = True
     establishment = bundle.get("establishment", {})
     if not isinstance(establishment, dict):
         errors.append("establishment doit être un objet.")
@@ -359,6 +363,9 @@ def validate_bundle(bundle, existing_data=None):
     schedule_records = _unique_records(schedule_raw, "schedule", errors, {"key", "classes", "class", "day", "start", "end", "subject", "group", "teachers", "teacher", "room", "recurrence", "intervalWeeks", "startDate", "endDate", "exceptions", "equipment"})
 
     classes, teachers, students, rooms, schedule = {}, {}, {}, {}, {}
+    if not create_teacher_accounts and teacher_records:
+        errors.append("createTeacherAccounts=false : teachers doit être une liste vide ; les profils et affectations seront créés plus tard dans Ma Classe.")
+
     for key, raw in class_records.items():
         name = _text(raw.get("name"), f"classes[{key}].name", errors, required=True, maximum=100)
         levels = _string_list(raw.get("levels"), f"classes[{key}].levels", errors, maximum_items=8, item_maximum=40)
@@ -561,7 +568,9 @@ def validate_bundle(bundle, existing_data=None):
     for key, record in classes.items():
         count = sum(1 for student in students.values() if student["class"] == key)
         expected = record["expectedStudentCount"]
-        if expected is not None and count != expected:
+        if create_teacher_accounts is not None and bundle.get("createStudents", True) is False:
+            pass
+        if expected is not None and count != expected and bundle.get("createStudents", True) is not False:
             errors.append(f"Classe {record['name']!r} : {expected} élèves attendus, {count} fiches fournies.")
         if count == 0:
             warnings.append(f"La classe {record['name']!r} ne contient aucun élève.")
@@ -585,7 +594,7 @@ def validate_bundle(bundle, existing_data=None):
         subject = _text(raw.get("subject"), f"Créneau {key} : subject", errors, required=True, maximum=80)
         group = _text(raw.get("group", ""), f"Créneau {key} : group", errors, maximum=80)
         teacher_keys = _key_list(raw.get("teachers", [raw.get("teacher")] if raw.get("teacher") else []), f"Créneau {key} : teachers", errors, maximum_items=20)
-        if not teacher_keys:
+        if not teacher_keys and create_teacher_accounts:
             errors.append(f"Créneau {key} : au moins un professeur est obligatoire.")
         for teacher_key in teacher_keys:
             if teacher_key not in teachers:
@@ -696,6 +705,12 @@ def validate_bundle(bundle, existing_data=None):
                 student_count = sum(
                     student_count_by_class[class_key]
                     for class_key in lesson["classes"]
+                )
+            if student_count == 0 and bundle.get("createStudents", True) is False:
+                # With no imported student records, use the expected class sizes.
+                student_count = sum(
+                    int(classes[class_key].get("expectedStudentCount") or 0)
+                    for class_key in lesson["classes"] if class_key in classes
                 )
             if room["capacity"] and student_count > room["capacity"]:
                 errors.append(f"Créneau {lesson['key']} : la salle {room['name']!r} ({room['capacity']} places) est trop petite pour {student_count} élèves.")
@@ -858,13 +873,14 @@ def validate_bundle(bundle, existing_data=None):
         "summary": {
             "establishment": establishment_name,
             "classes": len(classes), "students": len(students),
-            "teachers": len(teachers), "rooms": len(rooms),
+            "teachers": len(teachers) if create_teacher_accounts else 0, "rooms": len(rooms),
             "scheduleSlots": len(schedule),
         },
         "quality": quality,
         "_normalized": {
             "establishment": {"name": establishment_name},
             "classes": classes, "students": students, "teachers": teachers,
+            "createTeacherAccounts": create_teacher_accounts,
             "rooms": rooms, "schedule": schedule,
         },
     }
@@ -924,7 +940,7 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
     teacher_ids = {}
     teacher_credentials = []
     used_usernames = {str(user.get("username", "")).casefold() for user in data["users"] if isinstance(user, dict)}
-    for key, teacher in normalized["teachers"].items():
+    for key, teacher in (normalized["teachers"].items() if normalized.get("createTeacherAccounts", True) else ()): 
         user_id = token_factory(18)
         username = teacher["username"] or _username_base(teacher)
         base = username
@@ -1001,7 +1017,7 @@ def build_data(bundle, existing_data, *, password_hasher, token_factory):
 
     for key, lesson in normalized["schedule"].items():
         shared_id = token_factory(18)
-        teacher_list = [teacher_ids[t] for t in lesson["teachers"]]
+        teacher_list = [teacher_ids[t] for t in lesson["teachers"] if t in teacher_ids]
         room = normalized["rooms"].get(lesson["room"]) if lesson["room"] else None
         for class_key in lesson["classes"]:
             class_id = class_ids[class_key]
