@@ -593,6 +593,10 @@ def main() -> None:
                       const data = await response.json();
                       data.settings = data.settings || {};
                       data.settings.subjectColors = {...(data.settings.subjectColors || {}), francais:'#123456'};
+                      data.settings.rooms = [
+                        {id:'firefox-room-a',name:'Salle 101',type:'classroom',capacity:30,equipment:[],unavailable:[]},
+                        {id:'firefox-room-b',name:'Salle 102',type:'classroom',capacity:30,equipment:[],unavailable:[]}
+                      ];
                       data.classes = [{
                         id:'firefox-class', name:'6e A', level:'6e',
                         levels:['6e'], teacherIds:[], groups:['A','B'],
@@ -631,7 +635,7 @@ def main() -> None:
                         subject:'Français', recurrence:'weekly',
                         startDate:'2026-11-09', endDate:'',
                         exceptions:[], overrides:{}, teacherId:'',
-                        room:'', group:'A'
+                        room:'Salle 101', group:'A'
                       }];
                       const saved = await fetch('/api/save', {
                         method:'POST',
