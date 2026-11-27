@@ -631,7 +631,7 @@ def _load_database_for_establishment_import():
             "l'import est bloqué et aucune donnée n'a été remplacée."
         )
     collection_names = (
-        "classes", "students", "users", "schedule", "teacherAssignments",
+        "classes", "students", "users", "teachers", "schedule", "teacherAssignments",
         "lessons", "evaluations", "attendance", "bulletins", "submissions",
     )
     for name in collection_names:
@@ -985,8 +985,8 @@ def _teacher_visible_mailbox(mailbox, user, data):
     }
 
 
-def _student_accessible_teacher_ids(data, student_record):
-    """Enseignants joignables par l'élève via sa classe, son EDT ou ses séances."""
+def _student_referenced_teacher_ids(data, student_record):
+    """Tous les profils enseignants référencés par la classe, les cours ou les séances de l'élève."""
     class_id=str(student_record.get('classId') or '')
     group=str(student_record.get('group') or '')
     class_record=next((x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),{})
@@ -1006,6 +1006,12 @@ def _student_accessible_teacher_ids(data, student_record):
     for assignment in data.get('teacherAssignments',[]) or []:
         if isinstance(assignment,dict) and str(assignment.get('classId') or '')==class_id and assignment.get('teacherId') and _teacher_assignment_active(assignment):
             ids.add(str(assignment.get('teacherId')))
+    return ids
+
+
+def _student_accessible_teacher_ids(data, student_record):
+    """Identifiants des enseignants joignables par messagerie (compte de connexion requis)."""
+    ids=_student_referenced_teacher_ids(data,student_record)
     valid={str(x.get('id')) for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher'}
     return ids & valid
 
@@ -1501,8 +1507,15 @@ def _student_visible_data(data,user,now=None):
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
     # Même périmètre que la messagerie côté serveur : classe, co-enseignement,
     # séances et affectations actives doivent tous apparaître dans les destinataires.
-    teacher_ids=_student_accessible_teacher_ids(data,student_record)
-    out['teachers']=[{'id':str(x.get('id')),'first':x.get('first',''),'last':x.get('last','')} for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher' and str(x.get('id')) in teacher_ids]
+    teacher_ids=_student_referenced_teacher_ids(data,student_record)
+    teacher_profiles={}
+    for profile in data.get('teachers',[]) or []:
+        if isinstance(profile,dict) and profile.get('role')=='teacher' and str(profile.get('id') or '') in teacher_ids:
+            teacher_profiles[str(profile.get('id'))]=profile
+    for account in data.get('users',[]) or []:
+        if isinstance(account,dict) and account.get('role')=='teacher' and str(account.get('id') or '') in teacher_ids:
+            teacher_profiles[str(account.get('id'))]={**teacher_profiles.get(str(account.get('id')),{}),**account}
+    out['teachers']=[{'id':ident,'first':profile.get('first',''),'last':profile.get('last','')} for ident,profile in teacher_profiles.items()]
     out['lessons']=[]
     for item in data.get('lessons',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or (item.get('group') and str(item.get('group'))!=str(student_record.get('group') or '')): continue
@@ -2651,11 +2664,19 @@ class Handler(SimpleHTTPRequestHandler):
                 visible=dict(data)
                 visible['students']=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword','role','username','active')} for x in data.get('students',[]) or [] if isinstance(x,dict)]
                 visible['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict)]
-                visible['teachers']=[]
+                teacher_profiles={}
+                for profile in data.get('teachers',[]) or []:
+                    if isinstance(profile,dict) and profile.get('role')=='teacher' and profile.get('id'):
+                        teacher_profiles[str(profile['id'])]={k:v for k,v in profile.items() if k not in ('passwordHash','password','mustChangePassword')}
                 for account in data.get('users',[]) or []:
                     if not isinstance(account,dict) or account.get('role')!='teacher': continue
-                    profile={k:v for k,v in account.items() if k not in ('passwordHash','password','mustChangePassword')}
-                    profile['teacherId']=str(account.get('id') or ''); profile['classIds']=sorted(_teacher_class_ids(data,account)); visible['teachers'].append(profile)
+                    ident=str(account.get('id') or '')
+                    teacher_profiles[ident]={**teacher_profiles.get(ident,{}),**{k:v for k,v in account.items() if k not in ('passwordHash','password','mustChangePassword')}}
+                visible['teachers']=[]
+                for ident,profile in teacher_profiles.items():
+                    profile['id']=ident; profile['teacherId']=ident
+                    profile['classIds']=sorted(_teacher_class_ids(data,profile))
+                    visible['teachers'].append(profile)
             return self._json(visible,headers={'X-MaClasse-Revision':revision})
         if not self._safe_static_path(path):
             return self.send_error(404)
