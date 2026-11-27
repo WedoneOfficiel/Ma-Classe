@@ -27,7 +27,7 @@ La V25.2.0 candidate n'est pas encore une GitHub Release stable ; le gestionnair
 - [ ] Simuler une erreur de santé avec le banc de test / les fixtures de validation du gestionnaire ; vérifier que le retour arrière restaure code et base. Ne jamais provoquer une panne sur le service de production.
 - [ ] Vérifier que les sauvegardes sont présentes, lisibles et distinctes de la base active.
 
-## 3. Mise à jour officielle signée — après publication, toujours sur la copie
+### Après publication : mise à jour officielle signée sur la copie
 
 Une fois la PR fusionnée et la GitHub Release signée publiée, le gestionnaire officiel peut enfin trouver le tag stable V25.2.0. Ce test ne doit pas être déplacé avant publication.
 
@@ -88,7 +88,7 @@ Tant que cette recette n'est pas passée, l'objectif « aucune configuration man
 
 ## État de la livraison au 27 novembre 2026
 
-- CI du candidat : workflow #2121, 3/3 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel.
+- CI du code candidat : workflow #2121, 3/3 réussi ; tête documentaire exacte de la PR : workflow #2122, 3/3 réussi sur Linux, macOS Apple Silicon/launchd et Firefox réel.
 - Dernière release stable : V25.1.1 (v25.1.1).
 - V25.2.0 : candidate, PR #20 ouverte, non fusionnée, non taguée et non publiée.
 - Recette physique : non effectuée dans cette campagne ; les cases doivent être cochées à partir de résultats réels, pas supposées validées.
