@@ -52,6 +52,17 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(view['users'],[self.data['users'][0]])
         self.assertEqual(view['auditLog'],[])
 
+    def test_teacher_directory_includes_profile_without_login_account(self):
+        data=copy.deepcopy(self.data)
+        data['teachers']=[{'id':'t3','teacherId':'t3','role':'teacher','first':'Prof','last':'Sans compte','subjects':['SVT'],'active':True}]
+        data['classes'][0]['teacherIds'].append('t3')
+        view=server._teacher_visible_data(data,self.user)
+        by_id={x['id']:x for x in view['teachers']}
+        self.assertIn('t3',by_id)
+        self.assertEqual(by_id['t3']['first'],'Prof')
+        self.assertFalse(by_id['t3']['hasAccount'])
+        self.assertNotIn('email',by_id['t3'])
+
     def test_teacher_cannot_persist_scriptable_schedule_or_lesson_ids(self):
         data=copy.deepcopy(self.data)
         data['schedule']=[{'id':'slot-safe','classId':'c1','subject':'Maths','pattern':'none'}]
