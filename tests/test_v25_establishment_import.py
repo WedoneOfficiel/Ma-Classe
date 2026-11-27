@@ -74,7 +74,7 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["summary"], {
             "establishment": "Collège des Tilleuls",
-            "classes": 2, "students": 3, "teachers": 2,
+            "classes": 2, "students": 3, "teachers": 2, "teacherAccounts": 2,
             "rooms": 2, "scheduleSlots": 3,
         })
         counter = {"n": 0}
@@ -94,7 +94,7 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertEqual(len(credentials), 2)
         self.assertTrue(all(u["mustChangePassword"] for u in data["users"] if u["role"] == "teacher"))
         self.assertTrue(all(u["passwordHash"].startswith("HASH:") for u in data["users"] if u["role"] == "teacher"))
-        self.assertNotIn("teachers", data)
+        self.assertEqual(len(data["teachers"]), 2)
         multi = next(x for x in data["classes"] if x["name"] == "5e A")
         self.assertEqual(multi["groups"], ["5e A/5e", "5e A/4e"])
         student = next(x for x in data["students"] if x["first"] == "Chloé")
@@ -107,6 +107,8 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertEqual(slot["roomId"], room["id"])
         self.assertTrue(slot["sharedSlotId"])
         self.assertEqual(summary["teachers"], 2)
+        self.assertEqual(summary["teacherAccounts"], 2)
+        self.assertTrue(all(profile["id"] in {account["id"] for account in data["users"] if account.get("role") == "teacher"} for profile in data["teachers"]))
         self.assertEqual(original, {"users": [{"id": "admin", "role": "admin", "username": "direction"}]})
 
     def test_teacher_profiles_are_preserved_without_login_accounts(self):
