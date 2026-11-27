@@ -1405,6 +1405,29 @@ def _student_can_access_upload(user,relative,write=False):
         return False
 
 
+def _teacher_profiles_for_save(current, incoming, user):
+    """Preserve the independent teacher directory and restrict its writes to Direction."""
+    existing=current.get('teachers') if isinstance(current,dict) and isinstance(current.get('teachers'),list) else []
+    if not isinstance(user,dict) or user.get('role')!='admin':
+        return [dict(item) for item in existing if isinstance(item,dict)]
+    submitted=incoming.get('teachers') if isinstance(incoming,dict) else None
+    if not isinstance(submitted,list):
+        return [dict(item) for item in existing if isinstance(item,dict)]
+    safe_fields=('id','teacherId','role','first','last','name','email','phone','subjects','profileNotes','active','scheduleUnavailable')
+    result=[]; seen=set()
+    for item in submitted:
+        if not isinstance(item,dict):
+            raise ValueError("Une fiche professeur est invalide.")
+        ident=str(item.get('id') or '').strip()
+        if not ident or item.get('role')!='teacher' or ident in seen:
+            raise ValueError("Identifiants de fiches professeurs invalides ou dupliqués.")
+        seen.add(ident)
+        clean={key:item[key] for key in safe_fields if key in item}
+        clean['id']=ident; clean['teacherId']=ident; clean['role']='teacher'
+        result.append(clean)
+    return result
+
+
 def _merge_student_data(current,incoming,user):
     """N'accepte que les brouillons/rendus de l'élève authentifié."""
     if user.get('role')!='student': raise PermissionError('Rôle non autorisé')
@@ -3373,14 +3396,7 @@ class Handler(SimpleHTTPRequestHandler):
                         return self._json({'error':'Les données ont été modifiées depuis votre dernier chargement. Recharge MaClasse avant de réessayer.','code':'REVISION_CONFLICT'},409,headers={'X-MaClasse-Revision':current_revision})
                     if current is not None:
                         data['users']=current.get('users',[]) if isinstance(current.get('users'),list) else []
-                        if user.get('role')!='admin':
-                            # Les profils enseignants sont un référentiel de Direction.
-                            # Un compte professeur/élève ne peut ni les supprimer ni les modifier.
-                            data['teachers']=current.get('teachers',[]) if isinstance(current.get('teachers'),list) else []
-                        elif not isinstance(data.get('teachers'),list):
-                            data['teachers']=current.get('teachers',[]) if isinstance(current.get('teachers'),list) else []
-                    elif not isinstance(data.get('teachers'),list):
-                        data['teachers']=[]
+                    data['teachers']=_teacher_profiles_for_save(current or {},data,user)
                     if current is not None:
                         old_students={str(x.get('id')):x for x in current.get('students',[]) or [] if isinstance(x,dict) and x.get('id')}
                         for student in data.get('students',[]) or []:
