@@ -876,8 +876,8 @@ def validate_bundle(bundle, existing_data=None):
         "warnings": warnings,
         "summary": {
             "establishment": establishment_name,
-            "classes": len(classes), "students": len(students),
-            "teachers": len(teachers) if create_teacher_accounts else 0, "students": len(students) if create_student_profiles else 0, "rooms": len(rooms),
+            "classes": len(classes), "students": len(students) if create_student_profiles else 0,
+            "teachers": len(teachers) if create_teacher_accounts else 0, "rooms": len(rooms),
             "scheduleSlots": len(schedule),
         },
         "quality": quality,
