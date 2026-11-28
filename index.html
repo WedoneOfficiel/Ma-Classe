@@ -2421,7 +2421,15 @@ html[data-mc-theme="dark"] .bulletin::before{
  #establishmentBriefStatus{font-size:12px}
  #establishmentBriefForm .establishmentWizardStep{padding:14px}
  #establishmentBriefForm .establishmentWizardStep textarea{min-height:86px}
-}</style>
+}
+.establishmentComponentsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;min-width:0}
+.establishmentComponentsGrid .establishmentComponent{display:flex!important;align-items:center;gap:8px;min-width:0;margin:0;padding:9px 10px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-surface-2);color:var(--ui-text);font-size:11px;font-weight:700;line-height:1.35;cursor:pointer;transition:border-color .15s,background .15s}
+.establishmentComponentsGrid .establishmentComponent:hover{border-color:var(--ui-blue);background:var(--ui-active)}
+.establishmentComponentsGrid .establishmentComponent input{flex:0 0 17px}
+.establishmentComponentsGrid .establishmentComponent span{min-width:0;overflow-wrap:anywhere}
+#establishmentBriefForm [name="schoolStructureDetails"],#establishmentBriefForm [name="schoolOrganizationDetails"]{min-height:78px}
+@media(max-width:680px){.establishmentComponentsGrid{grid-template-columns:minmax(0,1fr)}}
+</style>
 
 </head>
 <body>
