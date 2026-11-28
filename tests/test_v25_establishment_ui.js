@@ -41,7 +41,7 @@ const generatorServer = fs.readFileSync('server.py','utf8');
 assert(generatorSource.includes("Configurateur de l’établissement avec ChatGPT"),'Le configurateur doit être présenté comme un outil guidé.');
 for (const field of ['schoolYear','periodMode','schoolBreaks','schoolStructureDetails','schoolOrganization','schoolOrganizationDetails']) {
   assert(generatorSource.includes('name="'+field+'"'), 'Le formulaire doit proposer le champ '+field+'.');
-  assert(generatorSource.includes(field+':String(values.'+field+'||\\'\\').trim()') || field==='periodMode',
+  assert(generatorSource.includes(field+':String(values.'+field+"||'').trim()") || field==='periodMode',
     'Le champ '+field+' doit être collecté dans le dossier enregistré.');
 }
 assert(generatorSource.includes('name="schoolTypes"')&&generatorSource.includes('input[name="schoolTypes"]:checked'),
