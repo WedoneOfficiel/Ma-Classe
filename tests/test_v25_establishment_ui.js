@@ -204,3 +204,39 @@ assert(validationSandbox.result.duplicateRoom.includes('plusieurs fois'),'Une sa
 assert(validationSandbox.result.tooManyRooms.includes('dépasse'),'Le nombre de salles détaillées ne doit pas dépasser le total annoncé.');
 assert(validationSandbox.result.fractionalCount.includes('nombre de professeurs'),'Un nombre de professeurs fractionnaire doit être refusé.');
 assert(validationSandbox.result.staleComponent.includes('n’est plus cochée'),'Une ligne attachée à une composante désélectionnée doit être signalée.');
+
+
+// Référentiel national préchargé par niveau : volumes, sous-domaines et statuts distincts.
+const curriculumStart=generatorSource.indexOf('function mcNationalCurriculumCatalog(');
+const curriculumEnd=generatorSource.indexOf('\nfunction prefillNationalCurriculum()',curriculumStart);
+assert(curriculumStart>=0&&curriculumEnd>curriculumStart,'Le catalogue national doit être isolable.');
+const curriculumSandbox={};
+vm.runInNewContext(generatorSource.slice(curriculumStart,curriculumEnd)+
+  '\nresult=mcNationalCurriculumCatalog(["Maternelle","Élémentaire","Collège","Lycée général","Lycée technologique"],["STMG"],["Mathématiques","Sciences économiques et sociales"]);',
+  curriculumSandbox);
+const curriculum=Array.from(curriculumSandbox.result);
+const pick=(component,level,subject)=>curriculum.find(x=>x.component===component&&x.level===level&&x.subject===subject);
+assert(pick('Maternelle','Petite section','Développement et structuration du langage oral et écrit'),'La maternelle doit distinguer le domaine du langage.');
+assert.strictEqual(pick('Maternelle','Petite section','Développement et structuration du langage oral et écrit').hoursPerWeek,null,'Aucun quota artificiel ne doit être attribué au domaine du langage en maternelle.');
+assert.strictEqual(pick('Maternelle','Petite section','Ensemble des enseignements du cycle 1').hoursPerWeek,24,'Les 24 h doivent rester un volume global de cycle.');
+assert.strictEqual(pick('Élémentaire','CP','Français').hoursPerWeek,10,'Le français CP doit être prérempli avec la moyenne du cycle 2.');
+assert(pick('Élémentaire','CP','Français').details.includes('vocabulaire')&&pick('Élémentaire','CP','Français').details.includes('lecture'),'Les sous-domaines du français doivent être préremplis.');
+assert.strictEqual(pick('Élémentaire','CM1','Français').hoursPerWeek,8,'Le français CM1 doit utiliser la moyenne du cycle 3.');
+assert.strictEqual(pick('Collège','6e','Français').hoursPerWeek,4.5,'L’horaire de français en 6e doit suivre la grille 2026.');
+assert.strictEqual(pick('Collège','3e','Histoire-géographie et EMC').hoursPerWeek,3.5,'Le volume histoire-géographie/EMC de 3e doit être exact.');
+assert.strictEqual(pick('Lycée général','Terminale générale','Philosophie').hoursPerWeek,4,'La philosophie de terminale doit être préremplie.');
+assert.strictEqual(pick('Lycée technologique','Première STMG','Sciences de gestion et numérique').hoursPerWeek,7,'La série STMG doit être préremplie si sélectionnée.');
+assert(pick('Lycée professionnel','Seconde professionnelle','Enseignements professionnels de la spécialité').details.includes('450 h annuelles'),'Les horaires professionnels doivent rester reliés à leurs volumes annuels.');
+assert(generatorSource.includes('function prefillNationalCurriculum()')&&generatorSource.includes('Préremplir les programmes nationaux'),'Le formulaire doit disposer d’une commande de préremplissage.');
+assert(generatorSource.includes('name="extraSubjects"'),'L’établissement doit pouvoir ajouter des matières complémentaires.');
+assert(generatorSource.includes('curriculumMode')&&generatorSource.includes('techSeries')&&generatorSource.includes('generalSpecialties'),'Le régime et les séries/spécialités doivent être mémorisés.');
+
+const nullHoursValidationStart=generatorSource.indexOf('function validateEstablishmentBrief(brief){');
+const nullHoursValidationEnd=generatorSource.indexOf('\nfunction collectEstablishmentBrief(',nullHoursValidationStart);
+const nullHoursSandbox={};
+vm.runInNewContext(generatorSource.slice(nullHoursValidationStart,nullHoursValidationEnd)+
+  '\nconst b={name:"École test",schoolTypes:["Maternelle"],classStructures:[{component:"Maternelle",level:"Petite section",classCount:1,studentsPerClass:20}],classPlanNotes:"",subjectPlans:[{component:"Maternelle",level:"Petite section",subject:"Langage",hoursPerWeek:null,details:"Oral et vocabulaire",source:"national",hoursBasis:"not_allocated"}],teacherPlans:[],componentSchedules:[],roomStructures:[],teacherCount:null,roomCount:null,createSchedule:false,schoolDaysNotes:"",schoolHoursNotes:"",schoolBreaksNotes:"",subjectPlanNotes:""};result={national:validateEstablishmentBrief(b),manual:validateEstablishmentBrief({...b,subjectPlans:[{component:"Maternelle",level:"Petite section",subject:"Langage",hoursPerWeek:null,details:"Oral et vocabulaire"}]})};',
+  nullHoursSandbox);
+assert.strictEqual(nullHoursSandbox.result.national,'','Un domaine national sans quota horaire doit être accepté si le détail pédagogique est fourni.');
+assert(nullHoursSandbox.result.manual.includes('Indique les heures'),'Une matière manuelle sans horaire ne doit pas être acceptée implicitement.');
+
