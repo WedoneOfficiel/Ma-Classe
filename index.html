@@ -2460,6 +2460,22 @@ html[data-mc-theme="dark"] .bulletin::before{
 @media(max-width:680px){.establishmentComponentsGrid{grid-template-columns:minmax(0,1fr)}}
 </style>
 
+
+<style id="v25-settings-layout-select-overlay">
+/* Paramètres en colonnes indépendantes : aucune carte ne réserve la hauteur d'une carte voisine. */
+.settingsGrid.settingsLayout{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-areas:none!important;grid-auto-flow:row!important;align-items:start!important;gap:14px!important}
+.settingsGrid.settingsLayout>.settingsColumn{display:flex!important;flex-direction:column!important;gap:12px!important;min-width:0!important;align-self:start!important}
+.settingsGrid.settingsLayout .settingsCard,.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-area:auto!important;grid-column:auto!important;min-width:0!important;width:auto!important;max-width:none!important;height:auto!important;align-self:stretch!important;margin:0!important;box-sizing:border-box}
+.settingsGrid.settingsLayout .settingsCard>.sectionhead{margin-bottom:10px}
+.settingsGrid.settingsLayout .settingsCard .section{margin-top:11px}
+.settingsGrid.settingsLayout .settingsEstablishmentCard{padding:16px}
+.settingsGrid.settingsLayout .settingsEstablishmentCard .sectionhead{align-items:flex-start}
+.settingsGrid.settingsLayout .settingsEstablishmentCard p{margin:8px 0 12px}
+.mc-select-menu[popover]{position:fixed;inset:auto;margin:0;max-width:calc(100vw - 16px);z-index:2147483647;overflow:auto;overscroll-behavior:contain}
+.mc-select-menu[popover]:popover-open{display:block!important;z-index:2147483647}
+@media(max-width:980px){.settingsGrid.settingsLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important}.settingsGrid.settingsLayout>.settingsColumn{display:contents!important}.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-column:1/-1!important}}
+@media(max-width:650px){.settingsGrid.settingsLayout{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.settingsGrid.settingsLayout>.settingsColumn{display:contents!important}.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-column:auto!important}}
+</style>
 </head>
 <body>
 <div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire · <span id="appVersionLabel"></span></small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><span id="spaceFoot" hidden></span></aside><main class="main" id="main"></main></div>
@@ -2504,13 +2520,40 @@ html[data-mc-theme="dark"] .bulletin::before{
       row.hidden=!!o.hidden||!!o.disabled;
     });
   }
-  function closeAll(except){document.querySelectorAll('.mc-select.open').forEach(w=>{if(w!==except){w.classList.remove('open');syncSelect(w)}})}
-  function choose(wrap,index){
-    const s=wrap.querySelector('.mc-select-native'), o=s?.options[index]; if(!s||!o||o.disabled)return;
-    if(s.multiple)o.selected=!o.selected; else {s.value=o.value;wrap.classList.remove('open')}
-    s.dispatchEvent(new Event('change',{bubbles:true}));
+  function positionMenu(wrap){
+    const menu=wrap.querySelector('.mc-select-menu'),trigger=wrap.querySelector('.mc-select-trigger');
+    if(!menu||!trigger||!menu.matches(':popover-open'))return;
+    const rect=trigger.getBoundingClientRect(),width=Math.min(rect.width,window.innerWidth-16),gap=6;
+    const desired=Math.min(wrap.classList.contains('is-multiple')?330:280,Math.max(120,menu.scrollHeight||280));
+    const below=window.innerHeight-rect.bottom-8,above=rect.top-8;
+    const openAbove=below<Math.min(desired,180)&&above>below;
+    const space=Math.max(100,(openAbove?above:below)-gap);
+    const maxHeight=Math.min(desired,space);
+    const measured=Math.min(menu.scrollHeight||desired,maxHeight);
+    const left=Math.max(8,Math.min(rect.left,window.innerWidth-width-8));
+    menu.style.position='fixed';menu.style.left=left+'px';menu.style.width=width+'px';
+    menu.style.maxHeight=maxHeight+'px';menu.style.top=(openAbove?Math.max(8,rect.top-gap-measured):rect.bottom+gap)+'px';
+  }
+  function repositionOpenMenus(){document.querySelectorAll('.mc-select.open').forEach(positionMenu)}
+  function closeSelect(wrap){
+    if(!wrap)return;const menu=wrap.querySelector('.mc-select-menu');
+    wrap.classList.remove('open');
+    if(menu?.matches(':popover-open')){try{menu.hidePopover()}catch(error){}}
     syncSelect(wrap);
-    if(!s.multiple)wrap.querySelector('.mc-select-trigger')?.focus();
+  }
+  function closeAll(except){document.querySelectorAll('.mc-select.open').forEach(w=>{if(w!==except)closeSelect(w)})}
+  function openSelect(wrap){
+    const menu=wrap.querySelector('.mc-select-menu');if(!menu)return;
+    closeAll(wrap);wrap.classList.add('open');
+    try{if(typeof menu.showPopover==='function'&&!menu.matches(':popover-open'))menu.showPopover()}catch(error){}
+    syncSelect(wrap);positionMenu(wrap);
+    const first=menu.querySelector('.mc-select-option:not([hidden])');first?.focus();
+  }
+  function choose(wrap,index){
+    const s=wrap.querySelector('.mc-select-native'),o=s?.options[index];if(!s||!o||o.disabled)return;
+    if(s.multiple)o.selected=!o.selected;else s.value=o.value;
+    s.dispatchEvent(new Event('change',{bubbles:true}));syncSelect(wrap);
+    if(!s.multiple){closeSelect(wrap);wrap.querySelector('.mc-select-trigger')?.focus()}
   }
   function build(s){
     if(!s || s.dataset.mcSelect==='1' || !s.options)return;
@@ -2520,11 +2563,11 @@ html[data-mc-theme="dark"] .bulletin::before{
     s.setAttribute('aria-hidden','true'); s.tabIndex=-1;
     const trigger=document.createElement('button'); trigger.type='button'; trigger.className='mc-select-trigger'; trigger.setAttribute('aria-haspopup','listbox'); trigger.setAttribute('aria-controls',id+'_menu');
     const summary=document.createElement('span'); summary.className='mc-select-summary'; const arrow=document.createElement('span'); arrow.className='mc-select-arrow'; trigger.append(summary,arrow);
-    const menu=document.createElement('div'); menu.className='mc-select-menu'; menu.id=id+'_menu'; menu.setAttribute('role','listbox'); if(s.multiple)menu.setAttribute('aria-multiselectable','true');
+    const menu=document.createElement('div'); menu.className='mc-select-menu'; menu.id=id+'_menu'; menu.setAttribute('role','listbox'); menu.setAttribute('popover','manual'); if(s.multiple)menu.setAttribute('aria-multiselectable','true');
     [...s.options].forEach((o,i)=>{const row=document.createElement('button');row.type='button';row.className='mc-select-option'+(!s.multiple?' single':'');row.setAttribute('role','option');row.dataset.index=i;const check=document.createElement('span');check.className='mc-select-check';const label=document.createElement('span');label.textContent=optionLabel(o);row.append(check,label);row.addEventListener('click',()=>choose(wrap,i));menu.append(row)});
     if(!s.options.length){const e=document.createElement('div');e.className='mc-select-empty';e.textContent='Aucune option disponible';menu.append(e)}
     wrap.append(trigger,menu); s.parentNode.insertBefore(wrap,s); wrap.append(s);
-    trigger.addEventListener('click',()=>{if(s.disabled)return;const open=!wrap.classList.contains('open');closeAll(wrap);wrap.classList.toggle('open',open);syncSelect(wrap);if(open){const first=menu.querySelector('.mc-select-option:not([hidden])');first?.focus()}});
+    trigger.addEventListener('click',()=>{if(s.disabled)return;if(wrap.classList.contains('open'))closeSelect(wrap);else openSelect(wrap)});
     trigger.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){e.preventDefault();trigger.click()}else if(e.key==='Escape'){wrap.classList.remove('open');syncSelect(wrap)}});
     menu.addEventListener('keydown',e=>{const rows=[...menu.querySelectorAll('.mc-select-option:not([hidden])')];const cur=document.activeElement,idx=rows.indexOf(cur);if(e.key==='Escape'){e.preventDefault();wrap.classList.remove('open');syncSelect(wrap);trigger.focus()}else if(e.key==='ArrowDown'){e.preventDefault();rows[Math.min(rows.length-1,idx+1)]?.focus()}else if(e.key==='ArrowUp'){e.preventDefault();rows[Math.max(0,idx-1)]?.focus()}else if((e.key==='Enter'||e.key===' ')&&cur?.classList.contains('mc-select-option')){e.preventDefault();cur.click()}});
     const observer=new MutationObserver(()=>{rebuildSelectMenu(wrap)});observer.observe(s,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden','selected']});
@@ -2562,7 +2605,7 @@ html[data-mc-theme="dark"] .bulletin::before{
     });
   };
   const observer=new MutationObserver(muts=>{for(const m of muts)for(const n of m.addedNodes){if(n.nodeType===1)enhance(n)}});
-  function boot(){enhance();observer.observe(document.body,{childList:true,subtree:true});document.addEventListener('click',e=>{if(!e.target.closest('.mc-select'))closeAll()});}
+  function boot(){enhance();observer.observe(document.body,{childList:true,subtree:true});document.addEventListener('click',e=>{if(!e.target.closest('.mc-select'))closeAll()});window.addEventListener('resize',repositionOpenMenus);window.addEventListener('scroll',repositionOpenMenus,true);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 </script>
