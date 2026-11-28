@@ -59,6 +59,12 @@ assert.strictEqual(created.name,'Argumenter une réponse');
 assert.strictEqual(created.level,'6e|5e');
 assert.strictEqual(created.subject,'Français');
 assert.strictEqual(created.description,'Justifier avec un élément du cours.');
+assert(sandbox.db.competencyLibrary.includes('Argumenter une réponse'),
+  'Le référentiel conserve les intitulés en chaînes compatibles avec la normalisation existante.');
+assert.deepStrictEqual(Array.from(sandbox.db.settings.competencyLevels['Argumenter une réponse']),['6e','5e']);
+assert.strictEqual(sandbox.db.settings.competencySubjects['Argumenter une réponse'],'Français');
+assert.strictEqual(sandbox.db.settings.competencyDescriptions['Argumenter une réponse'],'Justifier avec un élément du cours.');
+
 assert(vm.runInNewContext("v217CompetencyMatches(c,'5e','Français')",{
   v217CompetencyMatches:sandbox.v217CompetencyMatches,
   c:created
