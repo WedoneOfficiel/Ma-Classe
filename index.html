@@ -2473,8 +2473,17 @@ html[data-mc-theme="dark"] .bulletin::before{
 .settingsGrid.settingsLayout .settingsEstablishmentCard p{margin:8px 0 12px}
 .mc-select-menu[popover]{position:fixed;inset:auto;margin:0;max-width:calc(100vw - 16px);z-index:2147483647;overflow:auto;overscroll-behavior:contain}
 .mc-select-menu[popover]:popover-open{display:block!important;z-index:2147483647}
-@media(max-width:980px){.settingsGrid.settingsLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important}.settingsGrid.settingsLayout>.settingsColumn{display:contents!important}.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-column:1/-1!important}}
-@media(max-width:650px){.settingsGrid.settingsLayout{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.settingsGrid.settingsLayout>.settingsColumn{display:contents!important}.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-column:auto!important}}
+@media(max-width:980px){
+ .settingsGrid.settingsLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:auto auto!important;align-items:start!important}
+ .settingsGrid.settingsLayout>.settingsColumn{display:flex!important;flex-direction:column!important;gap:12px!important}
+ .settingsGrid.settingsLayout>.settingsColumnMain{grid-column:1!important;grid-row:1/3!important}
+ .settingsGrid.settingsLayout>.settingsColumnPeriods{grid-column:2!important;grid-row:1!important}
+ .settingsGrid.settingsLayout>.settingsColumnAdmin{grid-column:2!important;grid-row:2!important}
+}
+@media(max-width:650px){
+ .settingsGrid.settingsLayout{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;gap:12px!important}
+ .settingsGrid.settingsLayout>.settingsColumnMain,.settingsGrid.settingsLayout>.settingsColumnPeriods,.settingsGrid.settingsLayout>.settingsColumnAdmin{grid-column:1!important;grid-row:auto!important}
+}
 </style>
 
 <style id="v25-establishment-subject-groups">
