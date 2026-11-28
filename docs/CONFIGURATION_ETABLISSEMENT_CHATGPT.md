@@ -18,11 +18,14 @@ Les champs **Nombre de professeurs à prévoir** et **Nombre de salles à prévo
 
 Le formulaire guide la Direction sur les éléments nécessaires à la création d'un établissement complet, de la petite section à la terminale :
 
-Le cadrage comprend aussi le type d'établissement, l'année scolaire, l'organisation par trimestres ou semestres et les horaires de pause/récréation. Ces précisions sont facultatives : les dossiers déjà enregistrés restent compatibles et les nouveaux champs absents restent vides au rechargement. Un récapitulatif se met à jour pendant la saisie pour rappeler les choix structurants (fiches élèves, comptes professeurs et génération des emplois du temps). Le formulaire vérifie les champs obligatoires avant l'enregistrement ou la copie.
+Le cadrage distingue désormais les composantes pédagogiques (sélection multiple) de l'organisation de l'établissement (groupe scolaire, cité scolaire, polyvalent, multi-sites, etc.). Un même établissement peut donc sélectionner plusieurs cycles ou filières. Les anciens formulaires à choix unique sont repris automatiquement quand la correspondance est certaine ; une ancienne valeur ambiguë est conservée dans les précisions et doit être confirmée par la Direction. Le cadrage comprend aussi l'année scolaire, l'organisation par trimestres, semestres ou régime variable et les horaires de pause/récréation. Ces précisions sont facultatives : les dossiers déjà enregistrés restent compatibles et les nouveaux champs absents restent vides au rechargement. Un récapitulatif se met à jour pendant la saisie pour rappeler les choix structurants (fiches élèves, comptes professeurs et génération des emplois du temps). Le formulaire vérifie les champs obligatoires avant l'enregistrement ou la copie.
 
 
-- nom, type d'établissement, année scolaire et structure des classes : niveau, nombre de classes, nom des classes et effectifs prévus ;
-- organisation par trimestres ou semestres, utilisée comme valeur par défaut et modifiable classe par classe ;
+- nom et année scolaire ;
+- plusieurs composantes pédagogiques sélectionnables simultanément : maternelle, élémentaire, collège, lycée général, lycée technologique, lycée professionnel, post-bac, CFA/apprentissage, formation continue ou autre composante ;
+- organisation du regroupement distinguée des composantes : site unique, groupe scolaire, cité scolaire, établissement polyvalent, plusieurs sites/antennes ou réseau ; précisions libres sur les bâtiments et les sites ;
+- structure des classes détaillée séparément pour chaque niveau et chaque composante : nombre de classes, noms exacts et effectifs prévus ;
+- organisation par trimestres, semestres ou régime variable selon les classes/composantes ;
 - création ou non des fiches élèves, avec des pseudonymes générés ;
 - nombre de professeurs et répartition facultative par matières/classes ;
 - création ou non des profils et comptes professeurs ;
