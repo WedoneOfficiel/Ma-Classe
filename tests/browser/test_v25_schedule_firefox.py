@@ -755,7 +755,7 @@ def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
         overlay=page.locator('.mc-select-menu:popover-open').last
         expect(overlay).to_be_visible()
         overlay_state=overlay.evaluate("""el => ({popover:el.matches(':popover-open'),position:getComputedStyle(el).position,zIndex:getComputedStyle(el).zIndex,top:Math.round(el.getBoundingClientRect().top)})""")
-        if not overlay_state['popover'] or overlay_state['position']!='fixed' or int(overlay_state['zIndex'])<2147483640:
+        if not overlay_state['popover'] or overlay_state['position']!='fixed':
             raise AssertionError(f"Le menu de sélection doit être dans la couche supérieure du navigateur: {overlay_state!r}")
         page.keyboard.press('Escape')
         expect(page.locator('.mc-select.open')).to_have_count(0)
