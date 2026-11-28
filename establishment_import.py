@@ -832,7 +832,7 @@ def validate_bundle(bundle, existing_data=None):
             # Un domaine sans quota horaire autonome (maternelle) ou un volume
             # global de cycle ne doit pas être comparé à un cours disciplinaire
             # individuel : seule la répartition réellement décidée est planifiée.
-            if requirement.get("hoursBasis") in ("not_allocated", "global_cycle"):
+            if requirement.get("hoursBasis") in ("not_allocated", "global_cycle", "specialty_choice"):
                 continue
             requested_group = requirement["group"]
             if requested_group and requested_group not in all_groups:
