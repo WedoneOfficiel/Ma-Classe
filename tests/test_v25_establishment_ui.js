@@ -82,7 +82,7 @@ assert(promptSandbox.result.includes('composantes pédagogiques sélectionnées=
   'Les composantes multiples et l’organisation de l’établissement doivent être injectées séparément.');
 assert(promptSandbox.result.includes('Section européenne')&&promptSandbox.result.includes('Bâtiments séparés'),
   'Les précisions de structure et de sites doivent parvenir à ChatGPT.');
-assert(promptSandbox.result.includes('Pour un établissement multi-sites')&&promptSandbox.result.includes('siteId dédié'),
+assert(promptSandbox.result.includes('Si schoolSiteMode=Plusieurs sites / antennes')&&promptSandbox.result.includes('siteId dédié'),
   'Les consignes doivent prévenir que le format V1 ne possède pas de champ site dédié.');
 assert(promptSandbox.result.includes('Si periodMode=variable'),
   'Les consignes doivent préserver les régimes de périodes différents selon les classes.');
