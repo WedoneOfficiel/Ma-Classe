@@ -1258,7 +1258,7 @@ function openEstablishmentImport(){
  const componentChoices=components.map(value=>'<label class="check establishmentComponent"><input type="checkbox" name="schoolTypes" value="'+esc(value)+'" '+(selectedComponents.includes(value)?'checked':'')+'><span>'+esc(value)+'</span></label>').join('');
  const organizations=['Établissement autonome','Groupe scolaire','Cité scolaire','Établissement polyvalent','Regroupement / réseau d’établissements','Autre / à préciser'];
  const body=
- '<div class="notice"><b>Un établissement peut réunir plusieurs composantes.</b><br>Tu peux cocher plusieurs niveaux ou filières : par exemple maternelle + élémentaire, collège + lycée général, ou lycée général + technologique + professionnel. La nature du regroupement (groupe scolaire, cité scolaire, multi-sites…) se précise séparément.</div>'+
+ '<div class="notice"><b>Aucun document à importer dans ChatGPT.</b><br>Un établissement peut réunir plusieurs composantes. Tu peux cocher plusieurs niveaux ou filières : par exemple maternelle + élémentaire, collège + lycée général, ou lycée général + technologique + professionnel. La structure de regroupement et l’implantation physique se précisent séparément.</div>'+
  '<div id="establishmentBriefStatus" class="notice section establishmentBriefStatus" role="status" aria-live="polite">Le récapitulatif de votre configuration apparaîtra ici.</div>'+
  '<form id="establishmentBriefForm" class="section" onsubmit="saveEstablishmentBrief(event)" oninput="updateEstablishmentBriefSummary()" onchange="updateEstablishmentBriefSummary()"><div class="grid g2 establishmentBriefGrid">'+
  '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>1. Identité et composantes</h3></div>'+
