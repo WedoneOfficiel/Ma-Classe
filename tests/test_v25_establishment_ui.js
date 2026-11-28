@@ -220,8 +220,8 @@ assert(pick('Maternelle','Petite section','Développement et structuration du la
 assert.strictEqual(pick('Maternelle','Petite section','Développement et structuration du langage oral et écrit').hoursPerWeek,null,'Aucun quota artificiel ne doit être attribué au domaine du langage en maternelle.');
 assert.strictEqual(pick('Maternelle','Petite section','Ensemble des enseignements du cycle 1').hoursPerWeek,24,'Les 24 h doivent rester un volume global de cycle.');
 assert.strictEqual(pick('Élémentaire','CP','Français').hoursPerWeek,10,'Le français CP doit être prérempli avec la moyenne du cycle 2.');
-assert.strictEqual(pick('Élémentaire','CP','Sciences et technologie').hoursPerWeek,1.11,'Le CP doit utiliser la nouvelle grille applicable à la rentrée 2026.');
-assert.strictEqual(pick('Élémentaire','CP','Histoire-géographie et enseignement moral et civique').hoursPerWeek,1.39,'Le volume histoire-géographie/EMC du CP doit suivre le tableau 2026.');
+assert.strictEqual(pick('Élémentaire','CP','Sciences et technologie').hoursPerWeek,1.17,'Le CP doit utiliser la nouvelle grille applicable à la rentrée 2026.');
+assert.strictEqual(pick('Élémentaire','CP','Histoire-géographie et enseignement moral et civique').hoursPerWeek,1.33,'Le volume histoire-géographie/EMC du CP doit suivre le tableau 2026.');
 assert.strictEqual(pick('Élémentaire','CE1','Questionner le monde et enseignement moral et civique').hoursPerWeek,2.5,'En 2026-2027, la grille précédente reste applicable au CE1.');
 assert(pick('Élémentaire','CP','Français').details.includes('vocabulaire')&&pick('Élémentaire','CP','Français').details.includes('lecture'),'Les sous-domaines du français doivent être préremplis.');
 assert.strictEqual(pick('Élémentaire','CM1','Français').hoursPerWeek,8,'Le français CM1 doit utiliser la moyenne du cycle 3.');
@@ -240,7 +240,7 @@ assert(pick('Lycée professionnel','Seconde professionnelle','Enseignements prof
 const curriculum2027={};
 vm.runInNewContext(generatorSource.slice(curriculumStart,curriculumEnd)+'\nresult=mcNationalCurriculumCatalog(["Élémentaire"],[],[],"2027-2028");',curriculum2027);
 const elementary2027=Array.from(curriculum2027.result);
-assert.strictEqual(elementary2027.find(x=>x.level==='CE1'&&x.subject==='Sciences et technologie').hoursPerWeek,1.11,'La nouvelle grille doit entrer en vigueur au CE1 à la rentrée 2027.');
+assert.strictEqual(elementary2027.find(x=>x.level==='CE1'&&x.subject==='Sciences et technologie').hoursPerWeek,1.17,'La nouvelle grille doit entrer en vigueur au CE1 à la rentrée 2027.');
 assert(!elementary2027.some(x=>x.level==='CE1'&&x.subject==='Questionner le monde et enseignement moral et civique'),'La grille précédente ne doit plus être utilisée au CE1 à partir de 2027.');
 assert(generatorSource.includes('function prefillNationalCurriculum()')&&generatorSource.includes('Préremplir les programmes nationaux'),'Le formulaire doit disposer d’une commande de préremplissage.');
 assert(generatorSource.includes('name="extraSubjects"'),'L’établissement doit pouvoir ajouter des matières complémentaires.');
