@@ -386,11 +386,11 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     prefetched_subjects=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')
     expect(prefetched_classes).to_have_count(7)
     expect(prefetched_subjects).to_have_count(56)
-    language_domain=prefetched_subjects.filter(has=modal.locator('[data-field="subject"][value="Développement et structuration du langage oral et écrit"]')).first
+    language_domain=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]:has([data-field="subject"][value="Développement et structuration du langage oral et écrit"])').first
     expect(language_domain.locator('[data-field="hoursPerWeek"]')).to_have_value("")
     expect(language_domain.locator('[data-field="hoursBasis"]')).to_have_value("not_allocated")
     expect(language_domain.locator('[data-field="details"]')).to_contain_text("vocabulaire")
-    arts_row=prefetched_subjects.filter(has=modal.locator('[data-field="subject"][value="Arts appliqués et culture artistique"]')).first
+    arts_row=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]:has([data-field="subject"][value="Arts appliqués et culture artistique"])').first
     arts_hours=arts_row.locator('[data-field="hoursPerWeek"]')
     expect(arts_hours).to_have_value("0.93")
     if not arts_hours.evaluate("(el)=>el.checkValidity()"):
