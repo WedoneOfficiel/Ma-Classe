@@ -1345,7 +1345,8 @@ function mcNationalCurriculumCatalog(components,techSeries=[],generalSpecialties
    ['Physique-chimie ou langue vivante B',1.5,'45 h annuelles en seconde ; le choix dépend du référentiel de spécialité. Ne pas cumuler les deux par défaut.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
    ['Arts appliqués et culture artistique',1,'30 h annuelles en seconde, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
    ['Éducation physique et sportive',2.5,'75 h annuelles en seconde, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
-   ['Enseignements professionnels de la spécialité',15,'450 h annuelles en seconde, moyenne sur 30 semaines. Contenus, plateaux techniques, co-intervention et périodes en entreprise dépendent du diplôme.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
+   ['Enseignements professionnels de la spécialité',15,'450 h annuelles en seconde, moyenne sur 30 semaines. Contenus, plateaux techniques, co-intervention et périodes en entreprise dépendent du diplôme.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Consolidation, accompagnement personnalisé et accompagnement au choix d’orientation',3,'90 h annuelles en seconde, moyenne sur 30 semaines. Répartition à adapter au diagnostic des élèves et à leur projet.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
   ];
   const bacFirst=[
    ['Français, histoire-géographie et EMC',2.8,'84 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
@@ -1354,7 +1355,8 @@ function mcNationalCurriculumCatalog(components,techSeries=[],generalSpecialties
    ['Physique-chimie ou langue vivante B',1.4,'42 h annuelles en première ; option déterminée par le référentiel de spécialité.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
    ['Arts appliqués et culture artistique',0.93,'28 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
    ['Éducation physique et sportive',2.33,'70 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
-   ['Enseignements professionnels de la spécialité',14,'420 h annuelles en première, moyenne sur 30 semaines. Contenus liés au diplôme.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
+   ['Enseignements professionnels de la spécialité',14,'420 h annuelles en première, moyenne sur 30 semaines. Contenus liés au diplôme.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Consolidation, accompagnement personnalisé et accompagnement au choix d’orientation',2.8,'84 h annuelles en première, moyenne sur 30 semaines. Répartition selon le parcours et les besoins des élèves.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
   ];
   const bacTerminal=[
    ['Français, histoire-géographie et EMC',2.6,'78 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
@@ -1363,7 +1365,8 @@ function mcNationalCurriculumCatalog(components,techSeries=[],generalSpecialties
    ['Physique-chimie ou langue vivante B',1.3,'39 h annuelles en terminale ; choix défini par le référentiel de spécialité.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
    ['Arts appliqués et culture artistique',0.87,'26 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
    ['Éducation physique et sportive',2.17,'65 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
-   ['Enseignements professionnels de la spécialité',13,'390 h annuelles en terminale, moyenne sur 30 semaines. Contenus liés au diplôme et au parcours choisi.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
+   ['Enseignements professionnels de la spécialité',13,'390 h annuelles en terminale, moyenne sur 30 semaines. Contenus liés au diplôme et au parcours choisi.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Accompagnement personnalisé et préparation du parcours de fin de terminale',3.03,'91 h annuelles en terminale, moyenne sur 30 semaines. À répartir selon le parcours vers l’emploi ou la poursuite d’études et les besoins des élèves.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
   ];
   addRows('Lycée professionnel',['Seconde professionnelle'],bacSecond);
   addRows('Lycée professionnel',['Première professionnelle'],bacFirst);
@@ -1424,14 +1427,15 @@ function establishmentPlanRowMarkup(kind,item={},components=[]){
    input('Noms des classes (facultatif)','classNames','Ex. 6A, 6B, 6C');
  }else if(kind==='subject'){
   title='Matière et volume horaire';
+  const basisLabels={weekly:'horaire hebdomadaire',cycle_average:'moyenne hebdomadaire du cycle',annual_to_weekly:'moyenne hebdomadaire calculée depuis un volume annuel',not_allocated:'aucun quota horaire officiel par domaine',global_cycle:'volume global du cycle',specialty_choice:'horaire de spécialité à confirmer selon les choix'};
   fields=select+
    input('Niveau *','level','Ex. 6e, 2nde générale')+
    input('Matière / domaine *','subject','Ex. Français, lecture, SES')+
-   input('Heures par semaine','hoursPerWeek','Ex. 4','number','min="0.5" max="40" step="0.5"')+
+   input('Heures par semaine','hoursPerWeek','Ex. 4','number','min="0.01" max="40" step="0.01"')+
    input('Groupe (facultatif)','group','Ex. Groupe A, demi-classe')+
    textarea('Contenu détaillé / sous-domaines','details','Ex. oral, lecture, écriture, vocabulaire, grammaire, orthographe…')+
-   '<div class="field full"><label>Statut dans le référentiel</label><div class="hint">'+(item.source==='national'?'Proposition issue du référentiel national · '+esc(item.hoursBasis||'horaire hebdomadaire')+(item.reference?' · '+esc(item.reference):''):'Matière ajoutée librement par l’établissement')+'</div></div>'+
-   '<input type="hidden" data-field="source" value="'+esc(item.source||'')+'"><input type="hidden" data-field="hoursBasis" value="'+esc(item.hoursBasis||'')+'"><input type="hidden" data-field="reference" value="'+esc(item.reference||'')+'>';
+   '<div class="field full"><label>Statut dans le référentiel</label><div class="hint">'+(item.source==='national'?'Prérempli à partir des programmes nationaux · '+(basisLabels[item.hoursBasis]||'horaire à vérifier'):'Matière ajoutée librement par l’établissement')+'</div></div>'+
+   '<input type="hidden" data-field="source" value="'+esc(item.source||'')+'"><input type="hidden" data-field="hoursBasis" value="'+esc(item.hoursBasis||'')+'"><input type="hidden" data-field="reference" value="'+esc(item.reference||'')+'">';
  }else if(kind==='teacher'){
   title='Affectation d’un professeur';
   fields=select+
