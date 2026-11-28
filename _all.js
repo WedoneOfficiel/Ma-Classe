@@ -2499,12 +2499,17 @@ function unpublishBulletin(id){const b=db.bulletins.find(x=>x.id===id);if(!b||!b
 /* V21.17 — interface Évaluations reconstruite autour du moteur métier. */
 
 function v217CompetencyLibraryItems(){
- const raw=Array.isArray(db.competencyLibrary)?db.competencyLibrary:[],legacyLevels=competencyLevels(),seen=new Set(),items=[];
+ const raw=Array.isArray(db.competencyLibrary)?db.competencyLibrary:[],legacyLevels=competencyLevels();
+ const subjects=db.settings?.competencySubjects||{},descriptions=db.settings?.competencyDescriptions||{};
+ const seen=new Set(),items=[];
  raw.forEach((x,i)=>{
   const name=String(typeof x==='string'?x:(x?.name||x?.label||'')).trim();if(!name)return;
   const key=name.toLocaleLowerCase('fr-FR');if(seen.has(key))return;seen.add(key);
   const legacy=legacyLevels[name];
-  items.push({id:typeof x==='string'?'legacy-'+i:(x.id||'comp-'+i),name,level:String(typeof x==='string'?(legacy||[]).join('|'):(x.level||((legacy||[]).join('|')))),subject:String(typeof x==='string'?'':(x.subject||'')),description:String(typeof x==='string'?'':(x.description||''))});
+  items.push({id:typeof x==='string'?'legacy-'+i:(x.id||'comp-'+i),name,
+   level:String(typeof x==='string'?Array.isArray(legacy)?legacy.join('|'):legacy||'':(x.level||((Array.isArray(legacy)?legacy.join('|'):legacy)||''))),
+   subject:String(typeof x==='string'?(subjects[name]||''):(x.subject||subjects[name]||'')),
+   description:String(typeof x==='string'?(descriptions[name]||''):(x.description||descriptions[name]||''))});
  });
  return items;
 }
@@ -2521,24 +2526,36 @@ function v217EnsureLegacyCompetencies(){
 }
 function v217EnsureCompetencyEntry(name,level='',subject='',description='',replaceScope=false){
  const label=String(name||'').trim();if(!label)return null;
- db.competencyLibrary??=[];db.settings??={};db.settings.competencyLevels??={};
- const needle=label.toLocaleLowerCase('fr-FR'),indices=[];
- db.competencyLibrary.forEach((x,i)=>{const n=String(typeof x==='string'?x:(x?.name||x?.label||'')).trim();if(n.toLocaleLowerCase('fr-FR')===needle)indices.push(i)});
- let entry;
- if(!indices.length){entry={id:uid(),name:label,level:String(level||''),subject:String(subject||''),description:String(description||'')};db.competencyLibrary.push(entry)}
- else{
-  const first=indices[0],raw=db.competencyLibrary[first],oldLevel=String(typeof raw==='string'?(competencyLevels()[label]||[]).join('|'):(raw.level||'')),oldSubject=String(typeof raw==='string'?'':(raw.subject||''));
-  entry=typeof raw==='string'?{id:uid(),name:label,level:oldLevel,subject:oldSubject,description:''}:{...raw,id:raw.id||uid(),name:label};
-  if(replaceScope){entry.level=String(level||'');entry.subject=String(subject||'');entry.description=String(description||'')}
-  else{entry.level=!oldLevel||!level?'':[...new Set(oldLevel.split('|').concat(String(level).split('|')).map(x=>x.trim()).filter(Boolean))].join('|');entry.subject=!oldSubject||!subject?'':[...new Set(oldSubject.split('|').concat(String(subject).split('|')).map(x=>x.trim()).filter(Boolean))].join('|');if(description)entry.description=String(description)}
-  db.competencyLibrary[first]=entry;for(let i=indices.length-1;i>=1;i--)db.competencyLibrary.splice(indices[i],1);
+ db.competencyLibrary??=[];db.settings??={};db.settings.competencyLevels??={};db.settings.competencySubjects??={};db.settings.competencyDescriptions??={};
+ const needle=label.toLocaleLowerCase('fr-FR');
+ const existing=db.competencyLibrary.find(x=>String(typeof x==='string'?x:(x?.name||x?.label||'')).trim().toLocaleLowerCase('fr-FR')===needle);
+ if(!existing)db.competencyLibrary.push(label);
+ const currentLevel=competencyLevels()[label];
+ const oldLevels=Array.isArray(currentLevel)?currentLevel.map(String):String(currentLevel||'').split('|').filter(Boolean);
+ const oldSubject=String(db.settings.competencySubjects[label]||'');
+ let nextLevels=oldLevels,nextSubject=oldSubject,nextDescription=String(db.settings.competencyDescriptions[label]||'');
+ if(replaceScope){
+  nextLevels=String(level||'').split('|').map(x=>x.trim()).filter(Boolean);
+  nextSubject=String(subject||'').trim();
+  nextDescription=String(description||'').trim();
+ }else{
+  if(level){
+   const requested=String(level).split('|').map(x=>x.trim()).filter(Boolean);
+   if(oldLevels.length)nextLevels=[...new Set(oldLevels.concat(requested))];
+  }
+  if(subject&&oldSubject)nextSubject=[...new Set(oldSubject.split('|').concat(String(subject).split('|')).map(x=>x.trim()).filter(Boolean))].join('|');
+  if(description)nextDescription=String(description).trim();
  }
- if(entry.level)competencyLevels()[label]=entry.level.split('|').filter(Boolean);else delete competencyLevels()[label];
- db.competencyLibrary.sort((a,b)=>String(a.name||a).localeCompare(String(b.name||b),'fr'));return entry;
+ if(nextLevels.length)competencyLevels()[label]=nextLevels;else delete competencyLevels()[label];
+ if(nextSubject)db.settings.competencySubjects[label]=nextSubject;else delete db.settings.competencySubjects[label];
+ if(nextDescription)db.settings.competencyDescriptions[label]=nextDescription;else delete db.settings.competencyDescriptions[label];
+ db.competencyLibrary=[...new Set(db.competencyLibrary.map(x=>String(typeof x==='string'?x:(x?.name||x?.label||'')).trim()).filter(Boolean))];
+ db.competencyLibrary.sort((a,b)=>a.localeCompare(b,'fr'));
+ return {id:label,name:label,level:nextLevels.join('|'),subject:nextSubject,description:nextDescription};
 }
 function v217SelectedCompetenciesFromForm(){return [...document.querySelectorAll('[data-v217-competency]:checked')].map(x=>x.value).filter(Boolean)}
 function v217RenderCompetencyPicker(selected=[],level='',subject=''){
- const items=v217CompetencyLibraryItems().filter(c=>v217CompetencyMatches(c,level,subject)),sel=new Set(selected),add='<button type="button" class="btn small" onclick="v217OpenCompetencyManager(true)">+ Créer une compétence</button>';
+ const items=v217CompetencyLibraryItems().filter(c=>v217CompetencyMatches(c,level,subject)),sel=new Set(selected),add='<button type="button" class="btn small" onclick="v217OpenCompetencyManager(true,'',this)">+ Créer une compétence</button>';
  if(!items.length)return '<div class="notice v217CompetencyEmpty">Aucune compétence n’est encore disponible pour '+esc(level||'ce niveau')+' / '+esc(subject||'cette matière')+'. Crée la première ici : '+add+'</div>';
  return '<div class="v217CompetencyPicker"><div class="v217PickerTools"><input class="input" id="v217CompetencySearch" placeholder="Rechercher une compétence…" oninput="v217FilterCompetencies(this.value)"><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(true)">Tout sélectionner</button><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(false)">Tout désélectionner</button>'+add+'</div><div id="v217CompetencyOptions">'+items.map(c=>'<label class="v217CompetencyOption" data-name="'+esc(c.name.toLocaleLowerCase('fr-FR'))+'"><input type="checkbox" data-v217-competency value="'+esc(c.name)+'" '+(sel.has(c.name)?'checked':'')+' onchange="v217SyncCompetenciesHidden()"><span>'+esc(c.name)+(c.description?'<small class="muted" style="display:block">'+esc(c.description)+'</small>':'')+'</span></label>').join('')+'</div><div class="muted" id="v217CompetencyCount">'+items.filter(c=>sel.has(c.name)).length+' sélectionnée(s)</div></div>';
 }
@@ -2552,12 +2569,15 @@ window.v217RefreshCompetencyPicker=function(){
  if(box)box.innerHTML=v217RenderCompetencyPicker(selected,level,subject);
  const c=document.getElementById('v217CompetencyCount');if(c)c.textContent=selected.length+' sélectionnée(s)';
 }
-function v217OpenCompetencyManager(returnToEvaluation=false,editName=''){
+function v217OpenCompetencyManager(returnToEvaluation=false,editName='',sourceElement=null){
  if(returnToEvaluation){
-  const form=document.querySelector('#modal form[data-v217-meta]');
-  if(form){const values=Object.fromEntries(new FormData(form));let criteria=[];try{criteria=JSON.parse(values.criteriaJson||'[]')}catch(_){}
+  const form=sourceElement?.closest?.('form[data-v217-meta]')||document.querySelector('#modal form[data-v217-meta]');
+  if(form){
+   const values=Object.fromEntries(new FormData(form));let criteria=[];try{criteria=JSON.parse(values.criteriaJson||'[]')}catch(_){}
    const selected=String(form.querySelector('#v217DeepCompetencies')?.value||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
    window.v217CompetencyReturnDraft={id:form.dataset.v217MetaId||'',values,criteria,competencies:selected,templateId:document.getElementById('v217DeepTemplate')?.value||''};
+  }else{
+   window.v217CompetencyReturnDraft=null;
   }
  }else if(!editName){window.v217CompetencyReturnDraft=null}
  v217EnsureLegacyCompetencies();
@@ -2661,7 +2681,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
       <div id="v217DeepGridPreview">${v217DeepGridPreview(e)}</div>
       <input type="hidden" name="criteriaJson" id="v217DeepCriteria" value="${esc(JSON.stringify(e.criteria||[]))}">
       <input type="hidden" name="competenciesText" id="v217DeepCompetencies" value="${esc((e.competencies||[]).join('\n'))}">
-      <div class="field" style="margin-top:12px"><label>Compétences à évaluer</label><div class="muted" style="margin-bottom:8px">Choisis les compétences que tu souhaites observer pour cette évaluation. Les niveaux des élèves seront saisis juste après la création.</div><div id="v217CompetencyPicker">${v217RenderCompetencyPicker(e.competencies||[],e.level||cls(cid)?.level||'',e.subject||'')}</div><button type="button" class="btn small section" onclick="v217OpenCompetencyManager(true)">Créer ou gérer les compétences</button></div>
+      <div class="field" style="margin-top:12px"><label>Compétences à évaluer</label><div class="muted" style="margin-bottom:8px">Choisis les compétences que tu souhaites observer pour cette évaluation. Les niveaux des élèves seront saisis juste après la création.</div><div id="v217CompetencyPicker">${v217RenderCompetencyPicker(e.competencies||[],e.level||cls(cid)?.level||'',e.subject||'')}</div><button type="button" class="btn small section" onclick="v217OpenCompetencyManager(true,'',this)">Créer ou gérer les compétences</button></div>
     </div>
    </div>
    <div class="v217GridOption section"><h3>3 · Publication aux élèves</h3><p class="muted">Les notes restent invisibles tant qu’elles ne sont pas publiées. Tu peux les publier immédiatement ou programmer leur mise en ligne.</p>
