@@ -104,9 +104,9 @@ Tant que cette recette n'est pas passée, l'objectif « aucune configuration man
 - [ ] Publier uniquement avec le workflow officiel de release signée ; vérifier le tag, VERSION.txt, APP_VERSION, MC_VERSION, le manifeste, la signature Ed25519 et l'archive.
 - [ ] Après publication, installer la release signée sur la copie d'abord, puis planifier seulement ensuite la mise à jour de la production avec sauvegarde externe vérifiée et arrêt/redémarrage contrôlés.
 
-## État de la livraison au 27 novembre 2026
+## État de la livraison au 28 novembre 2026
 
-- CI de la tête exacte actuelle de la PR : Workflow #2148 / run 46004938689, commit `39156b95fae52049ebc1a3b81cf320724824ff8c` : Linux (tests), macOS Apple Silicon avec installateur et `launchd` réels, et Firefox réel — **3/3 jobs réussis**. L'arbre contient 113 fichiers de tests (68 JavaScript, 45 Python) et 860 invariants intermodules.
+- CI de la tête exacte actuelle de la PR : Workflow #2314 / run 46151246564, commit `35094bc524aa7e312b178284d74f40db9fbb652a` (28 novembre 2026) : Linux (tests), macOS Apple Silicon avec installateur et `launchd` réels, et Firefox réel — **3/3 jobs réussis**. La suite contient 113 fichiers de tests (69 JavaScript, 44 Python) et 860 invariants intermodules. Le parcours Firefox couvre maintenant le formulaire multi-composantes et la création/saisie d'une compétence depuis une évaluation.
 - Dernière release stable : V25.1.1 (v25.1.1).
 - V25.2.0 : candidate, PR #20 ouverte, non fusionnée, non taguée et non publiée ; la dernière tête CI vérifie aussi la sauvegarde/restauration complète et la sécurité du paquet.
 - Recette physique : non effectuée dans cette campagne ; les cases doivent être cochées à partir de résultats réels, pas supposées validées.
