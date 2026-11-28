@@ -2498,27 +2498,104 @@ function unpublishBulletin(id){const b=db.bulletins.find(x=>x.id===id);if(!b||!b
 /* V21.17 — interface Évaluations reconstruite autour du moteur métier. */
 
 function v217CompetencyLibraryItems(){
-  const raw=Array.isArray(db.competencyLibrary)?db.competencyLibrary:[];
-  const legacyLevels=competencyLevels(); return raw.map((x,i)=>{if(typeof x==='string')return {id:'legacy-'+i,name:x,level:(legacyLevels[x]||[]).join('|'),subject:''};return {id:x.id||('comp-'+i),name:String(x.name||x.label||'').trim(),level:String(x.level||((legacyLevels[x.name]||[]).join('|'))),subject:String(x.subject||'').trim()}}).filter(x=>x.name);
+ const raw=Array.isArray(db.competencyLibrary)?db.competencyLibrary:[],legacyLevels=competencyLevels(),seen=new Set(),items=[];
+ raw.forEach((x,i)=>{
+  const name=String(typeof x==='string'?x:(x?.name||x?.label||'')).trim();if(!name)return;
+  const key=name.toLocaleLowerCase('fr-FR');if(seen.has(key))return;seen.add(key);
+  const legacy=legacyLevels[name];
+  items.push({id:typeof x==='string'?'legacy-'+i:(x.id||'comp-'+i),name,level:String(typeof x==='string'?(legacy||[]).join('|'):(x.level||((legacy||[]).join('|')))),subject:String(typeof x==='string'?'':(x.subject||'')),description:String(typeof x==='string'?'':(x.description||''))});
+ });
+ return items;
 }
 function v217CompetencyMatches(c,level,subject){
-  const cl=String(c.level||'').trim(),cs=String(c.subject||'').trim();
-  const levelOk=!cl||!level||cl.split('|').map(x=>x.trim()).includes(String(level).trim()); const subjectOk=!cs||!subject||cs.toLocaleLowerCase('fr')===String(subject).trim().toLocaleLowerCase('fr'); return levelOk&&subjectOk;
+ const levels=String(c.level||'').split('|').map(x=>x.trim()).filter(Boolean),subjects=String(c.subject||'').split('|').map(x=>x.trim().toLocaleLowerCase('fr-FR')).filter(Boolean);
+ return (!levels.length||!level||levels.includes(String(level).trim()))&&(!subjects.length||!subject||subjects.includes(String(subject).trim().toLocaleLowerCase('fr-FR')));
 }
-function v217SelectedCompetenciesFromForm(){
-  return [...document.querySelectorAll('[data-v217-competency]:checked')].map(x=>x.value).filter(Boolean);
+function v217EnsureLegacyCompetencies(){
+ db.competencyLibrary??=[];
+ const names=new Set(v217CompetencyLibraryItems().map(x=>x.name.toLocaleLowerCase('fr-FR')));
+ for(const item of [...(db.evaluationTemplates||[]),...(db.evaluations||[])])for(const name of Array.isArray(item?.competencies)?item.competencies:[]){
+  const label=String(name||'').trim(),key=label.toLocaleLowerCase('fr-FR');if(label&&!names.has(key)){db.competencyLibrary.push(label);names.add(key)}
+ }
 }
+function v217EnsureCompetencyEntry(name,level='',subject='',description='',replaceScope=false){
+ const label=String(name||'').trim();if(!label)return null;
+ db.competencyLibrary??=[];db.settings??={};db.settings.competencyLevels??={};
+ const needle=label.toLocaleLowerCase('fr-FR'),indices=[];
+ db.competencyLibrary.forEach((x,i)=>{const n=String(typeof x==='string'?x:(x?.name||x?.label||'')).trim();if(n.toLocaleLowerCase('fr-FR')===needle)indices.push(i)});
+ let entry;
+ if(!indices.length){entry={id:uid(),name:label,level:String(level||''),subject:String(subject||''),description:String(description||'')};db.competencyLibrary.push(entry)}
+ else{
+  const first=indices[0],raw=db.competencyLibrary[first],oldLevel=String(typeof raw==='string'?(competencyLevels()[label]||[]).join('|'):(raw.level||'')),oldSubject=String(typeof raw==='string'?'':(raw.subject||''));
+  entry=typeof raw==='string'?{id:uid(),name:label,level:oldLevel,subject:oldSubject,description:''}:{...raw,id:raw.id||uid(),name:label};
+  if(replaceScope){entry.level=String(level||'');entry.subject=String(subject||'');entry.description=String(description||'')}
+  else{entry.level=!oldLevel||!level?'':[...new Set(oldLevel.split('|').concat(String(level).split('|')).map(x=>x.trim()).filter(Boolean))].join('|');entry.subject=!oldSubject||!subject?'':[...new Set(oldSubject.split('|').concat(String(subject).split('|')).map(x=>x.trim()).filter(Boolean))].join('|');if(description)entry.description=String(description)}
+  db.competencyLibrary[first]=entry;for(let i=indices.length-1;i>=1;i--)db.competencyLibrary.splice(indices[i],1);
+ }
+ if(entry.level)competencyLevels()[label]=entry.level.split('|').filter(Boolean);else delete competencyLevels()[label];
+ db.competencyLibrary.sort((a,b)=>String(a.name||a).localeCompare(String(b.name||b),'fr'));return entry;
+}
+function v217SelectedCompetenciesFromForm(){return [...document.querySelectorAll('[data-v217-competency]:checked')].map(x=>x.value).filter(Boolean)}
 function v217RenderCompetencyPicker(selected=[],level='',subject=''){
-  const items=v217CompetencyLibraryItems().filter(c=>v217CompetencyMatches(c,level,subject));
-  const sel=new Set(selected);
-  if(!items.length)return '<div class="notice">Aucune compétence du référentiel ne correspond à ce niveau et cette matière. Tu peux d’abord en créer une dans la bibliothèque.</div>';
-  return `<div class="v217CompetencyPicker"><div class="v217PickerTools"><input class="input" id="v217CompetencySearch" placeholder="Rechercher une compétence…" oninput="v217FilterCompetencies(this.value)"><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(true)">Tout sélectionner</button><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(false)">Tout désélectionner</button></div><div id="v217CompetencyOptions">${items.map(c=>`<label class="v217CompetencyOption" data-name="${esc(c.name.toLocaleLowerCase('fr-FR'))}"><input type="checkbox" data-v217-competency value="${esc(c.name)}" ${sel.has(c.name)?'checked':''} onchange="v217SyncCompetenciesHidden()"><span>${esc(c.name)}</span></label>`).join('')}</div><div class="muted" id="v217CompetencyCount">${items.filter(c=>sel.has(c.name)).length} sélectionnée(s)</div></div>`;
+ const items=v217CompetencyLibraryItems().filter(c=>v217CompetencyMatches(c,level,subject)),sel=new Set(selected),add='<button type="button" class="btn small" onclick="v217OpenCompetencyManager(true)">+ Créer une compétence</button>';
+ if(!items.length)return '<div class="notice v217CompetencyEmpty">Aucune compétence n’est encore disponible pour '+esc(level||'ce niveau')+' / '+esc(subject||'cette matière')+'. Crée la première ici : '+add+'</div>';
+ return '<div class="v217CompetencyPicker"><div class="v217PickerTools"><input class="input" id="v217CompetencySearch" placeholder="Rechercher une compétence…" oninput="v217FilterCompetencies(this.value)"><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(true)">Tout sélectionner</button><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(false)">Tout désélectionner</button>'+add+'</div><div id="v217CompetencyOptions">'+items.map(c=>'<label class="v217CompetencyOption" data-name="'+esc(c.name.toLocaleLowerCase('fr-FR'))+'"><input type="checkbox" data-v217-competency value="'+esc(c.name)+'" '+(sel.has(c.name)?'checked':'')+'><span>'+esc(c.name)+(c.description?'<small class="muted" style="display:block">'+esc(c.description)+'</small>':'')+'</span></label>').join('')+'</div><div class="muted" id="v217CompetencyCount">'+items.filter(c=>sel.has(c.name)).length+' sélectionnée(s)</div></div>';
 }
 window.v217FilterCompetencies=function(q){const needle=String(q||'').toLocaleLowerCase('fr-FR');document.querySelectorAll('.v217CompetencyOption').forEach(x=>{x.style.display=!needle||x.dataset.name.includes(needle)?'flex':'none'})}
 window.v217ToggleAllCompetencies=function(on){document.querySelectorAll('[data-v217-competency]').forEach(x=>{if(x.closest('.v217CompetencyOption')?.style.display!=='none')x.checked=on});v217SyncCompetenciesHidden()}
-window.v217SyncCompetenciesHidden=function(){const vals=v217SelectedCompetenciesFromForm(),h=document.getElementById('v217DeepCompetencies');if(h)h.value=vals.join('\n');const c=document.getElementById('v217CompetencyCount');if(c)c.textContent=`${vals.length} sélectionnée(s)`}
-window.v217RefreshCompetencyPicker=function(){const f=document.querySelector('#modal form');if(!f)return;const level=f.querySelector('[name="level"]')?.value||'';const subject=f.querySelector('[name="subject"]')?.value||'';const selected=String(f.querySelector('#v217DeepCompetencies')?.value||'').split(/\n/).map(x=>x.trim()).filter(Boolean);const box=document.getElementById('v217CompetencyPicker');if(box)box.innerHTML=v217RenderCompetencyPicker(selected,level,subject);const c=document.getElementById('v217CompetencyCount');if(c)c.textContent=`${selected.length} sélectionnée(s)`}
-
+window.v217SyncCompetenciesHidden=function(){const vals=v217SelectedCompetenciesFromForm(),h=document.getElementById('v217DeepCompetencies');if(h)h.value=vals.join('\n');const c=document.getElementById('v217CompetencyCount');if(c)c.textContent=vals.length+' sélectionnée(s)'}
+window.v217RefreshCompetencyPicker=function(){
+ const f=document.querySelector('#modal form');if(!f)return;
+ const classId=f.querySelector('[name="classId"]')?.value||'',explicitLevel=f.querySelector('[name="level"]')?.value||'',level=explicitLevel||cls(classId)?.level||'',subject=f.querySelector('[name="subject"]')?.value||'';
+ const hidden=f.querySelector('#v217DeepCompetencies'),selected=String(hidden?.value||'').split(/\n/).map(x=>x.trim()).filter(Boolean),box=document.getElementById('v217CompetencyPicker');
+ if(box)box.innerHTML=v217RenderCompetencyPicker(selected,level,subject);
+ const c=document.getElementById('v217CompetencyCount');if(c)c.textContent=selected.length+' sélectionnée(s)';
+}
+function v217OpenCompetencyManager(returnToEvaluation=false,editName=''){
+ if(returnToEvaluation){
+  const form=document.querySelector('#modal form[data-v217-meta]');
+  if(form){const values=Object.fromEntries(new FormData(form));let criteria=[];try{criteria=JSON.parse(values.criteriaJson||'[]')}catch(_){}
+   const selected=String(form.querySelector('#v217DeepCompetencies')?.value||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
+   window.v217CompetencyReturnDraft={id:form.dataset.v217MetaId||'',values,criteria,competencies:selected,templateId:document.getElementById('v217DeepTemplate')?.value||''};
+  }
+ }else if(!editName){window.v217CompetencyReturnDraft=null}
+ v217EnsureLegacyCompetencies();
+ const levels=[...new Set((db.classes||[]).flatMap(c=>[c.level,...(c.levels||[])].filter(Boolean)).concat(Object.values(competencyLevels()).flat()))].sort((a,b)=>a.localeCompare(b,'fr'));
+ const existing=editName?v217CompetencyLibraryItems().find(x=>x.name.toLocaleLowerCase('fr-FR')===String(editName).toLocaleLowerCase('fr-FR')):null;
+ const selectedLevels=String(existing?.level||'').split('|').filter(Boolean),draft=window.v217CompetencyReturnDraft;
+ const contextLevel=draft?String(cls(draft.values.classId)?.level||''):'',contextSubject=draft?String(draft.values.subject||''):'',effectiveLevels=existing?selectedLevels:(returnToEvaluation&&contextLevel?[contextLevel]:[]);
+ const levelMarkup=levels.map(level=>'<label class="check v217CompetencyLevel"><input type="checkbox" name="levels" value="'+esc(level)+'" '+(effectiveLevels.includes(level)?'checked':'')+'><span>'+esc(level)+'</span></label>').join('');
+ const subjects=[...new Set([...(db.subjects||[]).map(x=>typeof x==='string'?x:x?.name||''),...(db.evaluations||[]).map(x=>x.subject||''),...(db.schedule||[]).map(x=>x.subject||'')].map(x=>String(x||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+ const itemMarkup=v217CompetencyLibraryItems().sort((a,b)=>a.name.localeCompare(b.name,'fr')).map(item=>'<div class="v217CompetencyLibraryItem"><div><b>'+esc(item.name)+'</b><small class="muted">'+esc(item.level||'Tous niveaux')+' · '+esc(item.subject||'Toutes matières')+'</small>'+(item.description?'<small class="muted" style="display:block">'+esc(item.description)+'</small>':'')+'</div><button type="button" class="btn small" onclick="v217OpenCompetencyManager(false,'+jsArg(item.name)+')">Modifier la disponibilité</button></div>').join('');
+ const body='<div class="notice">Une compétence décrit un savoir-faire ou un apprentissage que tu souhaites observer chez l’élève. Crée-la ici une seule fois ; elle sera ensuite proposée dans les évaluations correspondant à son niveau et à sa matière. Les niveaux de maîtrise de chaque élève seront renseignés dans le tableau de l’évaluation.</div>'+
+  '<form class="section" onsubmit="v217SaveLibraryCompetency(event,'+jsArg(editName||'')+')">'+
+  '<div class="form"><div class="field"><label>Intitulé de la compétence *</label><input class="input" name="name" required maxlength="160" value="'+esc(existing?.name||'')+'" placeholder="Ex. Comprendre un texte et en dégager les idées principales" '+(existing?'readonly':'')+'></div>'+
+  '<div class="field"><label>Matière (facultatif)</label><input class="input" name="subject" list="v217CompetencySubjects" value="'+esc(existing?.subject||contextSubject)+'" placeholder="Toutes matières si vide"><datalist id="v217CompetencySubjects">'+subjects.map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist></div></div>'+
+  '<div class="field section"><label>Niveaux concernés</label><div class="muted">Ne coche rien pour rendre cette compétence disponible à tous les niveaux.</div><div class="v217CompetencyLevelGrid">'+(levelMarkup||'<span class="muted">Les niveaux seront proposés après la création des classes.</span>')+'</div></div>'+
+  '<div class="field section"><label>Description ou précision (facultatif)</label><textarea class="input" name="description" rows="2" placeholder="Ex. Repérer les informations explicites puis les reformuler">'+esc(existing?.description||'')+'</textarea></div>'+
+  '<div class="modalfoot"><button type="button" class="btn" onclick="v217OpenCompetencyManager(false)">Annuler</button><button class="btn primary">'+(existing?'Enregistrer la disponibilité':'Ajouter au référentiel')+'</button></div></form>'+
+  '<div class="section"><div class="sectionhead"><div><h3>Référentiel enregistré ('+v217CompetencyLibraryItems().length+')</h3><div class="muted">Les compétences disponibles seront filtrées lors de la préparation d’une évaluation.</div></div></div>'+ (itemMarkup||'<div class="empty">Aucune compétence enregistrée pour le moment.</div>')+'</div>'+
+  '<div class="modalfoot"><button class="btn" onclick="closeModal()">Fermer</button></div>';
+ openModal('Référentiel de compétences',body);setWide();
+}
+window.v217OpenCompetencyManager=v217OpenCompetencyManager;
+window.openCompetencyManager=v217OpenCompetencyManager;
+window.v217SaveLibraryCompetency=function(ev,editingName=''){
+ ev.preventDefault();const form=ev.target,data=new FormData(form),name=String(data.get('name')||'').trim(),subject=String(data.get('subject')||'').trim(),description=String(data.get('description')||'').trim();
+ const levels=[...form.querySelectorAll('input[name="levels"]:checked')].map(x=>x.value);
+ if(!name)return toast('Indique un intitulé de compétence.');
+ v217EnsureCompetencyEntry(name,levels.join('|'),subject,description,Boolean(editingName));save();
+ toast(editingName?'Disponibilité mise à jour':'Compétence ajoutée au référentiel');
+ const draft=window.v217CompetencyReturnDraft;
+ if(draft){
+  const values=draft.values||{},id=draft.id||'',published=values.publicationMode==='now'||values.publicationMode==='scheduled';
+  let publishAt='';if(values.publicationMode==='scheduled'&&values.publishAtLocal){const d=new Date(values.publishAtLocal);if(!Number.isNaN(d.getTime()))publishAt=d.toISOString()}
+  const evaluationDraft={classId:values.classId||'',level:cls(values.classId)?.level||'',group:values.group||'',subject:values.subject||'',title:values.title||'',date:values.date||iso(new Date()),coefficient:Number(values.coefficient||1),maxScore:Number(values.maxScore||20),criteria:draft.criteria||[],competencies:[...new Set([...(draft.competencies||[]),name])],published,publishAt};
+  window.v217CompetencyReturnDraft=null;openModal(id?'Modifier l’évaluation':'Créer une évaluation',v217DeepMeta(evaluationDraft,id));setWide();
+  const template=document.getElementById('v217DeepTemplate');if(template&&draft.templateId)template.value=draft.templateId;return;
+ }
+ v217OpenCompetencyManager(false);
+};
 function evaluationModelCriterionMax(c){const direct=Number(c?.maxPoints);if(Number.isFinite(direct)&&direct>0)return direct;return Math.max(0,...(c?.levels||[]).map(Number).filter(Number.isFinite))}
 function evaluationModelCriterionTotal(e,sid){const g=evaluationModelGrade(e,sid);return (e?.criteria||[]).reduce((n,c)=>n+(Number(g?.criterionScores?.[c.id])||0),0)}
 function evaluationModelCriteriaMax(e){return (e?.criteria||[]).reduce((n,c)=>n+evaluationModelCriterionMax(c),0)}
@@ -2567,7 +2644,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
    const templates=(db.evaluationTemplates||[]).filter(t=>{const level=cls(cid)?.level||'';return !t.level||!level||String(t.level).toLocaleLowerCase('fr')===String(level).toLocaleLowerCase('fr')});
    const hasGrid=(e.criteria?.length||e.competencies?.length);
    return `<div class="v217EvalHead"><div><h2>${id?'Modifier l’évaluation':'Créer une évaluation'}</h2><div class="muted">Configure l’essentiel, puis passe directement à la saisie.</div></div></div>
-   <form onsubmit="v217DeepSaveMeta(event,${jsArg(id||'')})">
+   <form data-v217-meta="1" data-v217-meta-id="${esc(id||'')}" onsubmit="v217DeepSaveMeta(event,${jsArg(id||'')})">
    <div class="v217GridMode">
     <div class="v217GridOption"><h3>1 · Informations</h3><p class="muted">Classe, matière, titre et paramètres de notation.</p>
      <div class="form"><div class="field"><label>Classe *</label><select class="select" name="classId" required onchange="v217DeepRefreshGroups(this.value);v217RefreshCompetencyPicker()"><option value="">Choisir</option>${db.classes.map(c=>`<option value="${esc(c.id)}" ${e.classId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
@@ -2583,7 +2660,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
       <div id="v217DeepGridPreview">${v217DeepGridPreview(e)}</div>
       <input type="hidden" name="criteriaJson" id="v217DeepCriteria" value="${esc(JSON.stringify(e.criteria||[]))}">
       <input type="hidden" name="competenciesText" id="v217DeepCompetencies" value="${esc((e.competencies||[]).join('\n'))}">
-      <div class="field" style="margin-top:12px"><label>Compétences de l'évaluation</label><div class="muted" style="margin-bottom:8px">Filtrées automatiquement selon le niveau et la matière. Coche seulement celles à évaluer.</div><div id="v217CompetencyPicker">${v217RenderCompetencyPicker(e.competencies||[],e.level||'',e.subject||'')}</div></div>
+      <div class="field" style="margin-top:12px"><label>Compétences à évaluer</label><div class="muted" style="margin-bottom:8px">Choisis les compétences que tu souhaites observer pour cette évaluation. Les niveaux des élèves seront saisis juste après la création.</div><div id="v217CompetencyPicker">${v217RenderCompetencyPicker(e.competencies||[],e.level||cls(cid)?.level||'',e.subject||'')}</div><button type="button" class="btn small section" onclick="v217OpenCompetencyManager(true)">Créer ou gérer les compétences</button></div>
     </div>
    </div>
    <div class="v217GridOption section"><h3>3 · Publication aux élèves</h3><p class="muted">Les notes restent invisibles tant qu’elles ne sont pas publiées. Tu peux les publier immédiatement ou programmer leur mise en ligne.</p>
@@ -2602,7 +2679,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
    else if(mode==='now'){o.published=true;o.publishAt=''}
    else{o.published=false;o.publishAt=''}
    delete o.publicationMode;delete o.publishAtLocal;
-   const selectedClass=cls(o.classId); o.level=String(selectedClass?.level||o.level||'').trim();delete o.criteriaJson;delete o.competenciesText;db.competencyLibrary??=[];o.competencies.forEach(c=>{if(!db.competencyLibrary.includes(c))db.competencyLibrary.push(c)});if(id){const e=db.evaluations.find(x=>x.id===id);if(!e)return;Object.assign(e,o);evaluationModelNormalize(e);save();toast('Évaluation enregistrée');v217DeepOpenEvaluation(id)}else{const e={id:uid(),...o,grades:[],competencies:o.competencies||[],criteria:o.criteria||[]};e.grades=evaluationModelTargetStudents(db,e).map(s=>({studentId:s.id,value:'',comment:'',competencyRatings:{},criterionScores:{}}));db.evaluations.push(e);auditEvent('Évaluation créée',e.title||'Évaluation');save();toast('Évaluation créée');v217DeepOpenEvaluation(e.id)}}
+   const selectedClass=cls(o.classId); o.level=String(selectedClass?.level||o.level||'').trim();delete o.criteriaJson;delete o.competenciesText;db.competencyLibrary??=[];o.competencies.forEach(c=>v217EnsureCompetencyEntry(c,o.level,o.subject,'',false));if(id){const e=db.evaluations.find(x=>x.id===id);if(!e)return;Object.assign(e,o);evaluationModelNormalize(e);save();toast('Évaluation enregistrée');v217DeepOpenEvaluation(id)}else{const e={id:uid(),...o,grades:[],competencies:o.competencies||[],criteria:o.criteria||[]};e.grades=evaluationModelTargetStudents(db,e).map(s=>({studentId:s.id,value:'',comment:'',competencyRatings:{},criterionScores:{}}));db.evaluations.push(e);auditEvent('Évaluation créée',e.title||'Évaluation');save();toast('Évaluation créée');v217DeepOpenEvaluation(e.id)}}
  function v217CriteriaLevelOptions(c,g){return `<option value="">—</option>${(c.levels||[]).map(v=>`<option value="${esc(v)}" ${String(g?.criterionScores?.[c.id]??'')===String(v)?'selected':''}>${esc(v)}</option>`).join('')}`}
  window.v217DeepGradeKey=function(ev,eid,sid){const key=ev.key;if(!['Enter','ArrowDown','ArrowUp','Tab'].includes(key))return;if(ev.shiftKey&&key==='Tab')return;const inputs=[...document.querySelectorAll('.v217GradeInput')];const i=inputs.indexOf(ev.target);if(i<0)return;let n=i+(key==='ArrowUp'?-1:key==='ArrowDown'||key==='Enter'||key==='Tab'?1:0);if(n>=0&&n<inputs.length){ev.preventDefault();inputs[n].focus();inputs[n].select()}}
  window.v217DeepSetGrade=function(eid,sid,v,el){const evaluation=db.evaluations.find(x=>x.id===eid);if(!evaluation||(authUser?.role==='teacher'&&!canEditEvaluation(evaluation)))return toast('Modification non autorisée pour cette matière.');const r=evaluationModelSetGrade(db,eid,sid,cleanValue(v));if(!r.ok){toast(r.error==='invalid_grade'?`Note entre 0 et ${r.max}.`:'Évaluation introuvable.');if(el)el.focus();return}save();if(el){el.closest('tr')?.classList.add('v217RowDone');const s=el.closest('tr')?.querySelector('.v217Saved');if(s){s.textContent='✓';setTimeout(()=>s.textContent='',1000)}}}
@@ -2628,7 +2705,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
    const t=id?db.evaluationTemplates.find(x=>x.id===id):null;
    const payload={name,level,subject,title,competencies,criteria};
    if(t)Object.assign(t,payload);else db.evaluationTemplates.push({id:uid(),...payload,createdAt:new Date().toISOString()});
-   competencies.forEach(c=>{if(!v217CompetencyLibraryItems().some(x=>x.name===c&&x.level===level&&x.subject===subject))db.competencyLibrary.push({id:uid(),name:c,level,subject})});
+   competencies.forEach(c=>v217EnsureCompetencyEntry(c,level,subject,'',false));
    db.competencyLibrary.sort((a,b)=>String(a.name||a).localeCompare(String(b.name||b),'fr'));
    save();toast(t?'Grille mise à jour':'Grille enregistrée');v217DeepManageGrids();
  }
@@ -2638,7 +2715,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
    const levels=[...new Set(db.classes.flatMap(c=>[c.level,...(c.levels||[])].filter(Boolean)))].sort((a,b)=>a.localeCompare(b,'fr'));
    const selected=editing?.competencies||[], level=editing?.level||'', subject=editing?.subject||'';
    openModal(editing?'Modifier la grille':'Grilles d’évaluation',`<div class="v217EvalHead"><div><h2>${editing?'Modifier la grille':'Bibliothèque de grilles'}</h2><div class="muted">Une grille est optionnelle. Le référentiel est filtré par niveau et matière pour garder la sélection simple.</div></div></div>
-   <div class="notice">💡 Une grille peut contenir des <b>critères</b>, des <b>compétences</b>, ou les deux. Une évaluation simple peut rester une simple note.</div>
+   <div class="notice">💡 Une grille peut contenir des <b>critères</b>, des <b>compétences</b>, ou les deux. Une évaluation simple peut rester une simple note. Le référentiel de compétences se gère séparément et reste accessible pendant la préparation d’une évaluation.</div><div class="toolbar section"><button type="button" class="btn" onclick="v217OpenCompetencyManager()">Ouvrir le référentiel de compétences</button></div>
    <form onsubmit="v217DeepSaveTemplate(event,${jsArg(editId||'')})">
     <div class="v217GridMode section">
      <div class="v217GridOption"><h3>1 · Identité</h3><div class="form">
@@ -2657,7 +2734,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
    setWide();
  }
  window.v217RefreshGridCompetencyPicker=function(){const f=document.querySelector('#modal form');if(!f)return;const level=f.querySelector('[name="level"]')?.value||'',subject=f.querySelector('[name="subject"]')?.value||'',selected=v217SelectedCompetenciesFromForm();const box=document.getElementById('v217GridCompetencyPicker');if(box)box.innerHTML=v217RenderCompetencyPicker(selected,level,subject)};
- window.evaluations=function(){const classes=Array.isArray(db.classes)?db.classes:[],contextClass=String(window.classContext||''),first=classes.some(c=>String(c.id)===contextClass)?contextClass:String(classes[0]?.id||''),subjects=[...new Set((db.evaluations||[]).filter(e=>e.classId===first).map(e=>String(e.subject||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));return shell('Évaluations','Saisie des évaluations','Crée une évaluation simple ou active une grille seulement quand elle apporte quelque chose.',`<button class="btn" onclick="v217DeepManageGrids()">Gérer les grilles</button><button class="btn" onclick="openCompetencyReport()">Bilan compétences</button><button class="btn primary" onclick="v217DeepOpenEvaluation()">+ Nouvelle évaluation</button>`)+`<div class="card"><div class="searchRow"><div class="field" style="min-width:220px;flex:1"><label>Classe</label><select class="select" id="evalClassFilter" onchange="renderEvalList()"><option value="">Choisir une classe</option>${classes.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===first?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div><div class="field" style="min-width:220px;flex:1"><label>Matière</label><select class="select" id="evalSubjectFilter" onchange="renderEvalList()" ${first?'':'disabled'}><option value="">Toutes les matières</option>${subjects.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></div></div><div id="evalStats" class="section">${v217EvaluationDashboard(first,'')}</div></div>`}
+ window.evaluations=function(){const classes=Array.isArray(db.classes)?db.classes:[],contextClass=String(window.classContext||''),first=classes.some(c=>String(c.id)===contextClass)?contextClass:String(classes[0]?.id||''),subjects=[...new Set((db.evaluations||[]).filter(e=>e.classId===first).map(e=>String(e.subject||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));return shell('Évaluations','Saisie des évaluations','Crée une évaluation simple ou active une grille seulement quand elle apporte quelque chose.',`<button class="btn" onclick="v217OpenCompetencyManager()">Référentiel de compétences</button><button class="btn" onclick="v217DeepManageGrids()">Grilles d’évaluation</button><button class="btn" onclick="openCompetencyReport()">Bilan des compétences</button><button class="btn primary" onclick="v217DeepOpenEvaluation()">+ Nouvelle évaluation</button>`)+`<div class="card"><div class="searchRow"><div class="field" style="min-width:220px;flex:1"><label>Classe</label><select class="select" id="evalClassFilter" onchange="renderEvalList()"><option value="">Choisir une classe</option>${classes.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===first?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div><div class="field" style="min-width:220px;flex:1"><label>Matière</label><select class="select" id="evalSubjectFilter" onchange="renderEvalList()" ${first?'':'disabled'}><option value="">Toutes les matières</option>${subjects.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select></div></div><div id="evalStats" class="section">${v217EvaluationDashboard(first,'')}</div></div>`}
  window.openEvaluation=window.v217DeepOpenEvaluation;
  window.manageEvaluationGrids=window.v217DeepManageGrids;
 })();
