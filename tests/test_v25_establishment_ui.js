@@ -229,6 +229,13 @@ assert.strictEqual(pick('Collège','6e','Français').hoursPerWeek,4.5,'L’horai
 assert.strictEqual(pick('Collège','3e','Histoire-géographie et EMC').hoursPerWeek,3.5,'Le volume histoire-géographie/EMC de 3e doit être exact.');
 assert.strictEqual(pick('Lycée général','Terminale générale','Philosophie').hoursPerWeek,4,'La philosophie de terminale doit être préremplie.');
 assert.strictEqual(pick('Lycée technologique','Première STMG','Sciences de gestion et numérique').hoursPerWeek,7,'La série STMG doit être préremplie si sélectionnée.');
+assert(pick('Lycée général','Première générale','Mathématiques spécifiques (élèves ne suivant pas la spécialité mathématiques)').hoursBasis==='specialty_choice','Les mathématiques spécifiques de première doivent rester conditionnelles.');
+const sthrSandbox={};
+vm.runInNewContext(generatorSource.slice(curriculumStart,curriculumEnd)+'\\nresult=mcNationalCurriculumCatalog(["Lycée technologique"],["STHR"],[],"2026-2027");',sthrSandbox);
+const sthr=Array.from(sthrSandbox.result);
+assert(sthr.some(x=>x.level==='Seconde STHR'&&x.subject==='Sciences et technologies culinaires'&&x.hoursPerWeek===4),'La seconde STHR doit avoir son programme spécifique.');
+assert(!sthr.some(x=>x.level==='Seconde générale et technologique'),'La seconde STHR ne doit pas recevoir à tort la grille générale de seconde.');
+
 assert(pick('Lycée professionnel','Seconde professionnelle','Enseignements professionnels de la spécialité').details.includes('450 h annuelles'),'Les horaires professionnels doivent rester reliés à leurs volumes annuels.');
 const curriculum2027={};
 vm.runInNewContext(generatorSource.slice(curriculumStart,curriculumEnd)+'\\nresult=mcNationalCurriculumCatalog(["Élémentaire"],[],[],"2027-2028");',curriculum2027);
