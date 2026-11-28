@@ -39,7 +39,7 @@ const generatorSource = fs.readFileSync('_all.js','utf8');
 const generatorGuide = fs.readFileSync('docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md','utf8');
 const generatorServer = fs.readFileSync('server.py','utf8');
 assert(generatorSource.includes("Configurateur de l’établissement avec ChatGPT"),'Le configurateur doit être présenté comme un outil guidé.');
-for (const field of ['schoolYear','periodMode','schoolBreaks','schoolStructureDetails','schoolOrganization','schoolOrganizationDetails']) {
+for (const field of ['schoolYear','periodMode','schoolBreaks','schoolStructureDetails','schoolOrganization','schoolSiteMode','schoolOrganizationDetails']) {
   assert(generatorSource.includes('name="'+field+'"'), 'Le formulaire doit proposer le champ '+field+'.');
   assert(generatorSource.includes(field+':String(values.'+field+"||'').trim()") || field==='periodMode',
     'Le champ '+field+' doit être collecté dans le dossier enregistré.');
