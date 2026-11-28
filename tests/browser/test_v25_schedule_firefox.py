@@ -362,6 +362,7 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(modal).to_contain_text("Copier les consignes et les données pour ChatGPT")
     expect(modal).to_contain_text("un seul fichier JSON")
     expect(modal).to_contain_text("aucun vrai nom")
+    expect(modal).to_contain_text("Non, conserver les fiches sans compte")
     expect(modal.get_by_role("button",name="Télécharger le modèle JSON")).to_have_count(0)
     expect(modal.get_by_role("button",name="Télécharger le schéma JSON")).to_have_count(0)
     expect(modal.get_by_role("button",name="Télécharger les instructions")).to_have_count(0)
