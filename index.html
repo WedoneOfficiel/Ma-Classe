@@ -2406,7 +2406,22 @@ html[data-mc-theme="dark"] .bulletin::before{
 #establishmentBriefForm .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #establishmentBriefForm .actions .btn{margin:0}
 @media(max-width:680px){.settingsEstablishmentCard{margin-top:16px}.establishmentBriefGrid{gap:12px}#establishmentBriefForm .actions .btn{flex:1 1 220px}}
-</style>
+.establishmentBriefStatus{margin:12px 0 0;line-height:1.6;overflow-wrap:anywhere}
+.establishmentBriefStatus.establishmentBriefStatusReady{background:var(--green2);color:var(--green);border:1px solid rgba(36,138,61,.20)}
+#establishmentBriefForm .establishmentWizardStep{min-width:0}
+#establishmentBriefForm .establishmentWizardStep .sectionhead{margin-bottom:14px}
+#establishmentBriefForm .establishmentWizardStep .field label{line-height:1.4}
+#establishmentBriefForm .establishmentWizardStep .hint{line-height:1.5}
+#establishmentBriefForm .establishmentWizardStep textarea{min-height:96px;line-height:1.5}
+#establishmentBriefForm .establishmentWizardStep input[type=number]{font-variant-numeric:tabular-nums}
+#establishmentBriefForm .establishmentWizardStep select{max-width:100%}
+#establishmentBriefForm .establishmentWizardStep .field.section{margin-top:14px}
+.establishmentBriefGrid>.establishmentWizardStep{align-self:stretch}
+@media(max-width:680px){
+ #establishmentBriefStatus{font-size:12px}
+ #establishmentBriefForm .establishmentWizardStep{padding:14px}
+ #establishmentBriefForm .establishmentWizardStep textarea{min-height:86px}
+}</style>
 
 </head>
 <body>
