@@ -2599,7 +2599,7 @@ function v217OpenCompetencyManager(returnToEvaluation=false,editName='',sourceEl
   '<div class="modalfoot"><button type="button" class="btn" onclick="v217OpenCompetencyManager(false)">Annuler</button><button class="btn primary">'+(existing?'Enregistrer la disponibilité':'Ajouter au référentiel')+'</button></div></form>'+
   '<div class="section"><div class="sectionhead"><div><h3>Référentiel enregistré ('+v217CompetencyLibraryItems().length+')</h3><div class="muted">Les compétences disponibles seront filtrées lors de la préparation d’une évaluation.</div></div></div>'+ (itemMarkup||'<div class="empty">Aucune compétence enregistrée pour le moment.</div>')+'</div>'+
   '<div class="modalfoot"><button class="btn" onclick="closeModal()">Fermer</button></div>';
- openModal('Référentiel de compétences',body);setWide();
+ openModal('Référentiel de compétences',body);document.getElementById('modal')?.classList.add('v217EvalWide');
 }
 window.v217OpenCompetencyManager=v217OpenCompetencyManager;
 window.openCompetencyManager=v217OpenCompetencyManager;
@@ -2614,7 +2614,10 @@ window.v217SaveLibraryCompetency=function(ev,editingName=''){
   const values=draft.values||{},id=draft.id||'',published=values.publicationMode==='now'||values.publicationMode==='scheduled';
   let publishAt='';if(values.publicationMode==='scheduled'&&values.publishAtLocal){const d=new Date(values.publishAtLocal);if(!Number.isNaN(d.getTime()))publishAt=d.toISOString()}
   const evaluationDraft={classId:values.classId||'',level:cls(values.classId)?.level||'',group:values.group||'',subject:values.subject||'',title:values.title||'',date:values.date||iso(new Date()),coefficient:Number(values.coefficient||1),maxScore:Number(values.maxScore||20),criteria:draft.criteria||[],competencies:[...new Set([...(draft.competencies||[]),name])],published,publishAt};
-  window.v217CompetencyReturnDraft=null;openModal(id?'Modifier l’évaluation':'Créer une évaluation',v217DeepMeta(evaluationDraft,id));setWide();
+  window.v217CompetencyReturnDraft=null;
+  const metaHtml=window.v217DeepMeta(evaluationDraft,id);
+  openModal(id?'Modifier l’évaluation':'Créer une évaluation',metaHtml);
+  document.getElementById('modal')?.classList.add('v217EvalWide');
   const template=document.getElementById('v217DeepTemplate');if(template&&draft.templateId)template.value=draft.templateId;return;
  }
  v217OpenCompetencyManager(false);
@@ -2691,6 +2694,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
     <div class="field"><label>Date et heure de publication</label><input class="input" type="datetime-local" name="publishAtLocal" value="${esc(publicationLocal)}"><small class="muted">Fuseau horaire de ton appareil. Obligatoire si tu choisis une publication programmée.</small></div></div>
    </div>
    <div class="modalfoot"><button type="button" class="btn" onclick="closeModal()">Annuler</button><button class="btn primary">${id?'Enregistrer':'Créer puis saisir les notes'}</button></div></form>`;
+  window.v217DeepMeta=v217DeepMeta;
  }
  function v217DeepGridPreview(e){const c=e.criteria||[],k=e.competencies||[];if(!c.length&&!k.length)return '<div class="notice">📝 <b>Note uniquement</b><br><small>Le tableau de saisie restera compact.</small></div>';return `<div class="notice">📋 <b>Grille active</b><br><small>${c.length} critère(s)${k.length?' · '+k.length+' compétence(s)':''}. Elle sera affichée directement dans le tableau de saisie.</small></div>`}
  window.v217DeepRefreshGroups=function(cid){const el=document.getElementById('v217DeepGroup');if(!el)return;el.innerHTML='<option value="">Classe entière</option>'+groups(cid).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}
