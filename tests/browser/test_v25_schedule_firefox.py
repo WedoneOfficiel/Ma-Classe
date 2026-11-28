@@ -385,7 +385,7 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     prefetched_classes=modal.locator('#establishmentClassRows [data-plan-row="class"]')
     prefetched_subjects=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')
     expect(prefetched_classes).to_have_count(7)
-    expect(prefetched_subjects).to_have_count(52)
+    expect(prefetched_subjects).to_have_count(56)
     language_domain=prefetched_subjects.filter(has=modal.locator('[data-field="subject"][value="Développement et structuration du langage oral et écrit"]')).first
     expect(language_domain.locator('[data-field="hoursPerWeek"]')).to_have_value("")
     expect(language_domain.locator('[data-field="hoursBasis"]')).to_have_value("not_allocated")
