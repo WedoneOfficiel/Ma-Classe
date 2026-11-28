@@ -1045,3 +1045,24 @@ Tests ajoutés : couverture des nouveaux champs et du texte produit dans tests/t
 - Compatibilité ascendante : conversion automatique des anciennes valeurs simples lorsqu'elle est fiable (ex. école maternelle et élémentaire vers deux composantes). Les anciennes valeurs ambiguës, notamment « cité scolaire ou établissement polyvalent », sont conservées dans les précisions et ne sont pas interprétées arbitrairement.
 
 Tests ajoutés/étendus : migration d'anciens libellés, plusieurs composantes dans le prompt, distinction organisation/composantes, périodes variables et consignes multi-sites ; Firefox vérifie la sélection simultanée, l'enregistrement, la réouverture et le prompt copié. **Statut « Supposé résolu » jusqu'à réussite de la nouvelle CI puis essai utilisateur sur la copie isolée.**
+
+### V25.2.0 — formulaire structuré et compétences simplifiées — 28 novembre 2026
+
+**Configurateur établissement**
+- Remplacement des grands pavés de texte pour les classes, matières, professeurs et calendriers par des lignes structurées rattachées à une composante.
+- Classes : composante, niveau, nombre de classes, effectif par classe et noms facultatifs.
+- Matières : composante, niveau, matière, volume hebdomadaire et groupe éventuel.
+- Professeurs : pseudonyme, composante, matières, classes et volume ; un même pseudonyme répété dans plusieurs composantes représente le même profil.
+- Calendriers : jours, début/fin des cours, pause méridienne, récréations et particularités par composante.
+- Les notes libres antérieures sont conservées dans un panneau replié et complètent les lignes structurées au lieu d'être supprimées.
+- Ajout de validations de cohérence avant sauvegarde/copie, d'un récapitulatif des lignes et de valeurs de composante préremplies quand une seule composante est sélectionnée.
+
+**Compétences**
+- Accès direct « Référentiel de compétences » depuis la page Évaluations ; accès « Créer ou gérer les compétences » depuis le formulaire d'une évaluation.
+- Une liste filtrée vide propose maintenant « Créer une compétence » au lieu de renvoyer vers une bibliothèque sans action accessible.
+- La création depuis une évaluation capture le brouillon (classe, groupe, matière, titre, date, barème, critères, compétences déjà sélectionnées et publication), ouvre le référentiel puis restaure l'évaluation avec la nouvelle compétence cochée.
+- Référentiel : intitulé stable, matière facultative, plusieurs niveaux possibles, description facultative ; le nom existant reste non modifiable afin de préserver les références historiques.
+- Filtrage corrigé : le niveau de la classe sélectionnée est utilisé lorsque le formulaire ne porte pas de champ niveau dédié.
+- Les anciens libellés de compétences des évaluations et grilles sont rapatriés au référentiel si nécessaire, sans doublons ; les notes chiffrées et niveaux de maîtrise existants restent attachés aux mêmes libellés.
+
+Tests ajoutés/étendus : tests unitaires du configurateur structuré, des anciennes données de compétences, des doublons, du filtrage niveau/matière et du moteur de niveaux 1–4 ; parcours Firefox réel de configuration multi-composantes, sauvegarde/réouverture, copie du prompt, création d'une compétence dans une évaluation et saisie d'un niveau pour l'élève. **Statut « Supposé résolu » jusqu'à réussite de la CI finale et recette utilisateur sur copie isolée.**
