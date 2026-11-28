@@ -23,7 +23,8 @@ Le cadrage distingue désormais les composantes pédagogiques (sélection multip
 
 - nom et année scolaire ;
 - plusieurs composantes pédagogiques sélectionnables simultanément : maternelle, élémentaire, collège, lycée général, lycée technologique, lycée professionnel, post-bac, CFA/apprentissage, formation continue ou autre composante ;
-- organisation du regroupement distinguée des composantes : site unique, groupe scolaire, cité scolaire, établissement polyvalent, plusieurs sites/antennes ou réseau ; précisions libres sur les bâtiments et les sites ;
+- structure du regroupement distinguée des composantes : établissement autonome, groupe scolaire, cité scolaire, établissement polyvalent, réseau ou autre ;
+- implantation physique séparée : site unique ou plusieurs sites/antennes ; précisions libres sur les bâtiments, les liaisons et les déplacements ;
 - structure des classes détaillée séparément pour chaque niveau et chaque composante : nombre de classes, noms exacts et effectifs prévus ;
 - organisation par trimestres, semestres ou régime variable selon les classes/composantes ;
 - création ou non des fiches élèves, avec des pseudonymes générés ;
