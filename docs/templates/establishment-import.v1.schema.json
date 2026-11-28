@@ -111,13 +111,38 @@
                   "maxLength": 80
                 },
                 "hoursPerWeek": {
-                  "type": "number",
-                  "exclusiveMinimum": 0,
-                  "maximum": 40
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 40
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "group": {
                   "type": "string",
                   "maxLength": 80
+                },
+                "details": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "hoursBasis": {
+                  "enum": [
+                    "weekly",
+                    "cycle_average",
+                    "annual_to_weekly",
+                    "not_allocated",
+                    "global_cycle",
+                    "specialty_choice"
+                  ]
+                },
+                "reference": {
+                  "type": "string",
+                  "maxLength": 400
                 }
               }
             }
