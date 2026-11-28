@@ -443,6 +443,40 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertNotIn("_normalized", public)
         self.assertTrue(public["valid"])
 
+    def test_curriculum_domain_without_fixed_hourly_allocation_is_preserved(self):
+        bundle = sample_bundle()
+        bundle["classes"][0]["subjectRequirements"] = [{
+            "subject": "Développement et structuration du langage oral et écrit",
+            "hoursPerWeek": None,
+            "group": "",
+            "details": "Oral, vocabulaire, phonologie, lecture et entrée dans l'écrit.",
+            "hoursBasis": "not_allocated",
+            "reference": "BO n° 19 du 7 mai 2026",
+        }]
+        validation = importer.validate_bundle(bundle)
+        self.assertEqual(validation["errors"], [])
+        data, _, _ = importer.build_data(
+            bundle,
+            {},
+            password_hasher=lambda value: "HASH:" + value,
+            token_factory=lambda size: "generated-token",
+        )
+        requirement = data["classes"][0]["subjectRequirements"][0]
+        self.assertIsNone(requirement["hoursPerWeek"])
+        self.assertEqual(requirement["hoursBasis"], "not_allocated")
+        self.assertIn("vocabulaire", requirement["details"])
+        self.assertEqual(requirement["reference"], "BO n° 19 du 7 mai 2026")
+
+    def test_null_subject_hours_require_explicit_non_allocated_basis(self):
+        bundle = sample_bundle()
+        bundle["classes"][0]["subjectRequirements"] = [{
+            "subject": "Français",
+            "hoursPerWeek": None,
+            "details": "Lecture et écriture",
+        }]
+        errors = "\\n".join(importer.validate_bundle(bundle)["errors"])
+        self.assertIn("hoursBasis='not_allocated'", errors)
+
     def test_empty_schedule_and_students_are_warnings_not_fatal(self):
         bundle = sample_bundle()
         bundle["students"] = []
