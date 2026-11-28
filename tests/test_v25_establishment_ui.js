@@ -57,12 +57,16 @@ assert(generatorSource.includes('Plusieurs sites / antennes')&&generatorSource.i
 
 assert(generatorSource.includes('function collectEstablishmentPlanRows(form,kind)')&&generatorSource.includes('function validateEstablishmentBrief(brief)'),
   'Le configurateur doit collecter et valider les lignes structurées.');
-for (const key of ['classStructures','subjectPlans','teacherPlans','componentSchedules']) {
+for (const key of ['classStructures','subjectPlans','teacherPlans','componentSchedules','roomStructures']) {
   assert(generatorSource.includes(key+',' ) || generatorSource.includes(key+':'),
     'Le dossier sauvegardé doit contenir '+key+'.');
 }
-assert(generatorSource.includes("if(kind==='class')")&&generatorSource.includes("else if(kind==='subject')")&&generatorSource.includes("else if(kind==='teacher')")&&generatorSource.includes("else if(kind==='schedule')"),
-  'Le formulaire doit permettre d’ajouter des lignes de classes, matières, professeurs et calendriers.');
+assert(generatorSource.includes("if(kind==='class')")&&generatorSource.includes("else if(kind==='subject')")&&generatorSource.includes("else if(kind==='teacher')")&&generatorSource.includes("else if(kind==='schedule')")&&generatorSource.includes("else if(kind==='room')"),
+  'Le formulaire doit permettre d’ajouter des lignes de classes, matières, professeurs, calendriers et salles.');
+assert(generatorSource.includes('establishmentRoomRows')&&generatorSource.includes("const roomStructures=collectEstablishmentPlanRows(form,'room')"),
+  'Les salles doivent être décrites ligne par ligne et intégrées aux réponses sauvegardées.');
+assert(generatorSource.includes('SALLES STRUCTURÉES : roomStructures')&&generatorSource.includes('Utilise roomStructures comme liste prioritaire'),
+  'Le prompt doit transmettre les salles connues comme source prioritaire.');
 assert(generatorSource.includes('function addEstablishmentPlanRow(kind)')&&generatorSource.includes('function removeEstablishmentPlanRow(button)'),
   'La Direction doit pouvoir ajouter et retirer les lignes structurées.');
 assert(generatorSource.includes('classPlanStructured')&&generatorSource.includes('subjectPlanStructured')&&generatorSource.includes('teacherPlanStructured')&&generatorSource.includes('schoolDaysStructured'),
@@ -93,7 +97,7 @@ const promptFunctionEnd=generatorSource.indexOf('async function copyEstablishmen
 assert(promptFunctionStart>=0&&promptFunctionEnd>promptFunctionStart,'La fonction de génération des consignes doit rester isolable.');
 const promptSandbox={};
 vm.runInNewContext(generatorSource.slice(promptFunctionStart,promptFunctionEnd)+
-  '\nresult=establishmentBriefPrompt({schoolTypes:["Collège","Lycée professionnel"],schoolOrganization:"Cité scolaire",schoolSiteMode:"Plusieurs sites / antennes",schoolStructureDetails:"Section européenne",schoolOrganizationDetails:"Bâtiments séparés",schoolYear:"2026-2027",periodMode:"variable",classStructures:[{component:"Collège",level:"6e",classCount:2,studentsPerClass:28,classNames:"6A, 6B"}],subjectPlans:[{component:"Collège",level:"6e",subject:"Français",hoursPerWeek:4,group:""}],teacherPlans:[{component:"Collège",pseudonym:"Professeur 01",subjects:"Français",classes:"6A, 6B",hoursPerWeek:18}],componentSchedules:[{component:"Collège",days:["Lundi","Mardi"],start:"08:00",end:"17:00",lunchStart:"12:00",lunchEnd:"13:30",breakNotes:"Récréation : 10:15–10:30",notes:""}],schoolBreaks:"Pause 12h-13h30",teacherCount:1,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"Collège | 6e | Français | 4 h/semaine",classPlan:"Collège | 6e | 2 classe(s)",teacherPlan:"Professeur 01 | Collège",schoolDays:"Collège : Lundi, Mardi",schoolHours:"Collège : 08:00–17:00",constraints:""});',
+  '\nresult=establishmentBriefPrompt({schoolTypes:["Collège","Lycée professionnel"],schoolOrganization:"Cité scolaire",schoolSiteMode:"Plusieurs sites / antennes",schoolStructureDetails:"Section européenne",schoolOrganizationDetails:"Bâtiments séparés",schoolYear:"2026-2027",periodMode:"variable",classStructures:[{component:"Collège",level:"6e",classCount:2,studentsPerClass:28,classNames:"6A, 6B"}],subjectPlans:[{component:"Collège",level:"6e",subject:"Français",hoursPerWeek:4,group:""}],teacherPlans:[{component:"Collège",pseudonym:"Professeur 01",subjects:"Français",classes:"6A, 6B",hoursPerWeek:18}],componentSchedules:[{component:"Collège",days:["Lundi","Mardi"],start:"08:00",end:"17:00",lunchStart:"12:00",lunchEnd:"13:30",breakNotes:"Récréation : 10:15–10:30",notes:""}],roomStructures:[{id:"room-1",site:"Site A",name:"Salle 101",type:"Salle ordinaire",capacity:30,equipment:"vidéoprojecteur",unavailableNotes:""}],schoolBreaks:"Pause 12h-13h30",teacherCount:1,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"Collège | 6e | Français | 4 h/semaine",classPlan:"Collège | 6e | 2 classe(s)",teacherPlan:"Professeur 01 | Collège",schoolDays:"Collège : Lundi, Mardi",schoolHours:"Collège : 08:00–17:00",constraints:""});',
   promptSandbox);
 assert(promptSandbox.result.includes('composantes pédagogiques sélectionnées=Collège ; Lycée professionnel')&&promptSandbox.result.includes('structure de regroupement=Cité scolaire')&&promptSandbox.result.includes('implantation=Plusieurs sites / antennes'),
   'Les composantes multiples et l’organisation de l’établissement doivent être injectées séparément.');
@@ -111,8 +115,10 @@ assert.strictEqual((promptSandbox.result.match(/NOMBRE DE PROFESSEURS : teacherC
   'Le nombre de professeurs ne doit être indiqué qu’une seule fois.');
 assert.strictEqual((promptSandbox.result.match(/NOMBRE DE SALLES : roomCount=/g)||[]).length,1,
   'Le nombre de salles ne doit être indiqué qu’une seule fois.');
-assert(promptSandbox.result.includes('classStructures')&&promptSandbox.result.includes('subjectPlans')&&promptSandbox.result.includes('teacherPlans')&&promptSandbox.result.includes('componentSchedules'),
-  'Les lignes de classes, matières, professeurs et calendriers doivent être intégrées au prompt.');
+assert(promptSandbox.result.includes('classStructures')&&promptSandbox.result.includes('subjectPlans')&&promptSandbox.result.includes('teacherPlans')&&promptSandbox.result.includes('componentSchedules')&&promptSandbox.result.includes('roomStructures'),
+  'Les lignes de classes, matières, professeurs, salles et calendriers doivent être intégrées au prompt.');
+assert(promptSandbox.result.includes('Site A')&&promptSandbox.result.includes('Salle 101')&&promptSandbox.result.includes('Salle ordinaire')&&promptSandbox.result.includes('vidéoprojecteur'),
+  'Le site, le nom, le type, la capacité et les équipements des salles doivent parvenir au prompt.');
 assert(promptSandbox.result.includes('Professeur 01')&&promptSandbox.result.includes('Récréation : 10:15–10:30'),
   'Les affectations et horaires particuliers des composantes doivent être conservés.');
 assert(promptSandbox.result.includes('même pseudonyme apparaît dans plusieurs composantes'),
@@ -181,3 +187,20 @@ console.log('OK — Import établissement : schéma, exemple, documentation, éc
   assert.strictEqual(exported.schedule[0].teachers[0],'professeur_1','Les références professeur doivent être pseudonymisées.');
   console.log('OK — export réel du contexte établissement sans identité ni coordonnée.');
 }
+
+
+// Validation des lignes de salles, des doublons et de la cohérence des quantités.
+const validationStart=generatorSource.indexOf('function validateEstablishmentBrief(brief){');
+const validationEnd=generatorSource.indexOf('\nfunction collectEstablishmentBrief(',validationStart);
+assert(validationStart>=0&&validationEnd>validationStart,'Le validateur du formulaire doit rester isolable.');
+const validationSandbox={};
+vm.runInNewContext(generatorSource.slice(validationStart,validationEnd)+
+  '\nconst base={name:"Établissement test",schoolTypes:["Collège"],classStructures:[{component:"Collège",level:"6e",classCount:1,studentsPerClass:25}],classPlanNotes:"",subjectPlans:[],teacherPlans:[],componentSchedules:[],roomStructures:[{site:"Site A",name:"Salle 101",capacity:30}],teacherCount:null,roomCount:1,createSchedule:false,schoolDaysNotes:"",schoolHoursNotes:"",schoolBreaksNotes:"",subjectPlanNotes:""};'+
+  '\nresult={valid:validateEstablishmentBrief(base),missingRoom:validateEstablishmentBrief({...base,roomStructures:[{site:"Site A",name:"",capacity:30}]}),duplicateRoom:validateEstablishmentBrief({...base,roomStructures:[{site:"Site A",name:"Salle 101",capacity:30},{site:"Site A",name:"Salle 101",capacity:20}],roomCount:2}),tooManyRooms:validateEstablishmentBrief({...base,roomStructures:[{site:"Site A",name:"101",capacity:30},{site:"Site A",name:"102",capacity:30}],roomCount:1}),fractionalCount:validateEstablishmentBrief({...base,teacherCount:1.5}),staleComponent:validateEstablishmentBrief({...base,classStructures:[{component:"Lycée général",level:"2nde",classCount:1,studentsPerClass:25}]})};',
+  validationSandbox);
+assert.strictEqual(validationSandbox.result.valid,'','Une fiche de salle complète doit être acceptée.');
+assert(validationSandbox.result.missingRoom.includes('salle détaillée'),'Une salle sans nom doit être refusée.');
+assert(validationSandbox.result.duplicateRoom.includes('plusieurs fois'),'Une salle dupliquée sur le même site doit être refusée.');
+assert(validationSandbox.result.tooManyRooms.includes('dépasse'),'Le nombre de salles détaillées ne doit pas dépasser le total annoncé.');
+assert(validationSandbox.result.fractionalCount.includes('nombre de professeurs'),'Un nombre de professeurs fractionnaire doit être refusé.');
+assert(validationSandbox.result.staleComponent.includes('n’est plus cochée'),'Une ligne attachée à une composante désélectionnée doit être signalée.');
