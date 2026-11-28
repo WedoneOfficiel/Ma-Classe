@@ -2568,8 +2568,8 @@ html[data-mc-theme="dark"] .bulletin::before{
     if(!s.options.length){const e=document.createElement('div');e.className='mc-select-empty';e.textContent='Aucune option disponible';menu.append(e)}
     wrap.append(trigger,menu); s.parentNode.insertBefore(wrap,s); wrap.append(s);
     trigger.addEventListener('click',()=>{if(s.disabled)return;if(wrap.classList.contains('open'))closeSelect(wrap);else openSelect(wrap)});
-    trigger.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){e.preventDefault();trigger.click()}else if(e.key==='Escape'){wrap.classList.remove('open');syncSelect(wrap)}});
-    menu.addEventListener('keydown',e=>{const rows=[...menu.querySelectorAll('.mc-select-option:not([hidden])')];const cur=document.activeElement,idx=rows.indexOf(cur);if(e.key==='Escape'){e.preventDefault();wrap.classList.remove('open');syncSelect(wrap);trigger.focus()}else if(e.key==='ArrowDown'){e.preventDefault();rows[Math.min(rows.length-1,idx+1)]?.focus()}else if(e.key==='ArrowUp'){e.preventDefault();rows[Math.max(0,idx-1)]?.focus()}else if((e.key==='Enter'||e.key===' ')&&cur?.classList.contains('mc-select-option')){e.preventDefault();cur.click()}});
+    trigger.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){e.preventDefault();trigger.click()}else if(e.key==='Escape'){closeSelect(wrap)}});
+    menu.addEventListener('keydown',e=>{const rows=[...menu.querySelectorAll('.mc-select-option:not([hidden])')];const cur=document.activeElement,idx=rows.indexOf(cur);if(e.key==='Escape'){e.preventDefault();closeSelect(wrap);trigger.focus()}else if(e.key==='ArrowDown'){e.preventDefault();rows[Math.min(rows.length-1,idx+1)]?.focus()}else if(e.key==='ArrowUp'){e.preventDefault();rows[Math.max(0,idx-1)]?.focus()}else if((e.key==='Enter'||e.key===' ')&&cur?.classList.contains('mc-select-option')){e.preventDefault();cur.click()}});
     const observer=new MutationObserver(()=>{rebuildSelectMenu(wrap)});observer.observe(s,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden','selected']});
     syncSelect(wrap);
   }
