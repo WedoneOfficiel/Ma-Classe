@@ -39,11 +39,12 @@ const generatorSource = fs.readFileSync('_all.js','utf8');
 const generatorGuide = fs.readFileSync('docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md','utf8');
 const generatorServer = fs.readFileSync('server.py','utf8');
 assert(generatorSource.includes("Configurateur de l’établissement avec ChatGPT"),'Le configurateur doit être présenté comme un outil guidé.');
-for (const field of ['schoolYear','periodMode','schoolBreaks','schoolStructureDetails','schoolOrganization','schoolSiteMode','schoolOrganizationDetails']) {
+for (const field of ['schoolYear','periodMode','schoolBreaksNotes','schoolStructureDetails','schoolOrganization','schoolSiteMode','schoolOrganizationDetails','classPlanNotes','teacherPlanNotes','subjectPlanNotes']) {
   assert(generatorSource.includes('name="'+field+'"'), 'Le formulaire doit proposer le champ '+field+'.');
-  assert(generatorSource.includes(field+':String(values.'+field+"||'').trim()") || field==='periodMode',
-    'Le champ '+field+' doit être collecté dans le dossier enregistré.');
 }
+assert(generatorSource.includes("schoolBreaks:joinNotes(schoolBreaksStructured,schoolBreaksNotes)"),
+  'Les horaires et pauses structurés doivent continuer à être réunis dans les données transmises.');
+
 assert(generatorSource.includes('name="schoolTypes"')&&generatorSource.includes('input[name="schoolTypes"]:checked'),
   'Les composantes pédagogiques doivent être collectées sous forme de choix multiples.');
 assert(generatorSource.includes('getSavedEstablishmentComponents(saved)'),
@@ -53,6 +54,23 @@ assert(generatorSource.includes("['trimestres','semestres','variable']"),
 
 assert(generatorSource.includes('Plusieurs sites / antennes')&&generatorSource.includes('Cité scolaire'),
   'L’organisation physique doit être distinguée des composantes pédagogiques.');
+
+assert(generatorSource.includes('function collectEstablishmentPlanRows(form,kind)')&&generatorSource.includes('function validateEstablishmentBrief(brief)'),
+  'Le configurateur doit collecter et valider les lignes structurées.');
+for (const key of ['classStructures','subjectPlans','teacherPlans','componentSchedules']) {
+  assert(generatorSource.includes(key+',' ) || generatorSource.includes(key+':'),
+    'Le dossier sauvegardé doit contenir '+key+'.');
+}
+for (const kind of ['class','subject','teacher','schedule']) {
+  assert(generatorSource.includes('data-plan-row="'+kind+'"') || generatorSource.includes("data-plan-row=\\"'+kind+'\\""),
+    'Le formulaire doit permettre d’ajouter des lignes '+kind+'.');
+}
+assert(generatorSource.includes('function addEstablishmentPlanRow(kind)')&&generatorSource.includes('function removeEstablishmentPlanRow(button)'),
+  'La Direction doit pouvoir ajouter et retirer les lignes structurées.');
+assert(generatorSource.includes('classPlanStructured')&&generatorSource.includes('subjectPlanStructured')&&generatorSource.includes('teacherPlanStructured')&&generatorSource.includes('schoolDaysStructured'),
+  'Les données structurées doivent également être converties en consignes lisibles et compatibles.');
+assert(generatorSource.includes('STRUCTURE DES CLASSES : classStructures')&&generatorSource.includes('MATIÈRES STRUCTURÉES : subjectPlans')&&generatorSource.includes('AFFECTATIONS STRUCTURÉES : teacherPlans')&&generatorSource.includes('CALENDRIERS PAR COMPOSANTE : componentSchedules'),
+  'Les consignes ChatGPT doivent traiter les quatre catégories structurées comme sources prioritaires.');
 
 const legacyStart=generatorSource.indexOf('function getSavedEstablishmentComponents(');
 const legacyEnd=generatorSource.indexOf('function collectEstablishmentBrief(',legacyStart);
@@ -67,6 +85,13 @@ assert.strictEqual(migrationSandbox.result.organization,'',
   'L’ancienne catégorie ambiguë ne doit pas être convertie arbitrairement en une organisation.');
 assert(migrationSandbox.result.details.includes('cité scolaire ou établissement polyvalent'),
   'L’ancienne précision ambiguë doit être conservée pour confirmation.');
+assert(promptSandbox.result.includes('classStructures')&&promptSandbox.result.includes('subjectPlans')&&promptSandbox.result.includes('teacherPlans')&&promptSandbox.result.includes('componentSchedules'),
+  'Les lignes de classes, matières, professeurs et calendriers doivent être intégrées au prompt.');
+assert(promptSandbox.result.includes('Professeur 01')&&promptSandbox.result.includes('Récréation : 10:15–10:30'),
+  'Les affectations et horaires particuliers des composantes doivent être conservés.');
+assert(promptSandbox.result.includes('même pseudonyme apparaît dans plusieurs composantes'),
+  'Un enseignant intervenant dans plusieurs composantes doit être dédupliqué en un seul profil.');
+
 assert(generatorSource.includes('function updateEstablishmentBriefSummary()')&&generatorSource.includes('establishmentBriefStatusReady'),
   'Le récapitulatif du formulaire doit être calculé et actualisé côté interface.');
 assert(generatorSource.includes('form.reportValidity()'),
@@ -76,7 +101,7 @@ const promptFunctionEnd=generatorSource.indexOf('async function copyEstablishmen
 assert(promptFunctionStart>=0&&promptFunctionEnd>promptFunctionStart,'La fonction de génération des consignes doit rester isolable.');
 const promptSandbox={};
 vm.runInNewContext(generatorSource.slice(promptFunctionStart,promptFunctionEnd)+
-  '\nresult=establishmentBriefPrompt({schoolTypes:["Collège","Lycée professionnel"],schoolOrganization:"Cité scolaire",schoolSiteMode:"Plusieurs sites / antennes",schoolStructureDetails:"Section européenne",schoolOrganizationDetails:"Bâtiments séparés",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
+  '\\nresult=establishmentBriefPrompt({schoolTypes:["Collège","Lycée professionnel"],schoolOrganization:"Cité scolaire",schoolSiteMode:"Plusieurs sites / antennes",schoolStructureDetails:"Section européenne",schoolOrganizationDetails:"Bâtiments séparés",schoolYear:"2026-2027",periodMode:"variable",classStructures:[{component:"Collège",level:"6e",classCount:2,studentsPerClass:28,classNames:"6A, 6B"}],subjectPlans:[{component:"Collège",level:"6e",subject:"Français",hoursPerWeek:4,group:""}],teacherPlans:[{component:"Collège",pseudonym:"Professeur 01",subjects:"Français",classes:"6A, 6B",hoursPerWeek:18}],componentSchedules:[{component:"Collège",days:["Lundi","Mardi"],start:"08:00",end:"17:00",lunchStart:"12:00",lunchEnd:"13:30",breakNotes:"Récréation : 10:15–10:30",notes:""}],schoolBreaks:"Pause 12h-13h30",teacherCount:1,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"Collège | 6e | Français | 4 h/semaine",classPlan:"Collège | 6e | 2 classe(s)",teacherPlan:"Professeur 01 | Collège",schoolDays:"Collège : Lundi, Mardi",schoolHours:"Collège : 08:00–17:00",constraints:""});',
   promptSandbox);
 assert(promptSandbox.result.includes('composantes pédagogiques sélectionnées=Collège ; Lycée professionnel')&&promptSandbox.result.includes('structure de regroupement=Cité scolaire')&&promptSandbox.result.includes('implantation=Plusieurs sites / antennes'),
   'Les composantes multiples et l’organisation de l’établissement doivent être injectées séparément.');
