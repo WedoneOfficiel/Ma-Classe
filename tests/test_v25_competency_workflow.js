@@ -19,7 +19,7 @@ assert(app.includes('Aucune compétence n’est encore disponible')&&app.include
   'Une liste vide doit proposer immédiatement la création au lieu de renvoyer vers une bibliothèque introuvable.');
 assert(app.includes('data-v217-meta="1"')&&app.includes('window.v217CompetencyReturnDraft'),
   'Le formulaire d’évaluation doit être sauvegardé puis restauré après la création d’une compétence.');
-assert(app.includes("const level=explicitLevel||cls(classId)?.level||''"),
+assert(app.includes("level=explicitLevel||cls(classId)?.level||''"),
   'La liste doit utiliser le niveau de la classe sélectionnée même si aucun champ niveau séparé n’existe.');
 assert(app.includes("v217EnsureCompetencyEntry(c,o.level,o.subject"),
   'Les compétences sélectionnées dans une évaluation doivent être ajoutées sans doublons au référentiel.');
