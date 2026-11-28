@@ -25,14 +25,21 @@ Le cadrage distingue désormais les composantes pédagogiques (sélection multip
 - plusieurs composantes pédagogiques sélectionnables simultanément : maternelle, élémentaire, collège, lycée général, lycée technologique, lycée professionnel, post-bac, CFA/apprentissage, formation continue ou autre composante ;
 - structure du regroupement distinguée des composantes : établissement autonome, groupe scolaire, cité scolaire, établissement polyvalent, réseau ou autre ;
 - implantation physique séparée : site unique ou plusieurs sites/antennes ; précisions libres sur les bâtiments, les liaisons et les déplacements ;
-- structure des classes détaillée séparément pour chaque niveau et chaque composante : nombre de classes, noms exacts et effectifs prévus ;
-- organisation par trimestres, semestres ou régime variable selon les classes/composantes ;
+- structure des classes saisie sous forme de lignes : composante, niveau, nombre de classes, effectif par classe et noms exacts facultatifs ;
+- matières saisies sous forme de lignes : composante, niveau, matière, volume hebdomadaire et groupe éventuel ;
+- affectations des professeurs saisies sous forme de lignes : pseudonyme, composante, matières, classes et volume éventuel. Le même pseudonyme utilisé dans plusieurs composantes représente le même professeur et doit être regroupé dans un seul profil ;
+- calendriers saisis séparément par composante : jours de cours, horaires de début/fin, pause méridienne, récréations et particularités ;
+- anciennes précisions libres conservées dans un panneau replié afin de préserver les formulaires antérieurs et les cas atypiques ;
 - création ou non des fiches élèves, avec des pseudonymes générés ;
-- nombre de professeurs et répartition facultative par matières/classes ;
-- création ou non des profils et comptes professeurs ;
-- matières, volumes horaires et éventuels groupes ;
-- nombre de salles, capacités, types, équipements et indisponibilités ;
-- génération ou non des emplois du temps, jours, horaires d'ouverture, pauses, récréations et contraintes d'organisation.
+- nombre total de professeurs et de salles, capacités, types, équipements et indisponibilités ;
+- création ou non des comptes professeurs ; les fiches et affectations pédagogiques restent créées même sans compte ;
+- génération ou non des emplois du temps, avec contrôle des contraintes communes et particulières de chaque composante.
+
+Les boutons « Ajouter un niveau », « Ajouter une matière », « Ajouter une affectation » et « Ajouter un calendrier » créent des lignes à compléter, sans obliger la Direction à rédiger un long descriptif. Une ligne doit toujours être rattachée à une composante. Les menus de composante suivent les cycles cochés ; si une seule composante est sélectionnée, elle est proposée par défaut.
+
+Le total de professeurs doit correspondre au nombre de pseudonymes uniques. Pour un professeur qui intervient dans plusieurs composantes, réutilise le même pseudonyme dans plusieurs lignes : ChatGPT doit regrouper les affectations dans un seul profil. Les calendriers peuvent varier d'une composante à l'autre.
+
+Les anciennes réponses en texte libre sont affichées dans un panneau replié « Notes libres ou anciennes précisions ». Elles sont conservées et ajoutées comme contexte complémentaire ; elles ne remplacent pas les nouvelles lignes structurées.
 
 Les consignes copiées précisent les relations entre ces données. Elles demandent de vérifier la cohérence de tous les emplois du temps simultanément : aucun chevauchement de classe/groupe, d'enseignant ou de salle, respect des compétences, affectations, capacités, équipements, indisponibilités et volumes horaires.
 
