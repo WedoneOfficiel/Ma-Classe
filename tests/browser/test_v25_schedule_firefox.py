@@ -454,6 +454,7 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     second_room.locator('[data-field="type"]').fill("Atelier professionnel")
     second_room.locator('[data-field="capacity"]').fill("16")
     second_room.locator('[data-field="equipment"]').fill("établis, matériel professionnel")
+    modal.get_by_text("Notes complémentaires ou anciennes précisions sur les salles (facultatif)",exact=True).click()
     modal.locator('[name="roomPlan"]').fill("Les salles spécialisées peuvent être mutualisées selon les calendriers.")
 
     modal.get_by_role("button",name="+ Ajouter un calendrier").click()
