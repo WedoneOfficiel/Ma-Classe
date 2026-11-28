@@ -13,9 +13,14 @@ function fn(name, next) {
 const db = {
   evaluationTemplates: [{ id: 'g1', name: 'Lecture', title: 'Compréhension', subject: 'Français', competencies: ['Comprendre un texte'] }],
   competencyLibrary: [],
+  students: [
+    { id: 's1', classId: 'c1', group: 'A' },
+    { id: 's2', classId: 'c1', group: 'B' }
+  ],
   evaluations: [
     { id: 'e1', classId: 'c1', subject: 'Français', date: '2026-09-10', competencies: ['Comprendre un texte'], grades: [{ studentId: 's1', competencyRatings: { 'Comprendre un texte': '3' } }, { studentId: 's2', competencyRatings: { 'Comprendre un texte': '2' } }] },
-    { id: 'e2', classId: 'c1', subject: 'Maths', date: '2026-09-11', competencies: ['Calculer'], grades: [{ studentId: 's1', competencyRatings: { Calculer: '4' } }] }
+    { id: 'e2', classId: 'c1', subject: 'Maths', date: '2026-09-11', competencies: ['Calculer'], grades: [{ studentId: 's1', competencyRatings: { Calculer: '4' } }] },
+    { id: 'e3', classId: 'c1', group: 'A', subject: 'Français', date: '2026-09-12', competencies: ['Comprendre un texte'], grades: [{ studentId: 's1', competencyRatings: { 'Comprendre un texte': '4' } }, { studentId: 's2', competencyRatings: { 'Comprendre un texte': '1' } }] }
   ]
 };
 const els = {
@@ -32,15 +37,15 @@ const ctx = {
 function $(sel) { if (sel === '#modal') return { querySelector(q) { return els[q.match(/name="([^"]+)/)[1]]; } }; return null; }
 ctx.$ = $;
 vm.createContext(ctx);
-vm.runInContext([fn('applyEvaluationTemplate','saveEvaluationTemplate'), fn('saveEvaluationTemplate','deleteEvaluationTemplate'), fn('deleteEvaluationTemplate','manageEvaluationGrids'), fn('competencySummary','openCompetencyReport')].join('\n'), ctx);
+vm.runInContext([fn('sameId','cls'), fn('evaluationModelTargetStudents'), fn('applyEvaluationTemplate','saveEvaluationTemplate'), fn('saveEvaluationTemplate','deleteEvaluationTemplate'), fn('deleteEvaluationTemplate','manageEvaluationGrids'), fn('competencySummary','openCompetencyReport')].join('\n'), ctx);
 ctx.applyEvaluationTemplate('g1');
 assert.strictEqual(els.subject.value, 'Français');
 assert.strictEqual(els.title.value, 'Compréhension');
 assert.strictEqual(els.competenciesText.value, 'Comprendre un texte');
 const summary = ctx.competencySummary('c1', 'Français');
 assert.strictEqual(summary.length, 1);
-assert.strictEqual(summary[0].count, 2);
-assert.strictEqual(summary[0].average, '2.50');
+assert.strictEqual(summary[0].count, 3, 'La note du groupe B ne doit pas compter dans l’évaluation du groupe A');
+assert.strictEqual(summary[0].average, '3.00');
 assert.strictEqual(ctx.competencySummary('c1', 'Maths')[0].name, 'Calculer');
 ctx.saveEvaluationTemplate({preventDefault(){},target:{values:{name:'Grammaire',subject:'Français',title:'Accords',competenciesText:'Identifier le verbe\nAccorder le sujet et le verbe\nIdentifier le verbe'}}});
 assert.strictEqual(db.evaluationTemplates.length, 2);

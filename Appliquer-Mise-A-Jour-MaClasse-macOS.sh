@@ -72,9 +72,36 @@ except (OSError,ValueError):
 PY
 }
 health_ok() {
-  local expected="$1" host response http_status body_file
-  # Parse the certificate SAN with Python rather than OpenSSL/LibreSSL display text.
-  host="$("$ROOT/.venv/bin/python" - "$DATA/tls/server.crt" <<'PYSAN' 2>/dev/null || true
+  local expected="$1" host response http_status body_file public_name
+  body_file="$(/usr/bin/mktemp "$DATA/.health-check.XXXXXX")" || return 2
+  if [[ -f "$DATA/tls/public-certificate.json" ]]; then
+    if [[ ! -x "$CURRENT/.venv/bin/python" ]]; then
+      /bin/rm -f "$body_file"
+      return 2
+    fi
+    response="$(PYTHONPATH="$CURRENT" "$CURRENT/.venv/bin/python" - "$DATA" <<'PYTLS' 2>/dev/null || true
+import sys
+from network_supervisor import detect_lan_ipv4, load_public_certificate_config
+config = load_public_certificate_config(sys.argv[1])
+address = detect_lan_ipv4()
+if config and address:
+    print(config["hostname"], address)
+PYTLS
+)"
+    read -r public_name host <<<"$response"
+    if [[ -z "$public_name" || -z "$host" ]]; then
+      echo "DEBUG health: certificat public DNS ou adresse LAN introuvable." >&2
+      /bin/rm -f "$body_file"
+      return 2
+    fi
+    if ! http_status="$(/usr/bin/curl --noproxy '*' --silent --connect-timeout 2 --max-time 4 --resolve "$public_name:8765:$host" --output "$body_file" --write-out '%{http_code}' "https://$public_name:8765/api/health" 2>/dev/null)"; then
+      echo "DEBUG health: aucune réponse HTTPS pour $public_name." >&2
+      /bin/rm -f "$body_file"
+      return 2
+    fi
+  else
+    # Parse the private-CA certificate SAN with Python rather than OpenSSL text.
+    host="$("$ROOT/.venv/bin/python" - "$DATA/tls/server.crt" <<'PYSAN' 2>/dev/null || true
 import ipaddress, ssl, sys
 certificate = ssl._ssl._test_decode_cert(sys.argv[1])
 for kind, value in certificate.get("subjectAltName", ()):
@@ -86,18 +113,19 @@ for kind, value in certificate.get("subjectAltName", ()):
             pass
 PYSAN
 )"
-  if [[ -z "$host" ]]; then
-    echo "DEBUG health: aucun SAN IP exploitable dans $DATA/tls/server.crt." >&2
-    /usr/bin/openssl x509 -in "$DATA/tls/server.crt" -noout -ext subjectAltName >&2 2>/dev/null || true
-    return 2
-  fi
-  # Distinguish an unreachable service (retry) from an explicit unhealthy
-  # HTTP response (fail immediately instead of wasting the full retry window).
-  body_file="$(/usr/bin/mktemp "$DATA/.health-check.XXXXXX")" || return 2
-  if ! http_status="$(/usr/bin/curl --noproxy '*' --silent --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" --output "$body_file" --write-out '%{http_code}' "https://$host:8765/api/health" 2>/dev/null)"; then
-    echo "DEBUG health: aucune réponse HTTPS pour $expected." >&2
-    /bin/rm -f "$body_file"
-    return 2
+    if [[ -z "$host" ]]; then
+      echo "DEBUG health: aucun SAN IP exploitable dans $DATA/tls/server.crt." >&2
+      /usr/bin/openssl x509 -in "$DATA/tls/server.crt" -noout -ext subjectAltName >&2 2>/dev/null || true
+      /bin/rm -f "$body_file"
+      return 2
+    fi
+    # Distinguish an unreachable service (retry) from an explicit unhealthy
+    # HTTP response (fail immediately instead of wasting the full retry window).
+    if ! http_status="$(/usr/bin/curl --noproxy '*' --silent --connect-timeout 2 --max-time 4 --cacert "$DATA/tls/ca.crt" --output "$body_file" --write-out '%{http_code}' "https://$host:8765/api/health" 2>/dev/null)"; then
+      echo "DEBUG health: aucune réponse HTTPS pour $expected." >&2
+      /bin/rm -f "$body_file"
+      return 2
+    fi
   fi
   if [[ "$http_status" != "200" ]]; then
     echo "DEBUG health: HTTP $http_status pour $expected." >&2

@@ -1,4 +1,5 @@
 """Tests de cloisonnement des comptes élèves et de leurs rendus."""
+import copy
 import json
 import datetime
 import os
@@ -57,6 +58,19 @@ class StudentScopeTests(unittest.TestCase):
         self.assertEqual(view['cloudItems'],[])
         self.assertNotIn('passwordHash',view['users'][0])
         self.assertEqual([x['id'] for x in view['teachers']],['t1'])
+
+    def test_student_timetable_displays_profile_only_teacher_but_mail_requires_account(self):
+        data=copy.deepcopy(self.data)
+        data['teachers']=[{'id':'t3','teacherId':'t3','role':'teacher','first':'Prof','last':'Sans compte','active':True}]
+        data['classes'][0]['teacherIds'].append('t3')
+        data['schedule'][0]['teacherIds']=['t1','t3']
+        view=server._student_visible_data(data,self.user)
+        by_id={x['id']:x for x in view['teachers']}
+        self.assertIn('t3',by_id)
+        self.assertEqual(by_id['t3']['first'],'Prof')
+        self.assertFalse(by_id['t3']['hasAccount'])
+        self.assertIn('t3',view['schedule'][0]['teacherIds'],'The pupil timetable must retain co-teacher profile IDs so names can be rendered from the teacher directory.')
+        self.assertEqual(server._student_accessible_teacher_ids(data,data['students'][0]),{'t1'})
 
     def test_student_cloud_projection_limits_class_group_and_explicit_shares(self):
         self.data['students'][0]['group']='A'

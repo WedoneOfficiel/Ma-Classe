@@ -1,0 +1,507 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://maclasse.local/schemas/establishment-import-v1.json",
+  "title": "Configuration d'établissement Ma Classe",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "establishment",
+    "classes",
+    "teachers",
+    "students",
+    "rooms",
+    "schedule"
+  ],
+  "properties": {
+    "format": {
+      "const": "maclasse-establishment"
+    },
+    "version": {
+      "const": 1
+    },
+    "establishment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 120
+        }
+      }
+    },
+    "classes": {
+      "type": "array",
+      "maxItems": 300,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "name",
+          "levels"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "levels": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "groups": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "teachers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/key"
+            }
+          },
+          "principalTeacher": {
+            "$ref": "#/$defs/key"
+          },
+          "attendanceMode": {
+            "enum": [
+              "hour",
+              "halfday"
+            ]
+          },
+          "periodMode": {
+            "enum": [
+              "trimestres",
+              "semestres"
+            ]
+          },
+          "expectedStudentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "subjectRequirements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "subject",
+                "hoursPerWeek"
+              ],
+              "properties": {
+                "subject": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "hoursPerWeek": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 40
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "group": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "details": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "hoursBasis": {
+                  "enum": [
+                    "weekly",
+                    "cycle_average",
+                    "annual_to_weekly",
+                    "not_allocated",
+                    "global_cycle",
+                    "specialty_choice"
+                  ]
+                },
+                "reference": {
+                  "type": "string",
+                  "maxLength": 400
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "teachers": {
+      "type": "array",
+      "maxItems": 3000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "first",
+          "last",
+          "subjects"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "first": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "last": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "subjects": {
+            "type": "array",
+            "maxItems": 80,
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/key"
+            }
+          },
+          "username": {
+            "type": "string",
+            "pattern": "^[a-z0-9._-]{3,40}$"
+          },
+          "profileNotes": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "unavailable": {
+            "type": "array",
+            "maxItems": 500,
+            "items": {
+              "$ref": "#/$defs/unavailable"
+            }
+          }
+        }
+      }
+    },
+    "students": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "first",
+          "last",
+          "class"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "first": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "last": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "class": {
+            "$ref": "#/$defs/key"
+          },
+          "level": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "group": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "birth": {
+            "type": "string",
+            "format": "date"
+          },
+          "sex": {
+            "enum": [
+              "",
+              "F",
+              "M",
+              "X"
+            ]
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "name",
+          "capacity"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5000
+          },
+          "equipment": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "unavailable": {
+            "type": "array",
+            "maxItems": 500,
+            "items": {
+              "$ref": "#/$defs/unavailable"
+            }
+          }
+        }
+      }
+    },
+    "schedule": {
+      "type": "array",
+      "maxItems": 50000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "day",
+          "start",
+          "end",
+          "subject",
+          "startDate"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/key"
+          },
+          "day": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4
+              },
+              {
+                "enum": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "lundi",
+                  "mardi",
+                  "mercredi",
+                  "jeudi",
+                  "vendredi"
+                ]
+              }
+            ]
+          },
+          "start": {
+            "type": "string",
+            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "end": {
+            "type": "string",
+            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "class": {
+            "$ref": "#/$defs/key"
+          },
+          "classes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/$defs/key"
+            }
+          },
+          "group": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "teacher": {
+            "$ref": "#/$defs/key"
+          },
+          "teachers": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/$defs/key"
+            }
+          },
+          "room": {
+            "$ref": "#/$defs/key"
+          },
+          "equipment": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "recurrence": {
+            "enum": [
+              "weekly",
+              "biweekly",
+              "triweekly",
+              "custom",
+              "once"
+            ]
+          },
+          "intervalWeeks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 52
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "exceptions": {
+            "type": "array",
+            "maxItems": 500,
+            "items": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        }
+      }
+    },
+    "createTeacherAccounts": {
+      "type": "boolean",
+      "default": true,
+      "description": "Créer les comptes professeurs localement pendant l'import."
+    },
+    "createStudentProfiles": {
+      "type": "boolean",
+      "default": true,
+      "description": "Créer une fiche pseudonymisée par élève ; false conserve uniquement les effectifs prévus."
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,60}$"
+    },
+    "unavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "day",
+        "start",
+        "end"
+      ],
+      "properties": {
+        "day": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            {
+              "enum": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "lundi",
+                "mardi",
+                "mercredi",
+                "jeudi",
+                "vendredi"
+              ]
+            }
+          ]
+        },
+        "start": {
+          "type": "string",
+          "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+        }
+      }
+    }
+  }
+}

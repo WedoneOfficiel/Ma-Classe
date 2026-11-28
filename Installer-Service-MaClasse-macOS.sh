@@ -4,7 +4,16 @@ umask 077
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 [[ "$(uname -s)" == "Darwin" ]] || { echo "Cet installateur est réservé à macOS."; exit 1; }
 [[ -x "$ROOT/.venv/bin/python" ]] || { echo "Lance d'abord Installer-MaClasse.command."; exit 1; }
-[[ -f "$ROOT/data/tls/server.crt" && -f "$ROOT/data/tls/server.key" && -f "$ROOT/data/tls/ca.crt" ]] || { echo "Initialise d'abord le mode réseau MaClasse pour créer les certificats TLS."; exit 1; }
+if [[ -f "$ROOT/data/tls/public-certificate.json" ]]; then
+  "$ROOT/.venv/bin/python" - "$ROOT/data" <<'PYTLS'
+import sys
+from network_supervisor import load_public_certificate_config
+if not load_public_certificate_config(sys.argv[1]):
+    raise SystemExit("Configuration du certificat public absente.")
+PYTLS
+else
+  [[ -f "$ROOT/data/tls/server.crt" && -f "$ROOT/data/tls/server.key" && -f "$ROOT/data/tls/ca.crt" ]] || { echo "Initialise d'abord le mode réseau MaClasse ou configure un certificat DNS public."; exit 1; }
+fi
 [[ "$(id -u)" -ne 0 ]] || { echo "Ne lance pas ce script avec sudo."; exit 1; }
 LABEL="fr.maclasse.server"
 UPDATE_LABEL="fr.maclasse.update"

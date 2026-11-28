@@ -70,6 +70,10 @@ const context = {
   jsArg: value => JSON.stringify(String(value ?? ''))
 };
 vm.createContext(context);
+const sameIdStart=source.indexOf('function sameId(');
+const sameIdEnd=source.indexOf('function cls(',sameIdStart);
+assert(sameIdStart>=0&&sameIdEnd>sameIdStart,'Le comparateur d’identifiants partagé doit être présent.');
+vm.runInContext(source.slice(sameIdStart,sameIdEnd),context);
 let start = source.indexOf('function studentSchedule(){');
 let end = source.indexOf('function studentScheduleWeek(', start);
 assert(start >= 0 && end > start);

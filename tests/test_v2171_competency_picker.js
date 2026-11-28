@@ -12,9 +12,9 @@ const ctx={window:{},document:{querySelectorAll:()=>[]},competencyLevels:()=>({}
 ]}};
 vm.createContext(ctx);vm.runInContext(js.slice(start,end),ctx);
 let items=ctx.v217CompetencyLibraryItems().filter(c=>ctx.v217CompetencyMatches(c,'5e','Mathématiques'));
-assert.deepStrictEqual(items.map(x=>x.name),['Calculer avec les fractions','Résoudre un problème','Ancienne compétence']);
+assert.deepStrictEqual(Array.from(items,x=>x.name),['Calculer avec les fractions','Résoudre un problème','Ancienne compétence']);
 items=ctx.v217CompetencyLibraryItems().filter(c=>ctx.v217CompetencyMatches(c,'5e','Français'));
-assert.deepStrictEqual(items.map(x=>x.name),['Lire un texte','Ancienne compétence']);
+assert.deepStrictEqual(Array.from(items,x=>x.name),['Lire un texte','Ancienne compétence']);
 assert.strictEqual(ctx.v217CompetencyMatches({name:'x',level:'5e',subject:'Mathématiques'},'4e','Mathématiques'),false);
 const deep=js.slice(start, js.lastIndexOf('window.evaluations=function'));
 for(const needle of ['v217RenderCompetencyPicker','Tout sélectionner','Tout désélectionner','Rechercher une compétence','niveau et la matière','v217DeepEditTemplate']) assert(deep.includes(needle),`missing picker UX: ${needle}`);

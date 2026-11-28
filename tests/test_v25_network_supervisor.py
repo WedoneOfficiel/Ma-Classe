@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 import ipaddress
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -25,6 +26,8 @@ def write_test_certificate(
     path: Path,
     san_ips: list[str] | None = None,
     *,
+    san_dns: list[str] | None = None,
+    private_key_path: Path | None = None,
     not_valid_before: datetime | None = None,
     not_valid_after: datetime | None = None,
 ) -> None:
@@ -43,15 +46,25 @@ def write_test_certificate(
         .not_valid_before(before)
         .not_valid_after(after)
     )
+    names = []
     if san_ips is not None:
+        names.extend(x509.IPAddress(ipaddress.ip_address(value)) for value in san_ips)
+    if san_dns is not None:
+        names.extend(x509.DNSName(value) for value in san_dns)
+    if names:
         builder = builder.add_extension(
-            x509.SubjectAlternativeName([
-                x509.IPAddress(ipaddress.ip_address(value)) for value in san_ips
-            ]),
+            x509.SubjectAlternativeName(names),
             critical=False,
         )
     certificate = builder.sign(key, algorithm=None)
     path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    if private_key_path is not None:
+        private_key_path.write_bytes(key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        ))
+        private_key_path.chmod(0o600)
 
 
 class FakeProcess:
@@ -143,6 +156,309 @@ class NetworkSupervisorTests(unittest.TestCase):
 
             write_test_certificate(cert, None)
             self.assertFalse(supervisor.certificate_matches_host(cert, "192.168.1.42"))
+
+
+    def test_public_dns_certificate_requires_matching_dns_san(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cert = Path(temp) / "fullchain.pem"
+            key = Path(temp) / "privkey.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            self.assertTrue(supervisor.certificate_matches_host(
+                cert, "maclasse.example.test"
+            ))
+            self.assertFalse(supervisor.certificate_matches_host(
+                cert, "other.example.test"
+            ))
+            self.assertFalse(supervisor.certificate_matches_host(
+                cert, "192.168.1.42"
+            ))
+
+    def test_public_dns_certificate_supports_one_level_wildcard_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cert = Path(temp) / "fullchain.pem"
+            write_test_certificate(cert, san_dns=["*.example.test"])
+            self.assertTrue(supervisor.certificate_matches_host(cert, "ecole.example.test"))
+            self.assertFalse(supervisor.certificate_matches_host(cert, "a.b.example.test"))
+
+    def test_public_certificate_config_checks_permissions_hostname_and_key_pair(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp)
+            tls = data / "tls"
+            tls.mkdir()
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+            loaded = supervisor.load_public_certificate_config(data)
+            self.assertEqual(loaded["hostname"], "maclasse.example.test")
+            self.assertEqual(loaded["certificate"], cert.resolve())
+            self.assertEqual(loaded["private_key"], key.resolve())
+            self.assertEqual(len(loaded["fingerprint"]), 64)
+
+            config.chmod(0o644)
+            with self.assertRaises(RuntimeError):
+                supervisor.load_public_certificate_config(data)
+
+    def test_public_certificate_config_reads_each_pair_file_once(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp)
+            tls = data / "tls"
+            tls.mkdir()
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+
+            original_read_bytes = Path.read_bytes
+            reads = {cert.resolve(): 0, key.resolve(): 0}
+
+            def counted_read_bytes(path):
+                if path in reads:
+                    reads[path] += 1
+                return original_read_bytes(path)
+
+            with patch.object(Path, "read_bytes", counted_read_bytes):
+                loaded = supervisor.load_public_certificate_config(data)
+
+            self.assertEqual(reads, {cert.resolve(): 1, key.resolve(): 1})
+            self.assertEqual(len(loaded["fingerprint"]), 64)
+
+    def test_public_certificate_config_wraps_pair_read_race_for_supervisor_retry(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp)
+            tls = data / "tls"
+            tls.mkdir()
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+
+            original_read_bytes = Path.read_bytes
+
+            def disappearing_certificate(path):
+                if path == cert.resolve():
+                    raise FileNotFoundError(str(path))
+                return original_read_bytes(path)
+
+            with patch.object(Path, "read_bytes", disappearing_certificate):
+                with self.assertRaisesRegex(RuntimeError, "nouvel essai requis"):
+                    supervisor.load_public_certificate_config(data)
+
+    def test_public_certificate_config_rejects_mismatched_private_key(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data = Path(temp)
+            tls = data / "tls"
+            tls.mkdir()
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            wrong_key = tls / "wrong-key.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            other_cert = tls / "other.pem"
+            write_test_certificate(
+                other_cert, san_dns=["other.example.test"], private_key_path=wrong_key
+            )
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(wrong_key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+            with self.assertRaisesRegex(RuntimeError, "ne correspondent pas"):
+                supervisor.load_public_certificate_config(data)
+
+    def test_public_certificate_mode_passes_dns_identity_without_generating_local_ca(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            app = Path(temp) / "app"
+            data = Path(temp) / "data"
+            root.mkdir()
+            app.mkdir()
+            tls = data / "tls"
+            tls.mkdir(parents=True)
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+            processes = []
+
+            def spawn(command, **kwargs):
+                process = FakeProcess(command, **kwargs)
+                processes.append(process)
+                return process
+
+            def unexpected_local_ca(_host):
+                raise AssertionError("Le mode TLS public ne doit pas générer d'AC privée.")
+
+            result = supervisor.run_supervisor(
+                root, app, data, "/usr/bin/python3",
+                stop_event=StopAfter(1),
+                detect_ip=lambda: "192.168.1.24",
+                ensure_cert=unexpected_local_ca,
+                spawn=spawn,
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(len(processes), 1)
+            child_env = processes[0].kwargs["env"]
+            self.assertEqual(child_env["MACLASSE_TLS_HOSTNAME"], "maclasse.example.test")
+            self.assertEqual(child_env["MACLASSE_TLS_CERT"], str(cert.resolve()))
+            self.assertEqual(child_env["MACLASSE_TLS_KEY"], str(key.resolve()))
+            self.assertEqual(child_env["MACLASSE_HOST"], "192.168.1.24")
+            self.assertEqual(processes[0].signals, [signal.SIGTERM])
+
+
+    def test_public_certificate_renewal_restarts_the_https_child(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            app = Path(temp) / "app"
+            data = Path(temp) / "data"
+            root.mkdir()
+            app.mkdir()
+            tls = data / "tls"
+            tls.mkdir(parents=True)
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            config = tls / "public-certificate.json"
+            write_test_certificate(
+                cert, san_dns=["maclasse.example.test"], private_key_path=key
+            )
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+            processes = []
+
+            class RenewAfterFirstWait:
+                def __init__(self):
+                    self.calls = 0
+
+                def is_set(self):
+                    return False
+
+                def wait(self, _seconds):
+                    self.calls += 1
+                    if self.calls == 1:
+                        write_test_certificate(
+                            cert, san_dns=["maclasse.example.test"],
+                            private_key_path=key
+                        )
+                        return False
+                    return True
+
+            def spawn(command, **kwargs):
+                process = FakeProcess(command, **kwargs)
+                processes.append(process)
+                return process
+
+            result = supervisor.run_supervisor(
+                root, app, data, "/usr/bin/python3",
+                stop_event=RenewAfterFirstWait(),
+                detect_ip=lambda: "192.168.1.24",
+                spawn=spawn,
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(len(processes), 2)
+            self.assertEqual(processes[0].signals, [signal.SIGTERM])
+            self.assertEqual(processes[1].signals, [signal.SIGTERM])
+
+
+    def test_public_certificate_pair_rotation_keeps_live_listener_until_pair_is_valid(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "root"
+            app = Path(temp) / "app"
+            data = Path(temp) / "data"
+            root.mkdir()
+            app.mkdir()
+            tls = data / "tls"
+            tls.mkdir(parents=True)
+            cert = tls / "fullchain.pem"
+            key = tls / "privkey.pem"
+            next_cert = tls / "next-fullchain.pem"
+            next_key = tls / "next-privkey.pem"
+            write_test_certificate(cert, san_dns=["maclasse.example.test"], private_key_path=key)
+            write_test_certificate(next_cert, san_dns=["maclasse.example.test"], private_key_path=next_key)
+            config = tls / "public-certificate.json"
+            config.write_text(json.dumps({
+                "hostname": "maclasse.example.test",
+                "certificate": str(cert),
+                "private_key": str(key),
+            }), encoding="utf-8")
+            config.chmod(0o600)
+            processes = []
+
+            class AtomicRenewalWindow:
+                def __init__(self):
+                    self.calls = 0
+
+                def is_set(self):
+                    return False
+
+                def wait(self, _seconds):
+                    self.calls += 1
+                    if self.calls == 1:
+                        # Simulate the deploy hook replacing fullchain before privkey.
+                        cert.write_bytes(next_cert.read_bytes())
+                        return False
+                    if self.calls == 2:
+                        key.write_bytes(next_key.read_bytes())
+                        key.chmod(0o600)
+                        return False
+                    return True
+
+            def spawn(command, **kwargs):
+                process = FakeProcess(command, **kwargs)
+                processes.append(process)
+                return process
+
+            result = supervisor.run_supervisor(
+                root, app, data, "/usr/bin/python3",
+                stop_event=AtomicRenewalWindow(),
+                detect_ip=lambda: "192.168.1.24",
+                spawn=spawn,
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(len(processes), 2)
+            # Old listener is stopped only after the new cert/key pair matches.
+            self.assertEqual(processes[0].signals, [signal.SIGTERM])
+            self.assertEqual(processes[1].signals, [signal.SIGTERM])
 
     def test_rebind_stops_old_listener_before_starting_new_address(self):
         processes = []

@@ -3,6 +3,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 cd "$ROOT"
 
+public_tls_hostname() {
+  "$ROOT/.venv/bin/python" - "$ROOT/data" <<'PYTLS'
+import sys
+from network_supervisor import load_public_certificate_config
+config = load_public_certificate_config(sys.argv[1])
+if not config:
+    raise SystemExit("Configuration du certificat public absente.")
+print(config["hostname"])
+PYTLS
+}
+
 if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "Ce lanceur réseau est réservé à macOS."
   exit 1
@@ -10,18 +21,23 @@ fi
 if /bin/launchctl print "gui/$(id -u)/fr.maclasse.server" >/dev/null 2>&1; then
   echo "Le service MaClasse est déjà chargé par launchd."
   echo "Ne démarre pas une seconde copie : elle partagerait la même base de données."
-  IFACE="$(/sbin/route -n get default 2>/dev/null | /usr/bin/awk '/interface:/{print $2; exit}')"
-  HOST=""
-  if [[ -n "$IFACE" && -x ".venv/bin/python" ]]; then
-    HOST="$(/usr/sbin/ipconfig getifaddr "$IFACE" 2>/dev/null || true)"
-    if [[ -z "$HOST" ]] || ! .venv/bin/python -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert isinstance(a,ipaddress.IPv4Address) and a.is_private and not a.is_loopback and not a.is_link_local and not a.is_multicast and not a.is_unspecified' "$HOST" >/dev/null 2>&1; then
-      HOST=""
-    fi
-  fi
-  if [[ -n "$HOST" ]]; then
-    open -a "Firefox" "https://$HOST:8765" >/dev/null 2>&1 || open "https://$HOST:8765" >/dev/null 2>&1 || true
+  if [[ -f "$ROOT/data/tls/public-certificate.json" ]]; then
+    PUBLIC_HOST="$(public_tls_hostname)" || { echo "Configuration TLS publique invalide ; aucun repli non sécurisé n'est effectué."; exit 1; }
+    open -a "Firefox" "https://$PUBLIC_HOST:8765" >/dev/null 2>&1 || open "https://$PUBLIC_HOST:8765" >/dev/null 2>&1 || true
   else
-    echo "Adresse IPv4 privée introuvable sur l'interface réseau active ; consulte data/macos-service-error.log."
+    IFACE="$(/sbin/route -n get default 2>/dev/null | /usr/bin/awk '/interface:/{print $2; exit}')"
+    HOST=""
+    if [[ -n "$IFACE" && -x ".venv/bin/python" ]]; then
+      HOST="$(/usr/sbin/ipconfig getifaddr "$IFACE" 2>/dev/null || true)"
+      if [[ -z "$HOST" ]] || ! .venv/bin/python -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[1]); assert isinstance(a,ipaddress.IPv4Address) and a.is_private and not a.is_loopback and not a.is_link_local and not a.is_multicast and not a.is_unspecified' "$HOST" >/dev/null 2>&1; then
+        HOST=""
+      fi
+    fi
+    if [[ -n "$HOST" ]]; then
+      open -a "Firefox" "https://$HOST:8765" >/dev/null 2>&1 || open "https://$HOST:8765" >/dev/null 2>&1 || true
+    else
+      echo "Adresse IPv4 privée introuvable sur l'interface réseau active ; consulte data/macos-service-error.log."
+    fi
   fi
   read -r -p "Appuie sur Entrée pour fermer cette fenêtre… " _ || true
   exit 0
@@ -80,17 +96,27 @@ if ! .venv/bin/python -c 'import ipaddress,sys; a=ipaddress.ip_address(sys.argv[
   exit 1
 fi
 
-./Configurer-MaClasse-Reseau.command "$LAN_IP"
-CA_CERT="data/tls/ca.crt"
-TLS_CERT="data/tls/server.crt"
-TLS_KEY="data/tls/server.key"
-URL="https://$LAN_IP:8765"
+PUBLIC_MODE=0
+if [[ -f "$ROOT/data/tls/public-certificate.json" ]]; then
+  PUBLIC_HOST="$(public_tls_hostname)" || { echo "Configuration TLS publique invalide ; aucun repli non sécurisé n'est effectué."; exit 1; }
+  PUBLIC_MODE=1
+  URL="https://$PUBLIC_HOST:8765"
+else
+  ./Configurer-MaClasse-Reseau.command "$LAN_IP"
+  CA_CERT="data/tls/ca.crt"
+  URL="https://$LAN_IP:8765"
+fi
 echo "============================================================"
 echo "MaClasse — MODE RÉSEAU PRIVÉ HTTPS"
 echo "Adresse à ouvrir sur le second PC : $URL"
 echo
-echo "HTTPS est activé. Installe data/tls/ca.crt dans les autorités racines de confiance de chaque appareil client."
-echo "Sans cette autorité approuvée, le navigateur affichera un avertissement de certificat."
+if [[ "$PUBLIC_MODE" == "1" ]]; then
+  echo "Certificat DNS public configuré : aucun certificat privé n'est à importer sur les postes."
+  echo "Le DNS local du réseau doit résoudre $PUBLIC_HOST vers l'adresse privée de ce Mac."
+else
+  echo "HTTPS est activé. Installe data/tls/ca.crt dans les autorités racines de confiance de chaque appareil client."
+  echo "Sans cette autorité approuvée, le navigateur affichera un avertissement de certificat."
+fi
 echo "Utilise uniquement un réseau privé maîtrisé ; aucune redirection de port sur la box."
 echo "Pour arrêter le serveur : Ctrl+C."
 echo "============================================================"
@@ -115,7 +141,11 @@ for _ in {1..20}; do
     echo "Le serveur n'a pas pu démarrer."
     exit 1
   fi
-  if /usr/bin/curl --silent --fail --cacert "$CA_CERT" "$URL/api/auth/session" >/dev/null 2>&1; then READY=1; break; fi
+  if [[ "$PUBLIC_MODE" == "1" ]]; then
+    if /usr/bin/curl --noproxy '*' --silent --fail "$URL/api/auth/session" >/dev/null 2>&1; then READY=1; break; fi
+  else
+    if /usr/bin/curl --noproxy '*' --silent --fail --cacert "$CA_CERT" "$URL/api/auth/session" >/dev/null 2>&1; then READY=1; break; fi
+  fi
   sleep 0.5
 done
 if [[ "$READY" -ne 1 ]]; then echo "Le serveur n'a pas répondu après 10 secondes."; exit 1; fi

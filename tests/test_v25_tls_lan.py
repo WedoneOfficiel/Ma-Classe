@@ -1,10 +1,16 @@
 """HTTPS LAN guard and secure-cookie integration test for MaClasse V25."""
 import json, os, shutil, socket, ssl, subprocess, sys, tempfile, time, urllib.request, urllib.error
 from pathlib import Path
+from unittest.mock import patch
+from datetime import datetime, timedelta, timezone
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509.oid import NameOID
 
 SOURCE=Path(__file__).resolve().parents[1]
 
-def request(url, method='GET', payload=None, origin=None, context=None, cookie=None):
+def request(url, method='GET', payload=None, origin=None, context=None, cookie=None, host_header=None):
     headers={}
     body=None
     if payload is not None:
@@ -14,13 +20,130 @@ def request(url, method='GET', payload=None, origin=None, context=None, cookie=N
         headers['Origin']=origin
     if cookie is not None:
         headers['Cookie']=cookie
+    if host_header is not None:
+        headers['Host']=host_header
     req=urllib.request.Request(url,data=body,headers=headers,method=method)
-    opener=urllib.request.build_opener(urllib.request.HTTPSHandler(context=context)) if context else urllib.request.build_opener()
+    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),urllib.request.HTTPSHandler(context=context)) if context else urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
         with opener.open(req,timeout=4) as response:
             return response.status,response.headers,response.read()
     except urllib.error.HTTPError as error:
         return error.code,error.headers,error.read()
+
+
+def create_dns_certificate(certificate_path, key_path, hostname):
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, hostname)])
+    now = datetime.now(timezone.utc)
+    certificate = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(subject)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before((now - timedelta(days=1)).replace(tzinfo=None))
+        .not_valid_after((now + timedelta(days=30)).replace(tzinfo=None))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(hostname)]),
+            critical=False,
+        )
+        .sign(private_key, hashes.SHA256())
+    )
+    certificate_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ))
+    key_path.chmod(0o600)
+
+
+def run_public_dns_hostname_mode():
+    temporary = Path(tempfile.mkdtemp(prefix='maclasse-v25-public-tls-'))
+    app = temporary / 'app'
+    shutil.copytree(SOURCE, app)
+    certificate = temporary / 'trusted-test-root.pem'
+    private_key = temporary / 'privkey.pem'
+    hostname = 'maclasse.example.test'
+    create_dns_certificate(certificate, private_key, hostname)
+    with socket.socket() as sock:
+        sock.bind(('127.0.0.1', 0))
+        port = sock.getsockname()[1]
+    url = f'https://{hostname}:{port}'
+    dns_host = f'{hostname}:{port}'
+    env = os.environ.copy()
+    env.update({
+        'MACLASSE_HOST': '127.0.0.1',
+        'MACLASSE_PORT': str(port),
+        'MACLASSE_TLS_CERT': str(certificate),
+        'MACLASSE_TLS_KEY': str(private_key),
+        'MACLASSE_TLS_HOSTNAME': hostname,
+    })
+    process = subprocess.Popen(
+        ['python3', 'server.py'], cwd=app, env=env,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    context = ssl.create_default_context(cafile=str(certificate))
+    assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+    original_getaddrinfo = socket.getaddrinfo
+
+    def resolve_test_dns(host, port_value, *args, **kwargs):
+        if host == hostname:
+            host = '127.0.0.1'
+        return original_getaddrinfo(host, port_value, *args, **kwargs)
+
+    try:
+        ready = False
+        with patch('socket.getaddrinfo', side_effect=resolve_test_dns):
+            for _ in range(60):
+                try:
+                    status, _, _ = request(
+                        url + '/api/auth/setup-status',
+                        context=context,
+                        host_header=dns_host,
+                    )
+                    if status == 200:
+                        ready = True
+                        break
+                except Exception:
+                    time.sleep(0.1)
+            assert ready, 'TLS listener did not present a trusted certificate for the configured DNS hostname.'
+
+            status, _, body = request(
+                url + '/api/auth/setup',
+                method='POST',
+                payload={
+                    'first': 'Test', 'last': 'DNS',
+                    'username': 'dns-admin',
+                    'password': 'MotDePasseDNSLongEtSolide!',
+                },
+                origin=f'https://{dns_host}',
+                context=context,
+                host_header=dns_host,
+            )
+            assert status == 201, body.decode('utf-8', 'replace')
+
+            attacker = f'attacker.example.test:{port}'
+            status, _, _ = request(
+                url + '/api/auth/login',
+                method='POST',
+                payload={'username': 'dns-admin', 'password': 'MotDePasseDNSLongEtSolide!'},
+                origin=f'https://{attacker}',
+                context=context,
+                host_header=attacker,
+            )
+            assert status == 403, 'Un Host/Origin DNS non configuré doit être refusé.'
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+        shutil.rmtree(temporary, ignore_errors=True)
+    print('OK — TLS public DNS avec validation du nom, chaîne explicitement approuvée et anti-rebinding Host/Origin.')
+
 
 def run():
     if shutil.which('openssl') is None:
@@ -90,6 +213,7 @@ def run():
         result=subprocess.run(['python3','server.py'],cwd=guard_app,env=env,text=True,capture_output=True,timeout=5)
         assert result.returncode==2 and 'exige HTTPS' in result.stdout+result.stderr
     print('OK — TLS serveur, cookie Secure, origine HTTPS stricte et refus du LAN en HTTP.')
+    run_public_dns_hostname_mode()
 
 if __name__=='__main__':
     run()

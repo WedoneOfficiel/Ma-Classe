@@ -108,7 +108,10 @@ def run():
         saved=json.loads((app/'data'/'maclasse.json').read_text())
         teacher_record=next(u for u in saved['users'] if u['id']==teacher_id)
         assert teacher_record['first']=='Alice' and teacher_record['last']=='Martin' and 'teacherId' not in teacher_record
-        assert 'teachers' not in saved and teacher_record['passwordHash'].startswith('pbkdf2_sha256$')
+        teacher_profile=next(p for p in saved['teachers'] if p['id']==teacher_id)
+        assert teacher_profile['first']=='Alice' and teacher_profile['last']=='Martin'
+        assert 'passwordHash' not in teacher_profile and 'temporaryPassword' not in teacher_profile
+        assert 'pbkdf2_sha256' in teacher_record['passwordHash']
         status,headers,body=call(base,'/api/auth/login','POST',{'username':'alice.martin','password':teacher_password})
         assert status==200 and json.loads(body)['user']['mustChangePassword']
         teacher=headers.get('Set-Cookie').split(';')[0]
@@ -124,6 +127,10 @@ def run():
         saved=json.loads((app/'data'/'maclasse.json').read_text())
         teacher_record=next(u for u in saved['users'] if u['id']==teacher_id)
         assert teacher_record['first']=='Alicia' and teacher_record['username']=='alicia.martin' and 'teacherId' not in teacher_record
+        teacher_profile=next(p for p in saved['teachers'] if p['id']==teacher_id)
+        assert teacher_profile['first']=='Alicia' and teacher_profile['email']=='alicia@example.test'
+        assert teacher_profile['subjects']==['Mathématiques','Physique']
+        assert 'passwordHash' not in teacher_profile
         assert teacher_record['subjects']==['Mathématiques','Physique'], 'Teachers must be able to manage their own subjects'
         assert call(base,'/api/auth/login','POST',{'username':'alice.martin','password':'unMotDePasseProfEncorePlusFort!'})[0]==401
         status,new_login_headers,new_login_body=call(base,'/api/auth/login','POST',{'username':'alicia.martin','password':'unMotDePasseProfEncorePlusFort!'})
@@ -138,6 +145,45 @@ def run():
         assert status==200
         teacher=new_login_headers.get('Set-Cookie').split(';')[0]
         assert call(base,'/api/reset','POST',{},teacher)[0]==403
+        # A pedagogical teacher profile without a login can later receive an account
+        # while retaining the same stable identity in classes and the timetable.
+        profile_id='teacher-profile-without-login'
+        stored=json.loads((app/'data'/'maclasse.json').read_text())
+        stored.setdefault('teachers',[]).append({
+            'id':profile_id,'teacherId':profile_id,'role':'teacher',
+            'first':'Claire','last':'Dupont','name':'Claire Dupont',
+            'subjects':['Français'],'profileNotes':'Profil pédagogique uniquement','active':True
+        })
+        stored.setdefault('classes',[]).append({
+            'id':'profile-class','name':'5e A','teacherIds':[],'principalTeacherId':''
+        })
+        (app/'data'/'maclasse.json').write_text(json.dumps(stored))
+        status,_,admin_data_body=call(base,'/api/data',cookie=admin)
+        assert status==200
+        admin_view=json.loads(admin_data_body)
+        profile_view=next(x for x in admin_view['teachers'] if x['id']==profile_id)
+        assert profile_view['hasAccount'] is False
+        assert not any(x.get('id')==profile_id for x in admin_view['users'])
+        status,_,loginless=call(base,'/api/auth/login','POST',{'username':'claire.dupont','password':'anything'})
+        assert status==401
+        status,_,created_profile_account_body=call(base,'/api/admin/teacher','POST',{
+            'id':profile_id,'first':'Claire','last':'Dupont','username':'claire.dupont',
+            'email':'','phone':'','subjects':['Français'],'profileNotes':'Profil pédagogique uniquement',
+            'password':'','classIds':['profile-class'],'ppIds':['profile-class']
+        },admin)
+        assert status==201
+        created_profile_account=json.loads(created_profile_account_body)['user']
+        assert created_profile_account['id']==profile_id
+        assert len(created_profile_account['temporaryPassword'])>=8
+        saved=json.loads((app/'data'/'maclasse.json').read_text())
+        assert any(x['id']==profile_id and x['role']=='teacher' for x in saved['users'])
+        assert any(x['id']==profile_id and x['first']=='Claire' for x in saved['teachers'])
+        saved_class=next(x for x in saved['classes'] if x['id']=='profile-class')
+        assert profile_id in saved_class['teacherIds'] and saved_class['principalTeacherId']==profile_id
+        status,profile_login_headers,profile_login_body=call(base,'/api/auth/login','POST',{
+            'username':'claire.dupont','password':created_profile_account['temporaryPassword']
+        })
+        assert status==200 and json.loads(profile_login_body)['user']['mustChangePassword'] is True
         assert call(base,'/api/reset','POST',{},admin)[0]==200
         # Vérification HTTP de la projection professeur et de la fusion sans écrasement.
         seeded={

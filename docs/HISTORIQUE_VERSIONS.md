@@ -1,6 +1,36 @@
 # Historique des versions MaClasse
 
-> Registre historique consolidé le 26 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
+> Registre historique consolidé le 28 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
+
+## Candidat V25.2.0 — harmonisation des modules et configuration d’établissement (28/11/2026)
+
+**Statut : candidat en recette — non publié.** Les modifications sont sur la PR #20 et doivent encore être acceptées sur la copie isolée avant fusion et publication.
+
+### Parcours de l’emploi du temps
+- Le module « Organiser » est ramené à deux actions sans chevauchement fonctionnel : rechercher un créneau pour un nouveau cours, ou rechercher une salle de remplacement pour un cours déjà inscrit.
+- La recherche d’un nouveau créneau propose, pour chaque horaire sans conflit, les salles libres compatibles avec l’effectif, les équipements, les indisponibilités et les réservations ; le choix préremplit le formulaire du nouveau cours.
+- La recherche d’une salle part de la sélection d’un cours existant et reprend ses classes, ses horaires et ses enseignants ; le remplacement ouvre la fiche existante et ne crée pas de doublon.
+
+### Configurateur d’établissement
+- Configurateur retiré de la page Administration → Utilisateurs et centralisé dans Paramètres, avec une présentation responsive.
+- Formulaire de cadrage enregistré dans Ma Classe, puis copie en un bloc des consignes, du format et des réponses à coller dans ChatGPT. Aucun fichier de contexte, modèle ou guide n’est à joindre dans ChatGPT ; un seul fichier JSON final revient dans Ma Classe.
+- Sélection multiple des composantes pédagogiques, structure de regroupement et implantation physique séparées.
+- Saisie par lignes structurées et composante : classes/effectifs/noms, matières/niveaux/volumes, affectations professeurs et calendriers (jours, horaires, pauses et récréations). Les notes libres antérieures sont conservées dans un panneau replié.
+- Un pseudonyme enseignant répété dans plusieurs composantes identifie le même profil et ses affectations sont regroupées ; les périodes peuvent différer selon les classes.
+- Prise en compte d’établissements multi-niveaux, de la petite section à la terminale, avec classes, effectifs, fiches élèves pseudonymisées, professeurs, matières, salles et emplois du temps cohérents.
+- Fiches professeurs distinctes des comptes de connexion : les profils et leurs affectations pédagogiques sont conservés même si les comptes sont différés. La Direction peut créer un compte ultérieurement depuis la fiche, sans changer l’identifiant utilisé par les cours.
+- Création des fiches élèves facultative ; les effectifs prévus restent utilisés pour contrôler la capacité des salles. Les données personnelles réelles et mots de passe ne sont pas transmis à ChatGPT.
+
+### Référentiel et saisie des compétences
+- Accès direct au référentiel depuis Évaluations et depuis le formulaire de création d'une évaluation.
+- Création d'une compétence en cours de saisie sans perdre le brouillon : la classe, le groupe, la matière, le titre, le barème, les critères, les compétences déjà cochées et la publication sont restaurés.
+- Filtrage par niveau et matière ; migration/dédoublonnage des anciens libellés ; notes de maîtrise séparées de la note chiffrée.
+- Guide dédié `docs/COMPETENCES_EVALUATIONS.md` et recette navigateur dédiée.
+
+### Preuves et limites
+- CI #2314 / run `46151246564` sur le commit `35094bc524aa7e312b178284d74f40db9fbb652a` : Linux/Python, Firefox réel et macOS Apple Silicon/launchd, **3/3 réussies**. La campagne couvre les lignes structurées multi-composantes, la création/restauration du brouillon d'évaluation et la saisie d'un niveau de maîtrise. Les mises à jour documentaires postérieures repassent la CI sur la tête courante.
+- Aucun changement n’est publié ni déployé en production à ce stade. Une importation représentative de taille réelle et la validation humaine des emplois du temps restent indispensables.
+- La copie en un bloc élimine les pièces jointes de contexte, mais ne supprime pas les limites d’usage, de contexte ou de génération de fichiers qui peuvent s’appliquer à ChatGPT gratuit.
 
 ## V25.1.1 — fiabilisation HTTPS et mises à jour macOS (26/11/2026)
 
@@ -74,7 +104,7 @@ MaClasse V25.0.25 — finalisation des parcours élèves
 - Gestion des anomalies, guide d'installation, index documentaire et archives historiques réorganisés sans perte du contenu des notes V21.
 - CI complète #1747 verte sur Linux, macOS Apple Silicon et Firefox réel. Ce résultat valide les tests automatisés, pas les recettes physiques ni la signature indépendante de la release.
 
-MaClasse V25.0.23 — supervision des mises à jour Linux et macOS
+MaClasse V25.0.23 — supervision des mises à jour Linux et macOS (16/11/2026)
 
 - Ajout d’un gestionnaire de mises à jour stable fondé sur les releases GitHub et un manifeste vérifié par SHA-256.
 - Préparation isolée de chaque version et environnement Python dédié, sans écraser l’installation active.

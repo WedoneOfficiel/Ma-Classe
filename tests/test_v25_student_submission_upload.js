@@ -11,6 +11,7 @@ async function runScenario({uploadFails=false}={}){
   const input={files:[{name:'devoir.pdf',size:2048}],click(){this.pending=this.onchange()}};
   const context={
     db,
+    sameId:(a,b)=>{const x=String(a??'').trim(),y=String(b??'').trim();return !!x&&x===y;},
     student:id=>({id,classId:'class-1'}),
     studentWorkEligible:()=>true,
     document:{createElement:tag=>{assert.strictEqual(tag,'input');return input;}},

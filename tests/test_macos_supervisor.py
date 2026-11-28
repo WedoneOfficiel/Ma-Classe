@@ -150,7 +150,9 @@ class MacOSSupervisorTests(unittest.TestCase):
             shutil.copy2(ROOT / "server.py", root / "server.py")
             shutil.copy2(ROOT / "update_manager.py", root / "update_manager.py")
             shutil.copy2(ROOT / "release_signing.py", root / "release_signing.py")
+            shutil.copy2(ROOT / "establishment_import.py", root / "establishment_import.py")
             self.assertTrue((root / "release_signing.py").is_file())
+            self.assertTrue((root / "establishment_import.py").is_file())
             (data / "maclasse.json").write_text(
                 json.dumps({"schemaVersion": 25011, "users": [], "classes": [], "students": []}),
                 encoding="utf-8"

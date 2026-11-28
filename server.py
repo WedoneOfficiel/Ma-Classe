@@ -2,24 +2,30 @@
 import json, os, shutil, re, time, glob, urllib.request, urllib.error, datetime, math, unicodedata, threading, zipfile, io, secrets, hashlib, hmac, tempfile, stat, ipaddress, ssl, sys, subprocess, signal
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import update_manager
+import establishment_import
 import socketserver
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 from html import escape as html_escape
 from html.parser import HTMLParser
 
-APP_VERSION='25.1.1'
+APP_VERSION='25.2.0'
 HOST=os.environ.get('MACLASSE_HOST','127.0.0.1')
 PORT=int(os.environ.get('MACLASSE_PORT','8765'))
 TLS_CERT=os.environ.get('MACLASSE_TLS_CERT','').strip()
 TLS_KEY=os.environ.get('MACLASSE_TLS_KEY','').strip()
+TLS_HOSTNAME=os.environ.get('MACLASSE_TLS_HOSTNAME','').strip().lower().rstrip('.')
 DATA_LOCK=threading.RLock()
+UPLOADS_LOCK=threading.RLock()
 SESSIONS={}
 LOGIN_ATTEMPTS={}
 SESSION_TTL=12*60*60
 ROOT=os.path.dirname(os.path.abspath(__file__))
 BACKUP_RETENTION_DAYS=30
 BACKUP_INTERVAL_SECONDS=6*60*60
+MAX_BACKUP_ARCHIVE_BYTES=512*1024*1024
+MAX_BACKUP_UNCOMPRESSED_BYTES=500*1024*1024
+MAX_BACKUP_ARCHIVE_ENTRIES=10000
 DATA_DIR=os.path.abspath(os.environ.get('MACLASSE_DATA_DIR') or os.path.join(ROOT,'data'))
 DATA_FILE=os.path.join(DATA_DIR,'maclasse.json')
 UPLOADS=os.path.join(DATA_DIR,'uploads')
@@ -374,6 +380,7 @@ def _restore_backup_archive(raw_bytes):
     old_json = os.path.join(stage_root, 'maclasse-before-restore.json')
     moved_old_uploads = False
     installed_new_uploads = False
+    preserve_stage_root = False
     try:
         try:
             archive = zipfile.ZipFile(io.BytesIO(raw_bytes), 'r')
@@ -381,7 +388,7 @@ def _restore_backup_archive(raw_bytes):
             raise ValueError('Archive ZIP invalide.') from exc
         with archive:
             infos = archive.infolist()
-            if not infos or len(infos) > 10000:
+            if not infos or len(infos) > MAX_BACKUP_ARCHIVE_ENTRIES:
                 raise ValueError('Archive vide ou contenant trop d’éléments.')
             seen = set()
             total_size = 0
@@ -404,7 +411,7 @@ def _restore_backup_archive(raw_bytes):
                 if info.flag_bits & 0x1:
                     raise ValueError('Les archives chiffrées ne sont pas acceptées.')
                 total_size += info.file_size
-                if total_size > 500 * 1024 * 1024:
+                if total_size > MAX_BACKUP_UNCOMPRESSED_BYTES:
                     raise ValueError('Archive décompressée trop volumineuse (500 Mo maximum).')
                 if info.file_size > 0 and info.compress_size == 0:
                     raise ValueError('Archive invalide.')
@@ -436,33 +443,57 @@ def _restore_backup_archive(raw_bytes):
             raise ValueError('Le fichier de données de la sauvegarde est invalide.') from exc
         if not isinstance(restored, dict):
             raise ValueError('La base de données doit être un objet JSON.')
-        for key in ('classes', 'students', 'users'):
+        for key in ('classes', 'students', 'users', 'teachers'):
             if key in restored and not isinstance(restored[key], list):
                 raise ValueError(f'La collection {key} est invalide.')
-        restored.pop('teachers',None)
         os.makedirs(DATA_DIR, exist_ok=True)
-        if os.path.exists(UPLOADS):
-            os.replace(UPLOADS, old_uploads)
-            moved_old_uploads = True
-        os.replace(stage_uploads, UPLOADS)
-        installed_new_uploads = True
-        shutil.copy2(DATA_FILE, old_json) if os.path.exists(DATA_FILE) else None
-        os.replace(staged_json, DATA_FILE)
-        return {'classes': len(restored.get('classes', []) or []), 'students': len(restored.get('students', []) or []), 'files': sum(1 for base, _, files in os.walk(UPLOADS) for _ in files)}
-    except Exception:
-        # Roll back the filesystem pair if any final replacement failed.
-        try:
-            if installed_new_uploads and os.path.exists(UPLOADS):
-                shutil.rmtree(UPLOADS)
-            if moved_old_uploads and os.path.exists(old_uploads):
-                os.replace(old_uploads, UPLOADS)
-            if os.path.exists(old_json):
-                os.replace(old_json, DATA_FILE)
-        except OSError:
-            pass
-        raise
+        # Keep uploads, backup creation and restoration on one lock. Build the
+        # restored tree off-line above, then swap both stores as one critical section.
+        with DATA_LOCK, UPLOADS_LOCK:
+            try:
+                if os.path.exists(UPLOADS):
+                    os.replace(UPLOADS, old_uploads)
+                    moved_old_uploads = True
+                os.replace(stage_uploads, UPLOADS)
+                installed_new_uploads = True
+                if os.path.exists(DATA_FILE):
+                    # Never use a partially copied database as the rollback source.
+                    old_json_tmp = old_json + '.tmp'
+                    shutil.copy2(DATA_FILE, old_json_tmp)
+                    os.replace(old_json_tmp, old_json)
+                os.replace(staged_json, DATA_FILE)
+                return {'classes': len(restored.get('classes', []) or []), 'students': len(restored.get('students', []) or []), 'files': sum(1 for base, _, files in os.walk(UPLOADS) for _ in files)}
+            except Exception as restore_error:
+                # Roll back before releasing either lock. If any rollback step fails,
+                # retain the staging directory because it contains the only safe copy
+                # of the old uploads and/or database needed for manual recovery.
+                rollback_errors = []
+                if installed_new_uploads and os.path.exists(UPLOADS):
+                    try:
+                        shutil.rmtree(UPLOADS)
+                    except OSError as error:
+                        rollback_errors.append(f'impossible de retirer le dossier restauré : {error}')
+                if moved_old_uploads and os.path.exists(old_uploads):
+                    try:
+                        os.replace(old_uploads, UPLOADS)
+                    except OSError as error:
+                        rollback_errors.append(f'impossible de remettre les anciennes pièces jointes : {error}')
+                if os.path.exists(old_json):
+                    try:
+                        os.replace(old_json, DATA_FILE)
+                    except OSError as error:
+                        rollback_errors.append(f'impossible de restaurer l’ancienne base : {error}')
+                if rollback_errors:
+                    preserve_stage_root = True
+                    details = '; '.join(rollback_errors)
+                    raise RuntimeError(
+                        'Le retour arrière est incomplet. Le dossier de récupération contenant les anciennes données '
+                        f'est conservé à {stage_root}. Détails : {details}'
+                    ) from restore_error
+                raise
     finally:
-        shutil.rmtree(stage_root, ignore_errors=True)
+        if not preserve_stage_root:
+            shutil.rmtree(stage_root, ignore_errors=True)
 
 
 def _database_revision():
@@ -582,9 +613,71 @@ def _load_database():
         return {}
 
 
+def _load_database_for_establishment_import():
+    """Load persisted data without treating a malformed root as a new school."""
+    try:
+        with open(DATA_FILE, encoding='utf-8') as source:
+            data = json.load(source)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError, TypeError) as error:
+        raise ValueError(
+            "La base de données existante est illisible ; l'import est bloqué et aucune donnée n'a été remplacée."
+        ) from error
+    if not isinstance(data, dict):
+        raise ValueError(
+            "La racine de la base de données existante n'est pas un objet JSON ; "
+            "l'import est bloqué et aucune donnée n'a été remplacée."
+        )
+    collection_names = (
+        "classes", "students", "users", "teachers", "schedule", "teacherAssignments",
+        "lessons", "evaluations", "attendance", "bulletins", "submissions",
+    )
+    for name in collection_names:
+        if name in data and not isinstance(data[name], list):
+            raise ValueError(
+                f"Données existantes incompatibles : le champ {name!r} n'est pas une liste. "
+                "L'aperçu et l'import sont bloqués ; aucune donnée n'a été remplacée."
+            )
+    settings = data.get("settings", {})
+    if not isinstance(settings, dict):
+        raise ValueError(
+            "Données existantes incompatibles : les paramètres ne sont pas un objet. "
+            "L'aperçu et l'import sont bloqués ; aucune donnée n'a été remplacée."
+        )
+    if "rooms" in settings and not isinstance(settings["rooms"], list):
+        raise ValueError(
+            "Données existantes incompatibles : la liste des salles est invalide. "
+            "L'aperçu et l'import sont bloqués ; aucune donnée n'a été remplacée."
+        )
+    return _sanitize_rich_data(data)
+
+
 def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_record, today=None):
     """Build the printable bulletin from canonical server-side records only."""
-    today=today or datetime.date.today().isoformat()
+    if today is None or today == '':
+        publication_now = datetime.datetime.now(datetime.timezone.utc)
+    elif isinstance(today, datetime.datetime):
+        publication_now = today
+    elif isinstance(today, datetime.date):
+        publication_now = datetime.datetime.combine(
+            today, datetime.time.max, tzinfo=datetime.timezone.utc
+        )
+    else:
+        reference = str(today).strip()
+        if len(reference) <= 10:
+            reference_day = datetime.date.fromisoformat(reference[:10])
+            publication_now = datetime.datetime.combine(
+                reference_day, datetime.time.max, tzinfo=datetime.timezone.utc
+            )
+        else:
+            publication_now = datetime.datetime.fromisoformat(
+                reference.replace('Z', '+00:00')
+            )
+    if publication_now.tzinfo is None:
+        publication_now = publication_now.astimezone()
+    publication_now = publication_now.astimezone(datetime.timezone.utc)
+    today = publication_now.date().isoformat()
     class_id=str(bulletin.get('classId') or '')
     student_id=str(bulletin.get('studentId') or '')
     term=term_record if isinstance(term_record,dict) else None
@@ -624,7 +717,7 @@ def _bulletin_pdf_data(database, bulletin, student_record, class_record, term_re
         eligible=[]
         for e in evaluations:
             if str(e.get('classId') or '')!=class_id or e.get('published') is not True: continue
-            if str(e.get('publishAt') or '')>today and e.get('publishAt'): continue
+            if not _evaluation_publication_due(e.get('publishAt'), now=publication_now): continue
             if not in_term(e): continue
             if e.get('group') and str(e.get('group'))!=str(st.get('group') or ''): continue
             eligible.append(e)
@@ -891,8 +984,8 @@ def _teacher_visible_mailbox(mailbox, user, data):
     }
 
 
-def _student_accessible_teacher_ids(data, student_record):
-    """Enseignants joignables par l'élève via sa classe, son EDT ou ses séances."""
+def _student_referenced_teacher_ids(data, student_record):
+    """Tous les profils enseignants référencés par la classe, les cours ou les séances de l'élève."""
     class_id=str(student_record.get('classId') or '')
     group=str(student_record.get('group') or '')
     class_record=next((x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id'))==class_id),{})
@@ -912,6 +1005,12 @@ def _student_accessible_teacher_ids(data, student_record):
     for assignment in data.get('teacherAssignments',[]) or []:
         if isinstance(assignment,dict) and str(assignment.get('classId') or '')==class_id and assignment.get('teacherId') and _teacher_assignment_active(assignment):
             ids.add(str(assignment.get('teacherId')))
+    return ids
+
+
+def _student_accessible_teacher_ids(data, student_record):
+    """Identifiants des enseignants joignables par messagerie (compte de connexion requis)."""
+    ids=_student_referenced_teacher_ids(data,student_record)
     valid={str(x.get('id')) for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher'}
     return ids & valid
 
@@ -1221,22 +1320,27 @@ def _teacher_visible_data(data,user):
         out['settings']={key:settings[key] for key in shared_settings if key in settings}
     out['classes']=[x for x in data.get('classes',[]) or [] if isinstance(x,dict) and str(x.get('id')) in class_ids]
     out['students']=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword','role','username','active')} for x in data.get('students',[]) or [] if isinstance(x,dict) and str(x.get('id')) in student_ids]
-    # La fiche professeur est une projection du compte canonique, jamais un second enregistrement.
-    canonical=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==str(user.get('id')) and x.get('role')=='teacher'),None)
-    profile={k:v for k,v in (canonical or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
-    if profile:
-        profile['id']=str(user.get('id') or tids); profile['teacherId']=profile['id']; profile['classIds']=sorted(class_ids)
-        # Annuaire minimal des enseignants actifs pour les affectations, sans secrets ni coordonnées privées.
-        directory=[]
-        for account in data.get('users',[]) or []:
-            if isinstance(account,dict) and account.get('role')=='teacher' and account.get('active') is not False:
-                directory.append({k:account[k] for k in ('id','first','last','active','subjects') if k in account})
-        own={k:v for k,v in profile.items() if k not in ('passwordHash','password','mustChangePassword')}
-        own['id']=str(user.get('id') or tids); own['teacherId']=own['id']; own['classIds']=sorted(class_ids)
-        by_id={str(x.get('id')):x for x in directory}
-        by_id[own['id']]=own
-        out['teachers']=list(by_id.values())
-    else: out['teachers']=[]
+    # Les fiches enseignants existent indépendamment des comptes de connexion.
+    ident=str(user.get('id') or tids)
+    canonical=next((x for x in data.get('users',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None)
+    stored_profile=next((x for x in data.get('teachers',[]) or [] if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None)
+    profile={k:v for k,v in (stored_profile or {}).items() if k not in ('passwordHash','password','mustChangePassword')}
+    profile.update({k:v for k,v in (canonical or {}).items() if k not in ('passwordHash','password','mustChangePassword')})
+    profile['id']=ident; profile['teacherId']=ident; profile['classIds']=sorted(class_ids)
+    # Annuaire minimal des profils enseignants actifs, avec ou sans compte.
+    by_id={}
+    for source in (data.get('teachers',[]) or [],data.get('users',[]) or []):
+        for record in source:
+            if not isinstance(record,dict) or record.get('role')!='teacher' or record.get('active') is False: continue
+            teacher_id=str(record.get('id') or '')
+            if not teacher_id: continue
+            item={k:record[k] for k in ('id','first','last','active','subjects') if k in record}
+            by_id[teacher_id]={**by_id.get(teacher_id,{}),**item}
+    profile['hasAccount']=True
+    by_id[ident]=profile
+    for teacher_id,item in by_id.items():
+        item['hasAccount']=any(isinstance(account,dict) and account.get('role')=='teacher' and str(account.get('id') or '')==teacher_id for account in data.get('users',[]) or [])
+    out['teachers']=list(by_id.values())
     visible_users=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword')} for x in _student_account_users(data) if isinstance(x,dict) and (str(x.get('id'))==str(user.get('id')) or (x.get('role')=='student' and str(x.get('studentId') or '') in student_ids))]
     visible_user_ids={str(x.get('id') or '') for x in visible_users}
     out['users']=visible_users
@@ -1298,6 +1402,29 @@ def _student_can_access_upload(user,relative,write=False):
         return contains(visible)
     except (ValueError,OSError):
         return False
+
+
+def _teacher_profiles_for_save(current, incoming, user):
+    """Preserve the independent teacher directory and restrict its writes to Direction."""
+    existing=current.get('teachers') if isinstance(current,dict) and isinstance(current.get('teachers'),list) else []
+    if not isinstance(user,dict) or user.get('role')!='admin':
+        return [dict(item) for item in existing if isinstance(item,dict)]
+    submitted=incoming.get('teachers') if isinstance(incoming,dict) else None
+    if not isinstance(submitted,list):
+        return [dict(item) for item in existing if isinstance(item,dict)]
+    safe_fields=('id','teacherId','role','first','last','name','email','phone','subjects','profileNotes','active','scheduleUnavailable')
+    result=[]; seen=set()
+    for item in submitted:
+        if not isinstance(item,dict):
+            raise ValueError("Une fiche professeur est invalide.")
+        ident=str(item.get('id') or '').strip()
+        if not ident or item.get('role')!='teacher' or ident in seen:
+            raise ValueError("Identifiants de fiches professeurs invalides ou dupliqués.")
+        seen.add(ident)
+        clean={key:item[key] for key in safe_fields if key in item}
+        clean['id']=ident; clean['teacherId']=ident; clean['role']='teacher'
+        result.append(clean)
+    return result
 
 
 def _merge_student_data(current,incoming,user):
@@ -1403,12 +1530,20 @@ def _student_visible_data(data,user,now=None):
     student_fields=('id','first','last','birth','sex','classId','group','email','phone')
     out['students']=[{k:v for k,v in student_record.items() if k in student_fields}]
     out['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict) and str(x.get('id'))==str(user.get('id'))]
-    schedule_fields=('id','classId','group','subject','teacherId','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
+    schedule_fields=('id','classId','group','subject','teacherId','teacherIds','day','time','endTime','room','color','pattern','recurrence','intervalWeeks','startDate','endDate','exceptions','overrides')
     out['schedule']=[{k:v for k,v in x.items() if k in schedule_fields} for x in data.get('schedule',[]) or [] if isinstance(x,dict) and str(x.get('classId') or '')==class_id and (not x.get('group') or str(x.get('group'))==str(student_record.get('group') or ''))]
     # Même périmètre que la messagerie côté serveur : classe, co-enseignement,
     # séances et affectations actives doivent tous apparaître dans les destinataires.
-    teacher_ids=_student_accessible_teacher_ids(data,student_record)
-    out['teachers']=[{'id':str(x.get('id')),'first':x.get('first',''),'last':x.get('last','')} for x in data.get('users',[]) or [] if isinstance(x,dict) and x.get('role')=='teacher' and str(x.get('id')) in teacher_ids]
+    teacher_ids=_student_referenced_teacher_ids(data,student_record)
+    teacher_profiles={}
+    for profile in data.get('teachers',[]) or []:
+        if isinstance(profile,dict) and profile.get('role')=='teacher' and str(profile.get('id') or '') in teacher_ids:
+            teacher_profiles[str(profile.get('id'))]=profile
+    for account in data.get('users',[]) or []:
+        if isinstance(account,dict) and account.get('role')=='teacher' and str(account.get('id') or '') in teacher_ids:
+            teacher_profiles[str(account.get('id'))]={**teacher_profiles.get(str(account.get('id')),{}),**account}
+    account_teacher_ids={str(account.get('id') or '') for account in data.get('users',[]) or [] if isinstance(account,dict) and account.get('role')=='teacher'}
+    out['teachers']=[{'id':ident,'first':profile.get('first',''),'last':profile.get('last',''),'hasAccount':ident in account_teacher_ids} for ident,profile in teacher_profiles.items()]
     out['lessons']=[]
     for item in data.get('lessons',[]) or []:
         if not isinstance(item,dict) or str(item.get('classId') or '')!=class_id or (item.get('group') and str(item.get('group'))!=str(student_record.get('group') or '')): continue
@@ -2108,6 +2243,88 @@ class MaClasseHTTPServer(ThreadingHTTPServer):
         self.server_port=int(self.server_address[1])
 
 
+def _release_notes_state_path():
+    return os.path.join(DATA_DIR, 'release-notes-state.json')
+
+
+def _release_notes_seen_version(user_id):
+    account_id = str(user_id or '').strip()
+    if not account_id:
+        return ''
+    with DATA_LOCK:
+        try:
+            with open(_release_notes_state_path(), encoding='utf-8') as state_file:
+                state = json.load(state_file)
+        except (OSError, ValueError, TypeError):
+            return ''
+    accounts = state.get('accounts') if isinstance(state, dict) else None
+    if not isinstance(accounts, dict):
+        return ''
+    return str(accounts.get(account_id) or '')
+
+
+def _mark_release_notes_seen(user_id, version):
+    account_id = str(user_id or '').strip()
+    requested = str(version or '').strip().lstrip('vV')
+    installed = str(APP_VERSION).strip().lstrip('vV')
+    if not account_id:
+        raise ValueError('Identifiant de compte manquant.')
+    if not installed or requested != installed:
+        raise ValueError('La version consultée ne correspond pas à la version installée.')
+    path = _release_notes_state_path()
+    with DATA_LOCK:
+        state = {}
+        try:
+            with open(path, encoding='utf-8') as state_file:
+                saved = json.load(state_file)
+            if isinstance(saved, dict):
+                state = saved
+        except (OSError, ValueError, TypeError):
+            pass
+        accounts = state.get('accounts')
+        if not isinstance(accounts, dict):
+            accounts = {}
+        accounts[account_id] = installed
+        os.makedirs(DATA_DIR, exist_ok=True)
+        temporary = path + '.' + str(threading.get_ident()) + '.tmp'
+        try:
+            with open(temporary, 'w', encoding='utf-8') as state_file:
+                json.dump({'schema_version': 1, 'accounts': accounts}, state_file, ensure_ascii=False, indent=2)
+                state_file.write('\n')
+            os.replace(temporary, path)
+        finally:
+            try:
+                if os.path.exists(temporary):
+                    os.remove(temporary)
+            except OSError:
+                pass
+    return installed
+
+
+def _release_notes_history_payload():
+    documents = []
+    sources = (
+        ('docs/HISTORIQUE_VERSIONS.md', 'Historique consolidé'),
+        ('docs/archives/ETATS_AUDITS_ET_RECETTES_ANTERIEURS.md', 'Archives des audits et recettes'),
+        ('docs/archives/README_PRE_REORGANISATION.md', 'Ancien README et historique synthétique'),
+    )
+    for relative, label in sources:
+        path = os.path.join(ROOT, *relative.split('/'))
+        try:
+            with open(path, encoding='utf-8') as source:
+                documents.append({'path': relative, 'label': label, 'markdown': source.read()})
+        except OSError:
+            continue
+    release_path = os.path.join(ROOT, 'docs', 'releases', 'v' + str(APP_VERSION).lstrip('vV') + '.md')
+    try:
+        with open(release_path, encoding='utf-8') as source:
+            current_release = source.read()
+    except OSError:
+        current_release = ''
+    return {'current_version': str(APP_VERSION).lstrip('vV'),
+            'history_documents': documents, 'current_release_markdown': current_release}
+
+
 class Handler(SimpleHTTPRequestHandler):
     # Borne les connexions inactives pour qu'un client abandonné ne bloque pas
     # indéfiniment l'arrêt gracieux du serveur pendant une mise à jour supervisée.
@@ -2164,6 +2381,8 @@ class Handler(SimpleHTTPRequestHandler):
         host=self.headers.get('Host','').strip().lower()
         expected=f'{HOST}:{PORT}'.lower()
         allowed={expected}
+        if TLS_HOSTNAME:
+            allowed.add(f'{TLS_HOSTNAME}:{PORT}'.lower())
         if HOST in ('127.0.0.1','localhost','::1'):
             allowed.update({f'127.0.0.1:{PORT}',f'localhost:{PORT}',f'[::1]:{PORT}'})
         # Refuser les Host arbitraires (notamment les tentatives de DNS rebinding).
@@ -2203,33 +2422,157 @@ class Handler(SimpleHTTPRequestHandler):
                 return os.path.join(UPLOADS,'__invalid_upload_path__')
         return super().translate_path(path)
     def _safe_static_path(self,path):
-        if path in ('/','/index.html','/_all.js','/class_tracking.js'):
+        if path in ('/','/index.html','/_all.js','/class_tracking.js','/release_notes.js'):
             return True
         return path.startswith('/data/uploads/')
     def _backup_dir(self):
-        d=os.path.join(DATA_DIR,'backups'); os.makedirs(d,exist_ok=True); return d
+        d=os.path.join(DATA_DIR,'backups')
+        os.makedirs(d,exist_ok=True)
+        info=os.lstat(d)
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise ValueError('Sauvegarde refusée : le dossier backups doit être un dossier normal.')
+        # School records and attachments are sensitive; do not leave local
+        # snapshots readable by other OS accounts on the host computer.
+        os.chmod(d,0o700)
+        return d
     def _create_backup(self, force=False):
+        # Lock order is always database first, then attachments. This keeps the
+        # JSON and physical files in one coherent snapshot without blocking reads.
+        with DATA_LOCK, UPLOADS_LOCK:
+            return self._create_backup_locked(force)
+    def _create_backup_locked(self, force=False):
         if not os.path.exists(DATA_FILE): return None
-        current=None
-        with open(DATA_FILE,encoding='utf-8') as f: current=json.load(f)
+
+        def open_snapshot_source(path, expected_stat):
+            # O_NOFOLLOW closes the gap between lstat() and open() on platforms
+            # that support it. fstat() then confirms we opened the same regular
+            # file whose size was included in the restore-limit preflight.
+            flags=os.O_RDONLY | getattr(os,'O_NOFOLLOW',0)
+            descriptor=os.open(path,flags)
+            stream=os.fdopen(descriptor,'rb')
+            opened=os.fstat(stream.fileno())
+            if (not stat.S_ISREG(opened.st_mode)
+                    or (opened.st_dev,opened.st_ino,opened.st_size)
+                    != (expected_stat.st_dev,expected_stat.st_ino,expected_stat.st_size)):
+                stream.close()
+                raise ValueError('Sauvegarde refusée : un fichier a changé pendant le contrôle préalable.')
+            return stream
+
+        try:
+            database_stat=os.lstat(DATA_FILE)
+        except OSError as error:
+            raise ValueError('Sauvegarde impossible : base de données inaccessible.') from error
+        if stat.S_ISLNK(database_stat.st_mode) or not stat.S_ISREG(database_stat.st_mode):
+            raise ValueError('Sauvegarde refusée : la base doit être un fichier normal, pas un lien symbolique.')
+
+        # Inventory uploads without following links. A symlink could otherwise
+        # make a backup include a file outside data/uploads, leaking local files.
+        upload_entries=[]
+        archive_names={'data/maclasse.json'}
+        total_uncompressed=database_stat.st_size
+        if os.path.lexists(UPLOADS):
+            uploads_stat=os.lstat(UPLOADS)
+            if stat.S_ISLNK(uploads_stat.st_mode) or not stat.S_ISDIR(uploads_stat.st_mode):
+                raise ValueError('Sauvegarde refusée : le dossier des pièces jointes doit être un dossier normal.')
+            for base,dirnames,filenames in os.walk(UPLOADS,topdown=True,followlinks=False):
+                dirnames.sort()
+                filenames.sort()
+                for dirname in list(dirnames):
+                    full=os.path.join(base,dirname)
+                    entry_stat=os.lstat(full)
+                    if stat.S_ISLNK(entry_stat.st_mode) or not stat.S_ISDIR(entry_stat.st_mode):
+                        raise ValueError('Sauvegarde refusée : les liens symboliques et éléments non standards sont interdits dans les pièces jointes.')
+                for filename in filenames:
+                    full=os.path.join(base,filename)
+                    entry_stat=os.lstat(full)
+                    if stat.S_ISLNK(entry_stat.st_mode) or not stat.S_ISREG(entry_stat.st_mode):
+                        raise ValueError('Sauvegarde refusée : seuls les fichiers normaux sont autorisés dans les pièces jointes.')
+                    total_uncompressed+=entry_stat.st_size
+                    if total_uncompressed>MAX_BACKUP_UNCOMPRESSED_BYTES:
+                        raise ValueError('Sauvegarde complète impossible : la base et les pièces jointes dépassent la limite de restauration autorisée.')
+                    relative=os.path.relpath(full,UPLOADS)
+                    # Backslashes are path separators in the restore validator;
+                    # accepting them in a POSIX filename would change its path.
+                    if '\\' in relative:
+                        raise ValueError('Sauvegarde refusée : un nom de pièce jointe contient un séparateur ambigu.')
+                    archive_name='data/uploads/'+relative.replace(os.sep,'/')
+                    parts=archive_name.split('/')
+                    if archive_name.startswith('/') or any(part in ('','.','..') for part in parts) or re.match(r'^[A-Za-z]:',archive_name):
+                        raise ValueError('Sauvegarde refusée : un chemin de pièce jointe ne peut pas être restauré sans ambiguïté.')
+                    if archive_name in archive_names:
+                        raise ValueError('Sauvegarde refusée : deux pièces jointes produisent le même chemin d’archive.')
+                    archive_names.add(archive_name)
+                    upload_entries.append((full,archive_name,entry_stat))
+                    if len(upload_entries)+1>MAX_BACKUP_ARCHIVE_ENTRIES:
+                        raise ValueError(f'Sauvegarde complète impossible : plus de {MAX_BACKUP_ARCHIVE_ENTRIES} fichiers dans la base et les pièces jointes.')
+        if total_uncompressed>MAX_BACKUP_UNCOMPRESSED_BYTES:
+            raise ValueError('Sauvegarde complète impossible : la base et les pièces jointes dépassent la limite de restauration autorisée.')
+        # ZIP_STORED keeps every member's compression ratio at 1:1, so a backup
+        # produced here can never be rejected by the restore bomb-ratio guard.
+        # Account conservatively for local headers, data descriptors and the
+        # central directory before creating the standalone JSON snapshot.
+        archive_overhead=32+sum(100+2*len(name.encode('utf-8')) for name in archive_names)
+        if total_uncompressed+archive_overhead>MAX_BACKUP_ARCHIVE_BYTES:
+            raise ValueError('Sauvegarde complète impossible : les métadonnées et les fichiers dépassent la limite de restauration autorisée.')
+
+        # Validate the database while its identity is still pinned to the same
+        # regular file that will be copied into both backup representations.
+        try:
+            with open_snapshot_source(DATA_FILE,database_stat) as source:
+                current=json.load(source)
+        except (OSError,UnicodeError,json.JSONDecodeError) as error:
+            raise ValueError('Sauvegarde impossible : la base JSON est illisible.') from error
         if current is None: return None
+
         backup_dir=self._backup_dir()
         now=time.time()
-        backups=sorted(glob.glob(os.path.join(backup_dir,'maclasse-*.json')),key=os.path.getmtime,reverse=True)
+        # Only a paired JSON + ZIP snapshot is complete enough to satisfy the backup interval.
+        backups=sorted(
+            (path for path in glob.glob(os.path.join(backup_dir,'maclasse-*.json'))
+             if os.path.isfile(path[:-5]+'.zip')),
+            key=os.path.getmtime,
+            reverse=True,
+        )
         if not force and backups and now-os.path.getmtime(backups[0])<BACKUP_INTERVAL_SECONDS:
             return None
         stamp=time.strftime('%Y%m%d-%H%M%S') + f'-{time.time_ns()%1000000:06d}'
         backup_path=os.path.join(backup_dir,f'maclasse-{stamp}.json')
-        shutil.copy2(DATA_FILE,backup_path)
-        # Complete portable snapshot: database JSON plus physical uploads.
+        backup_tmp=backup_path+'.tmp'
+        try:
+            descriptor=os.open(backup_tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+            with os.fdopen(descriptor,'wb') as target, open_snapshot_source(DATA_FILE,database_stat) as source:
+                shutil.copyfileobj(source,target)
+                target.flush()
+                os.fsync(target.fileno())
+            os.replace(backup_tmp,backup_path)
+        finally:
+            try:
+                if os.path.exists(backup_tmp): os.remove(backup_tmp)
+            except OSError: pass
+        # Publish the full portable ZIP only after its central directory has been
+        # written successfully. A failed backup must never leave a valid-looking
+        # but truncated maclasse-*.zip file in the backup directory.
         archive_path=os.path.join(backup_dir,f'maclasse-{stamp}.zip')
-        with zipfile.ZipFile(archive_path,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.write(DATA_FILE,'data/maclasse.json')
-            if os.path.isdir(UPLOADS):
-                for base,_,files in os.walk(UPLOADS):
-                    for filename in files:
-                        full=os.path.join(base,filename)
-                        archive.write(full,os.path.join('data','uploads',os.path.relpath(full,UPLOADS)))
+        archive_tmp=archive_path+'.tmp'
+        try:
+            # Create the temporary archive with owner-only permissions before
+            # zipfile opens it; never expose student records or file contents
+            # through a world-readable intermediate or final backup.
+            archive_descriptor=os.open(archive_tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+            os.close(archive_descriptor)
+            with zipfile.ZipFile(archive_tmp,'w',compression=zipfile.ZIP_STORED) as archive:
+                with open_snapshot_source(DATA_FILE,database_stat) as source, archive.open('data/maclasse.json','w') as target:
+                    shutil.copyfileobj(source,target)
+                for full,archive_name,expected_stat in upload_entries:
+                    with open_snapshot_source(full,expected_stat) as source, archive.open(archive_name,'w') as target:
+                        shutil.copyfileobj(source,target)
+            if os.path.getsize(archive_tmp)>MAX_BACKUP_ARCHIVE_BYTES:
+                raise ValueError('Sauvegarde complète impossible : l’archive dépasse la limite de restauration autorisée.')
+            os.replace(archive_tmp,archive_path)
+        finally:
+            try:
+                if os.path.exists(archive_tmp): os.remove(archive_tmp)
+            except OSError: pass
         cutoff=now-BACKUP_RETENTION_DAYS*86400
         for pattern in ('maclasse-*.json','maclasse-*.zip'):
             for stale in glob.glob(os.path.join(backup_dir,pattern)):
@@ -2263,10 +2606,21 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(_public_update_maintenance(maintenance))
             except (OSError,ValueError,AttributeError):
                 return self._json({'scheduled':False,'maintenance':None})
+        if path in ('/api/release-notes/state', '/api/release-notes/history'):
+            user = self._require_auth(roles=('admin', 'teacher', 'student'))
+            if not user:
+                return
+            if path == '/api/release-notes/state':
+                return self._json({'version': str(APP_VERSION).lstrip('vV'),
+                                   'seen_version': _release_notes_seen_version(user.get('id'))})
+            payload = _release_notes_history_payload()
+            if not payload.get('history_documents') and not payload.get('current_release_markdown'):
+                return self._json({'error': 'Aucune trace de version disponible dans le dépôt.'}, 503)
+            return self._json(payload)
         if path=='/api/auth/setup-status':
             data=_load_database()
             users=data.get('users') if isinstance(data.get('users'),list) else []
-            occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students'))
+            occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students','teachers'))
             return self._json({'setupRequired':not occupied})
         if path=='/api/auth/session':
             user=self._session_user()
@@ -2277,7 +2631,7 @@ class Handler(SimpleHTTPRequestHandler):
             if user: user={**user,'mustChangePassword':bool(SESSIONS.get(token,{}).get('must_change'))}
             return self._json({'authenticated':bool(user),'user':user})
         if path.startswith('/api/') or path.startswith('/data/uploads/'):
-            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance','/api/sync-status') or path.startswith('/data/uploads/') else ('admin','teacher')
+            allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/update-maintenance','/api/sync-status','/api/release-notes/state','/api/release-notes/history') or path.startswith('/data/uploads/') else ('admin','teacher')
             if not self._require_auth(roles=allowed_roles): return
         if path=='/api/sync-status':
             # Lightweight revision probe used by every open application module.
@@ -2338,14 +2692,30 @@ class Handler(SimpleHTTPRequestHandler):
                 visible=dict(data)
                 visible['students']=[{k:v for k,v in x.items() if k not in ('passwordHash','password','mustChangePassword','role','username','active')} for x in data.get('students',[]) or [] if isinstance(x,dict)]
                 visible['users']=[{k:v for k,v in x.items() if k not in ('passwordHash','password')} for x in _student_account_users(data) if isinstance(x,dict)]
-                visible['teachers']=[]
+                teacher_profiles={}
+                for profile in data.get('teachers',[]) or []:
+                    if isinstance(profile,dict) and profile.get('role')=='teacher' and profile.get('id'):
+                        teacher_profiles[str(profile['id'])]={k:v for k,v in profile.items() if k not in ('passwordHash','password','mustChangePassword')}
                 for account in data.get('users',[]) or []:
                     if not isinstance(account,dict) or account.get('role')!='teacher': continue
-                    profile={k:v for k,v in account.items() if k not in ('passwordHash','password','mustChangePassword')}
-                    profile['teacherId']=str(account.get('id') or ''); profile['classIds']=sorted(_teacher_class_ids(data,account)); visible['teachers'].append(profile)
+                    ident=str(account.get('id') or '')
+                    teacher_profiles[ident]={**teacher_profiles.get(ident,{}),**{k:v for k,v in account.items() if k not in ('passwordHash','password','mustChangePassword')}}
+                visible['teachers']=[]
+                account_teacher_ids={str(account.get('id') or '') for account in data.get('users',[]) or [] if isinstance(account,dict) and account.get('role')=='teacher'}
+                for ident,profile in teacher_profiles.items():
+                    profile['id']=ident; profile['teacherId']=ident
+                    profile['hasAccount']=ident in account_teacher_ids
+                    profile['classIds']=sorted(_teacher_class_ids(data,profile))
+                    visible['teachers'].append(profile)
             return self._json(visible,headers={'X-MaClasse-Revision':revision})
         if not self._safe_static_path(path):
             return self.send_error(404)
+        if path.startswith('/data/uploads/'):
+            # Keep the attachment directory stable until SimpleHTTPRequestHandler
+            # has opened and streamed the file. A restore must wait for active
+            # downloads instead of swapping uploads between path resolution/open.
+            with UPLOADS_LOCK:
+                return super().do_GET()
         return super().do_GET()
     def do_POST(self):
         if not self._require_local_origin(): return
@@ -2358,8 +2728,8 @@ class Handler(SimpleHTTPRequestHandler):
             if not self._session_user():
                 return self._json({'error':'Connexion requise.'},401)
         elif path not in public_post_paths:
-            admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/user-status','/api/backup/restore','/api/reset')
-            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin',) if path in admin_only_paths else ('admin','teacher')
+            admin_only_paths=('/api/admin/updates/prepare','/api/admin/updates/schedule','/api/admin/updates/cancel-schedule','/api/admin/updates/install','/api/admin/teacher','/api/admin/establishment-import/validate','/api/admin/establishment-import/apply','/api/admin/user-status','/api/backup/restore','/api/reset')
+            roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf','/api/release-notes/ack') else ('admin',) if path in admin_only_paths else ('admin','teacher')
             if not self._require_auth(roles=roles): return
         try: length=int(self.headers.get('Content-Length','0'))
         except ValueError: return self._json({'error':'Taille de requête invalide.'},400)
@@ -2367,8 +2737,10 @@ class Handler(SimpleHTTPRequestHandler):
             max_length=1*1024*1024
         elif path=='/api/upload':
             max_length=50*1024*1024
+        elif path in ('/api/admin/establishment-import/validate','/api/admin/establishment-import/apply'):
+            max_length=25*1024*1024
         elif path=='/api/backup/restore':
-            max_length=100*1024*1024
+            max_length=MAX_BACKUP_ARCHIVE_BYTES
         elif path in ('/api/data','/api/save'):
             max_length=20*1024*1024
         else:
@@ -2376,6 +2748,23 @@ class Handler(SimpleHTTPRequestHandler):
         if length<0 or length>max_length:
             return self._json({'error':f'Requête trop volumineuse (maximum {max_length//(1024*1024)} Mo pour cette opération).'},413)
         body=self.rfile.read(length)
+        if path == '/api/release-notes/ack':
+            user = self._require_auth(roles=('admin', 'teacher', 'student'))
+            if not user:
+                return
+            try:
+                payload = json.loads(body.decode('utf-8'))
+            except (UnicodeDecodeError, ValueError):
+                return self._json({'error': 'Demande de consultation invalide.'}, 400)
+            if not isinstance(payload, dict):
+                return self._json({'error': 'Demande de consultation invalide.'}, 400)
+            try:
+                saved_version = _mark_release_notes_seen(user.get('id'), payload.get('version'))
+            except ValueError as error:
+                return self._json({'error': str(error)}, 409)
+            except OSError:
+                return self._json({'error': 'Impossible d’enregistrer la consultation de cette version.'}, 500)
+            return self._json({'ok': True, 'seen_version': saved_version})
         if path=='/api/admin/updates/prepare':
             user=self._require_auth(roles=('admin',))
             if not user: return
@@ -2525,7 +2914,7 @@ class Handler(SimpleHTTPRequestHandler):
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
                     if not isinstance(data,dict): data={}
                     users=data.get('users') if isinstance(data.get('users'),list) else []
-                    occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students'))
+                    occupied=bool(users) or any(bool(data.get(key)) for key in ('classes','students','teachers'))
                     if occupied: return self._json({'error':'La première configuration a déjà été effectuée. Connecte-toi avec le compte direction.'},409)
                     account={'id':secrets.token_urlsafe(18),'role':'admin','username':username,'name':name,'first':first,'last':last,'active':True,'passwordHash':_password_hash(password)}
                     data['users']=[account]; data.pop('teachers',None); data['schemaVersion']=25011
@@ -2617,6 +3006,71 @@ class Handler(SimpleHTTPRequestHandler):
         allowed_roles=('admin','teacher','student') if path in ('/api/data','/api/save','/api/upload','/api/delete-upload','/api/bulletin-pdf') else ('admin','teacher')
         user=self._require_auth(roles=allowed_roles)
         if not user: return
+        if path in ('/api/admin/establishment-import/validate','/api/admin/establishment-import/apply'):
+            if user.get('role')!='admin':
+                return self._json({'error':'Réservé à la Direction.'},403)
+            try:
+                payload=json.loads(body.decode('utf-8'))
+            except (UnicodeDecodeError,ValueError):
+                return self._json({'error':'Le fichier JSON est invalide ou illisible.'},400)
+            if not isinstance(payload,dict):
+                return self._json({'error':'Le fichier doit contenir un objet JSON à la racine.'},400)
+            if path.endswith('/validate'):
+                try:
+                    with DATA_LOCK:
+                        current=_load_database_for_establishment_import()
+                        validation=establishment_import.validate_bundle(payload,current)
+                    return self._json(establishment_import.public_validation(validation))
+                except ValueError as exc:
+                    return self._json({'error':str(exc)},409)
+                except Exception:
+                    return self._json({'error':'Impossible de valider ce dossier d’établissement.'},500)
+            try:
+                with DATA_LOCK:
+                    current=_load_database_for_establishment_import()
+                    validation=establishment_import.validate_bundle(payload,current)
+                    if validation.get('errors'):
+                        return self._json({
+                            'error':'Le dossier contient des erreurs bloquantes. Aucune donnée n’a été modifiée.',
+                            'validation':establishment_import.public_validation(validation)
+                        },422)
+                    updated,credentials,summary=establishment_import.build_data(
+                        payload,current,
+                        password_hasher=_password_hash,
+                        token_factory=secrets.token_urlsafe
+                    )
+                    # Une sauvegarde complète est obligatoire avant la moindre écriture.
+                    # L'archive inclut la base et les pièces jointes existantes.
+                    self._create_backup(force=True)
+                    _sanitize_rich_data(updated)
+                    serialized=json.dumps(updated,ensure_ascii=False,indent=2).encode('utf-8')
+                    revision=hashlib.sha256(serialized).hexdigest()
+                    temporary_path=f'{DATA_FILE}.{threading.get_ident()}.import.tmp'
+                    try:
+                        with open(temporary_path,'wb') as output:
+                            output.write(serialized)
+                            output.flush()
+                            os.fsync(output.fileno())
+                        # La seule opération qui remplace la base est atomique.
+                        # Aucun calcul ou accès disque ne suit le remplacement.
+                        os.replace(temporary_path,DATA_FILE)
+                    except Exception:
+                        try:
+                            if os.path.exists(temporary_path):
+                                os.remove(temporary_path)
+                        except OSError:
+                            pass
+                        raise
+                return self._json({
+                    'ok':True,
+                    'summary':summary,
+                    'credentials':credentials,
+                    'revision':revision
+                },201,headers={'X-MaClasse-Revision':revision})
+            except ValueError as exc:
+                return self._json({'error':str(exc)},422)
+            except Exception:
+                return self._json({'error':'Import impossible. La base actuelle a été conservée.'},500)
         if path=='/api/admin/teacher':
             if user.get('role')!='admin': return self._json({'error':'Réservé à la direction.'},403)
             try: obj=json.loads(body.decode('utf-8'))
@@ -2639,10 +3093,13 @@ class Handler(SimpleHTTPRequestHandler):
                     with open(DATA_FILE,encoding='utf-8') as f: data=json.load(f)
                     if not isinstance(data,dict): return self._json({'error':'Base de données invalide.'},500)
                     accounts=data.get('users') if isinstance(data.get('users'),list) else []
+                    profiles=data.get('teachers') if isinstance(data.get('teachers'),list) else []
                     target=next((x for x in accounts if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None) if ident else None
-                    if ident and not target: return self._json({'error':'Compte professeur introuvable.'},404)
+                    profile_record=next((x for x in profiles if isinstance(x,dict) and str(x.get('id'))==ident and x.get('role')=='teacher'),None) if ident else None
+                    if ident and not target and not profile_record: return self._json({'error':'Fiche professeur introuvable.'},404)
+                    creating_account=target is None
                     temporary_password=''
-                    if not ident and not password:
+                    if creating_account and not password:
                         temporary_password=secrets.token_urlsafe(8)
                         password=temporary_password
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=ident for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
@@ -2650,9 +3107,13 @@ class Handler(SimpleHTTPRequestHandler):
                     valid_ids={str(x.get('id')) for x in classes if isinstance(x,dict)}
                     assigned={str(x) for x in class_ids}; principal={str(x) for x in pp_ids}
                     if not assigned.issubset(valid_ids) or not principal.issubset(valid_ids): return self._json({'error':'Une classe sélectionnée est introuvable.'},400)
-                    created=not bool(ident)
-                    if created:
-                        ident=secrets.token_urlsafe(18); target={'id':ident,'role':'teacher','active':True,'mustChangePassword':True}; accounts.append(target)
+                    created=creating_account
+                    if creating_account:
+                        if not ident:
+                            ident=secrets.token_urlsafe(18)
+                        target=dict(profile_record or {'id':ident,'role':'teacher','active':True,'mustChangePassword':True})
+                        target.update({'id':ident,'role':'teacher','active':target.get('active') is not False})
+                        accounts.append(target)
                     target.update({'id':ident,'role':'teacher','username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'subjects':list(dict.fromkeys(x.strip() for x in subjects if x.strip())),'profileNotes':notes,'active':target.get('active') is not False})
                     if password:
                         target['passwordHash']=_password_hash(password); target['mustChangePassword']=True
@@ -2665,7 +3126,13 @@ class Handler(SimpleHTTPRequestHandler):
                         if str(record.get('id')) in assigned or str(record.get('id')) in principal: record['teacherIds'].append(ident)
                         if str(record.get('id')) in principal: record['principalTeacherId']=ident
                         elif str(record.get('principalTeacherId') or '')==ident: record['principalTeacherId']=''
-                    data['users']=accounts; data.pop('teachers',None)
+                    profile_fields=('id','teacherId','role','first','last','name','email','phone','subjects','profileNotes','active','scheduleUnavailable')
+                    profile_payload={key:target[key] for key in profile_fields if key in target}
+                    profile_payload['id']=ident; profile_payload['teacherId']=ident; profile_payload['role']='teacher'
+                    profile_index=next((index for index,item in enumerate(profiles) if isinstance(item,dict) and str(item.get('id'))==ident),None)
+                    if profile_index is None: profiles.append(profile_payload)
+                    else: profiles[profile_index]={**profiles[profile_index],**profile_payload}
+                    data['users']=accounts; data['teachers']=profiles
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
@@ -2690,6 +3157,14 @@ class Handler(SimpleHTTPRequestHandler):
                     if any(isinstance(x,dict) and str(x.get('username') or '').lower()==username and str(x.get('id'))!=str(target.get('id')) for x in accounts): return self._json({'error':'Cet identifiant est déjà utilisé.'},409)
                     target.update({'username':username,'first':first,'last':last,'name':(first+' '+last).strip(),'email':email,'phone':phone,'profileNotes':notes})
                     if subjects is not None: target['subjects']=list(dict.fromkeys(str(v).strip() for v in subjects if str(v).strip()))
+                    profiles=data.get('teachers') if isinstance(data.get('teachers'),list) else []
+                    profile_fields=('id','teacherId','role','first','last','name','email','phone','subjects','profileNotes','active','scheduleUnavailable')
+                    profile_payload={key:target[key] for key in profile_fields if key in target}
+                    profile_payload['id']=str(target.get('id') or user.get('id')); profile_payload['teacherId']=profile_payload['id']; profile_payload['role']='teacher'
+                    profile_index=next((index for index,item in enumerate(profiles) if isinstance(item,dict) and str(item.get('id'))==profile_payload['id']),None)
+                    if profile_index is None: profiles.append(profile_payload)
+                    else: profiles[profile_index]={**profiles[profile_index],**profile_payload}
+                    data['teachers']=profiles
                     tmp=f'{DATA_FILE}.{threading.get_ident()}.tmp'
                     with open(tmp,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
                     os.replace(tmp,DATA_FILE); revision=_database_revision()
@@ -2809,9 +3284,11 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as exc: return self._json({'error':'Modification du compte élève impossible : '+str(exc)},500)
         if path=='/api/backup/restore':
             if user.get('role')!='admin': return self._json({'error':'La restauration complète est réservée à la direction.'},403)
-            if length>100*1024*1024: return self._json({'error':'Archive trop volumineuse (100 Mo maximum).'},413)
+            if length>MAX_BACKUP_ARCHIVE_BYTES: return self._json({'error':'Archive trop volumineuse (512 Mo maximum).'},413)
             try:
-                with DATA_LOCK:
+                # Restoration must exclude uploads and database writes for the whole
+                # operation, including archive validation and staging.
+                with DATA_LOCK, UPLOADS_LOCK:
                     backup_name=self._create_backup(force=True) if os.path.exists(DATA_FILE) else None
                     restored=_restore_backup_archive(body)
                     revision=_database_revision()
@@ -2918,9 +3395,7 @@ class Handler(SimpleHTTPRequestHandler):
                         return self._json({'error':'Les données ont été modifiées depuis votre dernier chargement. Recharge MaClasse avant de réessayer.','code':'REVISION_CONFLICT'},409,headers={'X-MaClasse-Revision':current_revision})
                     if current is not None:
                         data['users']=current.get('users',[]) if isinstance(current.get('users'),list) else []
-                        data.pop('teachers',None)
-                    else:
-                        data.pop('teachers',None)
+                    data['teachers']=_teacher_profiles_for_save(current or {},data,user)
                     if current is not None:
                         old_students={str(x.get('id')):x for x in current.get('students',[]) or [] if isinstance(x,dict) and x.get('id')}
                         for student in data.get('students',[]) or []:
@@ -2971,16 +3446,18 @@ class Handler(SimpleHTTPRequestHandler):
                 if parent_path:
                     if not parent_path.startswith('cloud/') or not _cloud_path_allowed(user,parent_path,write=True): return self._json({'error':'Création dans ce dossier refusée.'},403)
                     pp=[x for x in parent_path.split('/') if x not in ('','.','..')]
-                    base=_safe_upload_path(parent_path)
-                    if not os.path.isdir(base): return self._json({'error':'Dossier parent introuvable.'},400)
-                    target_dir=os.path.realpath(os.path.join(base,safe(obj.get('name','folder'))))
-                    uploads_root=os.path.realpath(UPLOADS)
-                    if os.path.commonpath([target_dir,uploads_root])!=uploads_root: return self._json({'error':'Chemin invalide'},400)
-                    os.makedirs(target_dir,exist_ok=False)
-                    return self._json({'ok':True,'path':_uploads_relative(target_dir)})
+                    with UPLOADS_LOCK:
+                        base=_safe_upload_path(parent_path)
+                        if not os.path.isdir(base): return self._json({'error':'Dossier parent introuvable.'},400)
+                        target_dir=os.path.realpath(os.path.join(base,safe(obj.get('name','folder'))))
+                        uploads_root=os.path.realpath(UPLOADS)
+                        if os.path.commonpath([target_dir,uploads_root])!=uploads_root: return self._json({'error':'Chemin invalide'},400)
+                        os.makedirs(target_dir,exist_ok=False)
+                        return self._json({'ok':True,'path':_uploads_relative(target_dir)})
                 parts += ['folders',safe(obj.get('id','folder'))]
-                target_dir=_safe_upload_path('/'.join(parts)); os.makedirs(target_dir,exist_ok=False)
-                return self._json({'ok':True,'path':'/'.join(parts)})
+                with UPLOADS_LOCK:
+                    target_dir=_safe_upload_path('/'.join(parts)); os.makedirs(target_dir,exist_ok=False)
+                    return self._json({'ok':True,'path':'/'.join(parts)})
             except FileExistsError: return self._json({'error':'Ce dossier physique existe déjà.'},409)
             except Exception as e: return self._json({'error':str(e)},400)
         if path=='/api/cloud-rename':
@@ -2989,12 +3466,13 @@ class Handler(SimpleHTTPRequestHandler):
                 if not _cloud_path_allowed(user,rel,write=True) or not _cloud_known_item_path(rel): return self._json({'error':'Modification de ce fichier refusée.'},403)
                 if not rel or not new or new in ('.','..') or '/' in new or '\\' in new: return self._json({'error':'Nom invalide'},400)
                 parts=[x for x in rel.split('/') if x not in ('','.','..')]
-                target=_safe_upload_path(rel); base=os.path.dirname(target); dest=_safe_upload_path(_uploads_relative(base)+'/'+new)
-                if not os.path.exists(target): return self._json({'error':'Le fichier physique est introuvable.'},404)
-                if os.path.exists(dest): return self._json({'error':'Un fichier portant ce nom existe déjà.'},409)
-                os.rename(target,dest)
-                newrel=_uploads_relative(dest)
-                return self._json({'ok':True,'path':newrel})
+                with UPLOADS_LOCK:
+                    target=_safe_upload_path(rel); base=os.path.dirname(target); dest=_safe_upload_path(_uploads_relative(base)+'/'+new)
+                    if not os.path.exists(target): return self._json({'error':'Le fichier physique est introuvable.'},404)
+                    if os.path.exists(dest): return self._json({'error':'Un fichier portant ce nom existe déjà.'},409)
+                    os.rename(target,dest)
+                    newrel=_uploads_relative(dest)
+                    return self._json({'ok':True,'path':newrel})
             except Exception as e: return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-move':
@@ -3003,11 +3481,12 @@ class Handler(SimpleHTTPRequestHandler):
                 if not source or not destination or not name or '/' in name or '\\' in name: return self._json({'error':'Chemin invalide'},400)
                 if not _cloud_path_allowed(user,source,write=True) or not _cloud_known_item_path(source) or not _cloud_path_allowed(user,destination,write=True): return self._json({'error':'Déplacement Cloud non autorisé.'},403)
                 clean=lambda r:[x for x in r.split('/') if x not in ('','.','..')]
-                sp=_safe_upload_path(source); dp=_safe_upload_path(destination+'/'+name)
-                if not os.path.exists(sp): return self._json({'error':'Source physique introuvable.'},404)
-                if os.path.exists(dp): return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
-                os.makedirs(os.path.dirname(dp),exist_ok=True); os.rename(sp,dp)
-                return self._json({'ok':True,'path':_uploads_relative(dp)})
+                with UPLOADS_LOCK:
+                    sp=_safe_upload_path(source); dp=_safe_upload_path(destination+'/'+name)
+                    if not os.path.exists(sp): return self._json({'error':'Source physique introuvable.'},404)
+                    if os.path.exists(dp): return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
+                    os.makedirs(os.path.dirname(dp),exist_ok=True); os.rename(sp,dp)
+                    return self._json({'ok':True,'path':_uploads_relative(dp)})
             except Exception as e: return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-copy':
@@ -3016,13 +3495,14 @@ class Handler(SimpleHTTPRequestHandler):
                 if not source or not destination or not name or '/' in name or '\\' in name:return self._json({'error':'Chemin invalide'},400)
                 if not _cloud_path_allowed(user,source,write=False) or not _cloud_known_item_path(source) or not _cloud_path_allowed(user,destination,write=True): return self._json({'error':'Copie Cloud non autorisée.'},403)
                 clean=lambda r:[x for x in r.split('/') if x not in ('','.','..')]
-                spath=_safe_upload_path(source); dpath=_safe_upload_path(destination+'/'+name)
-                if not os.path.exists(spath):return self._json({'error':'Source physique introuvable.'},404)
-                if os.path.exists(dpath):return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
-                os.makedirs(os.path.dirname(dpath),exist_ok=True)
-                if os.path.isdir(spath):shutil.copytree(spath,dpath)
-                else:shutil.copy2(spath,dpath)
-                return self._json({'ok':True,'path':_uploads_relative(dpath)})
+                with UPLOADS_LOCK:
+                    spath=_safe_upload_path(source); dpath=_safe_upload_path(destination+'/'+name)
+                    if not os.path.exists(spath):return self._json({'error':'Source physique introuvable.'},404)
+                    if os.path.exists(dpath):return self._json({'error':'Un élément porte déjà ce nom dans le dossier destination.'},409)
+                    os.makedirs(os.path.dirname(dpath),exist_ok=True)
+                    if os.path.isdir(spath):shutil.copytree(spath,dpath)
+                    else:shutil.copy2(spath,dpath)
+                    return self._json({'ok':True,'path':_uploads_relative(dpath)})
             except Exception as e:return self._json({'error':str(e)},400)
 
         if path=='/api/cloud-delete':
@@ -3034,24 +3514,27 @@ class Handler(SimpleHTTPRequestHandler):
                 clean=lambda r:[x for x in r.split('/') if x not in ('','.','..')]
                 parts=clean(rel)
                 if not parts: return self._json({'error':'Chemin invalide'},400)
-                if not os.path.exists(target):return self._json({'ok':True,'missing':True})
-                if os.path.isdir(target):shutil.rmtree(target)
-                else:os.remove(target)
-                return self._json({'ok':True})
+                with UPLOADS_LOCK:
+                    target=_safe_upload_path(rel)
+                    if not os.path.exists(target):return self._json({'ok':True,'missing':True})
+                    if os.path.isdir(target):shutil.rmtree(target)
+                    else:os.remove(target)
+                    return self._json({'ok':True})
             except Exception as e:return self._json({'error':str(e)},400)
 
         if path=='/api/delete-upload':
             try:
                 obj=json.loads(body.decode('utf-8')); name=str(obj.get('name','')).replace('\\','/').lstrip('/')
                 parts=[x for x in name.split('/') if x not in ('','.','..')]
-                target=_safe_upload_path(name) if parts else ''
                 if not parts: return self._json({'error':'Chemin invalide.'},400)
                 can_write=_student_can_access_upload(user,name,write=True) if user.get('role')=='student' else _teacher_can_access_upload(user,name,write=True)
                 can_read=_student_can_access_upload(user,name,write=False) if user.get('role')=='student' else _teacher_can_access_upload(user,name,write=False)
                 if name.startswith('cloud/') or not can_write or not can_read:
                     return self._json({'error':'Suppression de ce fichier non autorisée. Utilisez la commande Cloud dédiée pour les éléments Cloud.'},403)
-                if os.path.exists(target): shutil.rmtree(target) if os.path.isdir(target) else os.remove(target)
-                return self._json({'ok':True})
+                with UPLOADS_LOCK:
+                    target=_safe_upload_path(name)
+                    if os.path.exists(target): shutil.rmtree(target) if os.path.isdir(target) else os.remove(target)
+                    return self._json({'ok':True})
             except Exception:
                 return self._json({'ok':False},400)
         if path=='/api/reset':
@@ -3087,15 +3570,16 @@ class Handler(SimpleHTTPRequestHandler):
                 if folder!=f'submissions/{sid}': return self._json({'error':'Les élèves peuvent uniquement déposer des fichiers dans leur propre espace de rendu.'},403)
             elif not _teacher_can_access_upload(user,folder,write=True):
                 return self._json({'error':'Téléversement dans ce dossier non autorisé.'},403)
-            target_dir=_safe_upload_path(folder) if folder else os.path.realpath(UPLOADS)
-            os.makedirs(target_dir,exist_ok=True)
-            base,ext=os.path.splitext(name); candidate=name; n=1
-            while os.path.exists(os.path.join(target_dir,candidate)):
-                candidate=f'{base}_{n}{ext}'; n+=1
-            target=os.path.join(target_dir,candidate)
-            with open(target,'wb') as f: f.write(body)
-            rel='/'.join([folder,candidate]) if folder else candidate
-            return self._json({'name':rel,'url':'/data/uploads/'+rel,'size':len(body)})
+            with UPLOADS_LOCK:
+                target_dir=_safe_upload_path(folder) if folder else os.path.realpath(UPLOADS)
+                os.makedirs(target_dir,exist_ok=True)
+                base,ext=os.path.splitext(name); candidate=name; n=1
+                while os.path.exists(os.path.join(target_dir,candidate)):
+                    candidate=f'{base}_{n}{ext}'; n+=1
+                target=os.path.join(target_dir,candidate)
+                with open(target,'xb') as f: f.write(body)
+                rel='/'.join([folder,candidate]) if folder else candidate
+                return self._json({'name':rel,'url':'/data/uploads/'+rel,'size':len(body)})
         self.send_error(404)
 
 def _assert_loopback_host(host):
@@ -3135,6 +3619,21 @@ if __name__=='__main__':
     except ValueError as error:
         print(f'ERREUR DE SÉCURITÉ : {error}')
         raise SystemExit(2)
+    if TLS_HOSTNAME:
+        # Importer le superviseur uniquement pour le mode DNS public :
+        # les tests HTTP/TLS locaux et les installations sans certificat public
+        # n'ont pas besoin de charger cryptography au démarrage du serveur.
+        try:
+            import network_supervisor
+        except ImportError as error:
+            print(f'ERREUR DE SÉCURITÉ : validation TLS DNS indisponible : {error}')
+            raise SystemExit(2)
+        if not TLS_CERT or network_supervisor._normalise_dns_hostname(TLS_HOSTNAME) != TLS_HOSTNAME:
+            print('ERREUR DE SÉCURITÉ : MACLASSE_TLS_HOSTNAME exige un FQDN valide et un certificat TLS.')
+            raise SystemExit(2)
+        if not network_supervisor.certificate_matches_host(TLS_CERT, TLS_HOSTNAME):
+            print('ERREUR DE SÉCURITÉ : le certificat TLS ne couvre pas le nom DNS annoncé.')
+            raise SystemExit(2)
     if bool(TLS_CERT)!=bool(TLS_KEY):
         print('ERREUR DE SÉCURITÉ : MACLASSE_TLS_CERT et MACLASSE_TLS_KEY doivent être définis ensemble.')
         raise SystemExit(2)
@@ -3157,7 +3656,8 @@ if __name__=='__main__':
     if context: httpd.socket=context.wrap_socket(httpd.socket,server_side=True)
     scheme='https' if context else 'http'
     mode='réseau privé HTTPS' if HOST not in ('127.0.0.1','localhost','::1') else ('local HTTPS' if context else 'local HTTP')
-    print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{HOST}:{PORT}')
+    advertised_host=TLS_HOSTNAME or HOST
+    print(f'MaClasse V{APP_VERSION} — {mode} — {scheme}://{advertised_host}:{PORT}')
     signal.signal(signal.SIGTERM,_stop_on_sigterm)
     try:
         httpd.serve_forever()

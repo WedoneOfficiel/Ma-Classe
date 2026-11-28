@@ -1,13 +1,49 @@
-# Audit produit MaClasse V25 — modules, ergonomie et rendu
+# Audit produit MaClasse V25 — modules, ergonomie et cohérence métier
 
-**État : audit produit poursuivi — candidat V25.1.0 — 25 novembre 2026**  
-**Périmètre :** interface web, modules métier, cohérence visuelle, parcours Direction / Professeur / Élève.  
-**Branche de travail :** \`feat/v25.0.25-stabilisation-reseau-migrations\`  
-**Référence actuelle :** [PR #13](https://github.com/WedoneOfficiel/Ma-Classe/pull/13), non fusionnée.  
-**Validation automatisée :** workflow [#1793](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45713179841) vert (3/3) : Linux, macOS Apple Silicon et Firefox réel. Les recettes sur le Mac et le PC Fedora physiques restent distinctes.
+**État : candidat V25.2.0 — audit produit, correctifs fonctionnels et validation automatisée — 27 novembre 2026**
+**Périmètre :** interface web, logique métier, cohérence des données entre modules, parcours Direction / Professeur / Élève.
+**Version stable de référence :** V25.1.1, publiée et installée sur le Mac de référence.
+**Campagne :** branche fix/v25.1.2-cross-module-consistency, PR #20 ouverte pour revue.
+**Dernières validations automatiques :** Workflow #2143 / run 46002490475, commit `1596fc422645e27a67b5858eca2c48552315bed9` : Linux (tests), macOS Apple Silicon avec installateur et `launchd` réels, et Firefox réel — **3/3 jobs réussis**. La suite recense 113 fichiers (68 JavaScript, 45 Python) et la matrice intermodules 860 invariants. Le paquet de release vérifie le runtime, tous les lanceurs racine, la clé publique Ed25519 et l'absence de données locales ou de clés privées. Les tests de sauvegarde/restore vérifient l'archive complète, la restauration d'une pièce jointe très compressible et le refus des chemins ambigus. La PR n'est pas fusionnée ; la release stable n'est pas publiée.
 
-Ce document complète l'audit technique et réseau. Il ne déclare pas un module « validé » sur la seule base de la présence d'une fonction ou d'un test unitaire : la validation finale exige aussi un parcours réel dans le navigateur.
+**Confiance HTTPS côté client — mode facultatif ajouté, recette en attente :** le mode privé historique exige toujours l'approbation/importation de `data/tls/ca.crt` sur chaque appareil (ou sa distribution centralisée). Le candidat ajoute une option avec FQDN, certificat publiquement reconnu, renouvellement ACME externe par DNS-01 et résolution DNS locale distribuée par DHCP : correctement configurée, elle évite tout réglage individuel de certificat. Le domaine, le client ACME, le hook de renouvellement, le routeur/DNS local et les appareils clients ne sont pas configurés ni testés sur le réseau cible ; l'exigence ne peut donc pas encore être déclarée satisfaite.
+## Audit croisé V25.1.2 — règles Évaluations / Bulletins / espace Élève
 
+La revue des contrats entre modules a mis en évidence plusieurs divergences qui n'étaient pas visibles dans les tests unitaires isolés :
+
+| Sujet | Contradiction constatée | Correctif proposé sur PR #20 | Validation prévue |
+|---|---|---|---|
+| Moyenne générale du bulletin | L'ancien calcul parcourait les notes de l'élève sans reprendre tous les filtres de publication, de classe, de groupe et de période du moteur commun. Il pouvait donc diverger des moyennes par matière et du relevé élève. | Rebrancher la moyenne générale sur le moteur partagé de visibilité des évaluations et sur le ciblage de l'élève. | Matrice de cas publiés/non publiés, programmés, autres groupes/classes et périodes. |
+| Affichage des barèmes | Certaines vues élève et fiches administratives affichaient la note brute comme si elle était toujours sur 20, alors que le relevé détaillé respecte le barème réel. | Centraliser le libellé de note selon le barème d'origine, avec des états explicites pour les résultats qualitatifs et les valeurs invalides. | Tests des vues concernées sur 13 barèmes et sept valeurs représentatives par barème. |
+| Affectation des devoirs aux groupes | Le panneau Suivi et la fiche élève pouvaient afficher les travaux de toute la classe, alors que la liste et les agrégats utilisaient le groupe. | Réutiliser studentWorkEligible dans studentActivitySummary, openStudentActivity et studentWorkItems. | Matrice classe entière, groupe identique, autre groupe, autre classe et liste de fiche élève. |
+| État de publication absent | Le moteur de statistiques considérait un champ published absent comme publié, alors que la projection serveur et le relevé élève exigent published: true. Les statistiques professeur pouvaient donc diverger de ce que l'élève reçoit. | Exiger un état publié explicite dans le moteur canonique. | Test d'une évaluation historique sans champ published dans les statistiques de classe. |
+| Identifiants historiques de type mixte | Des fonctions comparaient parfois strictement un identifiant numérique à sa représentation textuelle, alors que le serveur les normalisait déjà. | Ajouter sameId et l'utiliser dans les recherches de classe, d'élève, de période, les ciblages d'évaluations, les bulletins et les devoirs. Les identifiants vides restent invalides. | Matrice numérique/texte, groupes, bulletins et compétences ; aucune fiche sans classe ne doit être ciblée. |
+| Bilan des compétences | Une évaluation ciblée sur un groupe pouvait inclure les appréciations d'élèves d'un autre groupe dans la synthèse. | Filtrer les appréciations par evaluationModelTargetStudents, comme les notes du moteur commun. | Cas d'une évaluation de classe entière puis d'une évaluation limitée au groupe A, avec une valeur parasite du groupe B. |
+| Fiche élève historique | La fiche reprenait les notes et calculait la moyenne sans vérifier que l'élève était ciblé par chaque évaluation. | Réutiliser evaluationModelTargetStudents dans studentEvaluations et avg, sans changer l'accès enseignant aux brouillons. | Évaluation groupe A avec ligne parasite du groupe B, notes communes et moyenne de fiche. |
+| Compétences du bulletin HTML | L'impression depuis le navigateur réutilisait une synthèse de classe qui ne filtrait ni les brouillons, ni les publications futures, ni le ciblage individuel comme le PDF serveur. | Pour un bulletin, produire une synthèse individualisée avec evaluationModelVisible ; conserver le ciblage des élèves dans les bilans enseignants. | Bulletin HTML contre données PDF, évaluations publiées/non publiées, heure future, autre groupe et autre période. |
+| Statistiques des évaluations par groupe | Le tableau de bord et le calcul des moyennes comptaient les élèves de toute la classe pour des évaluations ciblées sur un groupe ; les IDs classe de types mixtes n'étaient pas toujours reconnus. | Utiliser evaluationModelTargetStudents pour les statistiques et normaliser les identifiants de classe. | Vérifier les compteurs, moyennes et listes avec plusieurs groupes et IDs numériques/texte. |
+| Liste des notes côté élève | studentGrades reconstruisait ses propres filtres et passait une date seule au contrôle de publication. | Réutiliser evaluationModelVisible avec un timestamp ISO complet. | Vérifier groupe, classe, brouillon, publication future et publication arrivée. |
+| Détail d'une note | L'écran détaillé recalculait une valeur brute sans revalider qu'elle respectait le barème. | Utiliser studentReportNumericGrade, comme le relevé et les moyennes. | Vérifier notes négatives, supérieures au barème et valeurs valides. |
+| Publication le jour même | Des calculs navigateur transmettaient une date seule au filtre de publication ; un timestamp prévu plus tard dans la même journée pouvait être considéré comme déjà visible. Le filtre du PDF serveur comparait lui aussi le timestamp à une date par ordre lexical. | Passer l'instant ISO complet aux calculs navigateur et utiliser le contrôle serveur de date/heure dans la génération PDF. | Tests avant, à et après l'instant prévu, avec fuseaux horaires et dates historiques explicites. |
+| Notes négatives ou hors barème | Le moteur navigateur pouvait conserver une valeur négative dans son résultat de secours alors que le PDF serveur l'écartait. Une note invalide pouvait ainsi modifier une moyenne affichée. | Rejeter toute valeur inférieure à zéro ou supérieure au barème, comme le calcul serveur. | Tests de valeurs négatives, supérieures au maximum, non numériques et décimales françaises. |
+
+La CI de la PR a révélé plusieurs défauts applicatifs réels, dont une note négative qui pouvait entrer dans une moyenne (par exemple, -1 et 12/20 produisaient 5,50). Le moteur commun et le cloisonnement des compétences du bulletin navigateur ont été corrigés. La tête `c0d8d34` a ensuite passé la CI complète Linux/macOS/Firefox ; la recette sur l'installation de référence reste distincte.
+
+### Dette technique observée
+
+Le JavaScript principal _all.js contient plusieurs générations historiques de fonctions et des redéfinitions successives. Cette architecture augmente le risque qu'une correction soit écrasée par une version ultérieure ou que deux modules appliquent des règles voisines mais différentes. La campagne V25.1.2 n'entreprend pas de réécrire tout le fichier : elle renforce d'abord les fonctions canoniques et les tests de contrat. Une extraction progressive des moteurs Évaluations, Bulletins, Emploi du temps et Messagerie devra être menée module par module, avec des tests de caractérisation avant déplacement.
+## Validation finale du candidat V25.1.2 — 26/11/2026
+
+- Dernière tête `eae1433` : run [45822162433](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45822162433), **3/3 jobs réussis**.
+- Linux : suites JavaScript et Python complètes.
+- macOS Apple Silicon : installateur, compilation Python, suites JavaScript/Python et intégration `launchd` réelle.
+- Firefox : parcours réel de l'EDT et captures des modules en thèmes clair/sombre.
+- La matrice inter-modules `tests/test_v25_cross_module_invariants.js` exécute **860 invariants** sur la dernière tête validée.
+- La deuxième vague a ajouté plus de 500 contrôles déterministes de classe/groupe, bulletins, notes, statistiques et rendus.
+- Le schéma de données n'a pas changé. V25.1.2 reste une version corrective, sans migration.
+
+La CI ne remplace pas une vérification finale avec de vrais comptes sur l'installation de référence. La PR #20 reste ouverte ; la release stable V25.1.2 n'existe pas encore.
+ 
 ## 1. Principes de l'audit
 
 Pour chaque module, l'audit vérifie :
@@ -420,3 +456,143 @@ Aucun score de risque, classement ou seuil automatique n'est calculé. Les nombr
 Le contexte de classe est désormais libéré lorsque l'utilisateur choisit un espace Cloud personnel, partagé, de groupe ou documentaire. Il reste conservé pour l'espace « Classe », afin de garder le raccourci vers la classe courante.
 
 Le changement d'espace passe par `setCloudSpace()`, qui réinitialise également le chemin, la sélection et les filtres. Le test Firefox vérifie l'espace réellement rendu, l'absence de colonne latérale dans les espaces personnels/partagés et le maintien de la navigation latérale pour l'espace classe.
+
+
+## 20. Audit individuel des modules, parcours réels et finition responsive — 26/11/2026
+
+### Objectif et méthode
+
+La campagne ne se limite pas à la cohérence entre les modules. Elle distingue désormais trois niveaux de preuve :
+
+1. **Test isolé du module ou de sa logique :** helper, calcul, filtre, permissions, persistance, rendu de fragment et cas limites, sans dépendre d’un autre écran.
+2. **Parcours fonctionnel dans Firefox réel :** actions déclenchées dans l’interface avec des comptes temporaires Direction, Professeur et Élève, puis vérification des résultats réellement affichés et persistés.
+3. **Inspection visuelle :** captures réelles de l’écran rendu en clair/sombre et aux largeurs desktop, 900 px et 390 px. Une capture confirme une composition visuelle, pas le fonctionnement de toutes les actions de l’écran.
+
+### Couverture par espace
+
+| Espace / modules | Tests isolés ou spécialisés présents | Parcours Firefox / inspection | Limite restante |
+|---|---|---|---|
+| Direction / administration | comptes, authentification, rôles, affectations, confidentialité, paramètres, sauvegardes et restauration | création d’un compte professeur depuis l’interface, désactivation puis réactivation ; captures Utilisateurs, Professeurs, Suivi de classe et Paramètres | recette avec les vrais comptes de l’installation de référence |
+| Professeur — emploi du temps | formulaire, récurrences, navigation jour/semaine/mois, conflits, permissions d’affectation, XSS et synchronisation | création/sauvegarde d’un créneau, persistance, mise à jour par une autre session et comparaison structurelle Professeur/Élève | scénarios de données exceptionnellement denses et recette multi-postes physique |
+| Professeur — séances et devoirs | pièces jointes, rendus, sauvegardes, états et ciblage de groupe | création d’une séance/devoir, téléversement d’une pièce jointe et ouverture du document côté Élève | gros volumes de fichiers et très longues listes de rendus |
+| Professeur — élèves et suivi | fiche 360°, identifiants mixtes, suivi individuel, devoirs éligibles, assiduité | ouverture des fiches et du suivi à partir du compte enseignant ; captures avec données de classe | recette métier avec les jeux de données réels de l’établissement |
+| Professeur — évaluations et bulletins | 860 invariants croisés, barèmes, moyennes, publication différée, permissions, compétences, PDF et persistance | écrans Évaluations et Bulletins capturés ; les calculs et projections sont vérifiés par tests dédiés et comparaisons HTML/PDF | validation humaine de bulletins réels et de cas d’établissement atypiques |
+| Professeur / Élève — messagerie | modèle Mail V2, destinataires, brouillons, CC/CCI, pièces jointes, droits et URLs | message professeur vers Élève, ouverture de la boîte élève et inspection des écrans | test d’usage humain avec échanges longs et nombreuses conversations |
+| Cloud Professeur / Élève | permissions personnelles/partagées/classe, identité des fichiers, upload et filtrage serveur | fichier partagé visible côté Élève, fichier privé non visible, lecture seule et refus de téléversement élève | volumes de stockage et arborescences très importantes |
+| Élève — emploi du temps, cours, résultats, vie scolaire et paramètres | tests dédiés de navigation, période, publications, PDF, assiduité, documents et préférences | captures des pages élève, thèmes et largeurs ; navigation vers les pages et contrôle de l’absence de commandes réservées au professeur | ergonomie avec historique complet et comptes présentant des données très volumineuses |
+| Élève — Travail à faire | tests de soumission et de téléversement, filtres, brouillons et identifiants mixtes ; test responsive dédié | depuis l’accueil, ouverture de la page, vérification du devoir en retard, état et bouton Ouvrir | recette avec un devoir réel, une correction réelle et un dépôt élève sur l’installation physique |
+
+### Anomalies supplémentaires découvertes et corrigées
+
+- **STU-WORK-01 — page Travail à faire inaccessible :** la page et ses filtres existaient déjà, mais le routeur redirigeait `studentWork` vers `studentLessons` et la navigation ne proposait aucun accès direct. La route dédiée est rétablie ; le menu et l’accueil y conduisent, un indicateur affiche le nombre de travaux en retard et la vue du cahier de cours reste séparée avec son onglet « À venir ».
+- **ID-MIXED-01 — identifiants numériques / textuels divergents :** plusieurs vues comparaient strictement les identifiants alors que des données historiques peuvent stocker un même identifiant sous forme numérique ou textuelle. Le comparateur commun `sameId` est réutilisé dans l’historique d’assiduité, les compteurs d’absences/retards, l’annuaire, le suivi des justifications, l’emploi du temps élève, les rendus/brouillons, les notifications, les bulletins et la fiche 360°. Des tests isolés exercent ces chemins avec des valeurs volontairement mixtes.
+- **UI-STU-02 — tableau Travail à faire trop comprimé sur téléphone :** les cinq colonnes se réduisaient jusqu’à couper les mots et la commande. Sous 650 px, chaque ligne devient une fiche à deux colonnes, avec les libellés explicites, le statut et le bouton Ouvrir. Le rendu desktop reste tabulaire. Le test Firefox mesure les colonnes et la largeur du bouton ; les captures 390 px en clair et sombre ont été inspectées.
+
+### Résultats de la campagne
+
+- Commit : `f8640bd5ccc900bdf0d2b1b4f4fb6969095c6dfe`.
+- Workflow : [45842659573](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45842659573).
+- Linux : réussi, tests JavaScript et Python.
+- macOS Apple Silicon : réussi, installateur, JavaScript, vrai démarrage `launchd` et suite Python.
+- Firefox réel : réussi, parcours multi-rôles et captures.
+- Matrice inter-modules : 860 invariants réussis.
+- Dépôt : 97 fichiers de tests (57 JS et 40 Python).
+- Captures Firefox : écrans Direction, Professeur et Élève en clair/sombre, avec largeurs desktop, 900 px et 390 px.
+
+### Limites assumées
+
+Cette campagne augmente nettement la couverture individuelle et les interactions réelles, mais elle ne signifie pas que chaque bouton de chaque module a été cliqué dans toutes ses combinaisons. Les captures n’attestent pas à elles seules la logique métier. Les essais avec longues listes, volumes de fichiers extrêmes, accessibilité clavier/lecteur d’écran et données réelles anonymisées restent des recettes distinctes. La confirmation finale dans l’installation physique, avec les vrais comptes et les données de l’établissement, n’a pas été effectuée par cette CI.
+
+La PR #20 reste ouverte ; aucune fusion, aucun tag et aucune release V25.1.2 ne sont annoncés ici.
+
+
+## Candidat V25.2.0 — correctifs fonctionnels et cohérence des parcours — 26/11/2026
+
+### Travail scolaire
+- La détection d'un rendu transmis est alignée sur les états de soumission ; les brouillons ne sont plus présentés comme des travaux reçus ni comme des corrections à effectuer.
+- Les listes de travaux manquants et les compteurs d'enseignant sont cohérents avec l'espace élève, tout en conservant la distinction métier entre « non rendu » et « en retard ».
+- Les filtres de la fiche élève, les notifications et le profil 360° réutilisent les mêmes critères de classe/groupe et d'état de soumission.
+- Le parcours dépôt → rendu → correction → retour élève est couvert par des tests de scénario, dont les anciens enregistrements à état incomplet.
+
+### Vie scolaire
+- Les appels retrouvent les classes, élèves, groupes et créneaux malgré les identifiants historiques numériques ou textuels.
+- Les modifications partielles préservent les statuts et motifs non touchés ; une modification de créneau ou de date n'écrase pas les autres données de l'appel.
+- Les changements non enregistrés sont isolés ; l'annulation ou le changement de contexte ne doit pas écraser l'état persistant.
+- Les files à traiter, les justifications et les compteurs d'absences/retards sont vérifiés après sauvegarde.
+
+### Administration et données associées
+- Les accès des professeurs et professeurs principaux sont harmonisés sur les classes réellement accessibles.
+- Les affectations existantes sont conservées lors de l'édition des comptes professeurs et normalisées dans les vues de gestion de classe.
+- Les suppressions d'élèves nettoient les références liées pour éviter les enregistrements orphelins.
+- Les identifiants de classe et d'élève sont normalisés dans le centre de notifications, les droits d'appréciation et les profils enseignants, sans fusionner des identités distinctes.
+
+### Validation de référence et limites
+- La tête fonctionnelle c474f771 a passé Linux, macOS Apple Silicon avec lancement réel de launchd, et Firefox réel (run 45864215881, 3/3).
+- La version candidate et les notes V25.2.0 ont été ajoutées après cette validation ; elles doivent être validées sur la tête finale par une nouvelle exécution complète.
+- La CI utilise des données et comptes temporaires. La recette sur la base de l'installation de référence, les vrais comptes, les appareils clients et les usages à gros volumes reste indépendante et nécessaire.
+- La PR #20 reste ouverte, non fusionnée et non publiée. Aucun tag stable V25.2.0 n'est créé par cette campagne.
+
+
+## 21. Optimisation du validateur d'import d'établissement — 26/11/2026
+
+### Problème de charge
+Le schéma autorise jusqu'à 50 000 créneaux d'emploi du temps. L'ancien contrôle des conflits parcourait toutes les paires de créneaux, même lorsque les deux cours n'avaient ni classe, ni professeur, ni salle en commun. Le coût pouvait donc devenir quadratique sur un dossier volumineux. Les calculs de capacité et certains indicateurs parcouraient aussi de nouveau toutes les fiches élèves ou tous les créneaux pour chaque classe/professeur.
+
+### Correctifs appliqués sur la PR #20
+- Indexation des créneaux par classe, professeur, salle et jour, puis balayage des seuls intervalles horaires qui se chevauchent.
+- Séparation des créneaux de classe entière et des créneaux de sous-groupes : deux groupes distincts peuvent travailler en parallèle sans générer de comparaison inutile.
+- Préindexation des effectifs par classe et par groupe, des créneaux par classe et des créneaux hebdomadaires par jour pour les calculs de besoins horaires et de trous.
+- Arrêt anticipé du rapport de conflits lorsque sa limite publique de 200 erreurs est atteinte.
+- Les règles métier restent inchangées : conflits de classe/groupe, professeur et salle, ainsi que l'intersection des récurrences et des exceptions.
+
+### Tests et validation
+- Nouveau fichier `tests/test_v25_establishment_import_scalability.py` : quatre scénarios dédiés, dont 5 000 créneaux simultanés sans ressource commune et 5 000 groupes parallèles distincts d'une même classe.
+- Commit fonctionnel testé : `3522e5dd2d09facd1d694b218a2a6e5718350cf3`.
+- Workflow [45896370692](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45896370692) : Linux, macOS Apple Silicon/launchd et Firefox réel, **3/3 réussis**.
+- Aucun changement de schéma ni migration de données.
+
+## 22. Pistes proposées pour V25.2.1 — hors périmètre du candidat V25.2.0
+
+Ces points sont des constats de code à traiter dans une campagne séparée ; ils ne sont ni des correctifs déjà livrés ni des anomalies confirmées par l'utilisateur.
+
+- **Planner :** le formulaire demande une capacité et des équipements, mais le parcours « Trouver un créneau » ne réutilise actuellement ces critères pour filtrer les salles compatibles. Il faut définir le comportement attendu et tester le chemin complet jusqu'à la préparation du cours.
+- **Échéances de devoirs :** `dueTime` est enregistré et affiché, mais les statuts élève « À faire » / « En retard » et la liste des travaux à venir reposent sur la date seule. Il faut harmoniser la règle de date/heure, y compris les devoirs historiques sans heure.
+- **Recette de sauvegarde :** compléter la campagne avec des archives contenant beaucoup de pièces jointes, des archives invalides et une restauration sur copie de données représentative.
+- **Accessibilité :** étendre les vérifications clavier, focus et lecteur d'écran au-delà des contrôles visuels responsive.
+
+La V25.2.0 reste le candidat à stabiliser ; ces pistes ne doivent pas retarder sa recette réelle ni être mélangées à sa branche de livraison.
+
+
+## Nouveautés après mise à jour et journal historique
+
+- L’écran des nouveautés compare la version installée avec la dernière version consultée par le compte authentifié.
+- L’accusé de consultation est conservé séparément de la base scolaire dans data/release-notes-state.json, sous la forme d’un dictionnaire de versions par identifiant de compte.
+- L’API utilise l’identité dérivée de la session serveur, jamais un identifiant de compte transmis par le navigateur.
+- Les comptes Direction, Professeur et Élève ont des états indépendants ; le changement d’appareil ne répète pas la même annonce.
+- Le journal lit l’historique consolidé, les archives des audits/recettes et l’ancien README conservés dans le dépôt, ainsi que les notes de la version courante.
+- Les entrées répétées sont réunies par numéro de version avec indication des fichiers sources. Les traces datées sans numéro sont conservées comme telles.
+- Les versions qui ne figurent pas dans les traces sont absentes du journal ; aucun statut de publication ou détail de fonctionnalité n’est extrapolé.
+- Le rendu Markdown échappe les caractères HTML avant de produire les éléments de présentation.
+- Les tests couvrent l’isolation par compte, la version réellement installée, les documents historiques multiples, les XSS et l’accès statique autorisé.
+
+
+## Générateur d'établissement : parcours et confidentialité
+
+- Le parcours Direction présente trois étapes clairement séparées : préparer les sources, générer manuellement le JSON dans ChatGPT, puis prévalider et confirmer l'import dans Ma Classe.
+- L'interface rappelle qu'aucune API ni connexion automatique à ChatGPT n'est utilisée.
+- La génération externe impose des pseudonymes et interdit l'envoi d'identités réelles, coordonnées, dates de naissance, comptes ou commentaires individuels. Le serveur continue de créer les comptes enseignants localement.
+- La recette Firefox ouvre le générateur depuis l'espace Direction, vérifie les trois étapes et l'avertissement de confidentialité, et inspecte le rendu en clair/sombre.
+
+
+## Vérification finale de la tête candidate — 27/11/2026
+
+- **CI complète :** commit `e4969e765a1faee2d5480768a62c1bb88b0aba84`, run [#2088 / 45917072089](https://github.com/WedoneOfficiel/Ma-Classe/actions/runs/45917072089), Linux/macOS Apple Silicon avec vrai `launchd`/Firefox réel, **3/3 réussis**.
+- **Écran des nouveautés :** correction de la variable temporaire non déclarée en mode strict ; le test vérifie l'ouverture automatique, le contenu et l'identité de version.
+- **Validité des tests :** horloge de la matrice de publication rendue déterministe ; contrôles de grille intégrés dans la classe `unittest` ; appels Playwright desktop/mobile conformes à l'API.
+- **Paramètres :** correction du placement de Données par `grid-area`, qui était annulé par une déclaration `grid-column:auto`. Les captures desktop et 390 px montrent la disposition sémantique attendue.
+- **Générateur d'établissement :** capacités de salles calculées avec les groupes implicites générés pour les classes multi-niveaux et avec l'effectif cumulé d'un créneau partagé entre plusieurs classes. Deux tests de régression couvrent ces cas.
+- **Archive distribuée :** le test dédié passe ; le ZIP construit par `git archive` contient le runtime, `requirements.txt`, le gestionnaire, le superviseur, le module et la clé publique Ed25519, les lanceurs essentiels, les notes V25.2.0, l'historique consolidé et les trois archives sources du journal.
+- **Exclusion des secrets :** le test de paquet vérifie que l'archive n'embarque ni répertoire `data/`, ni base locale, ni fichiers `.env`, `.pem`, `.key`, `.p12` ou `.pfx`, ni matériau de clef privée de signature. Ce contrôle a passé la CI #2091 (3/3).
+- **Modale du générateur :** Firefox fait défiler le contenu jusqu'au bloc « Protection de l'import » et vérifie qu'il reste intégralement visible au-dessus du pied de fenêtre collant. La capture du bas de modale est jointe à l'artefact du run #2088.
+
+La limite des imports établissement est désormais de 25 Mo maximum, avec le même plafond au navigateur et au serveur sur les deux routes d'import ; le test UI vérifie cette cohérence. **Limite produit importante :** l'accès HTTPS des clients nécessite encore l'approbation/import manuel de l'AC locale sur chaque appareil ou une distribution centralisée gérée. Cela ne répond pas à l'objectif de zéro réglage par ordinateur ; l'architecture doit être arbitrée avant de revendiquer cette exigence. La validation sur une copie de la base réelle, le réseau multi-appareils et les vrais comptes reste obligatoire avant fusion et publication. V25.1.1 demeure la dernière release stable.

@@ -2206,14 +2206,307 @@ html[data-mc-theme="dark"] .bulletin::before{
   .main,
   body.sidebar-collapsed .main{padding-left:12px!important;padding-right:12px!important}
 }
+
+.establishmentPlanRow{border:1px solid var(--ui-line);background:var(--ui-surface-2);border-radius:12px;padding:12px;margin:9px 0}
+.establishmentPlanRowHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;color:var(--ui-text)}
+.establishmentPlanRowFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.establishmentPlanRowFields .field{min-width:0}
+.establishmentPlanRowFields .field label{font-size:11px;line-height:1.35}
+.establishmentPlanRowFields .field input,.establishmentPlanRowFields .field textarea,.establishmentPlanRowFields .field select{min-width:0}
+.establishmentPlanDayChoices{display:flex;gap:7px;flex-wrap:wrap}
+.establishmentPlanDayChoices .check{padding:5px 7px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-surface)}
+.establishmentPlanEmpty{margin:8px 0;background:var(--ui-surface-2);color:var(--ui-text-2)}
+.establishmentLegacyNotes summary{cursor:pointer;font-weight:700;color:var(--ui-text-2)}
+.v217CompetencyPicker{border:1px solid var(--ui-line);border-radius:12px;padding:10px;background:var(--ui-surface-2)}
+.v217PickerTools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:9px}
+.v217PickerTools .input{flex:1 1 190px}
+#v217CompetencyOptions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:230px;overflow:auto}
+.v217CompetencyOption{display:flex!important;align-items:flex-start;gap:8px;border:1px solid var(--ui-line);background:var(--ui-surface);border-radius:9px;padding:8px;min-width:0;cursor:pointer}
+.v217CompetencyOption input{flex:0 0 16px;margin-top:2px}
+.v217CompetencyOption span{min-width:0;overflow-wrap:anywhere;line-height:1.35}
+.v217CompetencyEmpty{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.v217CompetencyLevelGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.v217CompetencyLevel{padding:7px 8px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-surface-2)}
+.v217CompetencyLibraryItem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--ui-line)}
+.v217CompetencyLibraryItem:last-child{border-bottom:0}
+.v217CompetencyLibraryItem>div{min-width:0;overflow-wrap:anywhere}
+@media(max-width:680px){
+ .establishmentPlanRowFields{grid-template-columns:minmax(0,1fr)}
+ .v217CompetencyLevelGrid,#v217CompetencyOptions{grid-template-columns:minmax(0,1fr)}
+ .v217PickerTools .input{flex-basis:100%}
+}
 </style>
 
 
+<style id="v2512-student-work-responsive">
+@media(max-width:650px){
+  .studentWorkTable{
+    width:100%!important;
+    table-layout:auto!important;
+    border-collapse:separate!important;
+    border-spacing:0!important;
+  }
+  .studentWorkTable thead{display:none!important}
+  .studentWorkTable tbody{display:block!important;width:100%!important}
+  .studentWorkTable tbody tr:not(.studentWorkEmpty){
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    column-gap:14px!important;
+    row-gap:10px!important;
+    width:100%!important;
+    margin:0 0 10px!important;
+    padding:12px!important;
+    border:1px solid var(--ui-line-strong,var(--line))!important;
+    border-radius:12px!important;
+    background:var(--ui-surface-solid,var(--paper))!important;
+    box-sizing:border-box!important;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:flex-start!important;
+    gap:4px!important;
+    min-width:0!important;
+    width:auto!important;
+    padding:0!important;
+    border:0!important;
+    text-align:left!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    vertical-align:top!important;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td::before{
+    content:attr(data-label);
+    display:block;
+    color:var(--ui-text-3,var(--muted));
+    font-size:9px;
+    font-weight:800;
+    line-height:1.2;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:first-child{
+    grid-column:1/-1!important;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:first-child b{
+    font-size:13px;
+    line-height:1.35;
+    overflow-wrap:anywhere;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:first-child small{
+    margin-top:1px;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:nth-child(2){grid-column:1!important}
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:nth-child(3){grid-column:2!important}
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:nth-child(4){grid-column:1!important}
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:nth-child(5){
+    grid-column:2!important;
+    justify-content:flex-end!important;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:nth-child(4) .pill{
+    display:inline-flex!important;
+    max-width:100%;
+    white-space:normal!important;
+    text-align:center;
+  }
+  .studentWorkTable tbody tr:not(.studentWorkEmpty) td:nth-child(5) .btn{
+    min-width:78px;
+    min-height:32px;
+    padding:6px 10px!important;
+    white-space:nowrap!important;
+  }
+  .studentWorkTable tbody tr.studentWorkEmpty{
+    display:block!important;
+    width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+  }
+  .studentWorkTable tbody tr.studentWorkEmpty td{
+    display:block!important;
+    width:100%!important;
+    padding:10px 0!important;
+    border:0!important;
+  }
+}
+</style>
+<style id="v2520-settings-and-release-notes">
+.settingsGrid.settingsAdminLayout{display:grid!important;grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods updates" ". periods data"!important;grid-auto-flow:row!important;align-items:start!important;gap:16px!important}
+.settingsGrid:not(.settingsAdminLayout):not(.settingsStudentGrid){display:grid!important;grid-template-columns:minmax(220px,.95fr) minmax(300px,1.15fr) minmax(250px,1fr)!important;grid-template-areas:"appearance periods version" "rooms periods data"!important;grid-auto-flow:row!important;align-items:start!important;gap:16px!important}
+#main .settingsGrid:not(.settingsStudentGrid)>.settingsAppearanceCard{grid-area:appearance!important}
+#main .settingsGrid:not(.settingsStudentGrid)>.settingsPeriodsCard{grid-area:periods!important}
+#main .settingsGrid:not(.settingsStudentGrid)>.settingsRoomsCard{grid-area:rooms!important}
+#main .settingsGrid:not(.settingsStudentGrid)>.settingsVersionCard{grid-area:version!important}
+#main .settingsGrid.settingsAdminLayout>.settingsUpdateCard{grid-area:updates!important}
+#main .settingsGrid:not(.settingsStudentGrid)>.settingsDataCard{grid-area:data!important}
+.settingsGrid>.settingsCard{min-width:0!important;height:fit-content;align-self:start;margin:0!important}
+.settingsStudentVersionCard{grid-column:1/-1}
+@media(max-width:900px){
+ .settingsGrid.settingsAdminLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version updates" "data data"!important}
+ .settingsGrid:not(.settingsAdminLayout):not(.settingsStudentGrid){grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:"appearance periods" "rooms periods" "version data"!important}
+}
+@media(max-width:650px){
+ .settingsGrid.settingsAdminLayout{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "updates" "data"!important;gap:12px!important}
+ .settingsGrid:not(.settingsAdminLayout):not(.settingsStudentGrid){grid-template-columns:minmax(0,1fr)!important;grid-template-areas:"appearance" "rooms" "periods" "version" "data"!important;gap:12px!important}
+ .settingsStudentVersionCard{grid-column:auto}
+}
+.modal.releaseNotesModal{width:min(1040px,100%);max-height:min(90vh,860px);display:flex;flex-direction:column;overflow:hidden;padding:20px}
+.releaseNotesLead{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.55}
+.releaseNotesLayout{display:grid;grid-template-columns:minmax(190px,245px) minmax(0,1fr);gap:14px;min-height:0;flex:1}
+.releaseNotesNav{min-width:0;max-height:62vh;overflow:auto;padding:5px;border:1px solid var(--line);border-radius:12px;background:var(--mc-surface-soft,var(--bg))}
+.releaseNotesNav button{display:block;width:100%;border:0;border-radius:9px;padding:10px 11px;margin:0 0 4px;text-align:left;color:var(--ink);background:transparent;font:inherit;font-size:12px;line-height:1.35;cursor:pointer}
+.releaseNotesNav button:hover,.releaseNotesNav button.active{background:var(--blue2)}
+.releaseNotesNav button.active{color:var(--blue);font-weight:800;box-shadow:inset 3px 0 0 var(--blue)}
+.releaseNotesNav small{display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:500}
+.releaseNotesArticle{min-width:0;max-height:62vh;overflow:auto;padding:4px 8px 12px 3px;color:var(--ink)}
+.releaseNotesArticle h3{margin:0 0 12px;font-size:19px;line-height:1.3}
+.releaseNotesArticle h4{margin:18px 0 7px;font-size:14px}
+.releaseNotesArticle p{margin:8px 0;font-size:13px;line-height:1.6}
+.releaseNotesArticle ul{margin:7px 0 13px;padding-left:22px}
+.releaseNotesArticle li{margin:5px 0;font-size:13px;line-height:1.55}
+.releaseNotesArticle code{padding:2px 5px;border:1px solid var(--line);border-radius:5px;background:var(--mc-surface-soft,var(--bg));font-size:.92em;overflow-wrap:anywhere}
+.releaseNotesArticle blockquote{margin:10px 0;padding:9px 12px;border-left:3px solid var(--blue);background:var(--blue2);border-radius:0 8px 8px 0}
+.releaseNotesActions{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);margin-top:14px;padding-top:13px;flex-wrap:wrap}
+.releaseNotesSource{color:var(--muted);font-size:10px;line-height:1.45}
+.releaseNotesEntryMeta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;flex-wrap:wrap}
+.releaseNotesStar{display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.02em}
+.releaseNotesDate{color:var(--muted);font-size:11px;font-weight:600}
+.releaseNotesNav button{display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:5px;align-items:start}
+.releaseNotesNav button>span:nth-child(2){min-width:0;overflow-wrap:anywhere}
+.releaseNotesNavStar{color:var(--blue);font-size:13px;line-height:1.2}
+.releaseNotesNav small{grid-column:2}
+.releaseNotesArticle h3{margin:0 0 14px;font-size:19px;line-height:1.35}
+
+@media(max-width:700px){
+ .modal.releaseNotesModal{padding:14px;max-height:94vh}
+ .releaseNotesLayout{grid-template-columns:minmax(0,1fr);gap:9px}
+ .releaseNotesNav{display:flex;gap:5px;max-height:104px;overflow:auto;white-space:nowrap}
+ .releaseNotesNav button{flex:0 0 auto;width:auto;max-width:210px;margin:0}
+ .releaseNotesNav button.active{box-shadow:inset 0 -3px 0 var(--blue)}
+ .releaseNotesNav small{white-space:normal}
+ .releaseNotesArticle{max-height:54vh;padding-right:2px}
+ .releaseNotesActions{align-items:stretch}
+ .releaseNotesActions .btn{flex:1}
+}
+</style>
+
+<style id="v2520-student-settings-layout">
+.settingsGrid.settingsStudentGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:none!important;align-items:start!important;gap:14px!important}
+.settingsGrid.settingsStudentGrid>.settingsCard{grid-area:auto!important;grid-column:auto!important}
+.settingsGrid.settingsStudentGrid>.settingsStudentVersionCard{grid-column:1/-1!important}
+@media(max-width:650px){.settingsGrid.settingsStudentGrid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.settingsGrid.settingsStudentGrid>.settingsStudentVersionCard{grid-column:auto!important}}
+</style>
+
+<style id="v2520-settings-classes-and-rooms-polish">
+.settingsGrid>.settingsCard>.sectionhead{align-items:center;gap:10px;flex-wrap:wrap}
+.settingsGrid>.settingsCard .section{min-width:0}
+.settingsGrid>.settingsCard .metric{min-width:0}
+.settingsGrid>.settingsCard .notice{overflow-wrap:anywhere}
+.settingsGrid>.settingsCard .section .btn{margin:0 6px 6px 0!important}
+.settingsGrid .settingsTerm{break-inside:avoid}
+.classHubCard[hidden],#classTrackingNoResults[hidden]{display:none!important}
+.classHubHeaderActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.classHubHeaderActions .select{min-width:170px}
+@media(max-width:700px){.classHubHeaderActions{width:100%;justify-content:flex-start}.classHubHeaderActions .btn{flex:1 1 190px}.classHubHeaderActions .select{flex:1 1 170px;max-width:none!important}}
+
+.classHubGrid{align-items:stretch}
+.classHubCard{min-width:0;display:flex;flex-direction:column;gap:2px}
+.classHubCard>.actions{margin-top:auto;flex-wrap:wrap}
+.classHubFilters>.searchRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,250px);gap:10px;align-items:end}
+.classHubFilters .muted{margin-top:8px;font-size:12px}
+.classHubIntro .sectionhead{align-items:center;flex-wrap:wrap}
+.classHubIntro .actions{justify-content:flex-end;flex-wrap:wrap}
+.settingsRoomRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.settingsRoomRow>b{flex:1 1 100%;min-width:0}
+.settingsRoomRow>.muted{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.settingsRoomRow>.btn{margin-left:auto!important}
+@media(max-width:680px){
+ .classHubFilters>.searchRow{grid-template-columns:minmax(0,1fr)}
+ .classHubCard>.actions .btn{flex:1 1 auto}
+}
+.settingsEstablishmentCard{margin-top:24px;min-width:0}
+.settingsEstablishmentCard .sectionhead{align-items:center;gap:12px;flex-wrap:wrap}
+.establishmentBriefGrid{align-items:stretch;gap:16px}
+.establishmentBriefGrid>.establishmentWizardStep{min-width:0;height:100%;box-sizing:border-box}
+#establishmentBriefForm .field{min-width:0}
+#establishmentBriefForm textarea{width:100%;min-height:108px;box-sizing:border-box;resize:vertical;white-space:pre-wrap}
+#establishmentBriefForm .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#establishmentBriefForm .actions .btn{margin:0}
+@media(max-width:680px){.settingsEstablishmentCard{margin-top:16px}.establishmentBriefGrid{gap:12px}#establishmentBriefForm .actions .btn{flex:1 1 220px}}
+.establishmentBriefStatus{margin:12px 0 0;line-height:1.6;overflow-wrap:anywhere}
+.establishmentBriefStatus.establishmentBriefStatusReady{background:var(--green2);color:var(--green);border:1px solid rgba(36,138,61,.20)}
+#establishmentBriefForm .establishmentWizardStep{min-width:0}
+#establishmentBriefForm .establishmentWizardStep .sectionhead{margin-bottom:14px}
+#establishmentBriefForm .establishmentWizardStep .field label{line-height:1.4}
+#establishmentBriefForm .establishmentWizardStep .hint{line-height:1.5}
+#establishmentBriefForm .establishmentWizardStep textarea{min-height:96px;line-height:1.5}
+#establishmentBriefForm .establishmentWizardStep input[type=number]{font-variant-numeric:tabular-nums}
+#establishmentBriefForm .establishmentWizardStep select{max-width:100%}
+#establishmentBriefForm .establishmentWizardStep .field.section{margin-top:14px}
+.establishmentBriefGrid>.establishmentWizardStep{align-self:stretch}
+@media(max-width:680px){
+ #establishmentBriefStatus{font-size:12px}
+ #establishmentBriefForm .establishmentWizardStep{padding:14px}
+ #establishmentBriefForm .establishmentWizardStep textarea{min-height:86px}
+}
+.establishmentComponentsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;min-width:0}
+.establishmentComponentsGrid .establishmentComponent{display:flex!important;align-items:center;gap:8px;min-width:0;margin:0;padding:9px 10px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-surface-2);color:var(--ui-text);font-size:11px;font-weight:700;line-height:1.35;cursor:pointer;transition:border-color .15s,background .15s}
+.establishmentComponentsGrid .establishmentComponent:hover{border-color:var(--ui-blue);background:var(--ui-active)}
+.establishmentComponentsGrid .establishmentComponent input{flex:0 0 17px}
+.establishmentComponentsGrid .establishmentComponent span{min-width:0;overflow-wrap:anywhere}
+#establishmentBriefForm [name="schoolStructureDetails"],#establishmentBriefForm [name="schoolOrganizationDetails"]{min-height:78px}
+@media(max-width:680px){.establishmentComponentsGrid{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+
+<style id="v25-settings-layout-select-overlay">
+/* Paramètres en colonnes indépendantes : aucune carte ne réserve la hauteur d'une carte voisine. */
+.settingsGrid.settingsLayout{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-areas:none!important;grid-auto-flow:row!important;align-items:start!important;gap:14px!important}
+.settingsGrid.settingsLayout>.settingsColumn{display:flex!important;flex-direction:column!important;gap:12px!important;min-width:0!important;align-self:start!important}
+.settingsGrid.settingsLayout .settingsCard,.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-area:auto!important;grid-column:auto!important;min-width:0!important;width:auto!important;max-width:none!important;height:auto!important;align-self:stretch!important;margin:0!important;box-sizing:border-box}
+.settingsGrid.settingsLayout .settingsCard>.sectionhead{margin-bottom:10px}
+.settingsGrid.settingsLayout .settingsCard .section{margin-top:11px}
+.settingsGrid.settingsLayout .settingsEstablishmentCard{padding:16px}
+.settingsGrid.settingsLayout .settingsEstablishmentCard .sectionhead{align-items:flex-start}
+.settingsGrid.settingsLayout .settingsEstablishmentCard p{margin:8px 0 12px}
+.mc-select-menu[popover]{position:fixed;inset:auto;margin:0;max-width:calc(100vw - 16px);z-index:2147483647;overflow:auto;overscroll-behavior:contain}
+.mc-select-menu[popover]:popover-open{display:block!important;z-index:2147483647}
+@media(max-width:980px){
+ .settingsGrid.settingsLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:auto auto!important;align-items:start!important}
+ .settingsGrid.settingsLayout>.settingsColumn{display:flex!important;flex-direction:column!important;gap:12px!important}
+ .settingsGrid.settingsLayout>.settingsColumnMain{grid-column:1!important;grid-row:1/3!important}
+ .settingsGrid.settingsLayout>.settingsColumnPeriods{grid-column:2!important;grid-row:1!important}
+ .settingsGrid.settingsLayout>.settingsColumnAdmin{grid-column:2!important;grid-row:2!important}
+}
+@media(max-width:650px){
+ .settingsGrid.settingsLayout{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto!important;gap:12px!important}
+ .settingsGrid.settingsLayout>.settingsColumnMain,.settingsGrid.settingsLayout>.settingsColumnPeriods,.settingsGrid.settingsLayout>.settingsColumnAdmin{grid-column:1!important;grid-row:auto!important}
+}
+</style>
+
+<style id="v25-establishment-subject-groups">
+#establishmentSubjectRows{display:flex;flex-direction:column;gap:8px}
+#establishmentSubjectRows>.establishmentSubjectLevel{border:1px solid var(--ui-line);border-radius:11px;background:var(--ui-surface);min-width:0;overflow:hidden}
+#establishmentSubjectRows>.establishmentSubjectLevel>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:10px 12px;cursor:pointer;color:var(--ui-text);font-size:13px;font-weight:750}
+#establishmentSubjectRows>.establishmentSubjectLevel>summary::-webkit-details-marker{display:none}
+#establishmentSubjectRows>.establishmentSubjectLevel>summary::before{content:"＋";flex:0 0 auto;color:var(--ui-muted);font-size:14px}
+#establishmentSubjectRows>.establishmentSubjectLevel[open]>summary::before{content:"−"}
+#establishmentSubjectRows>.establishmentSubjectLevel[open]>summary{background:var(--ui-surface-2);border-bottom:1px solid var(--ui-line)}
+.establishmentSubjectGroupCount{margin-left:auto;color:var(--ui-muted);font-size:11px;font-weight:600;white-space:nowrap}
+.establishmentSubjectGroupRows{padding:9px 10px 2px;min-width:0}
+.establishmentSubjectGroupRows>.establishmentPlanRow{margin:0 0 8px;padding:10px}
+.establishmentSubjectGroupRows>.establishmentPlanRow .establishmentPlanRowFields{gap:8px}
+.establishmentSubjectGroupRows>.establishmentPlanRow .establishmentPlanRowFields .field label{font-size:10px}
+@media(max-width:680px){#establishmentSubjectRows>.establishmentSubjectLevel>summary{padding:10px;font-size:12px}.establishmentSubjectGroupRows{padding:8px 7px 1px}}
+</style>
 </head>
 <body>
 <div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire · <span id="appVersionLabel"></span></small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><span id="spaceFoot" hidden></span></aside><main class="main" id="main"></main></div>
 <div class="modalback" id="modalback"><div class="modal" id="modal"></div></div><div class="toast" id="toast"></div>
 
+<script src="release_notes.js"></script>
 <script src="_all.js"></script>
 <script src="class_tracking.js"></script>
 
@@ -2252,13 +2545,40 @@ html[data-mc-theme="dark"] .bulletin::before{
       row.hidden=!!o.hidden||!!o.disabled;
     });
   }
-  function closeAll(except){document.querySelectorAll('.mc-select.open').forEach(w=>{if(w!==except){w.classList.remove('open');syncSelect(w)}})}
-  function choose(wrap,index){
-    const s=wrap.querySelector('.mc-select-native'), o=s?.options[index]; if(!s||!o||o.disabled)return;
-    if(s.multiple)o.selected=!o.selected; else {s.value=o.value;wrap.classList.remove('open')}
-    s.dispatchEvent(new Event('change',{bubbles:true}));
+  function positionMenu(wrap){
+    const menu=wrap.querySelector('.mc-select-menu'),trigger=wrap.querySelector('.mc-select-trigger');
+    if(!menu||!trigger||!menu.matches(':popover-open'))return;
+    const rect=trigger.getBoundingClientRect(),width=Math.min(rect.width,window.innerWidth-16),gap=6;
+    const desired=Math.min(wrap.classList.contains('is-multiple')?330:280,Math.max(120,menu.scrollHeight||280));
+    const below=window.innerHeight-rect.bottom-8,above=rect.top-8;
+    const openAbove=below<Math.min(desired,180)&&above>below;
+    const space=Math.max(100,(openAbove?above:below)-gap);
+    const maxHeight=Math.min(desired,space);
+    const measured=Math.min(menu.scrollHeight||desired,maxHeight);
+    const left=Math.max(8,Math.min(rect.left,window.innerWidth-width-8));
+    menu.style.position='fixed';menu.style.left=left+'px';menu.style.width=width+'px';
+    menu.style.maxHeight=maxHeight+'px';menu.style.top=(openAbove?Math.max(8,rect.top-gap-measured):rect.bottom+gap)+'px';
+  }
+  function repositionOpenMenus(){document.querySelectorAll('.mc-select.open').forEach(positionMenu)}
+  function closeSelect(wrap){
+    if(!wrap)return;const menu=wrap.querySelector('.mc-select-menu');
+    wrap.classList.remove('open');
+    if(menu?.matches(':popover-open')){try{menu.hidePopover()}catch(error){}}
     syncSelect(wrap);
-    if(!s.multiple)wrap.querySelector('.mc-select-trigger')?.focus();
+  }
+  function closeAll(except){document.querySelectorAll('.mc-select.open').forEach(w=>{if(w!==except)closeSelect(w)})}
+  function openSelect(wrap){
+    const menu=wrap.querySelector('.mc-select-menu');if(!menu)return;
+    closeAll(wrap);wrap.classList.add('open');
+    try{if(typeof menu.showPopover==='function'&&!menu.matches(':popover-open'))menu.showPopover()}catch(error){}
+    syncSelect(wrap);positionMenu(wrap);
+    const first=menu.querySelector('.mc-select-option:not([hidden])');first?.focus();
+  }
+  function choose(wrap,index){
+    const s=wrap.querySelector('.mc-select-native'),o=s?.options[index];if(!s||!o||o.disabled)return;
+    if(s.multiple)o.selected=!o.selected;else s.value=o.value;
+    s.dispatchEvent(new Event('change',{bubbles:true}));syncSelect(wrap);
+    if(!s.multiple){closeSelect(wrap);wrap.querySelector('.mc-select-trigger')?.focus()}
   }
   function build(s){
     if(!s || s.dataset.mcSelect==='1' || !s.options)return;
@@ -2268,13 +2588,13 @@ html[data-mc-theme="dark"] .bulletin::before{
     s.setAttribute('aria-hidden','true'); s.tabIndex=-1;
     const trigger=document.createElement('button'); trigger.type='button'; trigger.className='mc-select-trigger'; trigger.setAttribute('aria-haspopup','listbox'); trigger.setAttribute('aria-controls',id+'_menu');
     const summary=document.createElement('span'); summary.className='mc-select-summary'; const arrow=document.createElement('span'); arrow.className='mc-select-arrow'; trigger.append(summary,arrow);
-    const menu=document.createElement('div'); menu.className='mc-select-menu'; menu.id=id+'_menu'; menu.setAttribute('role','listbox'); if(s.multiple)menu.setAttribute('aria-multiselectable','true');
+    const menu=document.createElement('div'); menu.className='mc-select-menu'; menu.id=id+'_menu'; menu.setAttribute('role','listbox'); menu.setAttribute('popover','manual'); if(s.multiple)menu.setAttribute('aria-multiselectable','true');
     [...s.options].forEach((o,i)=>{const row=document.createElement('button');row.type='button';row.className='mc-select-option'+(!s.multiple?' single':'');row.setAttribute('role','option');row.dataset.index=i;const check=document.createElement('span');check.className='mc-select-check';const label=document.createElement('span');label.textContent=optionLabel(o);row.append(check,label);row.addEventListener('click',()=>choose(wrap,i));menu.append(row)});
     if(!s.options.length){const e=document.createElement('div');e.className='mc-select-empty';e.textContent='Aucune option disponible';menu.append(e)}
     wrap.append(trigger,menu); s.parentNode.insertBefore(wrap,s); wrap.append(s);
-    trigger.addEventListener('click',()=>{if(s.disabled)return;const open=!wrap.classList.contains('open');closeAll(wrap);wrap.classList.toggle('open',open);syncSelect(wrap);if(open){const first=menu.querySelector('.mc-select-option:not([hidden])');first?.focus()}});
-    trigger.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){e.preventDefault();trigger.click()}else if(e.key==='Escape'){wrap.classList.remove('open');syncSelect(wrap)}});
-    menu.addEventListener('keydown',e=>{const rows=[...menu.querySelectorAll('.mc-select-option:not([hidden])')];const cur=document.activeElement,idx=rows.indexOf(cur);if(e.key==='Escape'){e.preventDefault();wrap.classList.remove('open');syncSelect(wrap);trigger.focus()}else if(e.key==='ArrowDown'){e.preventDefault();rows[Math.min(rows.length-1,idx+1)]?.focus()}else if(e.key==='ArrowUp'){e.preventDefault();rows[Math.max(0,idx-1)]?.focus()}else if((e.key==='Enter'||e.key===' ')&&cur?.classList.contains('mc-select-option')){e.preventDefault();cur.click()}});
+    trigger.addEventListener('click',()=>{if(s.disabled)return;if(wrap.classList.contains('open'))closeSelect(wrap);else openSelect(wrap)});
+    trigger.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){e.preventDefault();trigger.click()}else if(e.key==='Escape'){closeSelect(wrap)}});
+    menu.addEventListener('keydown',e=>{const rows=[...menu.querySelectorAll('.mc-select-option:not([hidden])')];const cur=document.activeElement,idx=rows.indexOf(cur);if(e.key==='Escape'){e.preventDefault();closeSelect(wrap);trigger.focus()}else if(e.key==='ArrowDown'){e.preventDefault();rows[Math.min(rows.length-1,idx+1)]?.focus()}else if(e.key==='ArrowUp'){e.preventDefault();rows[Math.max(0,idx-1)]?.focus()}else if((e.key==='Enter'||e.key===' ')&&cur?.classList.contains('mc-select-option')){e.preventDefault();cur.click()}});
     const observer=new MutationObserver(()=>{rebuildSelectMenu(wrap)});observer.observe(s,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden','selected']});
     syncSelect(wrap);
   }
@@ -2310,7 +2630,7 @@ html[data-mc-theme="dark"] .bulletin::before{
     });
   };
   const observer=new MutationObserver(muts=>{for(const m of muts)for(const n of m.addedNodes){if(n.nodeType===1)enhance(n)}});
-  function boot(){enhance();observer.observe(document.body,{childList:true,subtree:true});document.addEventListener('click',e=>{if(!e.target.closest('.mc-select'))closeAll()});}
+  function boot(){enhance();observer.observe(document.body,{childList:true,subtree:true});document.addEventListener('click',e=>{if(!e.target.closest('.mc-select'))closeAll()});window.addEventListener('resize',repositionOpenMenus);window.addEventListener('scroll',repositionOpenMenus,true);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 </script>

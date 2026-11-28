@@ -50,9 +50,9 @@ Ne pas exposer le serveur en HTTP sur le réseau local. Le mode réseau utilise 
 - **Linux** : `./Lancer-MaClasse-Reseau.sh`
 - **macOS** : `./Lancer-MaClasse-Reseau.command`
 
-Le superviseur réseau surveille l'adresse IPv4 privée, ferme l'écoute HTTPS en cas de perte du réseau et renouvelle le certificat serveur si l'adresse change. Il conserve la même autorité locale ; les appareils clients doivent approuver son certificat public `data/tls/ca.crt`.
+Le superviseur réseau surveille l'adresse IPv4 privée et ferme l'écoute HTTPS en cas de perte du réseau. Par défaut, il utilise une autorité privée locale : chaque appareil doit alors approuver une fois le certificat public `data/tls/ca.crt`. Une option facultative permet d'utiliser un certificat publiquement reconnu pour un nom DNS de l'établissement ; elle nécessite un domaine, un renouvellement ACME DNS-01 et un DNS local distribué par DHCP. Une fois ce mode configuré, les navigateurs peuvent utiliser leur magasin de confiance public, sans import individuel de certificat.
 
-Suivre [Réseau local HTTPS](RESEAU_HTTPS.md) pour transférer et approuver uniquement le certificat public. Ne jamais copier `ca.key` ou `server.key` vers un appareil client. Ne créer aucune redirection de port sur le routeur.
+Suivre [Réseau local HTTPS](RESEAU_HTTPS.md) pour choisir et configurer le mode adapté. Ne jamais copier `ca.key` ou `server.key` vers un appareil client. Ne créer aucune redirection de port sur le routeur.
 
 ## Données et sauvegardes
 

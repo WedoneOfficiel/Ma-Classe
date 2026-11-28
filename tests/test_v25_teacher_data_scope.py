@@ -52,6 +52,17 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(view['users'],[self.data['users'][0]])
         self.assertEqual(view['auditLog'],[])
 
+    def test_teacher_directory_includes_profile_without_login_account(self):
+        data=copy.deepcopy(self.data)
+        data['teachers']=[{'id':'t3','teacherId':'t3','role':'teacher','first':'Prof','last':'Sans compte','subjects':['SVT'],'active':True}]
+        data['classes'][0]['teacherIds'].append('t3')
+        view=server._teacher_visible_data(data,self.user)
+        by_id={x['id']:x for x in view['teachers']}
+        self.assertIn('t3',by_id)
+        self.assertEqual(by_id['t3']['first'],'Prof')
+        self.assertFalse(by_id['t3']['hasAccount'])
+        self.assertNotIn('email',by_id['t3'])
+
     def test_teacher_cannot_persist_scriptable_schedule_or_lesson_ids(self):
         data=copy.deepcopy(self.data)
         data['schedule']=[{'id':'slot-safe','classId':'c1','subject':'Maths','pattern':'none'}]
@@ -439,5 +450,58 @@ class TeacherDataScopeTests(unittest.TestCase):
         self.assertEqual(by_id['french-eval']['title'],'Dictée')
         self.assertTrue(server._teacher_can_edit_evaluation(data,self.user,by_id['maths-eval']))
         self.assertFalse(server._teacher_can_edit_evaluation(data,self.user,by_id['french-eval']))
+
+
+    def test_teacher_profiles_are_persisted_by_direction_and_protected_from_other_roles(self):
+        current = {
+            'teachers': [
+                {'id':'t1','teacherId':'t1','role':'teacher','first':'Prof','last':'A','active':True},
+                {'id':'t3','teacherId':'t3','role':'teacher','first':'Prof','last':'Sans compte','active':True},
+            ]
+        }
+        incoming = {
+            'teachers': [
+                {'id':'t1','teacherId':'t1','role':'teacher','first':'Professeur','last':'A','active':True,
+                 'passwordHash':'must-not-be-persisted','username':'must-not-be-profile-data'},
+                {'id':'t3','teacherId':'t3','role':'teacher','first':'Prof','last':'Sans compte','active':True},
+            ]
+        }
+        saved = server._teacher_profiles_for_save(current, incoming, {'id':'admin','role':'admin'})
+        self.assertEqual(len(saved), 2)
+        self.assertEqual(saved[0]['first'], 'Professeur')
+        self.assertNotIn('passwordHash', saved[0])
+        self.assertNotIn('username', saved[0])
+
+        # An ordinary teacher save must not delete or rewrite the global directory,
+        # even if the submitted client projection omitted it.
+        protected = server._teacher_profiles_for_save(current, {'teachers':[]}, self.user)
+        self.assertEqual(protected, current['teachers'])
+
+    def test_teacher_profile_save_rejects_duplicate_or_malformed_records(self):
+        current = {'teachers':[]}
+        duplicate = {'teachers':[
+            {'id':'t1','role':'teacher','first':'A','last':'B'},
+            {'id':'t1','role':'teacher','first':'C','last':'D'},
+        ]}
+        with self.assertRaises(ValueError):
+            server._teacher_profiles_for_save(current, duplicate, {'role':'admin'})
+        malformed = {'teachers':[{'id':'t1','role':'student','first':'A','last':'B'}]}
+        with self.assertRaises(ValueError):
+            server._teacher_profiles_for_save(current, malformed, {'role':'admin'})
+
+    def test_student_can_see_a_teacher_profile_without_a_login_but_not_message_them(self):
+        data = copy.deepcopy(self.data)
+        data['teachers'] = [
+            {'id':'t1','teacherId':'t1','role':'teacher','first':'Prof','last':'Avec compte','active':True},
+            {'id':'t3','teacherId':'t3','role':'teacher','first':'Prof','last':'Sans compte','active':True},
+        ]
+        data['classes'][0]['teacherIds'] = ['t1','t3']
+        view = server._student_visible_data(data, {'id':'s1','role':'student','studentId':'s1'})
+        visible = {x['id']:x for x in view['teachers']}
+        self.assertIn('t1', visible)
+        self.assertIn('t3', visible)
+        self.assertTrue(visible['t1']['hasAccount'])
+        self.assertFalse(visible['t3']['hasAccount'])
+        self.assertEqual(server._student_accessible_teacher_ids(data, {'id':'s1','classId':'c1'}), {'t1'})
 
 if __name__=='__main__': unittest.main()

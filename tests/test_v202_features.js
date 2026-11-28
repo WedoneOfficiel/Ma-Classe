@@ -10,6 +10,7 @@ function fn(name) {
   return source.slice(start, end < 0 ? source.length : end).trim();
 }
 const db = {
+  students: [{id:'s1',classId:'c1',group:''}],
   cloudItems: [{id:'hidden-parent',type:'folder',parentId:'',space:'personal'},{id:'shared-file',type:'file',name:'shared.pdf',parentId:'hidden-parent',space:'personal',shares:[{type:'teacher',id:'teacher-2'}]}],
   schedule: [
     {id:'a', classId:'c1', subject:'Français', teacherId:'t1', group:'', courseId:'c1|Français|t1|', color:'#112233'},
@@ -25,7 +26,7 @@ const db = {
 const window = {cloudSpace:'shared',cloudPath:[],cloudSearch:'',cloudSort:'name',cloudTypeFilter:'all'};
 const ctx = {db, window, term:id=>db.settings.terms.find(t=>t.id===id), cls:id=>({name:id}), subjectColor:()=>['','','#123456'], cloudPathContextValid:()=>true, getCloudPath:()=>window.cloudPath, cloudAccessible:()=>db.cloudItems.filter(x=>x.id==='shared-file'), Object, Array, String, Number, Math, Set, Date, JSON};
 vm.createContext(ctx);
-vm.runInContext([fn('courseIdentity'),fn('competencySummaryForPeriod'),fn('cloudCurrentItems')].join('\n'),ctx);
+vm.runInContext([fn('sameId'),fn('evaluationModelTerms'),fn('evaluationModelTerm'),fn('evaluationModelDate'),fn('evaluationModelInTerm'),fn('evaluationModelTargetStudents'),fn('courseIdentity'),fn('competencySummaryForPeriod'),fn('cloudCurrentItems')].join('\n'),ctx);
 assert.strictEqual(ctx.courseIdentity(db.schedule[0]),'c1|Français|t1|');
 assert.notStrictEqual(ctx.courseIdentity(db.schedule[0]),ctx.courseIdentity(db.schedule[2]),'different regular teachers define different courses');
 const t1 = ctx.competencySummaryForPeriod('c1','Français','t1');

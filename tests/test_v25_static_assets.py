@@ -8,7 +8,7 @@ import server
 
 class StaticAssetAllowlistTests(unittest.TestCase):
     def test_application_javascript_assets_are_explicitly_allowed(self):
-        for path in ("/", "/index.html", "/_all.js", "/class_tracking.js"):
+        for path in ("/", "/index.html", "/_all.js", "/class_tracking.js", "/release_notes.js"):
             with self.subTest(path=path):
                 self.assertTrue(server.Handler._safe_static_path(None, path))
 

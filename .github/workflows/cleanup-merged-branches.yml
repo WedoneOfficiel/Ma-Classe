@@ -35,7 +35,9 @@ jobs:
               { name: "fix/v25.1.1-macos-certificate-sans", sha: "feb38c31ada607705aefe09d7fff72053d90139d", reason: "PR #14 fusionnée" },
               { name: "fix/v25.1.1-macos-rollback-release", sha: "66243aeb3738ba71917476f9f41c8daae0ebda8f", reason: "PR #16 fusionnée" },
               { name: "fix/v25.1.1-macos-rollback-release-notes", sha: "78d18414453aab23852ded68798bb102b48bbcdd", reason: "PR #15 remplacée par #16" },
-              { name: "fix/v25.1.1-updater-launchd-progress", sha: "9e68cb764e2780c39e94a6e309dca236941fe6f6", reason: "PR #19 fusionnée" }
+              { name: "fix/v25.1.1-updater-launchd-progress", sha: "9e68cb764e2780c39e94a6e309dca236941fe6f6", reason: "PR #19 fusionnée" },
+              { name: "fix/v25.0.20-edt-render-root-cause", sha: "e4dbf19c9283cbad0f7360f810cca2f861322340", reason: "PR #6 fermée, remplacée par les corrections EDT ultérieures" },
+              { name: "release/v25.0.23-validated-fixes", sha: "bf1cca1c9b76ec99de9043ebcb684bb5022110fd", reason: "PR #11 fermée, proposition de release obsolète" }
             ];
 
             const openPulls = await github.paginate(github.rest.pulls.list, {

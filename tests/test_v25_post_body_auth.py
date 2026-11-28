@@ -59,7 +59,11 @@ class PostBodyAuthenticationTests(unittest.TestCase):
         source = (Path(__file__).resolve().parents[1] / "server.py").read_text(encoding="utf-8")
         self.assertIn("max_length=1*1024*1024", source)
         self.assertIn("max_length=50*1024*1024", source)
-        self.assertIn("max_length=100*1024*1024", source)
+        self.assertIn("MAX_BACKUP_ARCHIVE_BYTES=512*1024*1024", source)
+        self.assertIn("MAX_BACKUP_UNCOMPRESSED_BYTES=500*1024*1024", source)
+        self.assertIn("max_length=MAX_BACKUP_ARCHIVE_BYTES", source)
+        self.assertEqual(server.MAX_BACKUP_ARCHIVE_BYTES, 512 * 1024 * 1024)
+        self.assertEqual(server.MAX_BACKUP_UNCOMPRESSED_BYTES, 500 * 1024 * 1024)
         self.assertIn("max_length=20*1024*1024", source)
 
 

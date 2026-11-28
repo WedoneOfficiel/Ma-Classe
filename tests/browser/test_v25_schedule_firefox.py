@@ -48,16 +48,31 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
               const card=document.querySelector('#main .card');
               const main=document.querySelector('main.main');
               const side=document.querySelector('.side');
+              const workRow=actualPage==='studentWork'
+                ?main?.querySelector('.studentWorkTable tbody tr:not(.studentWorkEmpty)'):null;
+              const workCells=workRow?[...workRow.querySelectorAll(':scope > td')]:[];
+              const workButton=workRow?.querySelector('button');
+              const studentWorkLayout=workRow?{
+                rowDisplay:getComputedStyle(workRow).display,
+                columns:getComputedStyle(workRow).gridTemplateColumns.split(' ').length,
+                cellLabels:workCells.map(cell=>cell.getAttribute('data-label')||''),
+                cellWidths:workCells.map(cell=>Math.round(cell.getBoundingClientRect().width)),
+                buttonWidth:Math.round(workButton?.getBoundingClientRect().width||0),
+                tableWidth:Math.round(workRow.getBoundingClientRect().width)
+              }:null;
               const mainRect=main?.getBoundingClientRect();
               const sideRect=side?.getBoundingClientRect();
-              const directSurfaces=[...(main?.children||[])]
-                .filter(el=>!el.classList.contains('top'))
-                .map(el=>el.getBoundingClientRect())
-                .filter(rect=>rect.width>0&&rect.height>0);
-              const contentRight=directSurfaces.length
-                ?Math.max(...directSurfaces.map(rect=>rect.right)):0;
-              const contentLeft=directSurfaces.length
-                ?Math.min(...directSurfaces.map(rect=>rect.left)):0;
+              // Inspect visible content surfaces throughout the page subtree.
+              // Some modules wrap their data area in nested layout containers rather
+              // than placing it directly beside the header.
+              const contentSurfaces=[...(main?.querySelectorAll('*')||[])]
+                .filter(el=>!el.classList.contains('top')&&!el.classList.contains('actions'))
+                .map(el=>({el,rect:el.getBoundingClientRect(),style:getComputedStyle(el)}))
+                .filter(x=>x.rect.width>=120&&x.rect.height>=24&&x.style.display!=='none'&&x.style.visibility!=='hidden');
+              const contentRight=contentSurfaces.length
+                ?Math.max(...contentSurfaces.map(x=>x.rect.right)):0;
+              const contentLeft=contentSurfaces.length
+                ?Math.min(...contentSurfaces.map(x=>x.rect.left)):0;
               return {
                 actualPage,
                 theme:document.documentElement.dataset.mcTheme,
@@ -76,7 +91,8 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
                   contentRight:Math.round(contentRight),
                   contentWidth:Math.round(contentRight-contentLeft)
                 },
-                cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none'
+                cardBefore:card?getComputedStyle(card,'::before').backgroundImage:'none',
+                studentWorkLayout
               };
             }""",
             {"role": role, "module": module, "theme": theme},
@@ -101,17 +117,36 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
                 f"Reflet clair indésirable sur les cartes sombres ({role}/{module}) : {state!r}"
             )
 
-    responsive_modules = (
-        ["studentHome","studentSchedule","studentLessons","studentHomework",
-         "studentMessages","studentDocuments","studentSettings"]
-        if role == "student"
-        else ["dashboard","schedule","lessons","students","messages","documents","settings"]
-    )
-    mobile_visual_modules = (
-        {"studentHome","studentSchedule","studentLessons","studentMessages","studentDocuments","studentSettings"}
-        if role == "student"
-        else {"dashboard","schedule","lessons","messages","documents","settings"}
-    )
+        if role == "student" and module == "studentWork" and viewport <= 650:
+            layout = state.get("studentWorkLayout")
+            if (
+                not layout
+                or layout["rowDisplay"] != "grid"
+                or layout["columns"] != 2
+                or layout["buttonWidth"] < 70
+                or not all(layout["cellLabels"])
+                or len(layout["cellWidths"]) != 5
+            ):
+                raise AssertionError(
+                    "Le module Travail à faire doit s'empiler en carte mobile avec des actions lisibles : "
+                    + repr(layout)
+                )
+
+    if role == "student":
+        responsive_modules = [
+            "studentHome","studentSchedule","studentLessons","studentWork","studentHomework",
+            "studentMessages","studentDocuments","studentSettings"
+        ]
+        mobile_visual_modules = {
+            "studentHome","studentSchedule","studentLessons","studentWork","studentMessages",
+            "studentDocuments","studentSettings"
+        }
+    elif role == "admin":
+        responsive_modules = ["adminUsers","teachers","ppDashboard","settings"]
+        mobile_visual_modules = set(responsive_modules)
+    else:
+        responsive_modules = ["dashboard","schedule","lessons","students","messages","documents","settings"]
+        mobile_visual_modules = {"dashboard","schedule","lessons","messages","documents","settings"}
 
     for theme in ("light", "dark"):
         system_theme = "dark" if theme == "light" else "light"
@@ -167,6 +202,627 @@ def capture_product_screenshots(page, role: str, modules: list[str], output_dir:
         })""")
         raise AssertionError(f"Le thème automatique ne suit pas le mode sombre : {automatic_dark!r}") from error
     page.evaluate("setAppearanceTheme('light')")
+
+def acknowledge_release_notes(page, role: str) -> None:
+    """Verify and acknowledge the real first-login release screen for an account."""
+    modal = page.locator("#modal.releaseNotesModal")
+    expect(modal).to_be_visible(timeout=10000)
+    expect(modal).to_contain_text("Nouveautés de MaClasse")
+    expect(modal).to_contain_text("V25.2.0")
+    expect(modal).to_contain_text("une fois par compte")
+    page.get_by_role("button", name="Voir le journal complet").click()
+    expect(modal).to_be_visible()
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).to_contain_text("Nouveautés de MaClasse")
+    page.get_by_role("button", name="J’ai compris").click()
+    expect(modal).not_to_be_visible(timeout=5000)
+    state = page.evaluate("""async () => {
+      const response = await fetch('/api/release-notes/state', {cache:'no-store'});
+      if (!response.ok) throw new Error('Release notes state failed: '+response.status);
+      return response.json();
+    }""")
+    if state.get("seen_version") != "25.2.0":
+        raise AssertionError(f"Accusé de lecture non persisté pour {role}: {state!r}")
+
+
+def verify_release_journal(page, role: str, output_dir: Path) -> None:
+    """Exercise the journal as a user would, including theme and mobile layouts."""
+    if role == "student":
+        page.evaluate("page='studentSettings';appSpace='student';render()")
+        expect(page.locator(".settingsStudentGrid")).to_be_visible()
+        page.get_by_role("button", name="Journal des versions").click()
+    else:
+        page.locator("#nav button").filter(has_text="Paramètres").click()
+        expect(page.locator("#main h1")).to_have_text("Paramètres")
+        page.get_by_role("button", name="Consulter le journal des versions").click()
+
+    modal = page.locator("#modal.releaseNotesModal")
+    expect(modal).to_be_visible()
+    nav = page.locator("#releaseNotesNav")
+    expect(nav).to_contain_text("V25.1.1")
+    expect(nav).to_contain_text("V25.0.6")
+    expect(nav).to_contain_text("V21.22")
+    expect(nav).to_contain_text("V20.10")
+    expect(nav).to_contain_text("V19.7")
+    if "V25.2.1" in nav.inner_text():
+        raise AssertionError("Le journal ne doit pas inventer une version absente des archives.")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for theme in ("light", "dark"):
+        page.evaluate("(theme) => setAppearanceTheme(theme)", theme)
+        expect(page.locator("html")).to_have_attribute("data-mc-theme", theme)
+        page.screenshot(path=str(output_dir / f"release-journal-{role}-{theme}.png"),
+                        full_page=True, animations="disabled")
+
+    # Automatic must follow the operating-system preference, independent of the last manual choice.
+    page.emulate_media(color_scheme="dark")
+    page.evaluate("setAppearanceTheme('system')")
+    expect(page.locator("html")).to_have_attribute("data-mc-theme", "dark")
+    page.emulate_media(color_scheme="light")
+    page.evaluate("setAppearanceTheme('system')")
+    expect(page.locator("html")).to_have_attribute("data-mc-theme", "light")
+
+    # Verify a genuinely narrow modal, not only a CSS string.
+    page.set_viewport_size({"width":390,"height":844})
+    page.screenshot(path=str(output_dir / f"release-journal-{role}-mobile.png"),
+                    full_page=True, animations="disabled")
+    layout = page.evaluate("""() => ({
+      viewport:window.innerWidth,
+      documentWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+      modalWidth:Math.round(document.getElementById('modal').getBoundingClientRect().width),
+      navHeight:Math.round(document.getElementById('releaseNotesNav').getBoundingClientRect().height),
+      articleHeight:Math.round(document.getElementById('releaseNotesArticle').getBoundingClientRect().height)
+    })""")
+    if layout["documentWidth"] > layout["viewport"] + 2 or layout["modalWidth"] > layout["viewport"] + 2:
+        raise AssertionError(f"Journal mobile overflow for {role}: {layout!r}")
+    page.set_viewport_size({"width":1280,"height":800})
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).not_to_be_visible()
+
+
+def verify_planner_workflows(page) -> None:
+    """Exercise both real Organiser journeys in Firefox against a disposable school DB."""
+    page.evaluate("openPlanner()")
+    modal=page.locator("#modal")
+    expect(modal).to_contain_text("Trouver un créneau pour un nouveau cours")
+    expect(modal).to_contain_text("Trouver ou changer la salle d’un cours existant")
+    expect(modal).not_to_contain_text("Préparer un cours")
+    modal.locator('[name="classId"]').select_option("firefox-class")
+    modal.locator('[name="subject"]').fill("Sciences")
+    modal.locator('[name="day"]').select_option("0")
+    modal.locator('[name="time"]').fill("14:00")
+    modal.locator('[name="duration"]').select_option("60")
+    modal.get_by_role("button",name="Rechercher").click()
+
+    # Each returned time must include the compatible rooms. Pick one and confirm
+    # that the course editor receives all requested data plus the selected room.
+    new_room=modal.get_by_role("button",name="Choisir Salle 101").first
+    expect(new_room).to_be_visible()
+    new_room.click()
+    editor=page.locator("#modal form")
+    expect(editor.locator('[name="subject"]')).to_have_value("Sciences")
+    expect(editor.locator('[name="classIds"]')).to_have_values(["firefox-class"])
+    expect(editor.locator('[name="day"]')).to_have_value("0")
+    expect(editor.locator('[name="time"]')).to_have_value("14:00")
+    expect(editor.locator('[name="endTime"]')).to_have_value("15:00")
+    expect(editor.locator('[name="room"]')).to_have_value("Salle 101")
+    editor.get_by_role("button",name="Enregistrer").click()
+    expect(page.locator("#toast")).to_contain_text("Emploi du temps enregistré.",timeout=10_000)
+
+    created=page.evaluate("""() => (db.schedule||[])
+      .filter(x=>x.subject==='Sciences'&&x.classId==='firefox-class')
+      .map(x=>({id:x.id,day:x.day,time:x.time,endTime:x.endTime,room:x.room}))""")
+    if len(created)!=1 or created[0]["day"]!=0 or created[0]["time"]!="14:00" or created[0]["endTime"]!="15:00" or created[0]["room"]!="Salle 101":
+        raise AssertionError(f"Le nouveau cours n'a pas été créé avec le créneau et la salle choisis : {created!r}")
+
+    # The second path must disable all new-course fields and use an existing
+    # timetable record as its sole starting point.
+    page.evaluate("openPlanner()")
+    modal=page.locator("#modal")
+    modal.locator('[name="action"]').select_option("room")
+    expect(modal.locator('[name="classId"]')).to_be_disabled()
+    expect(modal.locator('[name="subject"]')).to_be_disabled()
+    expect(modal.locator('[name="scheduleId"]')).to_be_enabled()
+    modal.locator('[name="scheduleId"]').select_option("firefox-existing-course")
+    modal.get_by_role("button",name="Rechercher").click()
+    replacement=modal.get_by_role("button",name="Choisir cette salle")
+    expect(replacement).to_be_visible()
+    replacement.click()
+
+    editor=page.locator("#modal form")
+    expect(editor.locator('[name="subject"]')).to_have_value("Français")
+    expect(editor.locator('[name="classIds"]')).to_have_values(["firefox-class"])
+    expect(editor.locator('[name="day"]')).to_have_value("4")
+    expect(editor.locator('[name="time"]')).to_have_value("09:00")
+    expect(editor.locator('[name="endTime"]')).to_have_value("10:00")
+    expect(editor.locator('[name="room"]')).to_have_value("Salle 102")
+    onsubmit=editor.get_attribute("onsubmit") or ""
+    if "firefox-existing-course" not in onsubmit:
+        raise AssertionError(f"Le remplacement doit modifier le cours existant, pas créer un doublon : {onsubmit!r}")
+    editor.get_by_role("button",name="Enregistrer").click()
+    expect(page.locator("#toast")).to_contain_text("Emploi du temps enregistré.",timeout=10_000)
+
+    existing=page.evaluate("""() => (db.schedule||[])
+      .filter(x=>x.id==='firefox-existing-course')
+      .map(x=>({classId:x.classId,subject:x.subject,day:x.day,time:x.time,endTime:x.endTime,room:x.room}))""")
+    if existing!=[{"classId":"firefox-class","subject":"Français","day":4,"time":"09:00","endTime":"10:00","room":"Salle 102"}]:
+        raise AssertionError(f"Le cours existant a été dupliqué ou ses autres champs ont changé : {existing!r}")
+
+
+def verify_establishment_generator(page, output_dir: Path) -> None:
+    """Verify structured component plans survive save/reopen and are copied to ChatGPT."""
+    page.evaluate("page='settings';appSpace='teacher';render()")
+    expect(page.get_by_role("heading",name="Configuration de l’établissement")).to_be_visible()
+    expect(page.get_by_role("heading",name="Générateur de configuration d’établissement")).to_have_count(0)
+    page.get_by_role("button",name="Ouvrir le configurateur").click()
+    modal=page.locator("#modal")
+    expect(modal).to_contain_text("Configurateur de l’établissement avec ChatGPT")
+    expect(modal).to_contain_text("Aucun document à importer dans ChatGPT")
+    expect(modal).to_contain_text("un seul fichier JSON")
+    expect(modal).to_contain_text("Non, conserver les fiches sans compte")
+    expect(modal).to_contain_text("Classes et effectifs")
+    expect(modal).to_contain_text("Matières et programmes")
+    expect(modal).to_contain_text("Professeurs et affectations")
+    expect(modal).to_contain_text("Horaires et emplois du temps")
+    expect(modal.get_by_role("button",name="Télécharger le modèle JSON")).to_have_count(0)
+    expect(modal.get_by_role("button",name="Télécharger le schéma JSON")).to_have_count(0)
+    expect(modal.get_by_role("button",name="Télécharger les instructions")).to_have_count(0)
+    expect(modal.get_by_role("button",name="Exporter le contexte anonymisé")).to_have_count(0)
+
+    blank_counts=page.evaluate("""() => {
+      const brief=collectEstablishmentBrief(document.getElementById('establishmentBriefForm'));
+      return {teacherCount:brief.teacherCount,roomCount:brief.roomCount};
+    }""")
+    if blank_counts!={"teacherCount":None,"roomCount":None}:
+        raise AssertionError(f"Un nombre laissé vide doit rester non renseigné : {blank_counts!r}")
+
+    # Préremplissage réel : maternelle sans ventilation horaire, et Bac Pro
+    # avec des moyennes annuelles décimales éditables.
+    modal.locator('[name="schoolTypes"][value="Maternelle"]').check()
+    modal.locator('[name="schoolTypes"][value="Lycée professionnel"]').check()
+    expect(modal.locator('[name="curriculumMode"]')).to_have_value("national")
+    modal.get_by_role("button",name="Préremplir les programmes nationaux").click()
+    prefetched_classes=modal.locator('#establishmentClassRows [data-plan-row="class"]')
+    prefetched_subjects=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')
+    expect(prefetched_classes).to_have_count(7)
+    expect(prefetched_subjects).to_have_count(56)
+    subject_groups=modal.locator('#establishmentSubjectRows .establishmentSubjectLevel')
+    expect(subject_groups).to_have_count(7)
+    if subject_groups.evaluate_all("els=>els.some(el=>el.open)"):
+        raise AssertionError("Les matières préremplies doivent être regroupées par niveau et repliées par défaut.")
+    language_domain=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]:has([data-field="subject"][value="Développement et structuration du langage oral et écrit"])').first
+    expect(language_domain.locator('[data-field="hoursPerWeek"]')).to_have_value("")
+    expect(language_domain.locator('[data-field="hoursBasis"]')).to_have_value("not_allocated")
+    expect(language_domain.locator('[data-field="details"]')).to_contain_text("vocabulaire")
+    language_domain_group=language_domain.locator('xpath=ancestor::details[contains(@class,"establishmentSubjectLevel")]')
+    language_domain_group.evaluate('(el)=>{el.open=true}')
+    expect(language_domain_group.locator('.establishmentSubjectGroupCount')).to_have_text("8 matière(s)")
+    arts_row=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]:has([data-field="subject"][value="Arts appliqués et culture artistique"])').first
+    arts_hours=arts_row.locator('[data-field="hoursPerWeek"]')
+    expect(arts_hours).to_have_value("0.93")
+    if not arts_hours.evaluate("(el)=>el.checkValidity()"):
+        raise AssertionError("Une moyenne annuelle Bac Pro décimale doit être modifiable et valide dans le formulaire.")
+    if language_domain.locator(".hint").inner_text().find("BO n°")>=0:
+        raise AssertionError("Les références officielles ne doivent pas être affichées dans les champs du configurateur.")
+    # Le préremplissage ne renseigne jamais les effectifs : seul l'établissement les connaît.
+    if any(value for value in [prefetched_classes.nth(0).locator('[data-field="classCount"]').input_value(),prefetched_classes.nth(0).locator('[data-field="studentsPerClass"]').input_value()]):
+        raise AssertionError("Les effectifs et le nombre de classes ne doivent pas être inventés.")
+    subject_groups.evaluate_all("els=>els.forEach(el=>{el.open=true})")
+    while prefetched_subjects.count():
+        prefetched_subjects.nth(0).locator('.establishmentPlanRemove').click()
+    while prefetched_classes.count():
+        prefetched_classes.nth(0).locator('.establishmentPlanRemove').click()
+    modal.locator('[name="schoolTypes"][value="Maternelle"]').uncheck()
+
+    modal.locator('[name="name"]').fill("Établissement de recette")
+    modal.locator('[name="schoolTypes"][value="Collège"]').check()
+    modal.locator('[name="schoolTypes"][value="Lycée professionnel"]').check()
+    modal.locator('[name="schoolOrganization"]').select_option("Cité scolaire")
+    modal.locator('[name="schoolSiteMode"]').select_option("Plusieurs sites / antennes")
+    modal.locator('[name="schoolStructureDetails"]').fill("Section européenne")
+    modal.locator('[name="schoolOrganizationDetails"]').fill("Bâtiments séparés sur deux sites")
+    modal.locator('[name="schoolYear"]').fill("2026-2027")
+    modal.locator('[name="periodMode"]').select_option("semestres")
+
+    modal.get_by_role("button",name="+ Ajouter un niveau").click()
+    class_rows=modal.locator('#establishmentClassRows [data-plan-row="class"]')
+    expect(class_rows).to_have_count(1)
+    first_class=class_rows.nth(0)
+    first_class.locator('[data-field="component"]').select_option("Collège")
+    first_class.locator('[data-field="level"]').fill("6e")
+    first_class.locator('[data-field="classCount"]').fill("2")
+    first_class.locator('[data-field="studentsPerClass"]').fill("28")
+    first_class.locator('[data-field="classNames"]').fill("6A, 6B")
+
+    modal.get_by_role("button",name="+ Ajouter un niveau").click()
+    expect(class_rows).to_have_count(2)
+    second_class=class_rows.nth(1)
+    second_class.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_class.locator('[data-field="level"]').fill("CAP")
+    second_class.locator('[data-field="classCount"]').fill("1")
+    second_class.locator('[data-field="studentsPerClass"]').fill("14")
+    second_class.locator('[data-field="classNames"]').fill("CAP1")
+
+    modal.get_by_role("button",name="+ Ajouter une matière").click()
+    subject_rows=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')
+    first_subject=subject_rows.nth(0)
+    first_subject.locator('[data-field="component"]').select_option("Collège")
+    first_subject.locator('[data-field="level"]').fill("6e")
+    first_subject.locator('[data-field="subject"]').fill("Français")
+    first_subject.locator('[data-field="hoursPerWeek"]').fill("4")
+    modal.get_by_role("button",name="+ Ajouter une matière").click()
+    second_subject=subject_rows.nth(1)
+    second_subject.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_subject.locator('[data-field="level"]').fill("CAP")
+    second_subject.locator('[data-field="subject"]').fill("Prévention-santé-environnement")
+    second_subject.locator('[data-field="hoursPerWeek"]').fill("1")
+
+    modal.get_by_role("button",name="+ Ajouter une affectation").click()
+    teacher_rows=modal.locator('#establishmentTeacherRows [data-plan-row="teacher"]')
+    first_teacher=teacher_rows.nth(0)
+    first_teacher.locator('[data-field="component"]').select_option("Collège")
+    first_teacher.locator('[data-field="pseudonym"]').fill("Professeur 01")
+    first_teacher.locator('[data-field="subjects"]').fill("Français")
+    first_teacher.locator('[data-field="classes"]').fill("6A, 6B")
+    first_teacher.locator('[data-field="hoursPerWeek"]').fill("18")
+    modal.get_by_role("button",name="+ Ajouter une affectation").click()
+    second_teacher=teacher_rows.nth(1)
+    second_teacher.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_teacher.locator('[data-field="pseudonym"]').fill("Professeur 02")
+    second_teacher.locator('[data-field="subjects"]').fill("Prévention-santé-environnement")
+    second_teacher.locator('[data-field="classes"]').fill("CAP1")
+    second_teacher.locator('[data-field="hoursPerWeek"]').fill("18")
+
+    modal.locator('[name="teacherCount"]').fill("2")
+    modal.locator('[name="createStudents"]').select_option("no")
+    modal.locator('[name="createTeacherAccounts"]').select_option("no")
+    modal.locator('[name="roomCount"]').fill("30")
+    modal.get_by_role("button",name="+ Ajouter une salle").click()
+    room_rows=modal.locator('#establishmentRoomRows [data-plan-row="room"]')
+    first_room=room_rows.nth(0)
+    first_room.locator('[data-field="name"]').fill("Salle 101")
+    first_room.locator('[data-field="site"]').fill("Site A")
+    first_room.locator('[data-field="type"]').fill("Salle ordinaire")
+    first_room.locator('[data-field="capacity"]').fill("30")
+    first_room.locator('[data-field="equipment"]').fill("vidéoprojecteur, tableau")
+    modal.get_by_role("button",name="+ Ajouter une salle").click()
+    second_room=room_rows.nth(1)
+    second_room.locator('[data-field="name"]').fill("Atelier CAP")
+    second_room.locator('[data-field="site"]').fill("Site B")
+    second_room.locator('[data-field="type"]').fill("Atelier professionnel")
+    second_room.locator('[data-field="capacity"]').fill("16")
+    second_room.locator('[data-field="equipment"]').fill("établis, matériel professionnel")
+    modal.get_by_text("Notes complémentaires ou anciennes précisions sur les salles (facultatif)",exact=True).click()
+    modal.locator('[name="roomPlan"]').fill("Les salles spécialisées peuvent être mutualisées selon les calendriers.")
+
+    modal.get_by_role("button",name="+ Ajouter un calendrier").click()
+    schedule_rows=modal.locator('#establishmentScheduleRows [data-plan-row="schedule"]')
+    first_schedule=schedule_rows.nth(0)
+    first_schedule.locator('[data-field="component"]').select_option("Collège")
+    first_schedule.locator('[data-field-day][value="Lundi"]').check()
+    first_schedule.locator('[data-field-day][value="Mardi"]').check()
+    first_schedule.locator('[data-field-day][value="Mercredi"]').check()
+    first_schedule.locator('[data-field-day][value="Jeudi"]').check()
+    first_schedule.locator('[data-field-day][value="Vendredi"]').check()
+    first_schedule.locator('[data-field="start"]').fill("08:00")
+    first_schedule.locator('[data-field="end"]').fill("17:00")
+    first_schedule.locator('[data-field="lunchStart"]').fill("12:00")
+    first_schedule.locator('[data-field="lunchEnd"]').fill("13:30")
+    first_schedule.locator('[data-field="breakNotes"]').fill("Récréation : 10:15–10:30")
+
+    modal.get_by_role("button",name="+ Ajouter un calendrier").click()
+    second_schedule=schedule_rows.nth(1)
+    second_schedule.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_schedule.locator('[data-field-day][value="Lundi"]').check()
+    second_schedule.locator('[data-field-day][value="Mardi"]').check()
+    second_schedule.locator('[data-field-day][value="Mercredi"]').check()
+    second_schedule.locator('[data-field-day][value="Jeudi"]').check()
+    second_schedule.locator('[data-field-day][value="Vendredi"]').check()
+    second_schedule.locator('[data-field="start"]').fill("08:30")
+    second_schedule.locator('[data-field="end"]').fill("16:30")
+    second_schedule.locator('[data-field="lunchStart"]').fill("12:00")
+    second_schedule.locator('[data-field="lunchEnd"]').fill("13:00")
+    second_schedule.locator('[data-field="breakNotes"]').fill("Récréation : 10:00–10:15")
+    modal.locator('[name="createSchedule"]').select_option("yes")
+    modal.locator('[name="constraints"]').fill("Déplacements entre les sites à prendre en compte.")
+
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Classes : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Matières : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Affectations professeurs : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Salles détaillées : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Calendriers : 2 composante(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Dossier cohérent, prêt à être enregistré.")
+    modal.get_by_role("button",name="Enregistrer le formulaire dans Ma Classe").click()
+    expect(page.locator("#toast")).to_contain_text("Formulaire de configuration enregistré")
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).not_to_be_visible()
+
+    page.get_by_role("button",name="Ouvrir le configurateur").click()
+    expect(modal.locator('[name="name"]')).to_have_value("Établissement de recette")
+    expect(modal.locator('[name="schoolTypes"][value="Collège"]')).to_be_checked()
+    expect(modal.locator('[name="schoolTypes"][value="Lycée professionnel"]')).to_be_checked()
+    expect(modal.locator('[name="schoolOrganization"]')).to_have_value("Cité scolaire")
+    expect(modal.locator('[name="schoolSiteMode"]')).to_have_value("Plusieurs sites / antennes")
+    expect(modal.locator('[name="createStudents"]')).to_have_value("no")
+    expect(modal.locator('[name="createTeacherAccounts"]')).to_have_value("no")
+    expect(modal.locator('#establishmentClassRows [data-plan-row="class"]')).to_have_count(2)
+    expect(modal.locator('#establishmentClassRows [data-field="level"]').nth(0)).to_have_value("6e")
+    expect(modal.locator('#establishmentClassRows [data-field="level"]').nth(1)).to_have_value("CAP")
+    expect(modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')).to_have_count(2)
+    expect(modal.locator('#establishmentTeacherRows [data-field="pseudonym"]').nth(0)).to_have_value("Professeur 01")
+    expect(modal.locator('#establishmentRoomRows [data-plan-row="room"]')).to_have_count(2)
+    expect(modal.locator('#establishmentRoomRows [data-field="name"]').nth(0)).to_have_value("Salle 101")
+    expect(modal.locator('#establishmentRoomRows [data-field="site"]').nth(1)).to_have_value("Site B")
+    expect(modal.locator('#establishmentRoomRows [data-field="capacity"]').nth(1)).to_have_value("16")
+    expect(modal.locator('#establishmentScheduleRows [data-plan-row="schedule"]')).to_have_count(2)
+
+    page.evaluate("""() => Object.defineProperty(navigator,'clipboard',{
+      configurable:true,
+      value:{writeText:async value=>{window.__capturedEstablishmentPrompt=value;}}
+    })""")
+    modal.get_by_role("button",name="Copier les consignes et les données pour ChatGPT").click()
+    expect(page.locator("#toast")).to_contain_text("Demande complète copiée")
+    copied_prompt=page.evaluate("window.__capturedEstablishmentPrompt")
+    required=(
+        '"classStructures": [','"subjectPlans": [','"teacherPlans": [','"componentSchedules": [','"roomStructures": [',
+        '"name": "Salle 101"','"site": "Site A"','"capacity": 30','"name": "Atelier CAP"','"site": "Site B"',
+        '"component": "Collège"','"component": "Lycée professionnel"',
+        '"pseudonym": "Professeur 01"','Collège | 6e | Français | 4 h/semaine',
+        'Lycée professionnel | CAP | Prévention-santé-environnement | 1 h/semaine',
+        'createTeacherAccounts=false','createStudentProfiles=false',
+        'PROFILS ET COMPTES PROFESSEURS','NOMBRE DE PROFESSEURS','NOMBRE DE SALLES',
+        'un seul fichier JSON téléchargeable','structure de regroupement=Cité scolaire',
+        'implantation=Plusieurs sites / antennes','Section européenne','Bâtiments séparés sur deux sites',
+        'année scolaire=2026-2027','Récréation : 10:15–10:30'
+    )
+    for item in required:
+        if item not in copied_prompt:
+            raise AssertionError(f"La demande copiée doit inclure {item!r}")
+    if copied_prompt.count("NOMBRE DE PROFESSEURS : teacherCount=")!=1 or copied_prompt.count("NOMBRE DE SALLES : roomCount=")!=1:
+        raise AssertionError("Les consignes ne doivent pas répéter les nombres de professeurs ou de salles.")
+    output_dir.mkdir(parents=True,exist_ok=True)
+    # The prompt-copy action scrolls the modal. Reset its own scroll position
+    # so the light/dark screenshots show the first component-planning sections.
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
+    page.screenshot(path=str(output_dir/"establishment-configurator-settings-light.png"),full_page=True,animations="disabled")
+    page.evaluate("setAppearanceTheme('dark')")
+    expect(page.locator("html")).to_have_attribute("data-mc-theme","dark")
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
+    page.screenshot(path=str(output_dir/"establishment-configurator-settings-dark.png"),full_page=True,animations="disabled")
+
+    protection=modal.locator(".establishmentPrivacyNotice")
+    protection.scroll_into_view_if_needed()
+    expect(protection).to_be_visible()
+    geometry=protection.evaluate("""el => {
+      const r=el.getBoundingClientRect();
+      const modal=document.getElementById('modal').getBoundingClientRect();
+      const footer=document.querySelector('#modal .modalfoot').getBoundingClientRect();
+      return {top:r.top,bottom:r.bottom,modalTop:modal.top,footerTop:footer.top};
+    }""")
+    if geometry["top"]<geometry["modalTop"] or geometry["bottom"]>geometry["footerTop"]+2:
+        raise AssertionError(f"Les consignes de confidentialité doivent rester accessibles au-dessus du pied de modale: {geometry!r}")
+    page.screenshot(path=str(output_dir/"establishment-configurator-settings-dark-bottom.png"),full_page=True,animations="disabled")
+    page.locator("#modal .modalhead .close").click()
+    expect(modal).not_to_be_visible()
+
+
+def verify_competency_workflow(page, output_dir: Path) -> None:
+    """Verify that a teacher can create, attach and rate competencies without losing the evaluation draft."""
+    page.evaluate("page='evaluations';appSpace='teacher';render()")
+    page.get_by_role("button",name="Référentiel de compétences").click()
+    modal=page.locator("#modal")
+    expect(modal).to_contain_text("Référentiel de compétences")
+    expect(modal).to_contain_text("Une compétence décrit un savoir-faire")
+    manager=modal.locator("form").first
+    manager.locator('[name="name"]').fill("Comprendre un texte")
+    manager.locator('[name="subject"]').fill("Français")
+    manager.locator('input[name="levels"][value="6e"]').check()
+    manager.locator('[name="description"]').fill("Repérer les informations importantes.")
+    modal.get_by_role("button",name="Ajouter au référentiel").click()
+    expect(modal).to_contain_text("Comprendre un texte")
+    modal.get_by_role("button",name="Fermer").click()
+
+    page.get_by_role("button",name="+ Nouvelle évaluation").click()
+    modal.locator('[name="classId"]').select_option("firefox-class")
+    modal.locator('[name="subject"]').fill("Français")
+    modal.locator('[name="title"]').fill("Évaluation compétence — recette")
+    first_skill=modal.locator('[data-v217-competency][value="Comprendre un texte"]')
+    expect(first_skill).to_be_visible()
+    first_skill.check()
+    modal.get_by_role("button",name="Créer ou gérer les compétences").click()
+    captured=page.evaluate("""() => ({
+      classId:window.v217CompetencyReturnDraft?.values?.classId||'',
+      subject:window.v217CompetencyReturnDraft?.values?.subject||'',
+      title:window.v217CompetencyReturnDraft?.values?.title||'',
+      competencies:window.v217CompetencyReturnDraft?.competencies||[]
+    })""")
+    if captured!={"classId":"firefox-class","subject":"Français","title":"Évaluation compétence — recette","competencies":["Comprendre un texte"]}:
+        raise AssertionError(f"Le brouillon d’évaluation doit être capturé avant l’ouverture du référentiel : {captured!r}")
+    expect(modal).to_contain_text("Référentiel de compétences")
+    create_form=modal.locator("form").first
+    create_form.locator('[name="name"]').fill("Justifier une réponse")
+    create_form.locator('[name="subject"]').fill("Français")
+    create_form.locator('input[name="levels"][value="6e"]').check()
+    create_form.locator('[name="description"]').fill("Appuyer une réponse sur un élément précis.")
+    page_errors=[]
+    page.on("pageerror",lambda error:page_errors.append(str(error)))
+    modal.get_by_role("button",name="Ajouter au référentiel").click()
+
+    return_state=page.evaluate("""() => ({
+      heading:document.querySelector('#modal h2')?.textContent||'',
+      hasMetaForm:!!document.querySelector('#modal form[data-v217-meta]'),
+      fields:[...document.querySelectorAll('#modal form input,#modal form select')].map(x=>({name:x.name,value:x.value})),
+      modalText:(document.querySelector('#modal')?.innerText||'').slice(0,1200)
+    })""")
+    if not modal.locator('[name="classId"]').count():
+        raise AssertionError(f"Le formulaire d’évaluation n’est pas restauré après la création : {return_state!r}; erreurs JavaScript : {page_errors!r}")
+    expect(modal.locator('[name="classId"]')).to_have_value("firefox-class")
+    expect(modal.locator('[name="subject"]')).to_have_value("Français")
+    expect(modal.locator('[name="title"]')).to_have_value("Évaluation compétence — recette")
+    expect(modal.locator('[data-v217-competency][value="Comprendre un texte"]')).to_be_checked()
+    expect(modal.locator('[data-v217-competency][value="Justifier une réponse"]')).to_be_checked()
+    modal.get_by_role("button",name="Créer puis saisir les notes").click()
+    entry=modal.locator(".v217EntryTable")
+    expect(entry).to_be_visible()
+    expect(entry).to_contain_text("Comprendre un texte")
+    expect(entry).to_contain_text("Justifier une réponse")
+    rating=modal.locator(".v217EntryTable tbody tr select").nth(0)
+    rating.select_option("3")
+    output_dir.mkdir(parents=True,exist_ok=True)
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
+    page.screenshot(path=str(output_dir/"evaluation-competency-entry.png"),full_page=True,animations="disabled")
+    result=page.evaluate("""() => {
+      const e=(db.evaluations||[]).find(x=>x.title==='Évaluation compétence — recette');
+      const g=e?.grades?.find(x=>String(x.studentId)==='firefox-student');
+      return {competencies:e?.competencies||[],rating:g?.competencyRatings?.['Comprendre un texte']||''};
+    }""")
+    if "Comprendre un texte" not in result["competencies"] or "Justifier une réponse" not in result["competencies"] or result["rating"]!="3":
+        raise AssertionError(f"La compétence doit être créée, reliée à l’évaluation et notée : {result!r}")
+    modal.get_by_role("button",name="Fermer").click()
+    page.get_by_role("button",name="Référentiel de compétences").click()
+    modal=page.locator("#modal")
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
+    page.screenshot(path=str(output_dir/"competency-library.png"),full_page=True,animations="disabled")
+    expect(modal).to_contain_text("Comprendre un texte")
+    expect(modal).to_contain_text("Justifier une réponse")
+    modal.get_by_role("button",name="Fermer").click()
+    page.evaluate("page='schedule';appSpace='teacher';selectedWeek=scheduleLocalDate('2026-11-09');scheduleView='week';render()")
+
+def verify_manual_room_settings(page) -> None:
+    """Manually create/edit room records, including same room number on two sites."""
+    page.set_viewport_size({"width":1280,"height":800})
+    page.evaluate("page='settings';appSpace='teacher';render()")
+
+    def add_room(site: str, capacity: str, equipment: str) -> None:
+        page.locator(".settingsRoomsCard").get_by_role("button",name="+ Ajouter une salle").click()
+        form=page.locator(".modalback.open form")
+        expect(form).to_be_visible()
+        form.locator('[name="name"]').fill("B204")
+        form.locator('[name="site"]').fill(site)
+        form.locator('[name="type"]').select_option("computer")
+        form.locator('[name="capacity"]').fill(capacity)
+        form.locator('[name="equipment"]').fill(equipment)
+        form.locator(".modalfoot .btn.primary").click()
+        expect(page.locator(".settingsRoomsCard .settingsRoomRow").filter(has_text=site+" — B204")).to_be_visible()
+
+    add_room("Site A","28","ordinateurs, vidéoprojecteur")
+    add_room("Site B","24","postes informatiques")
+    records=page.evaluate("""() => {
+      const rooms=(db.settings.rooms||[]).filter(r=>r&&r.name==='B204');
+      return rooms.map(r=>({id:r.id,site:r.site,capacity:r.capacity,equipment:r.equipment}));
+    }""")
+    if len(records)!=2 or {r["site"] for r in records}!={"Site A","Site B"}:
+        raise AssertionError(f"Deux salles B204 sur deux sites doivent rester distinctes: {records!r}")
+    if not all(r["id"] and r["capacity"] in (24,28) for r in records):
+        raise AssertionError(f"Les fiches manuelles doivent conserver identifiant et capacité: {records!r}")
+    options=page.evaluate("(id)=>scheduleRoomOptions('Site B — B204',id)",records[1]["id"])
+    if 'value="Site A — B204"' not in options or 'value="Site B — B204" selected' not in options:
+        raise AssertionError(f"Le Planner doit distinguer les salles du même nom par site: {options!r}")
+
+    row=page.locator(".settingsRoomsCard .settingsRoomRow").filter(has_text="Site A — B204")
+    row.get_by_role("button",name="Détails / modifier").click()
+    edit=page.locator(".modalback.open form")
+    expect(edit.locator('[name="site"]')).to_have_value("Site A")
+    expect(edit.locator('[name="capacity"]')).to_have_value("28")
+    edit.locator('[name="capacity"]').fill("30")
+    edit.locator(".modalfoot .btn.primary").click()
+    saved=page.evaluate("""() => (db.settings.rooms||[]).filter(r=>r&&r.name==='B204'&&r.site==='Site A').map(r=>r.capacity)""")
+    if saved!=[30]:
+        raise AssertionError(f"La modification manuelle de la salle doit être persistée: {saved!r}")
+
+def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
+    """Check actual Settings card placement for each role at desktop and mobile widths."""
+    is_student = role == "student"
+    desktop_page = "studentSettings" if is_student else "settings"
+    desktop_space = "student" if is_student else "teacher"
+    page.set_viewport_size({"width":1280,"height":800})
+    page.evaluate(
+        "(values) => { page=values.page; appSpace=values.space; render(); }",
+        {"page": desktop_page, "space": desktop_space},
+    )
+    selector = "#main .settingsStudentGrid" if is_student else "#main .settingsGrid"
+    grid = page.locator(selector)
+    expect(grid).to_be_visible()
+    state = grid.evaluate("""el => {
+      const css=getComputedStyle(el);
+      const rect=sel=>{
+        const node=el.querySelector(sel);
+        if(!node)return null;
+        const r=node.getBoundingClientRect();
+        return {left:Math.round(r.left),top:Math.round(r.top),width:Math.round(r.width)};
+      };
+      return {
+        className:el.className,
+        display:css.display,
+        columns:css.gridTemplateColumns.split(/\\s+/).filter(Boolean).length,
+        appearance:rect('.settingsAppearanceCard'),
+        periods:rect('.settingsPeriodsCard'),
+        rooms:rect('.settingsRoomsCard'),
+        version:rect('.settingsVersionCard'),
+        updates:rect('.settingsUpdateCard'),
+        data:rect('.settingsDataCard'),
+        establishment:rect('.settingsEstablishmentCard')
+      };
+    }""")
+    expected_columns = 2 if is_student else 3
+    if state["display"] != "grid" or state["columns"] != expected_columns:
+        raise AssertionError(f"Grille Paramètres desktop incorrecte pour {role}: {state!r}")
+    if not is_student:
+        if not (state["appearance"]["left"] < state["periods"]["left"] < state["version"]["left"]):
+            raise AssertionError(f"Colonnes sémantiques Paramètres incohérentes pour {role}: {state!r}")
+        if abs(state["rooms"]["left"]-state["appearance"]["left"]) > 3:
+            raise AssertionError(f"Salles doit rester sous Apparence pour {role}: {state!r}")
+        if abs(state["data"]["left"]-state["version"]["left"]) > 3:
+            raise AssertionError(f"Données doit rester sous Version pour {role}: {state!r}")
+        if "settingsLayout" not in state["className"]:
+            raise AssertionError(f"La Direction et les professeurs doivent utiliser la grille compacte en colonnes: {state!r}")
+        if role == "admin":
+            if not state["updates"] or not state["establishment"]:
+                raise AssertionError(f"La Direction doit recevoir Mises à jour et Configuration de l’établissement: {state!r}")
+            if abs(state["establishment"]["left"]-state["appearance"]["left"]) > 3 or state["establishment"]["top"] <= state["rooms"]["top"]:
+                raise AssertionError(f"Le configurateur doit suivre les salles dans la première colonne, sans être rejeté sous la grille: {state!r}")
+            if not (state["version"]["top"] < state["updates"]["top"] < state["data"]["top"]):
+                raise AssertionError(f"Version, Mises à jour et Données doivent s’empiler dans la colonne droite: {state!r}")
+            if abs(state["updates"]["left"]-state["version"]["left"]) > 3 or abs(state["data"]["left"]-state["version"]["left"]) > 3:
+                raise AssertionError(f"Version, Mises à jour et Données doivent rester rapprochées dans la même colonne: {state!r}")
+        elif state["updates"] is not None or state["establishment"] is not None:
+            raise AssertionError(f"Le professeur ne doit pas recevoir les cartes réservées à la Direction: {state!r}")
+    else:
+        if "settingsStudentGrid" not in state["className"]:
+            raise AssertionError(f"L'élève doit utiliser sa grille Paramètres dédiée: {state!r}")
+
+    # Le menu de période doit sortir de la pile locale et rester au-dessus des cartes voisines.
+    if not is_student:
+        period_trigger=page.locator('.settingsPeriodsCard .mc-select-trigger').first
+        expect(period_trigger).to_be_visible()
+        period_trigger.click()
+        overlay=page.locator('.mc-select-menu:popover-open').last
+        expect(overlay).to_be_visible()
+        overlay_state=overlay.evaluate("""el => ({popover:el.matches(':popover-open'),position:getComputedStyle(el).position,zIndex:getComputedStyle(el).zIndex,top:Math.round(el.getBoundingClientRect().top)})""")
+        if not overlay_state['popover'] or overlay_state['position']!='fixed':
+            raise AssertionError(f"Le menu de sélection doit être dans la couche supérieure du navigateur: {overlay_state!r}")
+        page.keyboard.press('Escape')
+        expect(page.locator('.mc-select.open')).to_have_count(0)
+
+    output_dir.mkdir(parents=True,exist_ok=True)
+    page.screenshot(path=str(output_dir/f"settings-{role}-desktop.png"),full_page=True,animations="disabled")
+    page.set_viewport_size({"width":390,"height":844})
+    page.evaluate(
+        "(values) => { page=values.page; appSpace=values.space; render(); }",
+        {"page": desktop_page, "space": desktop_space},
+    )
+    mobile = page.locator(selector)
+    mobile_state = mobile.evaluate("""el => ({
+      display:getComputedStyle(el).display,
+      columns:getComputedStyle(el).gridTemplateColumns.split(/\\s+/).filter(Boolean).length,
+      width:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+      viewport:window.innerWidth
+    })""")
+    if mobile_state["display"] != "grid" or mobile_state["columns"] != 1 or mobile_state["width"] > mobile_state["viewport"]+2:
+        raise AssertionError(f"Paramètres mobile incohérents pour {role}: {mobile_state!r}")
+    page.screenshot(path=str(output_dir/f"settings-{role}-mobile.png"),full_page=True,animations="disabled")
+    page.set_viewport_size({"width":1280,"height":800})
+
 
 def free_port() -> int:
     with socket.socket() as sock:
@@ -237,6 +893,20 @@ def main() -> None:
                 page.locator('input[name="confirm"]').fill("Temporary-Test-Password-2026!")
                 page.get_by_role("button", name="Créer l’accès direction").click()
                 expect(page.locator("#nav")).not_to_be_empty()
+                acknowledge_release_notes(page, "direction")
+                verify_release_journal(page, "admin", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(page, "admin", Path("artifacts/browser-v25"))
+                verify_manual_room_settings(page)
+                page.evaluate("page='adminUsers';appSpace='teacher';render()")
+                verify_establishment_generator(page, Path("artifacts/browser-v25"))
+                page.evaluate("setAppearanceTheme('light')")
+
+                # The Direction workspace must expose the existing timetable route.
+                direction_schedule_link = page.locator('#nav button[title="Emploi du temps"]')
+                expect(direction_schedule_link).to_be_visible()
+                direction_schedule_link.click()
+                expect(page.locator("#main h1")).to_contain_text("Emploi du temps")
+                page.evaluate("page='adminUsers';appSpace='teacher';render()")
 
                 # Seed one recurring course through the real authenticated API.
                 page.evaluate(
@@ -247,19 +917,49 @@ def main() -> None:
                       const data = await response.json();
                       data.settings = data.settings || {};
                       data.settings.subjectColors = {...(data.settings.subjectColors || {}), francais:'#123456'};
+                      data.settings.rooms = [
+                        {id:'firefox-room-a',name:'Salle 101',type:'classroom',capacity:30,equipment:[],unavailable:[]},
+                        {id:'firefox-room-b',name:'Salle 102',type:'classroom',capacity:30,equipment:[],unavailable:[]}
+                      ];
                       data.classes = [{
                         id:'firefox-class', name:'6e A', level:'6e',
-                        levels:['6e'], teacherIds:[], groups:[],
+                        levels:['6e'], teacherIds:[], groups:['A','B'],
                         attendanceMode:'hour', periodMode:'trimestres'
                       }];
-                      data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:''}];
+                      data.students = [{id:'firefox-student',first:'Élève',last:'Test',classId:'firefox-class',group:'A'}];
+                      const reportTerm = data.settings.terms?.[0]?.id || 'firefox-term';
+                      if (!data.settings.terms?.length) {
+                        data.settings.terms = [{
+                          id:reportTerm,name:'Trimestre 1',start:'2026-09-01',end:'2026-12-31'
+                        }];
+                      }
+                      data.evaluations = [{
+                        id:'firefox-evaluation',title:'Contrôle de français',
+                        classId:'firefox-class',group:'A',subject:'Français',
+                        date:'2026-11-12',maxScore:20,coefficient:1,published:true,
+                        grades:[{studentId:'firefox-student',value:'16'}]
+                      }];
+                      data.attendance = [{
+                        id:'firefox-attendance',classId:'firefox-class',
+                        date:'2026-11-12',mode:'hour',slotId:'firefox-existing-course',
+                        time:'09:00',rows:[{
+                          studentId:'firefox-student',status:'absent',
+                          justified:false,reason:''
+                        }]
+                      }];
+                      data.bulletins = [{
+                        id:'firefox-bulletin',studentId:'firefox-student',
+                        classId:'firefox-class',termId:reportTerm,
+                        subjectData:{'Français':{comment:'Participation régulière.'}},
+                        overall:'Ensemble sérieux.',published:false,validated:false
+                      }];
                       data.schedule = [{
                         id:'firefox-existing-course', classId:'firefox-class',
                         day:4, time:'09:00', endTime:'10:00',
                         subject:'Français', recurrence:'weekly',
                         startDate:'2026-11-09', endDate:'',
                         exceptions:[], overrides:{}, teacherId:'',
-                        room:'', group:''
+                        room:'Salle 101', group:'A'
                       }];
                       const saved = await fetch('/api/save', {
                         method:'POST',
@@ -275,6 +975,9 @@ def main() -> None:
                       render();
                     }"""
                 )
+
+                verify_planner_workflows(page)
+                verify_competency_workflow(page, Path('artifacts/browser-v25'))
 
                 existing = page.locator('[data-schedule-id="firefox-existing-course"]')
                 try:
@@ -334,7 +1037,10 @@ def main() -> None:
                 page.locator(".scheduleViewSwitch").get_by_role("button", name="Mois").click()
                 expect(page.locator(".scheduleMonthView")).to_be_visible()
                 month_counts = page.locator(".scheduleMonthCount")
-                expect(month_counts).to_have_count(3)
+                # The disposable school now contains two weekly courses:
+                # four Mondays from the new lesson (9, 16, 23, 30 Nov)
+                # and three Fridays from the original lesson (13, 20, 27 Nov).
+                expect(month_counts).to_have_count(7)
                 expect(month_counts.first).to_contain_text("cours")
 
                 page.locator(".scheduleViewSwitch").get_by_role("button", name="Semaine").click()
@@ -430,6 +1136,10 @@ def main() -> None:
                 }""")
                 if teacher_state.get("role") != "teacher" or teacher_state.get("id") != teacher_id:
                     raise AssertionError("Teacher session not initialized: "+repr(teacher_state))
+                acknowledge_release_notes(teacher_page, "professeur")
+                verify_release_journal(teacher_page, "teacher", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(teacher_page, "teacher", Path("artifacts/browser-v25"))
+                teacher_page.evaluate("page='schedule';appSpace='teacher';render()")
                 shared_cloud = teacher_page.evaluate("""async () => {
                   const folder='cloud/personal/users/'+authUser.id;
                   const shared=await upload(new File(
@@ -519,21 +1229,33 @@ def main() -> None:
 
                 tracking_state = teacher_page.evaluate("""() => {
                   window.classContext='';
-                  page='ppDashboard';appSpace='teacher';render();
-                  const card=[...document.querySelectorAll('.ppQuick')].find(x=>(x.innerText||'').includes('6e A'));
-                  if(!card)throw new Error('La classe accessible doit apparaître dans le Suivi de classe.');
-                  card.click();
-                  const main=document.getElementById('main');
+                  page='classes';appSpace='teacher';render();
+                  const card=[...document.querySelectorAll('.classHubCard')].find(x=>(x.innerText||'').includes('6e A'));
+                  if(!card)throw new Error('La classe accessible doit apparaître dans le module Classes unifié.');
+                  const action=[...card.querySelectorAll('button')].find(x=>(x.innerText||'').trim()==='Ouvrir la classe et son suivi');
+                  if(!action)throw new Error('La classe et son suivi doivent être accessibles depuis une même fiche.');
+                  action.click();
+                  const detail=document.getElementById('main');
+                  const detailState={
+                    title:detail?.querySelector('.top h1')?.innerText||'',
+                    hasClass:(detail?.innerText||'').includes('6e A'),
+                    hasStudents:(detail?.innerText||'').includes('Élèves'),
+                    hasAttendance:(detail?.innerText||'').includes('Assiduité récente'),
+                    hasUpcoming:(detail?.innerText||'').includes('Prochaines échéances'),
+                    hasError:(detail?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
+                  };
+                  const back=[...(detail?.querySelectorAll('.classHubHeaderActions button')||[])].find(x=>(x.innerText||'').trim()==='← Retour au module Classes');
+                  if(!back)throw new Error('La fiche de suivi doit proposer un retour visible au module Classes.');
+                  back.click();
+                  const list=document.getElementById('main');
                   return {
-                    title:main?.querySelector('.top h1')?.innerText||'',
-                    hasStudents:(main?.innerText||'').includes('Élèves'),
-                    hasAttendance:(main?.innerText||'').includes('Assiduité récente'),
-                    hasUpcoming:(main?.innerText||'').includes('Prochaines échéances'),
-                    hasError:(main?.innerText||'').includes('Une erreur a empêché l’affichage de cette page.')
+                    ...detailState,
+                    hasReturn:true,
+                    returnedToClassList:!!list?.querySelector('.classHubCard')&&!window.classContext
                   };
                 }""")
-                if tracking_state["title"] != "Suivi de classe" or tracking_state["hasError"] or not tracking_state["hasStudents"] or not tracking_state["hasAttendance"] or not tracking_state["hasUpcoming"]:
-                    raise AssertionError("Le Suivi de classe ne s'affiche pas correctement dans Firefox : "+repr(tracking_state))
+                if tracking_state["title"] != "Classes" or not tracking_state["hasClass"] or tracking_state["hasError"] or not tracking_state["hasStudents"] or not tracking_state["hasAttendance"] or not tracking_state["hasUpcoming"] or not tracking_state["hasReturn"] or not tracking_state["returnedToClassList"]:
+                    raise AssertionError("Le parcours Classes → suivi → retour ne fonctionne pas correctement dans Firefox : "+repr(tracking_state))
 
                 # Manual theme choices must override the operating-system preference.
                 teacher_page.emulate_media(color_scheme="light")
@@ -601,12 +1323,6 @@ def main() -> None:
                         "Cloud Classe doit conserver sa navigation latérale : "+repr(class_state)
                     )
                 teacher_page.evaluate("window.cloudSpace='personal';page='schedule';appSpace='teacher';render();")
-                capture_product_screenshots(
-                    teacher_page,
-                    "teacher",
-                    ["dashboard","activity","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","ppDashboard","settings"],
-                    Path("artifacts/browser-v25"),
-                )
                 uploaded_homework = teacher_page.evaluate("""async () => {
                   db=await api('/api/data');
                   normalize();
@@ -667,6 +1383,46 @@ def main() -> None:
                   if (!response.ok) throw new Error('Student account creation failed: '+JSON.stringify(result));
                   return result.user.temporaryPassword;
                 }""")
+                # Exercise the actual Direction interface, not only the administration API.
+                page.evaluate("""async () => {
+                  db=await api('/api/data');
+                  normalize();
+                  page='adminUsers';
+                  appSpace='teacher';
+                  render();
+                }""")
+                expect(page.locator('#main h1')).to_contain_text("Utilisateurs")
+                expect(page.locator('#main')).to_contain_text("firefox-student")
+
+                page.get_by_role("button",name="+ Nouveau professeur").click()
+                admin_teacher_form=page.locator("#modal form")
+                expect(admin_teacher_form).to_be_visible()
+                admin_teacher_form.locator('input[name="first"]').fill("Camille")
+                admin_teacher_form.locator('input[name="last"]').fill("Interface")
+                admin_teacher_form.locator('input[name="username"]').fill("ui-test-prof")
+                admin_teacher_form.locator('input[name="subjectsText"]').fill("Sciences")
+                admin_teacher_form.get_by_role("button",name="Enregistrer le professeur").click()
+                expect(page.locator("#modal")).to_contain_text("Compte professeur créé",timeout=10_000)
+                page.locator("#modal .modalfoot button").click()
+                ui_teacher_row=page.locator("#main .message").filter(has_text="ui-test-prof")
+                expect(ui_teacher_row).to_contain_text("Actif",timeout=10_000)
+                ui_teacher_row.get_by_role("button",name="Désactiver").click()
+                expect(ui_teacher_row).to_contain_text("Désactivé",timeout=10_000)
+                ui_teacher_row.get_by_role("button",name="Activer").click()
+                expect(ui_teacher_row).to_contain_text("Actif",timeout=10_000)
+
+                capture_product_screenshots(
+                    page,
+                    "admin",
+                    ["adminUsers","teachers","ppDashboard","settings"],
+                    Path("artifacts/browser-v25"),
+                )
+                page.evaluate("""() => {
+                  page='adminUsers';
+                  appSpace='teacher';
+                  render();
+                }""")
+
                 student_context = browser.new_context(locale='fr-FR', timezone_id='Europe/Paris')
                 student_page = student_context.new_page()
                 student_page_errors: list[str] = []
@@ -698,6 +1454,10 @@ def main() -> None:
                 }""", account)
                 if student_state.get("role") != "student" or student_state.get("studentId") != "firefox-student":
                     raise AssertionError("Student session not initialized: "+repr(student_state))
+                acknowledge_release_notes(student_page, "élève")
+                verify_release_journal(student_page, "student", Path("artifacts/browser-v25"))
+                verify_settings_grid_geometry(student_page, "student", Path("artifacts/browser-v25"))
+                student_page.evaluate("page='studentSchedule';appSpace='student';render()")
                 student_module_smoke = student_page.evaluate("""() => {
                   const modules=[
                     'studentHome','studentSchedule','studentLessons','studentWork',
@@ -739,6 +1499,22 @@ def main() -> None:
                         "La semaine affichée dans Séances & leçons élève ne contient pas la date sélectionnée : "
                         + json.dumps(misaligned_student_lessons,ensure_ascii=False)
                     )
+
+                # The dedicated student work module must expose overdue, unsubmitted work.
+                student_page.evaluate("""() => {
+                  page='studentHome';
+                  appSpace='student';
+                  render();
+                }""")
+                student_page.get_by_role("button",name="Voir mon travail").click()
+                expect(student_page.locator("#main h1")).to_contain_text("Travail à faire")
+                expect(student_page.locator("#nav button[onclick*='studentWork']")).to_contain_text("1")
+                overdue_row=student_page.locator("#main .table tbody tr").filter(
+                    has_text="Devoir avec pièce jointe"
+                )
+                expect(overdue_row).to_contain_text("En retard")
+                expect(overdue_row.get_by_role("button",name="Ouvrir")).to_be_visible()
+
                 student_tracking_state = student_page.evaluate("""() => {
                   page='ppDashboard';appSpace='teacher';render();
                   const main=document.getElementById('main');
@@ -791,12 +1567,6 @@ def main() -> None:
                 if not cloud_access["visibleShared"] or cloud_access["sharedRole"] != "view" or cloud_access["canWrite"] or cloud_access["uploadStatus"] != 403:
                     raise AssertionError("Le Cloud élève doit être strictement en lecture seule : "+repr(cloud_access))
                 student_page.evaluate("page='studentHome';appSpace='student';render();")
-                capture_product_screenshots(
-                    student_page,
-                    "student",
-                    ["studentHome","studentSchedule","studentLessons","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
-                    Path("artifacts/browser-v25"),
-                )
                 student_page.evaluate("page='studentHome';appSpace='student';setAppearanceTheme('light');render();")
                 student_page.evaluate("""() => {
                   page='studentMessages';
@@ -1127,10 +1897,40 @@ def main() -> None:
                         raise AssertionError("EDT teacher/student visual structure differs at "+selector+": "+repr((left,right)))
                 if student_page.locator('.schedulePage .eventEdit').count()!=0:
                     raise AssertionError("Student timetable unexpectedly exposes teacher edit controls")
+                if student_page.locator('.schedulePage .eventEdit').count()!=0:
+                    raise AssertionError("Student timetable unexpectedly exposes teacher edit controls")
+
+                # Capture product screens only after representative module data and
+                # the homework/Mail V2 end-to-end journeys have been exercised.
+                capture_product_screenshots(
+                    teacher_page,
+                    "teacher",
+                    ["dashboard","activity","schedule","lessons","students","evaluations","attendance","attendanceFollowup","bulletins","messages","documents","teachers","classes","ppDashboard","settings"],
+                    Path("artifacts/browser-v25"),
+                )
+                capture_product_screenshots(
+                    student_page,
+                    "student",
+                    ["studentHome","studentSchedule","studentLessons","studentWork","studentHomework","studentTodo","studentResults","studentMessages","studentLife","studentDocuments","studentSettings"],
+                    Path("artifacts/browser-v25"),
+                )
+                if teacher_page_errors:
+                    raise AssertionError("Teacher Firefox page errors after the individual-module visual pass: "+" | ".join(teacher_page_errors))
                 if student_page_errors:
-                    raise AssertionError("Student Firefox page errors: "+" | ".join(student_page_errors))
+                    raise AssertionError("Student Firefox page errors after the individual-module visual pass: "+" | ".join(student_page_errors))
                 teacher_context.close()
                 student_context.close()
+
+                # Return to the timetable after the Direction capture pass.
+                # The final synchronization assertion below deliberately targets this page.
+                page.evaluate("""() => {
+                  page='schedule';
+                  appSpace='teacher';
+                  selectedWeek=scheduleLocalDate('2026-11-09');
+                  scheduleView='week';
+                  render();
+                }""")
+                expect(page.locator('[data-schedule-id="firefox-existing-course"]')).to_be_visible()
 
                 # Force an unrelated server-side revision so the real-time refresh
                 # runs while the timetable is open; this must not erase its courses.

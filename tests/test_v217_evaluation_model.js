@@ -1,10 +1,12 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const js=fs.readFileSync(path.join(__dirname,'..','_all.js'),'utf8');
+const sameIdStart=js.indexOf('function sameId(');
+const sameIdEnd=js.indexOf('\nfunction ',sameIdStart+10);
 const start=js.indexOf('function evaluationModelMaxScore');
 const end=js.indexOf('function weightedAverageForEvaluations',start);
 assert(start>=0&&end>start,'V21.17 evaluation model not found');
 const ctx={console,Number,gradeNumber:v=>{if(v===''||v===null||v===undefined)return null;const n=typeof v==='string'?Number(v.trim().replace(',','.')):Number(v);return Number.isFinite(n)?n:null}};
-vm.createContext(ctx);vm.runInContext(js.slice(start,end),ctx);
+vm.createContext(ctx);vm.runInContext(js.slice(sameIdStart,sameIdEnd)+'\n'+js.slice(start,end),ctx);
 const db={
  settings:{terms:[{id:'t1',name:'T1',start:'2026-09-01',end:'2026-12-31'},{id:'t2',name:'T2',start:'2027-01-01',end:'2027-03-31'}]},
  students:[{id:'s1',classId:'c1',group:'A'},{id:'s2',classId:'c1',group:'B'}],

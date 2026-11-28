@@ -19,12 +19,13 @@ with tempfile.TemporaryDirectory() as tmp:
 
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
-        z.writestr('data/maclasse.json', json.dumps({'classes': [{'id': 'new'}], 'students': [{'id': 's1'}], 'users': []}))
+        z.writestr('data/maclasse.json', json.dumps({'classes': [{'id': 'new'}], 'students': [{'id': 's1'}], 'users': [], 'teachers': [{'id': 't1', 'role': 'teacher', 'first': 'Prof'}]}))
         z.writestr('data/uploads/new.txt', 'new file')
     stats = server._restore_backup_archive(archive.getvalue())
     restored = json.loads(data_file.read_text(encoding='utf-8'))
     assert restored['classes'][0]['id'] == 'new'
     assert restored['students'][0]['id'] == 's1'
+    assert restored['teachers'][0]['id'] == 't1'
     assert not (uploads / 'old.txt').exists()
     assert (uploads / 'new.txt').read_text(encoding='utf-8') == 'new file'
     assert stats == {'classes': 1, 'students': 1, 'files': 1}
@@ -42,10 +43,34 @@ with tempfile.TemporaryDirectory() as tmp:
     assert data_file.read_bytes() == before
     assert (uploads / 'new.txt').exists()
 
+    malformed_teacher_profiles = io.BytesIO()
+    with zipfile.ZipFile(malformed_teacher_profiles, 'w') as z:
+        z.writestr('data/maclasse.json', json.dumps({'classes': [], 'students': [], 'teachers': {}}))
+    try:
+        server._restore_backup_archive(malformed_teacher_profiles.getvalue())
+        raise AssertionError('Une collection de fiches professeurs invalide aurait dû être refusée.')
+    except ValueError:
+        pass
+    assert data_file.read_bytes() == before
+
     invalid = io.BytesIO(b'not a zip')
     try:
         server._restore_backup_archive(invalid.getvalue())
         raise AssertionError('Un fichier non ZIP aurait dû être refusé.')
     except ValueError:
         pass
-print('OK — restauration complète, remplacement des fichiers et refus des archives malveillantes.')
+# The application must be able to restore every full archive it creates.
+assert server.MAX_BACKUP_ARCHIVE_BYTES == 512 * 1024 * 1024
+assert server.MAX_BACKUP_UNCOMPRESSED_BYTES == 500 * 1024 * 1024
+client_source = (ROOT / '_all.js').read_text(encoding='utf-8')
+assert 'file.size>512*1024*1024' in client_source
+assert 'Archive trop volumineuse (512 Mo maximum).' in client_source
+assert 'max_length=MAX_BACKUP_ARCHIVE_BYTES' in (ROOT / 'server.py').read_text(encoding='utf-8')
+# The application must be able to restore every full archive it creates.
+assert server.MAX_BACKUP_ARCHIVE_BYTES == 512 * 1024 * 1024
+assert server.MAX_BACKUP_UNCOMPRESSED_BYTES == 500 * 1024 * 1024
+client_source = (ROOT / '_all.js').read_text(encoding='utf-8')
+assert 'file.size>512*1024*1024' in client_source
+assert 'Archive trop volumineuse (512 Mo maximum).' in client_source
+assert 'max_length=MAX_BACKUP_ARCHIVE_BYTES' in (ROOT / 'server.py').read_text(encoding='utf-8')
+print('OK — restauration complète, plafond navigateur/serveur aligné, remplacement des fichiers et refus des archives malveillantes.')

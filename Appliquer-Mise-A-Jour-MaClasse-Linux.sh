@@ -159,7 +159,25 @@ abort_before_switch() {
 
 health_ok() {
   local expected="$1"
-  local host
+  local host public_name response
+  if [[ -f "$DATA_ROOT/tls/public-certificate.json" ]]; then
+    [[ -x "$CURRENT_LINK/.venv/bin/python" ]] || return 1
+    response="$(PYTHONPATH="$CURRENT_LINK" "$CURRENT_LINK/.venv/bin/python" - "$DATA_ROOT" <<'PYTLS' 2>/dev/null || true
+import sys
+from network_supervisor import detect_lan_ipv4, load_public_certificate_config
+config = load_public_certificate_config(sys.argv[1])
+address = detect_lan_ipv4()
+if config and address:
+    print(config["hostname"], address)
+PYTLS
+)"
+    read -r public_name host <<<"$response"
+    [[ -n "$public_name" && -n "$host" ]] || return 1
+    curl --noproxy '*' --silent --show-error --fail --connect-timeout 2 --max-time 4 \
+      --resolve "$public_name:8765:$host" "https://$public_name:8765/api/health" 2>/dev/null |
+      EXPECTED_VERSION="$expected" /usr/bin/python3 -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("ok") is True and d.get("version")==os.environ["EXPECTED_VERSION"] and d.get("database")=="ok" else 1)'
+    return $?
+  fi
   host="$(openssl x509 -in "$DATA_ROOT/tls/server.crt" -noout -ext subjectAltName 2>/dev/null | grep -oE 'IP Address:[0-9.]+' | head -n1 | cut -d: -f2 || true)"
   [[ -n "$host" ]] || return 1
   curl --noproxy '*' --silent --show-error --fail --connect-timeout 2 --max-time 4 \

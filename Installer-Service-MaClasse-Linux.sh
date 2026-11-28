@@ -2,7 +2,16 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 [[ "$(uname -s)" == "Linux" ]] || { echo "Cet installateur de service est réservé à Linux."; exit 1; }
-[[ -x .venv/bin/python ]] || { echo "Lance d'abord ./Installer-MaClasse-Linux.sh."; exit 1; }
+if [[ -f "data/tls/public-certificate.json" ]]; then
+  .venv/bin/python - "data" <<'PYTLS'
+import sys
+from network_supervisor import load_public_certificate_config
+if not load_public_certificate_config(sys.argv[1]):
+    raise SystemExit("Configuration du certificat public absente.")
+PYTLS
+else
+  [[ -f "data/tls/server.crt" && -f "data/tls/server.key" && -f "data/tls/ca.crt" ]] || { echo "Initialise d'abord le mode réseau MaClasse ou configure un certificat DNS public."; exit 1; }
+fi
 command -v systemctl >/dev/null 2>&1 || { echo "systemd est requis."; exit 1; }
 command -v loginctl >/dev/null 2>&1 || { echo "loginctl est requis pour activer le démarrage au boot."; exit 1; }
 for dependency in systemd-analyze curl openssl realpath python3 pgrep; do

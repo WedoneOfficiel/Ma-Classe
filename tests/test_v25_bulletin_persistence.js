@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const source=fs.readFileSync('_all.js','utf8');
+const sameIdStart=source.indexOf('function sameId('),sameIdEnd=source.indexOf('\nfunction ',sameIdStart+10);
 const start=source.indexOf('async function createAllBulletins('),end=source.indexOf('\nfunction bulletinSetView',start);
 assert(start>=0&&end>start,'async persistent bulletin generation function must exist');
 let saved=null,sequence=0,fail=false;
@@ -11,7 +12,7 @@ const context={
  flushPendingSave:async()=>{if(fail)throw new Error('offline')},
  api:async()=>JSON.parse(saved),normalize:()=>{},render:()=>{},toast:()=>{}
 };
-vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+vm.createContext(context);vm.runInContext(source.slice(sameIdStart,sameIdEnd)+'\n'+source.slice(start,end),context);
 (async()=>{
  await context.createAllBulletins('c1','t1');
  assert.strictEqual(context.db.bulletins.length,2,'two students in the class must receive a bulletin');
