@@ -1217,6 +1217,7 @@ function addEstablishmentPlanRow(kind){
  const root=document.getElementById(ids[kind]);if(!root)return;
  const form=document.getElementById('establishmentBriefForm');
  const components=form?[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(x=>x.value):[];
+ root.querySelector('.establishmentPlanEmpty')?.remove();
  root.insertAdjacentHTML('beforeend',establishmentPlanRowMarkup(kind,{},components));
  updateEstablishmentBriefSummary();
 }
@@ -1228,10 +1229,10 @@ function updateEstablishmentBriefComponentOptions(){
  const form=document.getElementById('establishmentBriefForm');if(!form)return;
  const selected=[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(x=>x.value);
  form.querySelectorAll('select[data-plan-component]').forEach(select=>{
-  const current=select.value,values=[...selected];
+  const current=select.value,values=[...selected],next=current||(selected.length===1?selected[0]:'');
   if(current&&!values.includes(current))values.unshift(current);
-  select.innerHTML=establishmentPlanComponentOptions(values,current);
-  select.value=current||'';
+  select.innerHTML=establishmentPlanComponentOptions(values,next);
+  select.value=next;
  });
 }
 function collectEstablishmentPlanRows(form,kind){
