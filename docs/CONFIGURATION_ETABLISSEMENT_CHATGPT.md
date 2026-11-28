@@ -18,13 +18,17 @@ Les champs **Nombre de professeurs à prévoir** et **Nombre de salles à prévo
 
 Le formulaire guide la Direction sur les éléments nécessaires à la création d'un établissement complet, de la petite section à la terminale :
 
-- nom de l'établissement et structure des classes : niveau, nombre de classes, nom des classes et effectifs prévus ;
+Le cadrage comprend aussi le type d'établissement, l'année scolaire, l'organisation par trimestres ou semestres et les horaires de pause/récréation. Ces précisions sont facultatives : les dossiers déjà enregistrés restent compatibles et les nouveaux champs absents restent vides au rechargement. Un récapitulatif se met à jour pendant la saisie pour rappeler les choix structurants (fiches élèves, comptes professeurs et génération des emplois du temps). Le formulaire vérifie les champs obligatoires avant l'enregistrement ou la copie.
+
+
+- nom, type d'établissement, année scolaire et structure des classes : niveau, nombre de classes, nom des classes et effectifs prévus ;
+- organisation par trimestres ou semestres, utilisée comme valeur par défaut et modifiable classe par classe ;
 - création ou non des fiches élèves, avec des pseudonymes générés ;
 - nombre de professeurs et répartition facultative par matières/classes ;
 - création ou non des profils et comptes professeurs ;
 - matières, volumes horaires et éventuels groupes ;
 - nombre de salles, capacités, types, équipements et indisponibilités ;
-- génération ou non des emplois du temps, jours, horaires et contraintes d'organisation.
+- génération ou non des emplois du temps, jours, horaires d'ouverture, pauses, récréations et contraintes d'organisation.
 
 Les consignes copiées précisent les relations entre ces données. Elles demandent de vérifier la cohérence de tous les emplois du temps simultanément : aucun chevauchement de classe/groupe, d'enseignant ou de salle, respect des compétences, affectations, capacités, équipements, indisponibilités et volumes horaires.
 
