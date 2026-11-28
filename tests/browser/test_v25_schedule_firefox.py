@@ -520,9 +520,13 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     if copied_prompt.count("NOMBRE DE PROFESSEURS : teacherCount=")!=1 or copied_prompt.count("NOMBRE DE SALLES : roomCount=")!=1:
         raise AssertionError("Les consignes ne doivent pas répéter les nombres de professeurs ou de salles.")
     output_dir.mkdir(parents=True,exist_ok=True)
+    # The prompt-copy action scrolls the modal. Reset its own scroll position
+    # so the light/dark screenshots show the first component-planning sections.
+    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
     page.screenshot(path=str(output_dir/"establishment-configurator-settings-light.png"),full_page=True,animations="disabled")
     page.evaluate("setAppearanceTheme('dark')")
     expect(page.locator("html")).to_have_attribute("data-mc-theme","dark")
+    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
     page.screenshot(path=str(output_dir/"establishment-configurator-settings-dark.png"),full_page=True,animations="disabled")
 
     protection=modal.locator(".establishmentPrivacyNotice")
@@ -541,7 +545,7 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(modal).not_to_be_visible()
 
 
-def verify_competency_workflow(page) -> None:
+def verify_competency_workflow(page, output_dir: Path) -> None:
     """Verify that a teacher can create, attach and rate competencies without losing the evaluation draft."""
     page.evaluate("page='evaluations';appSpace='teacher';render()")
     page.get_by_role("button",name="Référentiel de compétences").click()
@@ -603,6 +607,9 @@ def verify_competency_workflow(page) -> None:
     expect(entry).to_contain_text("Justifier une réponse")
     rating=modal.locator(".v217EntryTable tbody tr select").nth(0)
     rating.select_option("3")
+    output_dir.mkdir(parents=True,exist_ok=True)
+    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
+    page.screenshot(path=str(output_dir/"evaluation-competency-entry.png"),full_page=True,animations="disabled")
     result=page.evaluate("""() => {
       const e=(db.evaluations||[]).find(x=>x.title==='Évaluation compétence — recette');
       const g=e?.grades?.find(x=>String(x.studentId)==='firefox-student');
@@ -610,6 +617,13 @@ def verify_competency_workflow(page) -> None:
     }""")
     if "Comprendre un texte" not in result["competencies"] or "Justifier une réponse" not in result["competencies"] or result["rating"]!="3":
         raise AssertionError(f"La compétence doit être créée, reliée à l’évaluation et notée : {result!r}")
+    modal.get_by_role("button",name="Fermer").click()
+    page.get_by_role("button",name="Référentiel de compétences").click()
+    modal=page.locator("#modal")
+    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
+    page.screenshot(path=str(output_dir/"competency-library.png"),full_page=True,animations="disabled")
+    expect(modal).to_contain_text("Comprendre un texte")
+    expect(modal).to_contain_text("Justifier une réponse")
     modal.get_by_role("button",name="Fermer").click()
     page.evaluate("page='schedule';appSpace='teacher';selectedWeek=scheduleLocalDate('2026-11-09');scheduleView='week';render()")
 def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
@@ -838,7 +852,7 @@ def main() -> None:
                 )
 
                 verify_planner_workflows(page)
-                verify_competency_workflow(page)
+                verify_competency_workflow(page, Path('artifacts/browser-v25'))
 
                 existing = page.locator('[data-schedule-id="firefox-existing-course"]')
                 try:
