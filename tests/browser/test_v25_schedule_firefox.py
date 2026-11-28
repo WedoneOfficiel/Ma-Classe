@@ -439,7 +439,22 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     modal.locator('[name="createStudents"]').select_option("no")
     modal.locator('[name="createTeacherAccounts"]').select_option("no")
     modal.locator('[name="roomCount"]').fill("30")
-    modal.locator('[name="roomPlan"]').fill("Site A | Salle 101 | 30 | classe | tableau\nSite B | Atelier CAP | 16 | professionnel | établis")
+    modal.get_by_role("button",name="+ Ajouter une salle").click()
+    room_rows=modal.locator('#establishmentRoomRows [data-plan-row="room"]')
+    first_room=room_rows.nth(0)
+    first_room.locator('[data-field="name"]').fill("Salle 101")
+    first_room.locator('[data-field="site"]').fill("Site A")
+    first_room.locator('[data-field="type"]').fill("Salle ordinaire")
+    first_room.locator('[data-field="capacity"]').fill("30")
+    first_room.locator('[data-field="equipment"]').fill("vidéoprojecteur, tableau")
+    modal.get_by_role("button",name="+ Ajouter une salle").click()
+    second_room=room_rows.nth(1)
+    second_room.locator('[data-field="name"]').fill("Atelier CAP")
+    second_room.locator('[data-field="site"]').fill("Site B")
+    second_room.locator('[data-field="type"]').fill("Atelier professionnel")
+    second_room.locator('[data-field="capacity"]').fill("16")
+    second_room.locator('[data-field="equipment"]').fill("établis, matériel professionnel")
+    modal.locator('[name="roomPlan"]').fill("Les salles spécialisées peuvent être mutualisées selon les calendriers.")
 
     modal.get_by_role("button",name="+ Ajouter un calendrier").click()
     schedule_rows=modal.locator('#establishmentScheduleRows [data-plan-row="schedule"]')
@@ -475,7 +490,9 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Classes : 2 ligne(s)")
     expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Matières : 2 ligne(s)")
     expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Affectations professeurs : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Salles détaillées : 2 ligne(s)")
     expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Calendriers : 2 composante(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Dossier cohérent, prêt à être enregistré.")
     modal.get_by_role("button",name="Enregistrer le formulaire dans Ma Classe").click()
     expect(page.locator("#toast")).to_contain_text("Formulaire de configuration enregistré")
     page.locator("#modal .modalhead .close").click()
@@ -494,6 +511,10 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(modal.locator('#establishmentClassRows [data-field="level"]').nth(1)).to_have_value("CAP")
     expect(modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')).to_have_count(2)
     expect(modal.locator('#establishmentTeacherRows [data-field="pseudonym"]').nth(0)).to_have_value("Professeur 01")
+    expect(modal.locator('#establishmentRoomRows [data-plan-row="room"]')).to_have_count(2)
+    expect(modal.locator('#establishmentRoomRows [data-field="name"]').nth(0)).to_have_value("Salle 101")
+    expect(modal.locator('#establishmentRoomRows [data-field="site"]').nth(1)).to_have_value("Site B")
+    expect(modal.locator('#establishmentRoomRows [data-field="capacity"]').nth(1)).to_have_value("16")
     expect(modal.locator('#establishmentScheduleRows [data-plan-row="schedule"]')).to_have_count(2)
 
     page.evaluate("""() => Object.defineProperty(navigator,'clipboard',{
@@ -504,7 +525,8 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(page.locator("#toast")).to_contain_text("Demande complète copiée")
     copied_prompt=page.evaluate("window.__capturedEstablishmentPrompt")
     required=(
-        '"classStructures": [','"subjectPlans": [','"teacherPlans": [','"componentSchedules": [',
+        '"classStructures": [','"subjectPlans": [','"teacherPlans": [','"componentSchedules": [','"roomStructures": [',
+        '"name": "Salle 101"','"site": "Site A"','"capacity": 30','"name": "Atelier CAP"','"site": "Site B"',
         '"component": "Collège"','"component": "Lycée professionnel"',
         '"pseudonym": "Professeur 01"','Collège | 6e | Français | 4 h/semaine',
         'Lycée professionnel | CAP | Prévention-santé-environnement | 1 h/semaine',
