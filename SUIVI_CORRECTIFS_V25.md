@@ -1030,3 +1030,17 @@ Le Planner parcourt maintenant tous les créneaux potentiellement libres, recher
 - Suppression des consignes répétées concernant le nombre de professeurs et le nombre de salles.
 
 Tests ajoutés : couverture des nouveaux champs et du texte produit dans tests/test_v25_establishment_ui.js, ainsi que sauvegarde/réouverture et contrôle du presse-papiers dans le parcours Firefox tests/browser/test_v25_schedule_firefox.py. Vérification syntaxique JavaScript et exécution ciblée du générateur de consignes réussies dans l'environnement de travail. **La nouvelle CI complète n'est pas encore confirmée** ; le statut reste donc « Supposé résolu » jusqu'à cette campagne et à la recette réelle sur la copie isolée.
+
+### Amélioration du configurateur — établissements multi-composantes — 28 novembre 2026
+
+À la demande de la Direction, la catégorie unique « type d'établissement » a été remplacée par une structure de cadrage plus fidèle aux établissements réels :
+
+- Composantes pédagogiques sélectionnables simultanément : maternelle, élémentaire, collège, lycée général, lycée technologique, lycée professionnel, post-bac, CFA/apprentissage, formation continue et autre composante.
+- Organisation de l'établissement séparée : site unique, groupe scolaire, cité scolaire, établissement polyvalent, plusieurs sites/antennes, réseau ou autre organisation.
+- Champs de précisions distincts pour les composantes particulières et la répartition des bâtiments/sites.
+- Structure de classes et matières mieux guidée, avec une ligne par classe et des exemples qui couvrent plusieurs composantes.
+- Régime des périodes étendu à « variable selon les classes/composantes ».
+- Consignes ChatGPT renforcées : ne pas fusionner les composantes, respecter les programmes et régimes propres à chaque classe, et signaler les limites du format V1 pour les sites (pas de siteId natif ; préfixer les noms des salles par le site et expliciter les temps de déplacement).
+- Compatibilité ascendante : conversion automatique des anciennes valeurs simples lorsqu'elle est fiable (ex. école maternelle et élémentaire vers deux composantes). Les anciennes valeurs ambiguës, notamment « cité scolaire ou établissement polyvalent », sont conservées dans les précisions et ne sont pas interprétées arbitrairement.
+
+Tests ajoutés/étendus : migration d'anciens libellés, plusieurs composantes dans le prompt, distinction organisation/composantes, périodes variables et consignes multi-sites ; Firefox vérifie la sélection simultanée, l'enregistrement, la réouverture et le prompt copié. **Statut « Supposé résolu » jusqu'à réussite de la nouvelle CI puis essai utilisateur sur la copie isolée.**
