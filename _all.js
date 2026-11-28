@@ -2694,8 +2694,8 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
     <div class="field"><label>Date et heure de publication</label><input class="input" type="datetime-local" name="publishAtLocal" value="${esc(publicationLocal)}"><small class="muted">Fuseau horaire de ton appareil. Obligatoire si tu choisis une publication programmée.</small></div></div>
    </div>
    <div class="modalfoot"><button type="button" class="btn" onclick="closeModal()">Annuler</button><button class="btn primary">${id?'Enregistrer':'Créer puis saisir les notes'}</button></div></form>`;
-  window.v217DeepMeta=v217DeepMeta;
  }
+ window.v217DeepMeta=v217DeepMeta;
  function v217DeepGridPreview(e){const c=e.criteria||[],k=e.competencies||[];if(!c.length&&!k.length)return '<div class="notice">📝 <b>Note uniquement</b><br><small>Le tableau de saisie restera compact.</small></div>';return `<div class="notice">📋 <b>Grille active</b><br><small>${c.length} critère(s)${k.length?' · '+k.length+' compétence(s)':''}. Elle sera affichée directement dans le tableau de saisie.</small></div>`}
  window.v217DeepRefreshGroups=function(cid){const el=document.getElementById('v217DeepGroup');if(!el)return;el.innerHTML='<option value="">Classe entière</option>'+groups(cid).map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}
  window.v217DeepApplyTemplate=function(id){const t=(db.evaluationTemplates||[]).find(x=>x.id===id);if(!t)return;const f=document.querySelector('#modal form');if(!f)return;f.querySelector('#v217DeepCriteria').value=JSON.stringify(t.criteria||[]);f.querySelector('[name="competenciesText"]').value=(t.competencies||[]).join('\n');v217RefreshCompetencyPicker();const total=v217CriteriaTotal(t.criteria||[]);if(total>0)f.querySelector('[name="maxScore"]').value=total;const p=document.getElementById('v217DeepGridPreview');if(p)p.innerHTML=v217DeepGridPreview(t);}
