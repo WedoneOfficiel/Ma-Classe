@@ -54,6 +54,8 @@ Une fois la PR fusionnée et la GitHub Release signée publiée, le gestionnaire
 - [ ] Ajouter plusieurs matières avec niveaux, volumes hebdomadaires et groupes différents selon les composantes.
 - [ ] Ajouter des affectations de professeurs pour deux composantes ; répéter un même pseudonyme et vérifier que le prompt demande un seul profil enseignant avec toutes ses affectations.
 - [ ] Ajouter des calendriers distincts pour deux composantes ; vérifier jours, horaires d'ouverture, pauses et récréations propres à chacune.
+- [ ] Décrire plusieurs salles avec site/bâtiment, nom, type, capacité et équipements ; vérifier qu'une même salle ne peut pas être déclarée deux fois sur le même site et que le total annoncé n'est pas inférieur au nombre de salles détaillées.
+- [ ] Désélectionner une composante utilisée par une ligne pédagogique ; vérifier que le récapitulatif signale l'incohérence avant l'enregistrement et la copie.
 - [ ] Vérifier l'ajout/retrait de lignes, la validation des champs et le récapitulatif dynamique.
 - [ ] Enregistrer, fermer puis rouvrir le configurateur : chaque ligne, son identifiant et ses valeurs doivent être conservés. Vérifier également que les anciennes précisions libres sont visibles dans le panneau replié et ne sont pas perdues.
 - [ ] Copier le bloc complet dans une conversation ChatGPT standard sans joindre aucun document annexe ; vérifier que le prompt comprend les lignes structurées et demande un seul fichier JSON.
