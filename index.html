@@ -2476,6 +2476,22 @@ html[data-mc-theme="dark"] .bulletin::before{
 @media(max-width:980px){.settingsGrid.settingsLayout{grid-template-columns:repeat(2,minmax(0,1fr))!important}.settingsGrid.settingsLayout>.settingsColumn{display:contents!important}.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-column:1/-1!important}}
 @media(max-width:650px){.settingsGrid.settingsLayout{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.settingsGrid.settingsLayout>.settingsColumn{display:contents!important}.settingsGrid.settingsLayout .settingsEstablishmentCard{grid-column:auto!important}}
 </style>
+
+<style id="v25-establishment-subject-groups">
+#establishmentSubjectRows{display:flex;flex-direction:column;gap:8px}
+#establishmentSubjectRows>.establishmentSubjectLevel{border:1px solid var(--ui-line);border-radius:11px;background:var(--ui-surface);min-width:0;overflow:hidden}
+#establishmentSubjectRows>.establishmentSubjectLevel>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:10px 12px;cursor:pointer;color:var(--ui-text);font-size:13px;font-weight:750}
+#establishmentSubjectRows>.establishmentSubjectLevel>summary::-webkit-details-marker{display:none}
+#establishmentSubjectRows>.establishmentSubjectLevel>summary::before{content:"＋";flex:0 0 auto;color:var(--ui-muted);font-size:14px}
+#establishmentSubjectRows>.establishmentSubjectLevel[open]>summary::before{content:"−"}
+#establishmentSubjectRows>.establishmentSubjectLevel[open]>summary{background:var(--ui-surface-2);border-bottom:1px solid var(--ui-line)}
+.establishmentSubjectGroupCount{margin-left:auto;color:var(--ui-muted);font-size:11px;font-weight:600;white-space:nowrap}
+.establishmentSubjectGroupRows{padding:9px 10px 2px;min-width:0}
+.establishmentSubjectGroupRows>.establishmentPlanRow{margin:0 0 8px;padding:10px}
+.establishmentSubjectGroupRows>.establishmentPlanRow .establishmentPlanRowFields{gap:8px}
+.establishmentSubjectGroupRows>.establishmentPlanRow .establishmentPlanRowFields .field label{font-size:10px}
+@media(max-width:680px){#establishmentSubjectRows>.establishmentSubjectLevel>summary{padding:10px;font-size:12px}.establishmentSubjectGroupRows{padding:8px 7px 1px}}
+</style>
 </head>
 <body>
 <div class="app"><aside class="side"><div class="brand"><div class="logo">M</div><div class="brandText"><b>MaClasse</b><small>environnement scolaire · <span id="appVersionLabel"></span></small></div><button class="sidebarToggle" id="sidebarToggle" type="button" onclick="toggleSidebar()" aria-label="Réduire le menu" title="Réduire le menu">‹</button></div><nav class="nav" id="nav" aria-label="Navigation principale"></nav><span id="spaceFoot" hidden></span></aside><main class="main" id="main"></main></div>
