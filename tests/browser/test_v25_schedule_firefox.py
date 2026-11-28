@@ -386,10 +386,16 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     prefetched_subjects=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')
     expect(prefetched_classes).to_have_count(7)
     expect(prefetched_subjects).to_have_count(56)
+    subject_groups=modal.locator('#establishmentSubjectRows .establishmentSubjectLevel')
+    expect(subject_groups).to_have_count(7)
+    if subject_groups.evaluate_all("els=>els.some(el=>el.open)"):
+        raise AssertionError("Les matières préremplies doivent être regroupées par niveau et repliées par défaut.")
     language_domain=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]:has([data-field="subject"][value="Développement et structuration du langage oral et écrit"])').first
     expect(language_domain.locator('[data-field="hoursPerWeek"]')).to_have_value("")
     expect(language_domain.locator('[data-field="hoursBasis"]')).to_have_value("not_allocated")
     expect(language_domain.locator('[data-field="details"]')).to_contain_text("vocabulaire")
+    language_domain_group=language_domain.locator('xpath=ancestor::details[contains(@class,"establishmentSubjectLevel")]')
+    expect(language_domain_group.locator('.establishmentSubjectGroupCount')).to_have_text("8 matière(s)")
     arts_row=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]:has([data-field="subject"][value="Arts appliqués et culture artistique"])').first
     arts_hours=arts_row.locator('[data-field="hoursPerWeek"]')
     expect(arts_hours).to_have_value("0.93")
@@ -400,6 +406,7 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     # Le préremplissage ne renseigne jamais les effectifs : seul l'établissement les connaît.
     if any(value for value in [prefetched_classes.nth(0).locator('[data-field="classCount"]').input_value(),prefetched_classes.nth(0).locator('[data-field="studentsPerClass"]').input_value()]):
         raise AssertionError("Les effectifs et le nombre de classes ne doivent pas être inventés.")
+    subject_groups.evaluate_all("els=>els.forEach(el=>{el.open=true})")
     while prefetched_subjects.count():
         prefetched_subjects.nth(0).locator('.establishmentPlanRemove').click()
     while prefetched_classes.count():
