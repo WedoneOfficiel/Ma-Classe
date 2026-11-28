@@ -2206,6 +2206,35 @@ html[data-mc-theme="dark"] .bulletin::before{
   .main,
   body.sidebar-collapsed .main{padding-left:12px!important;padding-right:12px!important}
 }
+
+.establishmentPlanRow{border:1px solid var(--ui-line);background:var(--ui-surface-2);border-radius:12px;padding:12px;margin:9px 0}
+.establishmentPlanRowHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;color:var(--ui-text)}
+.establishmentPlanRowFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.establishmentPlanRowFields .field{min-width:0}
+.establishmentPlanRowFields .field label{font-size:11px;line-height:1.35}
+.establishmentPlanRowFields .field input,.establishmentPlanRowFields .field textarea,.establishmentPlanRowFields .field select{min-width:0}
+.establishmentPlanDayChoices{display:flex;gap:7px;flex-wrap:wrap}
+.establishmentPlanDayChoices .check{padding:5px 7px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-surface)}
+.establishmentPlanEmpty{margin:8px 0;background:var(--ui-surface-2);color:var(--ui-text-2)}
+.establishmentLegacyNotes summary{cursor:pointer;font-weight:700;color:var(--ui-text-2)}
+.v217CompetencyPicker{border:1px solid var(--ui-line);border-radius:12px;padding:10px;background:var(--ui-surface-2)}
+.v217PickerTools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:9px}
+.v217PickerTools .input{flex:1 1 190px}
+#v217CompetencyOptions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:230px;overflow:auto}
+.v217CompetencyOption{display:flex!important;align-items:flex-start;gap:8px;border:1px solid var(--ui-line);background:var(--ui-surface);border-radius:9px;padding:8px;min-width:0;cursor:pointer}
+.v217CompetencyOption input{flex:0 0 16px;margin-top:2px}
+.v217CompetencyOption span{min-width:0;overflow-wrap:anywhere;line-height:1.35}
+.v217CompetencyEmpty{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.v217CompetencyLevelGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.v217CompetencyLevel{padding:7px 8px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-surface-2)}
+.v217CompetencyLibraryItem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--ui-line)}
+.v217CompetencyLibraryItem:last-child{border-bottom:0}
+.v217CompetencyLibraryItem>div{min-width:0;overflow-wrap:anywhere}
+@media(max-width:680px){
+ .establishmentPlanRowFields{grid-template-columns:minmax(0,1fr)}
+ .v217CompetencyLevelGrid,#v217CompetencyOptions{grid-template-columns:minmax(0,1fr)}
+ .v217PickerTools .input{flex-basis:100%}
+}
 </style>
 
 
