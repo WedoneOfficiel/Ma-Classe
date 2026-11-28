@@ -395,6 +395,7 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(language_domain.locator('[data-field="hoursBasis"]')).to_have_value("not_allocated")
     expect(language_domain.locator('[data-field="details"]')).to_contain_text("vocabulaire")
     language_domain_group=language_domain.locator('xpath=ancestor::details[contains(@class,"establishmentSubjectLevel")]')
+    language_domain_group.evaluate('(el)=>{el.open=true}')
     expect(language_domain_group.locator('.establishmentSubjectGroupCount')).to_have_text("8 matière(s)")
     arts_row=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]:has([data-field="subject"][value="Arts appliqués et culture artistique"])').first
     arts_hours=arts_row.locator('[data-field="hoursPerWeek"]')
