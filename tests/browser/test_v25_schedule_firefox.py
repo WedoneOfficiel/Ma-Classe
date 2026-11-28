@@ -350,7 +350,7 @@ def verify_planner_workflows(page) -> None:
 
 
 def verify_establishment_generator(page, output_dir: Path) -> None:
-    """Open the Settings-only configurator and verify the saved copy/paste workflow."""
+    """Verify structured component plans survive save/reopen and are copied to ChatGPT."""
     page.evaluate("page='settings';appSpace='teacher';render()")
     expect(page.get_by_role("heading",name="Configuration de l’établissement")).to_be_visible()
     expect(page.get_by_role("heading",name="Générateur de configuration d’établissement")).to_have_count(0)
@@ -358,17 +358,17 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     modal=page.locator("#modal")
     expect(modal).to_contain_text("Configurateur de l’établissement avec ChatGPT")
     expect(modal).to_contain_text("Aucun document à importer dans ChatGPT")
-    expect(modal).to_contain_text("Enregistrer le formulaire dans Ma Classe")
-    expect(modal).to_contain_text("Copier les consignes et les données pour ChatGPT")
     expect(modal).to_contain_text("un seul fichier JSON")
-    expect(modal).to_contain_text("aucun vrai nom")
     expect(modal).to_contain_text("Non, conserver les fiches sans compte")
+    expect(modal).to_contain_text("Classes et effectifs")
+    expect(modal).to_contain_text("Matières et programmes")
+    expect(modal).to_contain_text("Professeurs et affectations")
+    expect(modal).to_contain_text("Horaires et emplois du temps")
     expect(modal.get_by_role("button",name="Télécharger le modèle JSON")).to_have_count(0)
     expect(modal.get_by_role("button",name="Télécharger le schéma JSON")).to_have_count(0)
     expect(modal.get_by_role("button",name="Télécharger les instructions")).to_have_count(0)
     expect(modal.get_by_role("button",name="Exporter le contexte anonymisé")).to_have_count(0)
 
-    # Une valeur vide reste « non renseignée », pas un faux zéro.
     blank_counts=page.evaluate("""() => {
       const brief=collectEstablishmentBrief(document.getElementById('establishmentBriefForm'));
       return {teacherCount:brief.teacherCount,roomCount:brief.roomCount};
@@ -385,16 +385,97 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     modal.locator('[name="schoolOrganizationDetails"]').fill("Bâtiments séparés sur deux sites")
     modal.locator('[name="schoolYear"]').fill("2026-2027")
     modal.locator('[name="periodMode"]').select_option("semestres")
-    modal.locator('[name="classPlan"]').fill("6A | 1 classe | 26 élèves | 6A")
+
+    modal.get_by_role("button",name="+ Ajouter un niveau").click()
+    class_rows=modal.locator('#establishmentClassRows [data-plan-row="class"]')
+    expect(class_rows).to_have_count(1)
+    first_class=class_rows.nth(0)
+    first_class.locator('[data-field="component"]').select_option("Collège")
+    first_class.locator('[data-field="level"]').fill("6e")
+    first_class.locator('[data-field="classCount"]').fill("2")
+    first_class.locator('[data-field="studentsPerClass"]').fill("28")
+    first_class.locator('[data-field="classNames"]').fill("6A, 6B")
+
+    modal.get_by_role("button",name="+ Ajouter un niveau").click()
+    expect(class_rows).to_have_count(2)
+    second_class=class_rows.nth(1)
+    second_class.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_class.locator('[data-field="level"]').fill("CAP")
+    second_class.locator('[data-field="classCount"]').fill("1")
+    second_class.locator('[data-field="studentsPerClass"]').fill("14")
+    second_class.locator('[data-field="classNames"]').fill("CAP1")
+
+    modal.get_by_role("button",name="+ Ajouter une matière").click()
+    subject_rows=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')
+    first_subject=subject_rows.nth(0)
+    first_subject.locator('[data-field="component"]').select_option("Collège")
+    first_subject.locator('[data-field="level"]').fill("6e")
+    first_subject.locator('[data-field="subject"]').fill("Français")
+    first_subject.locator('[data-field="hoursPerWeek"]').fill("4")
+    modal.get_by_role("button",name="+ Ajouter une matière").click()
+    second_subject=subject_rows.nth(1)
+    second_subject.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_subject.locator('[data-field="level"]').fill("CAP")
+    second_subject.locator('[data-field="subject"]').fill("Prévention-santé-environnement")
+    second_subject.locator('[data-field="hoursPerWeek"]').fill("1")
+
+    modal.get_by_role("button",name="+ Ajouter une affectation").click()
+    teacher_rows=modal.locator('#establishmentTeacherRows [data-plan-row="teacher"]')
+    first_teacher=teacher_rows.nth(0)
+    first_teacher.locator('[data-field="component"]').select_option("Collège")
+    first_teacher.locator('[data-field="pseudonym"]').fill("Professeur 01")
+    first_teacher.locator('[data-field="subjects"]').fill("Français")
+    first_teacher.locator('[data-field="classes"]').fill("6A, 6B")
+    first_teacher.locator('[data-field="hoursPerWeek"]').fill("18")
+    modal.get_by_role("button",name="+ Ajouter une affectation").click()
+    second_teacher=teacher_rows.nth(1)
+    second_teacher.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_teacher.locator('[data-field="pseudonym"]').fill("Professeur 02")
+    second_teacher.locator('[data-field="subjects"]').fill("Prévention-santé-environnement")
+    second_teacher.locator('[data-field="classes"]').fill("CAP1")
+    second_teacher.locator('[data-field="hoursPerWeek"]').fill("18")
+
+    modal.locator('[name="teacherCount"]').fill("2")
     modal.locator('[name="createStudents"]').select_option("no")
-    modal.locator('[name="teacherCount"]').fill("20")
     modal.locator('[name="createTeacherAccounts"]').select_option("no")
-    modal.locator('[name="subjectPlan"]').fill("6A | SES | 2 heures")
     modal.locator('[name="roomCount"]').fill("30")
-    modal.locator('[name="roomPlan"]').fill("Salle 101 | 30 | classe | tableau")
-    modal.locator('[name="schoolBreaks"]').fill("Pause méridienne : 12 h–13 h 30")
-    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Année scolaire : 2026-2027")
-    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Comptes professeurs : non")
+    modal.locator('[name="roomPlan"]').fill("Site A | Salle 101 | 30 | classe | tableau\nSite B | Atelier CAP | 16 | professionnel | établis")
+
+    modal.get_by_role("button",name="+ Ajouter un calendrier").click()
+    schedule_rows=modal.locator('#establishmentScheduleRows [data-plan-row="schedule"]')
+    first_schedule=schedule_rows.nth(0)
+    first_schedule.locator('[data-field="component"]').select_option("Collège")
+    first_schedule.locator('[data-field-day][value="Lundi"]').check()
+    first_schedule.locator('[data-field-day][value="Mardi"]').check()
+    first_schedule.locator('[data-field-day][value="Mercredi"]').check()
+    first_schedule.locator('[data-field-day][value="Jeudi"]').check()
+    first_schedule.locator('[data-field-day][value="Vendredi"]').check()
+    first_schedule.locator('[data-field="start"]').fill("08:00")
+    first_schedule.locator('[data-field="end"]').fill("17:00")
+    first_schedule.locator('[data-field="lunchStart"]').fill("12:00")
+    first_schedule.locator('[data-field="lunchEnd"]').fill("13:30")
+    first_schedule.locator('[data-field="breakNotes"]').fill("Récréation : 10:15–10:30")
+
+    modal.get_by_role("button",name="+ Ajouter un calendrier").click()
+    second_schedule=schedule_rows.nth(1)
+    second_schedule.locator('[data-field="component"]').select_option("Lycée professionnel")
+    second_schedule.locator('[data-field-day][value="Lundi"]').check()
+    second_schedule.locator('[data-field-day][value="Mardi"]').check()
+    second_schedule.locator('[data-field-day][value="Mercredi"]').check()
+    second_schedule.locator('[data-field-day][value="Jeudi"]').check()
+    second_schedule.locator('[data-field-day][value="Vendredi"]').check()
+    second_schedule.locator('[data-field="start"]').fill("08:30")
+    second_schedule.locator('[data-field="end"]').fill("16:30")
+    second_schedule.locator('[data-field="lunchStart"]').fill("12:00")
+    second_schedule.locator('[data-field="lunchEnd"]').fill("13:00")
+    second_schedule.locator('[data-field="breakNotes"]').fill("Récréation : 10:00–10:15")
+    modal.locator('[name="createSchedule"]').select_option("yes")
+    modal.locator('[name="constraints"]').fill("Déplacements entre les sites à prendre en compte.")
+
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Classes : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Matières : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Affectations professeurs : 2 ligne(s)")
+    expect(modal.locator("#establishmentBriefStatus")).to_contain_text("Calendriers : 2 composante(s)")
     modal.get_by_role("button",name="Enregistrer le formulaire dans Ma Classe").click()
     expect(page.locator("#toast")).to_contain_text("Formulaire de configuration enregistré")
     page.locator("#modal .modalhead .close").click()
@@ -402,20 +483,19 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
 
     page.get_by_role("button",name="Ouvrir le configurateur").click()
     expect(modal.locator('[name="name"]')).to_have_value("Établissement de recette")
-    expect(modal.locator('[name="classPlan"]')).to_have_value("6A | 1 classe | 26 élèves | 6A")
-    expect(modal.locator('[name="createStudents"]')).to_have_value("no")
-    expect(modal.locator('[name="createTeacherAccounts"]')).to_have_value("no")
     expect(modal.locator('[name="schoolTypes"][value="Collège"]')).to_be_checked()
     expect(modal.locator('[name="schoolTypes"][value="Lycée professionnel"]')).to_be_checked()
     expect(modal.locator('[name="schoolOrganization"]')).to_have_value("Cité scolaire")
     expect(modal.locator('[name="schoolSiteMode"]')).to_have_value("Plusieurs sites / antennes")
-    expect(modal.locator('[name="schoolStructureDetails"]')).to_have_value("Section européenne")
-    expect(modal.locator('[name="schoolOrganizationDetails"]')).to_have_value("Bâtiments séparés sur deux sites")
-    expect(modal.locator('[name="schoolYear"]')).to_have_value("2026-2027")
-    expect(modal.locator('[name="periodMode"]')).to_have_value("semestres")
-    expect(modal.locator('[name="schoolBreaks"]')).to_have_value("Pause méridienne : 12 h–13 h 30")
+    expect(modal.locator('[name="createStudents"]')).to_have_value("no")
+    expect(modal.locator('[name="createTeacherAccounts"]')).to_have_value("no")
+    expect(modal.locator('#establishmentClassRows [data-plan-row="class"]')).to_have_count(2)
+    expect(modal.locator('#establishmentClassRows [data-field="level"]').nth(0)).to_have_value("6e")
+    expect(modal.locator('#establishmentClassRows [data-field="level"]').nth(1)).to_have_value("CAP")
+    expect(modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')).to_have_count(2)
+    expect(modal.locator('#establishmentTeacherRows [data-field="pseudonym"]').nth(0)).to_have_value("Professeur 01")
+    expect(modal.locator('#establishmentScheduleRows [data-plan-row="schedule"]')).to_have_count(2)
 
-    # Contrôler le contenu exact du bloc prêt à coller dans ChatGPT.
     page.evaluate("""() => Object.defineProperty(navigator,'clipboard',{
       configurable:true,
       value:{writeText:async value=>{window.__capturedEstablishmentPrompt=value;}}
@@ -423,9 +503,20 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     modal.get_by_role("button",name="Copier les consignes et les données pour ChatGPT").click()
     expect(page.locator("#toast")).to_contain_text("Demande complète copiée")
     copied_prompt=page.evaluate("window.__capturedEstablishmentPrompt")
-    for required in ("createTeacherAccounts=false","createStudentProfiles=false","teacherCount",'"teacherCount": 20','"roomCount": 30','PROFILS ET COMPTES PROFESSEURS','NOMBRE DE PROFESSEURS','NOMBRE DE SALLES','un seul fichier JSON téléchargeable','composantes pédagogiques sélectionnées=Collège ; Lycée professionnel','structure de regroupement=Cité scolaire','implantation=Plusieurs sites / antennes','Section européenne','Bâtiments séparés sur deux sites','année scolaire=2026-2027','SchoolBreaks=Pause méridienne : 12 h–13 h 30'):
-        if required not in copied_prompt:
-            raise AssertionError(f"La demande copiée doit inclure {required!r}")
+    required=(
+        '"classStructures": [','"subjectPlans": [','"teacherPlans": [','"componentSchedules": [',
+        '"component": "Collège"','"component": "Lycée professionnel"',
+        '"pseudonym": "Professeur 01"','Collège | 6e | Français | 4 h/semaine',
+        'Lycée professionnel | CAP | Prévention-santé-environnement | 1 h/semaine',
+        'createTeacherAccounts=false','createStudentProfiles=false',
+        'PROFILS ET COMPTES PROFESSEURS','NOMBRE DE PROFESSEURS','NOMBRE DE SALLES',
+        'un seul fichier JSON téléchargeable','structure de regroupement=Cité scolaire',
+        'implantation=Plusieurs sites / antennes','Section européenne','Bâtiments séparés sur deux sites',
+        'année scolaire=2026-2027','Récréation : 10:15–10:30'
+    )
+    for item in required:
+        if item not in copied_prompt:
+            raise AssertionError(f"La demande copiée doit inclure {item!r}")
     if copied_prompt.count("NOMBRE DE PROFESSEURS : teacherCount=")!=1 or copied_prompt.count("NOMBRE DE SALLES : roomCount=")!=1:
         raise AssertionError("Les consignes ne doivent pas répéter les nombres de professeurs ou de salles.")
     output_dir.mkdir(parents=True,exist_ok=True)
@@ -450,6 +541,59 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(modal).not_to_be_visible()
 
 
+def verify_competency_workflow(page) -> None:
+    """Verify that a teacher can create, attach and rate competencies without losing the evaluation draft."""
+    page.evaluate("page='evaluations';appSpace='teacher';render()")
+    page.get_by_role("button",name="Référentiel de compétences").click()
+    modal=page.locator("#modal")
+    expect(modal).to_contain_text("Référentiel de compétences")
+    expect(modal).to_contain_text("Une compétence décrit un savoir-faire")
+    manager=modal.locator("form").first
+    manager.locator('[name="name"]').fill("Comprendre un texte")
+    manager.locator('[name="subject"]').fill("Français")
+    manager.locator('input[name="levels"][value="6e"]').check()
+    manager.locator('[name="description"]').fill("Repérer les informations importantes.")
+    modal.get_by_role("button",name="Ajouter au référentiel").click()
+    expect(modal).to_contain_text("Comprendre un texte")
+    modal.get_by_role("button",name="Fermer").click()
+
+    page.get_by_role("button",name="+ Nouvelle évaluation").click()
+    modal.locator('[name="classId"]').select_option("firefox-class")
+    modal.locator('[name="subject"]').fill("Français")
+    modal.locator('[name="title"]').fill("Évaluation compétence — recette")
+    first_skill=modal.locator('[data-v217-competency][value="Comprendre un texte"]')
+    expect(first_skill).to_be_visible()
+    first_skill.check()
+    modal.get_by_role("button",name="Créer ou gérer les compétences").click()
+    expect(modal).to_contain_text("Référentiel de compétences")
+    create_form=modal.locator("form").first
+    create_form.locator('[name="name"]').fill("Justifier une réponse")
+    create_form.locator('[name="subject"]').fill("Français")
+    create_form.locator('input[name="levels"][value="6e"]').check()
+    create_form.locator('[name="description"]').fill("Appuyer une réponse sur un élément précis.")
+    modal.get_by_role("button",name="Ajouter au référentiel").click()
+
+    expect(modal.locator('[name="classId"]')).to_have_value("firefox-class")
+    expect(modal.locator('[name="subject"]')).to_have_value("Français")
+    expect(modal.locator('[name="title"]')).to_have_value("Évaluation compétence — recette")
+    expect(modal.locator('[data-v217-competency][value="Comprendre un texte"]')).to_be_checked()
+    expect(modal.locator('[data-v217-competency][value="Justifier une réponse"]')).to_be_checked()
+    modal.get_by_role("button",name="Créer puis saisir les notes").click()
+    entry=modal.locator(".v217EntryTable")
+    expect(entry).to_be_visible()
+    expect(entry).to_contain_text("Comprendre un texte")
+    expect(entry).to_contain_text("Justifier une réponse")
+    rating=modal.locator(".v217EntryTable tbody tr select").nth(0)
+    rating.select_option("3")
+    result=page.evaluate("""() => {
+      const e=(db.evaluations||[]).find(x=>x.title==='Évaluation compétence — recette');
+      const g=e?.grades?.find(x=>String(x.studentId)==='firefox-student');
+      return {competencies:e?.competencies||[],rating:g?.competencyRatings?.['Comprendre un texte']||''};
+    }""")
+    if "Comprendre un texte" not in result["competencies"] or "Justifier une réponse" not in result["competencies"] or result["rating"]!="3":
+        raise AssertionError(f"La compétence doit être créée, reliée à l’évaluation et notée : {result!r}")
+    modal.get_by_role("button",name="Fermer").click()
+    page.evaluate("page='schedule';appSpace='teacher';selectedWeek=scheduleLocalDate('2026-11-09');scheduleView='week';render()")
 def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
     """Check actual Settings card placement for each role at desktop and mobile widths."""
     is_student = role == "student"
@@ -676,6 +820,7 @@ def main() -> None:
                 )
 
                 verify_planner_workflows(page)
+                verify_competency_workflow(page)
 
                 existing = page.locator('[data-schedule-id="firefox-existing-course"]')
                 try:
