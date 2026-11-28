@@ -61,10 +61,8 @@ for (const key of ['classStructures','subjectPlans','teacherPlans','componentSch
   assert(generatorSource.includes(key+',' ) || generatorSource.includes(key+':'),
     'Le dossier sauvegardé doit contenir '+key+'.');
 }
-for (const kind of ['class','subject','teacher','schedule']) {
-  assert(generatorSource.includes("kind==='")+kind+"'"),
-    'Le formulaire doit permettre d’ajouter des lignes '+kind+'.');
-}
+assert(generatorSource.includes("if(kind==='class')")&&generatorSource.includes("else if(kind==='subject')")&&generatorSource.includes("else if(kind==='teacher')")&&generatorSource.includes("else if(kind==='schedule')"),
+  'Le formulaire doit permettre d’ajouter des lignes de classes, matières, professeurs et calendriers.');
 assert(generatorSource.includes('function addEstablishmentPlanRow(kind)')&&generatorSource.includes('function removeEstablishmentPlanRow(button)'),
   'La Direction doit pouvoir ajouter et retirer les lignes structurées.');
 assert(generatorSource.includes('classPlanStructured')&&generatorSource.includes('subjectPlanStructured')&&generatorSource.includes('teacherPlanStructured')&&generatorSource.includes('schoolDaysStructured'),
