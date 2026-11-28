@@ -39,11 +39,31 @@ const generatorSource = fs.readFileSync('_all.js','utf8');
 const generatorGuide = fs.readFileSync('docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md','utf8');
 const generatorServer = fs.readFileSync('server.py','utf8');
 assert(generatorSource.includes("Configurateur de l’établissement avec ChatGPT"),'Le configurateur doit être présenté comme un outil guidé.');
-for (const field of ['schoolType','schoolYear','periodMode','schoolBreaks']) {
+for (const field of ['schoolYear','periodMode','schoolBreaks','schoolStructureDetails','schoolOrganization','schoolOrganizationDetails']) {
   assert(generatorSource.includes('name="'+field+'"'), 'Le formulaire doit proposer le champ '+field+'.');
-  assert(generatorSource.includes(field+':String(values.'+field+'||\'\').trim()') || field==='periodMode',
+  assert(generatorSource.includes(field+':String(values.'+field+'||\\'\\').trim()') || field==='periodMode',
     'Le champ '+field+' doit être collecté dans le dossier enregistré.');
 }
+assert(generatorSource.includes('name="schoolTypes"')&&generatorSource.includes('input[name="schoolTypes"]:checked'),
+  'Les composantes pédagogiques doivent être collectées sous forme de choix multiples.');
+assert(generatorSource.includes('getSavedEstablishmentComponents(saved)'),
+  'Les anciens formulaires doivent être repris avec une conversion de compatibilité.');
+assert(generatorSource.includes('Plusieurs sites / antennes')&&generatorSource.includes('Cité scolaire'),
+  'L’organisation physique doit être distinguée des composantes pédagogiques.');
+
+const legacyStart=generatorSource.indexOf('function getSavedEstablishmentComponents(');
+const legacyEnd=generatorSource.indexOf('function collectEstablishmentBrief(',legacyStart);
+assert(legacyStart>=0&&legacyEnd>legacyStart,'Les fonctions de compatibilité des anciens choix doivent exister.');
+const migrationSandbox={};
+vm.runInNewContext(generatorSource.slice(legacyStart,legacyEnd)+
+  '\\nresult={components:getSavedEstablishmentComponents({schoolType:"École maternelle et élémentaire"}),organization:getSavedEstablishmentOrganization({schoolType:"Cité scolaire ou établissement polyvalent"}),details:getSavedEstablishmentOrganizationDetails({schoolType:"Cité scolaire ou établissement polyvalent"})};',
+  migrationSandbox);
+assert.deepStrictEqual(Array.from(migrationSandbox.result.components),['Maternelle','Élémentaire'],
+  'L’ancien choix école maternelle et élémentaire doit devenir deux composantes.');
+assert.strictEqual(migrationSandbox.result.organization,'',
+  'L’ancienne catégorie ambiguë ne doit pas être convertie arbitrairement en une organisation.');
+assert(migrationSandbox.result.details.includes('cité scolaire ou établissement polyvalent'),
+  'L’ancienne précision ambiguë doit être conservée pour confirmation.');
 assert(generatorSource.includes('function updateEstablishmentBriefSummary()')&&generatorSource.includes('establishmentBriefStatusReady'),
   'Le récapitulatif du formulaire doit être calculé et actualisé côté interface.');
 assert(generatorSource.includes('form.reportValidity()'),
@@ -53,10 +73,14 @@ const promptFunctionEnd=generatorSource.indexOf('async function copyEstablishmen
 assert(promptFunctionStart>=0&&promptFunctionEnd>promptFunctionStart,'La fonction de génération des consignes doit rester isolable.');
 const promptSandbox={};
 vm.runInNewContext(generatorSource.slice(promptFunctionStart,promptFunctionEnd)+
-  '\nresult=establishmentBriefPrompt({schoolType:"Collège",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
+  '\\nresult=establishmentBriefPrompt({schoolTypes:["Collège","Lycée professionnel"],schoolOrganization:"Cité scolaire",schoolStructureDetails:"Section européenne",schoolOrganizationDetails:"Bâtiments séparés",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
   promptSandbox);
-assert(promptSandbox.result.includes('type d’établissement=Collège')&&promptSandbox.result.includes('année scolaire=2026-2027'),
-  'Les nouvelles informations de cadrage doivent être injectées dans les consignes.');
+assert(promptSandbox.result.includes('composantes pédagogiques sélectionnées=Collège ; Lycée professionnel')&&promptSandbox.result.includes('organisation=Cité scolaire'),
+  'Les composantes multiples et l’organisation de l’établissement doivent être injectées séparément.');
+assert(promptSandbox.result.includes('Section européenne')&&promptSandbox.result.includes('Bâtiments séparés'),
+  'Les précisions de structure et de sites doivent parvenir à ChatGPT.');
+assert(promptSandbox.result.includes('année scolaire=2026-2027'),
+  'L’année scolaire doit rester injectée dans les consignes.');
 assert(promptSandbox.result.includes('SchoolBreaks=Pause 12h-13h30'),
   'Les pauses déclarées doivent être transmises aux consignes.');
 assert.strictEqual((promptSandbox.result.match(/NOMBRE DE PROFESSEURS : teacherCount=/g)||[]).length,1,
