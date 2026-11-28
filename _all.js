@@ -1153,43 +1153,180 @@ function getSavedEstablishmentOrganizationDetails(saved={}){
  const legacy=String(saved.schoolType||'').trim();
  return legacy==='Cité scolaire ou établissement polyvalent'?'Ancienne précision : cité scolaire ou établissement polyvalent. À confirmer.':'';
 }
+function establishmentPlanComponentOptions(components,selected=''){
+ const values=[...(components||[])];
+ if(selected&&!values.includes(selected))values.unshift(selected);
+ if(!values.length)return '<option value="">À préciser</option>';
+ return '<option value="">Choisir une composante</option>'+values.map(value=>'<option value="'+esc(value)+'" '+(value===selected?'selected':'')+'>'+esc(value)+'</option>').join('');
+}
+function establishmentPlanRowMarkup(kind,item={},components=[]){
+ const id=String(item.id||uid()),component=String(item.component||components[0]||'');
+ const select='<div class="field"><label>Composante *</label><select class="select" data-field="component" data-plan-component>'+establishmentPlanComponentOptions(components,component)+'</select></div>';
+ const input=(label,key,placeholder,type='text',extra='')=>'<div class="field"><label>'+label+'</label><input class="input" type="'+type+'" data-field="'+key+'" value="'+esc(item[key]??'')+'" placeholder="'+esc(placeholder||'')+'" '+extra+'></div>';
+ const textarea=(label,key,placeholder)=>'<div class="field"><label>'+label+'</label><textarea class="input" data-field="'+key+'" rows="2" placeholder="'+esc(placeholder||'')+'">'+esc(item[key]||'')+'</textarea></div>';
+ const remove='<button type="button" class="btn small danger establishmentPlanRemove" onclick="removeEstablishmentPlanRow(this)">Retirer</button>';
+ let title='',fields='';
+ if(kind==='class'){
+  title='Niveau / structure de classe';
+  fields=select+
+   input('Niveau *','level','Ex. 6e, 2nde générale')+
+   input('Nombre de classes *','classCount','Ex. 3','number','min="1" max="300" step="1"')+
+   input('Élèves par classe *','studentsPerClass','Ex. 28','number','min="0" max="1000" step="1"')+
+   input('Noms des classes (facultatif)','classNames','Ex. 6A, 6B, 6C');
+ }else if(kind==='subject'){
+  title='Matière et volume horaire';
+  fields=select+
+   input('Niveau *','level','Ex. 6e, 2nde générale')+
+   input('Matière *','subject','Ex. Français, SES')+
+   input('Heures par semaine *','hoursPerWeek','Ex. 4','number','min="0.5" max="40" step="0.5"')+
+   input('Groupe (facultatif)','group','Ex. Groupe A, demi-classe');
+ }else if(kind==='teacher'){
+  title='Affectation d’un professeur';
+  fields=select+
+   input('Pseudonyme du professeur *','pseudonym','Ex. Professeur 01')+
+   input('Matières enseignées *','subjects','Ex. Français, Histoire-géographie')+
+   input('Classes concernées *','classes','Ex. 6A, 6B, 5A')+
+   input('Heures hebdomadaires (facultatif)','hoursPerWeek','Ex. 18','number','min="0" max="40" step="0.5"');
+ }else if(kind==='schedule'){
+  title='Horaires d’une composante';
+  const days=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const selectedDays=Array.isArray(item.days)?item.days:[];
+  fields=select+
+   '<div class="field establishmentPlanDays"><label>Jours de cours *</label><div class="establishmentPlanDayChoices">'+days.map(day=>'<label class="check"><input type="checkbox" data-field-day value="'+day+'" '+(selectedDays.includes(day)?'checked':'')+'><span>'+day+'</span></label>').join('')+'</div></div>'+
+   input('Début des cours *','start','08:00','time')+
+   input('Fin des cours *','end','17:00','time')+
+   input('Début de la pause méridienne','lunchStart','12:00','time')+
+   input('Fin de la pause méridienne','lunchEnd','13:30','time')+
+   textarea('Autres pauses / récréations','breakNotes','Ex. Récréation 10:15–10:30')+
+   textarea('Particularités de cette composante','notes','Ex. Pas de cours le mercredi après-midi');
+ }else{
+  return '';
+ }
+ return '<div class="establishmentPlanRow establishmentPlanRow-'+kind+'" data-plan-row="'+kind+'" data-plan-id="'+esc(id)+'"><div class="establishmentPlanRowHead"><b>'+title+'</b>'+remove+'</div><div class="establishmentPlanRowFields">'+fields+'</div></div>';
+}
+function establishmentPlanRowsMarkup(kind,rows,components){
+ const list=Array.isArray(rows)?rows:[];
+ if(!list.length){
+  const labels={class:'Aucun niveau renseigné pour le moment. Ajoute une ligne par niveau ou ensemble de classes.',subject:'Aucune matière renseignée. Ajoute une ligne par matière, niveau et volume horaire.',teacher:'Aucune affectation renseignée. Tu peux ajouter les professeurs connus ; le pseudonyme permet de regrouper un enseignant qui intervient dans plusieurs composantes.',schedule:'Aucun horaire renseigné. Ajoute une ligne par composante lorsque ses jours et horaires sont connus.'};
+  return '<div class="notice establishmentPlanEmpty">'+labels[kind]+'</div>';
+ }
+ return list.map(item=>establishmentPlanRowMarkup(kind,item,components)).join('');
+}
+function addEstablishmentPlanRow(kind){
+ const ids={class:'establishmentClassRows',subject:'establishmentSubjectRows',teacher:'establishmentTeacherRows',schedule:'establishmentScheduleRows'};
+ const root=document.getElementById(ids[kind]);if(!root)return;
+ const form=document.getElementById('establishmentBriefForm');
+ const components=form?[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(x=>x.value):[];
+ root.insertAdjacentHTML('beforeend',establishmentPlanRowMarkup(kind,{},components));
+ updateEstablishmentBriefSummary();
+}
+function removeEstablishmentPlanRow(button){
+ const row=button?.closest('[data-plan-row]');if(!row)return;
+ row.remove();updateEstablishmentBriefSummary();
+}
+function updateEstablishmentBriefComponentOptions(){
+ const form=document.getElementById('establishmentBriefForm');if(!form)return;
+ const selected=[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(x=>x.value);
+ form.querySelectorAll('select[data-plan-component]').forEach(select=>{
+  const current=select.value,values=[...selected];
+  if(current&&!values.includes(current))values.unshift(current);
+  select.innerHTML=establishmentPlanComponentOptions(values,current);
+  select.value=current||'';
+ });
+}
+function collectEstablishmentPlanRows(form,kind){
+ const selector='[data-plan-row="'+kind+'"]';
+ return [...form.querySelectorAll(selector)].map(row=>{
+  const value=key=>String(row.querySelector('[data-field="'+key+'"]')?.value||'').trim();
+  const result={id:String(row.dataset.planId||uid()),component:value('component')};
+  if(kind==='class'){
+   result.level=value('level');result.classCount=value('classCount')===''?null:Number(value('classCount'));
+   result.studentsPerClass=value('studentsPerClass')===''?null:Number(value('studentsPerClass'));result.classNames=value('classNames');
+  }else if(kind==='subject'){
+   result.level=value('level');result.subject=value('subject');result.hoursPerWeek=value('hoursPerWeek')===''?null:Number(value('hoursPerWeek'));result.group=value('group');
+  }else if(kind==='teacher'){
+   result.pseudonym=value('pseudonym');result.subjects=value('subjects');result.classes=value('classes');result.hoursPerWeek=value('hoursPerWeek')===''?null:Number(value('hoursPerWeek'));
+  }else if(kind==='schedule'){
+   result.days=[...row.querySelectorAll('[data-field-day]:checked')].map(x=>x.value);
+   result.start=value('start');result.end=value('end');result.lunchStart=value('lunchStart');result.lunchEnd=value('lunchEnd');
+   result.breakNotes=value('breakNotes');result.notes=value('notes');
+  }
+  return result;
+ });
+}
+function validateEstablishmentBrief(brief){
+ if(!brief.name)return 'Indique le nom de l’établissement.';
+ if(!brief.classStructures.length&&!brief.classPlanNotes)return 'Ajoute au moins une ligne dans « Classes et effectifs », ou conserve des précisions de classes dans les notes complémentaires.';
+ for(const row of brief.classStructures){
+  if(!row.component||!row.level||!Number.isInteger(row.classCount)||row.classCount<1||!Number.isInteger(row.studentsPerClass)||row.studentsPerClass<0)return 'Complète chaque ligne de classe : composante, niveau, nombre de classes et élèves par classe.';
+ }
+ for(const row of brief.subjectPlans){
+  if(!row.component||!row.level||!row.subject||!Number.isFinite(row.hoursPerWeek)||row.hoursPerWeek<=0||row.hoursPerWeek>40)return 'Complète chaque ligne de matière : composante, niveau, matière et heures par semaine.';
+ }
+ for(const row of brief.teacherPlans){
+  if(!row.component||!row.pseudonym||(!row.subjects&&!row.classes))return 'Pour chaque affectation de professeur, indique la composante, le pseudonyme et au moins une matière ou une classe.';
+  if(row.hoursPerWeek!==null&&(!Number.isFinite(row.hoursPerWeek)||row.hoursPerWeek<0||row.hoursPerWeek>40))return 'Vérifie le volume hebdomadaire du professeur.';
+ }
+ for(const row of brief.componentSchedules){
+  if(!row.component||!row.days.length||!/^([01]\d|2[0-3]):[0-5]\d$/.test(row.start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(row.end)||row.start>=row.end)return 'Complète chaque calendrier de composante : composante, au moins un jour et horaires de début/fin valides.';
+  if(Boolean(row.lunchStart)!==Boolean(row.lunchEnd)||row.lunchStart&&row.lunchStart>=row.lunchEnd)return 'Vérifie les heures de début et de fin de la pause méridienne.';
+ }
+ if(brief.createSchedule&&!brief.componentSchedules.length&&!brief.schoolDaysNotes&&!brief.schoolHoursNotes&&!brief.schoolBreaksNotes)return 'Ajoute au moins un calendrier de composante, ou indique les jours et horaires dans les notes complémentaires.';
+ if(brief.createSchedule&&!brief.subjectPlans.length&&!brief.subjectPlanNotes)return 'Ajoute les matières et volumes horaires des composantes si tu demandes la création des emplois du temps.';
+ return '';
+}
 function collectEstablishmentBrief(form){
  const values=Object.fromEntries(new FormData(form));
  const schoolTypes=[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(input=>String(input.value||'').trim()).filter(Boolean);
  const periodMode=['trimestres','semestres','variable'].includes(String(values.periodMode||''))?String(values.periodMode):'';
  const teacherCount=values.teacherCount===''?null:Number(values.teacherCount);
  const roomCount=values.roomCount===''?null:Number(values.roomCount);
+ const classStructures=collectEstablishmentPlanRows(form,'class'),subjectPlans=collectEstablishmentPlanRows(form,'subject');
+ const teacherPlans=collectEstablishmentPlanRows(form,'teacher'),componentSchedules=collectEstablishmentPlanRows(form,'schedule');
+ const classPlanNotes=String(values.classPlanNotes||'').trim(),teacherPlanNotes=String(values.teacherPlanNotes||'').trim();
+ const subjectPlanNotes=String(values.subjectPlanNotes||'').trim(),schoolDaysNotes=String(values.schoolDaysNotes||'').trim();
+ const schoolHoursNotes=String(values.schoolHoursNotes||'').trim(),schoolBreaksNotes=String(values.schoolBreaksNotes||'').trim();
+ const classPlanStructured=classStructures.map(x=>[x.component,x.level,x.classCount+' classe(s)',x.studentsPerClass+' élèves/classe',x.classNames].filter(Boolean).join(' | ')).join('\n');
+ const subjectPlanStructured=subjectPlans.map(x=>[x.component,x.level,x.subject,x.hoursPerWeek+' h/semaine',x.group].filter(Boolean).join(' | ')).join('\n');
+ const teacherPlanStructured=teacherPlans.map(x=>[x.pseudonym,x.component,x.subjects,x.classes,x.hoursPerWeek===null?'':x.hoursPerWeek+' h/semaine'].filter(Boolean).join(' | ')).join('\n');
+ const schoolDaysStructured=componentSchedules.map(x=>x.component+' : '+x.days.join(', ')).join('\n');
+ const schoolHoursStructured=componentSchedules.map(x=>x.component+' : '+x.start+'–'+x.end).join('\n');
+ const schoolBreaksStructured=componentSchedules.map(x=>x.component+' : '+[x.lunchStart&&x.lunchEnd?'pause méridienne '+x.lunchStart+'–'+x.lunchEnd:'',x.breakNotes,x.notes].filter(Boolean).join(' ; ')).join('\n');
+ const joinNotes=(structured,notes)=>[structured,notes].filter(Boolean).join('\n');
  return {
-  name:String(values.name||'').trim(),
-  schoolTypes,
-  schoolType:schoolTypes.join(' + '),
+  name:String(values.name||'').trim(),schoolTypes,schoolType:schoolTypes.join(' + '),
   schoolStructureDetails:String(values.schoolStructureDetails||'').trim(),
-  schoolOrganization:String(values.schoolOrganization||'').trim(),
-  schoolSiteMode:String(values.schoolSiteMode||'').trim(),
-  schoolOrganizationDetails:String(values.schoolOrganizationDetails||'').trim(),
-  schoolYear:String(values.schoolYear||'').trim(),periodMode,
-  classPlan:String(values.classPlan||'').trim(),createStudents:values.createStudents==='yes',
-  teacherCount:teacherCount===null?null:Math.max(0,Math.min(300,teacherCount)),teacherPlan:String(values.teacherPlan||'').trim(),
-  createTeacherAccounts:values.createTeacherAccounts==='yes',subjectPlan:String(values.subjectPlan||'').trim(),
+  schoolOrganization:String(values.schoolOrganization||'').trim(),schoolSiteMode:String(values.schoolSiteMode||'').trim(),
+  schoolOrganizationDetails:String(values.schoolOrganizationDetails||'').trim(),schoolYear:String(values.schoolYear||'').trim(),periodMode,
+  classStructures,teacherPlans,subjectPlans,componentSchedules,
+  classPlanNotes,teacherPlanNotes,subjectPlanNotes,schoolDaysNotes,schoolHoursNotes,schoolBreaksNotes,
+  classPlan:joinNotes(classPlanStructured,classPlanNotes),teacherPlan:joinNotes(teacherPlanStructured,teacherPlanNotes),
+  subjectPlan:joinNotes(subjectPlanStructured,subjectPlanNotes),schoolDays:joinNotes(schoolDaysStructured,schoolDaysNotes),
+  schoolHours:joinNotes(schoolHoursStructured,schoolHoursNotes),schoolBreaks:joinNotes(schoolBreaksStructured,schoolBreaksNotes),
+  createStudents:values.createStudents==='yes',
+  teacherCount:teacherCount===null?null:Math.max(0,Math.min(300,teacherCount)),
+  createTeacherAccounts:values.createTeacherAccounts==='yes',
   roomCount:roomCount===null?null:Math.max(0,Math.min(2000,roomCount)),roomPlan:String(values.roomPlan||'').trim(),
-  createSchedule:values.createSchedule==='yes',schoolDays:String(values.schoolDays||'').trim(),
-  schoolHours:String(values.schoolHours||'').trim(),schoolBreaks:String(values.schoolBreaks||'').trim(),
-  constraints:String(values.constraints||'').trim()
+  createSchedule:values.createSchedule==='yes',constraints:String(values.constraints||'').trim()
  };
 }
 function updateEstablishmentBriefSummary(){
  const form=document.getElementById('establishmentBriefForm'),summary=document.getElementById('establishmentBriefStatus');
  if(!form||!summary)return;
- const brief=collectEstablishmentBrief(form),ready=!!(brief.name&&brief.classPlan);
+ const brief=collectEstablishmentBrief(form),ready=!!(brief.name&&(brief.classStructures.length||brief.classPlanNotes));
  const choices=[
+  'Classes : '+brief.classStructures.length+' ligne(s)',
+  'Matières : '+brief.subjectPlans.length+' ligne(s)',
+  'Affectations professeurs : '+brief.teacherPlans.length+' ligne(s)',
+  'Calendriers : '+brief.componentSchedules.length+' composante(s)',
   'Fiches élèves : '+(brief.createStudents?'oui, avec pseudonymes':'non, effectifs uniquement'),
   'Comptes professeurs : '+(brief.createTeacherAccounts?'oui':'non, profils pédagogiques conservés'),
   'Emplois du temps : '+(brief.createSchedule?'à construire':'non demandés')
  ];
  summary.classList.toggle('establishmentBriefStatusReady',ready);
- summary.textContent=(ready?'Base du dossier renseignée.':'À compléter : nom de l’établissement et structure des classes.')+
+ summary.textContent=(ready?'Base du dossier renseignée.':'À compléter : nom de l’établissement et au moins une structure de classe.')+
   ' Composantes : '+(brief.schoolTypes.length?brief.schoolTypes.join(', '):'à préciser')+'.'+
-  (brief.schoolOrganization?' Organisation : '+brief.schoolOrganization+'. ':'')+
+  (brief.schoolOrganization?' Regroupement : '+brief.schoolOrganization+'. ':'')+
   (brief.schoolSiteMode?'Implantation : '+brief.schoolSiteMode+'. ':'')+
   (brief.schoolYear?'Année scolaire : '+brief.schoolYear+'. ':'')+
   (brief.periodMode?'Périodes : '+brief.periodMode+'. ':'')+choices.join(' · ')+'.';
@@ -1197,8 +1334,8 @@ function updateEstablishmentBriefSummary(){
 async function saveEstablishmentBrief(e){
  e.preventDefault();if(!establishmentImportAdminOnly())return;
  const form=e.target;if(typeof form.reportValidity==='function'&&!form.reportValidity())return;
- const brief=collectEstablishmentBrief(form);
- if(!brief.name||!brief.classPlan)return toast('Indique le nom de l’établissement et la structure des classes avant l’enregistrement.');
+ const brief=collectEstablishmentBrief(form),problem=validateEstablishmentBrief(brief);
+ if(problem)return toast(problem);
  if((brief.teacherCount!==null&&!Number.isFinite(brief.teacherCount))||(brief.roomCount!==null&&!Number.isFinite(brief.roomCount)))return toast('Vérifie les nombres de professeurs et de salles.');
  db.settings=db.settings||{};db.settings.establishmentBrief=brief;save(true);
  try{await flushPendingSave();updateEstablishmentBriefSummary();toast('Formulaire de configuration enregistré dans Ma Classe.')}
@@ -1214,8 +1351,10 @@ function establishmentBriefPrompt(brief){
   'Aucun fichier de modèle, de schéma ou de consignes n’est à joindre : le présent message contient le cahier des charges et les données de cadrage.',
   'FORMAT STRICT : format=\"maclasse-establishment\", version=1, avec les rubriques establishment, classes, teachers, students, rooms et schedule, et les propriétés facultatives createTeacherAccounts et createStudentProfiles (booléens, true par défaut). Clés uniques et références toujours cohérentes.',
   'COMPOSANTES MULTIPLES : construis la structure à partir de toutes les composantes sélectionnées, et uniquement celles-ci. Une même base peut comporter plusieurs cycles/filières (par exemple maternelle, élémentaire, collège, lycée général, technologique et professionnel). Ne fusionne pas artificiellement les niveaux ou programmes : décris chaque classe dans la composante correspondante, avec un nom clair et une clé unique dans l’ensemble du fichier.',
+  'STRUCTURE DES CLASSES : classStructures contient une ligne par composante, niveau, nombre de classes, effectif par classe et, si connu, les noms de classes. Utilise ces lignes comme source prioritaire pour créer classes et expectedStudentCount. Une ligne ne doit pas être dupliquée dans plusieurs composantes.',
   'classes : chaque objet contient key, name, levels (liste des niveaux), éventuellement groups, teachers, principalTeacher, attendanceMode, periodMode, expectedStudentCount et subjectRequirements (subject, hoursPerWeek, group). Si periodMode=variable, respecte les régimes propres aux classes/composantes décrits dans le dossier ; n’impose pas un régime commun. Sinon, utilise le régime choisi comme valeur par défaut, sauf indication propre à une classe.',
-  'NOMBRE DE PROFESSEURS : teacherCount='+(brief.teacherCount===null?'non précisé':String(brief.teacherCount))+'. Si un nombre est renseigné, crée exactement ce nombre de profils ; utilise teacherPlan comme répartition prioritaire des noms fictifs/pseudonymes, matières et classes. Si teacherCount est non précisé mais teacherPlan contient des professeurs, crée exactement les profils listés. Si le nombre est indispensable pour un planning cohérent et reste inconnu, pose la question avant de générer.',
+  'AFFECTATIONS STRUCTURÉES : teacherPlans contient les pseudonymes, composantes, matières, classes et éventuels volumes connus. Si un même pseudonyme apparaît dans plusieurs composantes, il s’agit du même professeur : crée un seul profil dans teachers et regroupe ses matières, classes et créneaux. Le nombre d’enseignants à créer est le nombre de pseudonymes uniques, puis vérifie teacherCount='+(brief.teacherCount===null?'non précisé':String(brief.teacherCount))+'. Si le total indiqué contredit les pseudonymes uniques, demande un arbitrage.',
+  'NOMBRE DE PROFESSEURS : teacherCount='+(brief.teacherCount===null?'non précisé':String(brief.teacherCount))+'. Utilise teacherPlan comme notes complémentaires uniquement ; les lignes teacherPlans structurées sont prioritaires. Si aucun pseudonyme ou affectation n’est renseigné et qu’il est impossible de construire un planning cohérent sans eux, pose les questions indispensables avant de générer.',
   'teachers : chaque objet contient key, first, last, subjects, classes et éventuellement username, profileNotes et unavailable. Profils pseudonymisés uniquement. Aucun mot de passe, email réel ni téléphone.',
   'students : si la création des fiches est demandée, crée une fiche distincte par élève avec key, first, last, class, level et group si nécessaire. Identités fictives stables uniquement, par exemple « Élève 6A-001 » (first=\"Élève\", last=\"6A-001\"). N’invente jamais de vraies identités.',
   'NOMBRE DE SALLES : roomCount='+(brief.roomCount===null?'non précisé':String(brief.roomCount))+'. Si un nombre est renseigné, crée exactement ce nombre de salles. Utilise roomPlan comme liste prioritaire ; si le nombre est non précisé, déduis uniquement les salles indispensables aux emplois du temps, aux effectifs, aux équipements et aux disponibilités. Demande une précision si les contraintes ne permettent pas de déterminer les ressources nécessaires sans inventer.',
@@ -1223,7 +1362,9 @@ function establishmentBriefPrompt(brief){
   'schedule : chaque cours contient key, day (0=lundi à 4=vendredi ou nom anglais du jour), start, end, subject, class ou classes, group, teacher ou teachers, room, recurrence, startDate, éventuellement endDate, exceptions et equipment. Récurrences : weekly, biweekly, triweekly, custom avec intervalWeeks ou once.',
   'PROFILS ET COMPTES PROFESSEURS : les profils enseignants pseudonymisés sont toujours décrits dans teachers et affectés aux classes, aux responsabilités de professeur principal et aux cours de schedule. createTeacherAccounts='+String(brief.createTeacherAccounts)+'. Si true, Ma Classe crée aussi un compte de connexion pour chaque profil et génère localement ses identifiants et mots de passe provisoires. Si false, les profils et toutes leurs affectations pédagogiques restent bien enregistrés, mais aucun compte utilisateur, identifiant de connexion ni mot de passe n’est créé ; omets alors la propriété username de chaque professeur. La Direction pourra ouvrir ultérieurement un compte depuis la fiche du professeur.',
   'ÉLÈVES : createStudentProfiles='+String(brief.createStudents)+'. Si false, retourne createStudentProfiles:false et students:[] tout en conservant expectedStudentCount pour chaque classe afin que les capacités des salles restent contrôlables. Si true, retourne createStudentProfiles:true et génère les pseudonymes et les fiches correspondant exactement aux effectifs annoncés.',
-  'MATIÈRES ET EMPLOIS DU TEMPS : prends subjectPlan comme source prioritaire pour les matières et volumes horaires, puis reporte ces besoins dans subjectRequirements pour chaque classe et groupe concerné. Si createSchedule=true, construis tous les créneaux nécessaires ; si createSchedule=false, retourne schedule:[] et ne crée aucun créneau. Les cours des différentes classes doivent être concordants : aucun professeur, groupe/classe ou salle ne peut être mobilisé simultanément deux fois. Respecte les compétences et affectations, capacités, équipements, indisponibilités, horaires, pauses et récréations. SchoolBreaks='+(brief.schoolBreaks||'non précisés')+'. Pour les sites multiples, respecte les temps de déplacement indiqués dans schoolOrganizationDetails et constraints ; si ces contraintes ne peuvent pas être garanties par les données ou le validateur, signale-le clairement au lieu d’inventer une solution. Vérifie les volumes et récurrences.',
+  'MATIÈRES STRUCTURÉES : subjectPlans contient une ligne par composante, niveau, matière, heures par semaine et éventuel groupe. Reporte les volumes dans subjectRequirements pour chaque classe/groupe correspondant. Les anciennes notes subjectPlan ne sont que des précisions complémentaires. Ne fusionne pas deux matières de même nom si leurs volumes ou programmes diffèrent selon les composantes.',
+  'CALENDRIERS PAR COMPOSANTE : componentSchedules décrit les jours autorisés, les horaires de début/fin, les pauses et la récréation pour chaque composante. Respecte chaque calendrier séparément ; ne suppose pas que toutes les composantes ont les mêmes horaires. Si createSchedule=true et qu’un calendrier ou des matières manquent, pose les questions réellement bloquantes au lieu d’inventer des créneaux. Si createSchedule=false, retourne schedule:[] et ne crée aucun créneau.',
+  'MATIÈRES ET EMPLOIS DU TEMPS : prends subjectPlans comme source prioritaire pour les matières et volumes horaires, puis subjectPlan comme notes complémentaires. Si createSchedule=true, construis tous les créneaux nécessaires ; si createSchedule=false, retourne schedule:[] et ne crée aucun créneau. Les cours des différentes classes doivent être concordants : aucun professeur, groupe/classe ou salle ne peut être mobilisé simultanément deux fois. Respecte les compétences et affectations, capacités, équipements, indisponibilités, calendriers, horaires, pauses et récréations. SchoolBreaks='+(brief.schoolBreaks||'non précisés')+'. Pour les sites multiples, respecte les temps de déplacement indiqués dans schoolOrganizationDetails et constraints ; si ces contraintes ne peuvent pas être garanties par les données ou le validateur, signale-le clairement au lieu d’inventer une solution. Vérifie les volumes et récurrences.',
   'ÉCHELLE : la configuration peut représenter de la petite section à la terminale, plusieurs centaines d’élèves (par exemple 500), plusieurs dizaines de professeurs et de salles, ainsi que 15 emplois du temps ou davantage qui doivent rester cohérents entre eux. Le format permet jusqu’à 20 000 fiches élèves, 300 classes, 3 000 profils enseignants, 2 000 salles, 50 000 créneaux ; le fichier final doit rester inférieur à 25 Mo.',
   'NE TRONQUE JAMAIS LE RÉSULTAT. Si une information indispensable manque, pose uniquement les questions bloquantes avant de générer le fichier. N’invente pas les horaires, matières, volumes, affectations, effectifs ou équipements. Contrôle les références, le nombre d’élèves, les volumes horaires, les conflits classe/professeur/salle, les capacités et les trous. Si le planning est impossible, explique le conflit et demande un arbitrage.',
   'CONFIDENTIALITÉ : aucun vrai nom/prénom d’élève ou de membre du personnel, aucune date de naissance, adresse, email, téléphone, identifiant ni donnée personnelle. Les identités réelles seront ajoutées localement après l’import.',
@@ -1236,7 +1377,8 @@ async function copyEstablishmentBrief(){
  if(!establishmentImportAdminOnly())return;
  const form=document.getElementById('establishmentBriefForm');if(!form)return toast('Formulaire introuvable. Rouvre le configurateur.');
  if(typeof form.reportValidity==='function'&&!form.reportValidity())return;
- const brief=collectEstablishmentBrief(form),saved=db.settings?.establishmentBrief;
+ const brief=collectEstablishmentBrief(form),problem=validateEstablishmentBrief(brief),saved=db.settings?.establishmentBrief;
+ if(problem)return toast(problem);
  if(!saved||JSON.stringify(brief)!==JSON.stringify(saved))return toast('Enregistre le formulaire avant de copier la demande pour ChatGPT.');
  const textToCopy=establishmentBriefPrompt(brief);
  try{
@@ -1250,49 +1392,62 @@ async function copyEstablishmentBrief(){
 function openEstablishmentImport(){
  if(!establishmentImportAdminOnly())return;window.establishmentImportDraft=null;
  const saved=db.settings?.establishmentBrief||{},yes=value=>value!==false;
- const components=['Maternelle','Élémentaire','Collège','Lycée général','Lycée technologique','Lycée professionnel','Post-bac / enseignement supérieur','CFA / apprentissage','Formation continue / adultes','Autre composante'];
- const selectedComponents=getSavedEstablishmentComponents(saved);
- const organization=getSavedEstablishmentOrganization(saved);
- const structureDetails=getSavedEstablishmentStructureDetails(saved);
+ const components=getSavedEstablishmentComponents(saved),selectedComponents=components.length?components:[];
+ const organization=getSavedEstablishmentOrganization(saved),structureDetails=getSavedEstablishmentStructureDetails(saved);
  const organizationDetails=getSavedEstablishmentOrganizationDetails(saved);
- const componentChoices=components.map(value=>'<label class="check establishmentComponent"><input type="checkbox" name="schoolTypes" value="'+esc(value)+'" '+(selectedComponents.includes(value)?'checked':'')+'><span>'+esc(value)+'</span></label>').join('');
+ const classNotes=saved.classPlanNotes??(saved.classStructures?.length?'':saved.classPlan||'');
+ const teacherNotes=saved.teacherPlanNotes??(saved.teacherPlans?.length?'':saved.teacherPlan||'');
+ const subjectNotes=saved.subjectPlanNotes??(saved.subjectPlans?.length?'':saved.subjectPlan||'');
+ const daysNotes=saved.schoolDaysNotes??(saved.componentSchedules?.length?'':saved.schoolDays||'');
+ const hoursNotes=saved.schoolHoursNotes??(saved.componentSchedules?.length?'':saved.schoolHours||'');
+ const breaksNotes=saved.schoolBreaksNotes??(saved.componentSchedules?.length?'':saved.schoolBreaks||'');
+ const componentChoices=['Maternelle','Élémentaire','Collège','Lycée général','Lycée technologique','Lycée professionnel','Post-bac / enseignement supérieur','CFA / apprentissage','Formation continue / adultes','Autre composante'].map(value=>'<label class="check establishmentComponent"><input type="checkbox" name="schoolTypes" value="'+esc(value)+'" '+(selectedComponents.includes(value)?'checked':'')+'><span>'+esc(value)+'</span></label>').join('');
  const organizations=['Établissement autonome','Groupe scolaire','Cité scolaire','Établissement polyvalent','Regroupement / réseau d’établissements','Autre / à préciser'];
- const body=
- '<div class="notice"><b>Aucun document à importer dans ChatGPT.</b><br>Tu colles un seul bloc de consignes dans ChatGPT, sans joindre de modèle ni de fichier annexe. ChatGPT te remet ensuite un seul fichier JSON à importer dans Ma Classe. Un établissement peut réunir plusieurs composantes : tu peux cocher plusieurs niveaux ou filières, par exemple maternelle + élémentaire, collège + lycée général, ou lycée général + technologique + professionnel. La structure de regroupement et l’implantation physique se précisent séparément.</div>'+
- '<div id="establishmentBriefStatus" class="notice section establishmentBriefStatus" role="status" aria-live="polite">Le récapitulatif de votre configuration apparaîtra ici.</div>'+
- '<form id="establishmentBriefForm" class="section" onsubmit="saveEstablishmentBrief(event)" oninput="updateEstablishmentBriefSummary()" onchange="updateEstablishmentBriefSummary()"><div class="grid g2 establishmentBriefGrid">'+
- '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>1. Identité et composantes</h3></div>'+
- '<div class="field"><label>Nom de l’établissement *</label><input class="input" name="name" required maxlength="120" value="'+esc(saved.name||'')+'" placeholder="Nom de l’établissement"></div>'+
- '<div class="field section"><label>Composantes pédagogiques (plusieurs choix possibles)</label><div class="establishmentComponentsGrid" role="group" aria-label="Composantes pédagogiques">'+componentChoices+'</div><div class="hint">Sélectionne toutes les composantes réellement présentes. Ne choisis pas « collège » ou « lycée » si ces niveaux ne font pas partie de l’établissement.</div></div>'+
- '<div class="field section"><label>Autres composantes ou précisions</label><textarea class="input" name="schoolStructureDetails" rows="3" placeholder="Ex. section bilingue, SEGPA, ULIS, classes préparatoires, unités particulières…">'+esc(structureDetails)+'</textarea></div>'+
- '<div class="field section"><label>Structure de regroupement</label><select class="select" name="schoolOrganization"><option value="">À préciser</option>'+organizations.map(x=>'<option value="'+esc(x)+'" '+(organization===x?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select><div class="hint">Groupe scolaire, cité scolaire ou établissement polyvalent : cette rubrique ne remplace pas les composantes pédagogiques cochées ci-dessus.</div></div>'+
- '<div class="field section"><label>Implantation physique</label><select class="select" name="schoolSiteMode"><option value="">À préciser</option><option value="Site unique" '+(saved.schoolSiteMode==='Site unique'?'selected':'')+'>Un seul site</option><option value="Plusieurs sites / antennes" '+(saved.schoolSiteMode==='Plusieurs sites / antennes'?'selected':'')+'>Plusieurs sites ou antennes</option></select></div>'+
- '<div class="field section"><label>Précisions sur l’organisation ou les sites</label><textarea class="input" name="schoolOrganizationDetails" rows="3" placeholder="Ex. collège sur le site A, lycée sur le site B ; bâtiments séparés ; navette entre sites…">'+esc(organizationDetails)+'</textarea></div>'+
- '<div class="field section"><label>Année scolaire</label><input class="input" name="schoolYear" maxlength="20" value="'+esc(saved.schoolYear||'')+'" placeholder="Ex. 2026-2027"></div>'+
- '<div class="field section"><label>Organisation des périodes</label><select class="select" name="periodMode"><option value="">À préciser</option><option value="trimestres" '+(saved.periodMode==='trimestres'?'selected':'')+'>Trimestres</option><option value="semestres" '+(saved.periodMode==='semestres'?'selected':'')+'>Semestres</option><option value="variable" '+(saved.periodMode==='variable'?'selected':'')+'>Variable selon les composantes/classes</option></select><div class="hint">Le choix « variable » permet de préciser des organisations différentes dans la structure des classes.</div></div></section>'+
- '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>2. Classes et élèves</h3></div>'+
- '<div class="field"><label>Structure détaillée des classes *</label><textarea class="input" name="classPlan" rows="8" required placeholder="Une ligne par classe : niveau | nombre de classes | effectif par classe | noms exacts\nMaternelle : PS | 2 | 24 | PS-A, PS-B\nÉlémentaire : CP | 2 | 25 | CP-A, CP-B\nCollège : 6e | 3 | 28 | 6A, 6B, 6C\nLycée : 2nde générale | 2 | 30 | 2G-A, 2G-B">'+esc(saved.classPlan||'')+'</textarea><div class="hint">Détaille chaque niveau et chaque classe, même si plusieurs composantes appartiennent au même établissement. Indique les effectifs prévus.</div></div>'+
- '<div class="field section"><label>Créer les fiches élèves ?</label><select class="select" name="createStudents"><option value="yes" '+(yes(saved.createStudents)?'selected':'')+'>Oui, avec des pseudonymes générés</option><option value="no" '+(saved.createStudents===false?'selected':'')+'>Non, conserver uniquement les effectifs prévus</option></select><div class="hint">Aucun vrai nom d’élève. Les identités réelles seront ajoutées ensuite dans Ma Classe.</div></div></section>'+
- '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>3. Professeurs et matières</h3></div>'+
- '<div class="field"><label>Nombre de professeurs à prévoir</label><input class="input" type="number" min="0" max="300" name="teacherCount" value="'+esc(saved.teacherCount??'')+'" placeholder="Ex. 20"></div>'+
- '<div class="field section"><label>Répartition des professeurs (facultatif)</label><textarea class="input" name="teacherPlan" rows="5" placeholder="Pseudonyme | matières | composantes/classes\nProfesseur 01 | Français | 6A, 6B\nProfesseur 02 | Mathématiques | 6A, 5A">'+esc(saved.teacherPlan||'')+'</textarea><div class="hint">Utilise des numéros ou pseudonymes, jamais de vrais noms.</div></div>'+
- '<div class="field section"><label>Créer les comptes de connexion des professeurs ?</label><select class="select" name="createTeacherAccounts"><option value="yes" '+(saved.createTeacherAccounts!==false?'selected':'')+'>Oui, créer les accès professeurs</option><option value="no" '+(saved.createTeacherAccounts===false?'selected':'')+'>Non, conserver les fiches sans compte</option></select><div class="hint">Les fiches et affectations pédagogiques sont toujours créées. Seul le compte de connexion peut être différé ; les accès sont générés localement par Ma Classe.</div></div>'+
- '<div class="field section"><label>Matières et volumes horaires</label><textarea class="input" name="subjectPlan" rows="6" placeholder="Composante/niveau/classe | matière | heures par semaine | groupe\n6e | Français | 4\n2nde générale | SES | 2\nCAP | Prévention-santé-environnement | 1">'+esc(saved.subjectPlan||'')+'</textarea><div class="hint">Précise les différences de programmes ou de volumes entre composantes quand elles existent.</div></div></section>'+
- '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>4. Salles et ressources</h3></div>'+
- '<div class="field"><label>Nombre de salles à prévoir</label><input class="input" type="number" min="0" max="2000" name="roomCount" value="'+esc(saved.roomCount??'')+'" placeholder="Ex. 30"></div>'+
- '<div class="field section"><label>Détails des salles (facultatif)</label><textarea class="input" name="roomPlan" rows="6" placeholder="Site | nom de salle | capacité | type | équipements\nSite A | Salle 101 | 30 | classe | tableau, vidéoprojecteur\nSite B | Laboratoire | 24 | sciences | paillasses">'+esc(saved.roomPlan||'')+'</textarea><div class="hint">Pour un établissement multi-sites, indique le site dans le nom ou la description de chaque salle afin que les déplacements puissent être pris en compte.</div></div></section>'+
- '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>5. Emplois du temps et calendrier</h3></div>'+
- '<div class="field"><label>Générer tous les emplois du temps ?</label><select class="select" name="createSchedule"><option value="yes" '+(yes(saved.createSchedule)?'selected':'')+'>Oui, construire les emplois du temps complets</option><option value="no" '+(saved.createSchedule===false?'selected':'')+'>Non, créer la structure sans créneaux</option></select></div>'+
- '<div class="field section"><label>Jours de cours</label><input class="input" name="schoolDays" value="'+esc(saved.schoolDays||'Lundi à vendredi')+'" placeholder="Lundi à vendredi"></div>'+
- '<div class="field section"><label>Horaires de l’établissement</label><input class="input" name="schoolHours" value="'+esc(saved.schoolHours||'08:00 à 17:00')+'" placeholder="08:00 à 17:00"></div>'+
- '<div class="field section"><label>Pauses, récréations et interruptions</label><textarea class="input" name="schoolBreaks" rows="4" placeholder="Pause méridienne : 12 h–13 h 30\nRécréations : 10 h 15–10 h 30 et 15 h 15–15 h 30\nPas de cours le mercredi après-midi">'+esc(saved.schoolBreaks||'')+'</textarea><div class="hint">Les horaires peuvent varier selon les composantes : précise-le si nécessaire.</div></div>'+
- '<div class="field section"><label>Contraintes et précisions complémentaires</label><textarea class="input" name="constraints" rows="5" placeholder="Transports entre sites, alternance, demi-groupes, professeurs à temps partiel, salles spécialisées, calendriers différents…">'+esc(saved.constraints||'')+'</textarea></div></section>'+
- '</div><div class="actions section"><button class="btn primary" type="submit">Enregistrer le formulaire dans Ma Classe</button><button class="btn" type="button" onclick="copyEstablishmentBrief()">Copier les consignes et les données pour ChatGPT</button></div></form>'+
- '<section class="card section establishmentWizardImport"><div class="sectionhead"><h3>6. Importer le résultat de ChatGPT</h3><span class="pill blue">Un seul fichier JSON</span></div><p class="muted">Dans ChatGPT, télécharge le fichier JSON complet, puis sélectionne-le ici. Ma Classe contrôle les classes, élèves, professeurs, salles, volumes horaires, capacités et conflits avant toute écriture. L’import crée une sauvegarde et nécessite une confirmation séparée.</p><label class="btn primary" style="display:inline-flex;align-items:center">Choisir le fichier JSON<input class="hide" type="file" accept=".json,application/json" onchange="previewEstablishmentImport(this.files&&this.files[0]);this.value=String()"></label></section>'+
- '<div class="notice warn section establishmentPrivacyNotice"><b>Confidentialité :</b> ne saisis aucun vrai nom, prénom, email, téléphone, date de naissance ou donnée personnelle dans ce formulaire. Les fiches élèves et profils professeurs transmis à ChatGPT doivent rester pseudonymisés. Les identités réelles sont ajoutées directement dans Ma Classe après l’import.</div>'+
- '<div class="modalfoot"><button class="btn" onclick="closeModal()">Fermer</button></div>';
+ const body=[
+  '<div class="notice"><b>Aucun document à importer dans ChatGPT.</b><br>Tu colles un seul bloc de consignes dans ChatGPT, sans joindre de modèle ni de fichier annexe. ChatGPT te remet ensuite un seul fichier JSON à importer dans Ma Classe. Un établissement peut réunir plusieurs composantes : tu peux cocher plusieurs niveaux ou filières. La structure de regroupement et l’implantation physique se précisent séparément.</div>',
+  '<div id="establishmentBriefStatus" class="notice section establishmentBriefStatus" role="status" aria-live="polite">Le récapitulatif de votre configuration apparaîtra ici.</div>',
+  '<form id="establishmentBriefForm" class="section" onsubmit="saveEstablishmentBrief(event)" oninput="updateEstablishmentBriefSummary()" onchange="updateEstablishmentBriefComponentOptions();updateEstablishmentBriefSummary()"><div class="grid g2 establishmentBriefGrid">',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>1. Identité et composantes</h3></div>',
+  '<div class="field"><label>Nom de l’établissement *</label><input class="input" name="name" required maxlength="120" value="'+esc(saved.name||'')+'" placeholder="Nom de l’établissement"></div>',
+  '<div class="field section"><label>Composantes pédagogiques (plusieurs choix possibles)</label><div class="establishmentComponentsGrid" role="group" aria-label="Composantes pédagogiques">'+componentChoices+'</div><div class="hint">Sélectionne toutes les composantes réellement présentes.</div></div>',
+  '<div class="field section"><label>Autres composantes ou précisions</label><textarea class="input" name="schoolStructureDetails" rows="2" placeholder="Ex. section bilingue, SEGPA, ULIS, classes préparatoires…">'+esc(structureDetails)+'</textarea></div>',
+  '<div class="field section"><label>Structure de regroupement</label><select class="select" name="schoolOrganization"><option value="">À préciser</option>'+organizations.map(x=>'<option value="'+esc(x)+'" '+(organization===x?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select><div class="hint">Groupe scolaire, cité scolaire ou établissement polyvalent : cette rubrique ne remplace pas les composantes pédagogiques cochées ci-dessus.</div></div>',
+  '<div class="field section"><label>Implantation physique</label><select class="select" name="schoolSiteMode"><option value="">À préciser</option><option value="Site unique" '+(saved.schoolSiteMode==='Site unique'?'selected':'')+'>Un seul site</option><option value="Plusieurs sites / antennes" '+(saved.schoolSiteMode==='Plusieurs sites / antennes'?'selected':'')+'>Plusieurs sites ou antennes</option></select></div>',
+  '<div class="field section"><label>Précisions sur les bâtiments et les sites</label><textarea class="input" name="schoolOrganizationDetails" rows="2" placeholder="Ex. collège sur le site A, lycée sur le site B ; navette entre sites…">'+esc(organizationDetails)+'</textarea></div>',
+  '<div class="field section"><label>Année scolaire</label><input class="input" name="schoolYear" maxlength="20" value="'+esc(saved.schoolYear||'')+'" placeholder="Ex. 2026-2027"></div>',
+  '<div class="field section"><label>Organisation des périodes</label><select class="select" name="periodMode"><option value="">À préciser</option><option value="trimestres" '+(saved.periodMode==='trimestres'?'selected':'')+'>Trimestres</option><option value="semestres" '+(saved.periodMode==='semestres'?'selected':'')+'>Semestres</option><option value="variable" '+(saved.periodMode==='variable'?'selected':'')+'>Variable selon les composantes/classes</option></select></div></section>',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><div><h3>2. Classes et effectifs</h3><div class="muted">Une ligne par niveau ou ensemble de classes homogènes.</div></div><button type="button" class="btn small" onclick="addEstablishmentPlanRow(\'class\')">+ Ajouter un niveau</button></div>',
+  '<div id="establishmentClassRows">'+establishmentPlanRowsMarkup('class',saved.classStructures||[],selectedComponents)+'</div>',
+  '<div class="field section"><label>Créer les fiches élèves ?</label><select class="select" name="createStudents"><option value="yes" '+(yes(saved.createStudents)?'selected':'')+'>Oui, avec des pseudonymes générés</option><option value="no" '+(saved.createStudents===false?'selected':'')+'>Non, conserver uniquement les effectifs prévus</option></select><div class="hint">Aucun vrai nom d’élève. Les identités réelles seront ajoutées ensuite dans Ma Classe.</div></div></section>',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><div><h3>3. Matières et programmes</h3><div class="muted">Une ligne par matière, niveau et volume hebdomadaire.</div></div><button type="button" class="btn small" onclick="addEstablishmentPlanRow(\'subject\')">+ Ajouter une matière</button></div>',
+  '<div id="establishmentSubjectRows">'+establishmentPlanRowsMarkup('subject',saved.subjectPlans||[],selectedComponents)+'</div></section>',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><div><h3>4. Professeurs et affectations</h3><div class="muted">Répète le même pseudonyme lorsqu’un professeur intervient dans plusieurs composantes : ChatGPT devra le dédupliquer en un seul profil.</div></div><button type="button" class="btn small" onclick="addEstablishmentPlanRow(\'teacher\')">+ Ajouter une affectation</button></div>',
+  '<div class="field"><label>Nombre total de professeurs (facultatif)</label><input class="input" type="number" min="0" max="300" name="teacherCount" value="'+esc(saved.teacherCount??'')+'" placeholder="Ex. 20"></div>',
+  '<div class="field section"><label>Créer les comptes de connexion des professeurs ?</label><select class="select" name="createTeacherAccounts"><option value="yes" '+(saved.createTeacherAccounts!==false?'selected':'')+'>Oui, créer les accès professeurs</option><option value="no" '+(saved.createTeacherAccounts===false?'selected':'')+'>Non, conserver les fiches sans compte</option></select><div class="hint">Les fiches et affectations pédagogiques sont toujours créées. Seul le compte de connexion peut être différé ; les accès sont générés localement par Ma Classe.</div></div>',
+  '<div id="establishmentTeacherRows" class="section">'+establishmentPlanRowsMarkup('teacher',saved.teacherPlans||[],selectedComponents)+'</div></section>',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>5. Salles et ressources</h3></div>',
+  '<div class="field"><label>Nombre de salles à prévoir</label><input class="input" type="number" min="0" max="2000" name="roomCount" value="'+esc(saved.roomCount??'')+'" placeholder="Ex. 30"></div>',
+  '<div class="field section"><label>Détails des salles (facultatif)</label><textarea class="input" name="roomPlan" rows="4" placeholder="Site | nom de salle | capacité | type | équipements">'+esc(saved.roomPlan||'')+'</textarea><div class="hint">Pour un établissement multi-sites, indique le site dans le nom ou la description de chaque salle.</div></div></section>',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><div><h3>6. Horaires et emplois du temps</h3><div class="muted">Décris les jours et horaires séparément lorsque les composantes ont des calendriers différents.</div></div><button type="button" class="btn small" onclick="addEstablishmentPlanRow(\'schedule\')">+ Ajouter un calendrier</button></div>',
+  '<div class="field"><label>Générer les emplois du temps ?</label><select class="select" name="createSchedule"><option value="yes" '+(yes(saved.createSchedule)?'selected':'')+'>Oui, construire les emplois du temps complets</option><option value="no" '+(saved.createSchedule===false?'selected':'')+'>Non, créer la structure sans créneaux</option></select></div>',
+  '<div id="establishmentScheduleRows" class="section">'+establishmentPlanRowsMarkup('schedule',saved.componentSchedules||[],selectedComponents)+'</div>',
+  '<div class="hint">Les temps de trajet entre sites et contraintes particulières peuvent être précisés dans les notes complémentaires. Le format JSON V1 ne possède pas encore d’identifiant technique de site.</div></section>',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>7. Contraintes communes</h3></div>',
+  '<div class="field"><label>Contraintes et précisions complémentaires</label><textarea class="input" name="constraints" rows="5" placeholder="Transports entre sites, alternance, demi-groupes, professeurs à temps partiel, indisponibilités, salles spécialisées…">'+esc(saved.constraints||'')+'</textarea></div>',
+  '<details class="section establishmentLegacyNotes"><summary>Notes libres ou anciennes précisions (facultatif)</summary><div class="hint">Les anciennes réponses sont conservées ici. Elles complètent les lignes structurées et ne les remplacent pas.</div>',
+  '<div class="field section"><label>Anciennes précisions sur les classes</label><textarea class="input" name="classPlanNotes" rows="3">'+esc(classNotes)+'</textarea></div>',
+  '<div class="field section"><label>Anciennes précisions sur les professeurs</label><textarea class="input" name="teacherPlanNotes" rows="3">'+esc(teacherNotes)+'</textarea></div>',
+  '<div class="field section"><label>Anciennes précisions sur les matières</label><textarea class="input" name="subjectPlanNotes" rows="3">'+esc(subjectNotes)+'</textarea></div>',
+  '<div class="field section"><label>Jours de cours communs (si aucun calendrier détaillé)</label><input class="input" name="schoolDaysNotes" value="'+esc(daysNotes)+'" placeholder="Lundi à vendredi"></div>',
+  '<div class="field section"><label>Horaires communs (si aucun calendrier détaillé)</label><input class="input" name="schoolHoursNotes" value="'+esc(hoursNotes)+'" placeholder="08:00 à 17:00"></div>',
+  '<div class="field section"><label>Pauses communes ou précisions horaires</label><textarea class="input" name="schoolBreaksNotes" rows="3">'+esc(breaksNotes)+'</textarea></div></details></section>',
+  '</div><div class="actions section"><button class="btn primary" type="submit">Enregistrer le formulaire dans Ma Classe</button><button class="btn" type="button" onclick="copyEstablishmentBrief()">Copier les consignes et les données pour ChatGPT</button></div></form>',
+  '<section class="card section establishmentWizardImport"><div class="sectionhead"><h3>8. Importer le résultat de ChatGPT</h3><span class="pill blue">Un seul fichier JSON</span></div><p class="muted">Dans ChatGPT, télécharge le fichier JSON complet, puis sélectionne-le ici. Ma Classe contrôle les classes, élèves, professeurs, salles, volumes horaires, capacités et conflits avant toute écriture. L’import crée une sauvegarde et nécessite une confirmation séparée.</p><label class="btn primary" style="display:inline-flex;align-items:center">Choisir le fichier JSON<input class="hide" type="file" accept=".json,application/json" onchange="previewEstablishmentImport(this.files&&this.files[0]);this.value=String()"></label></section>',
+  '<div class="notice warn section establishmentPrivacyNotice"><b>Confidentialité :</b> ne saisis aucun vrai nom, prénom, email, téléphone, date de naissance ou donnée personnelle dans ce formulaire. Les identités réelles sont ajoutées directement dans Ma Classe après l’import.</div>',
+  '<div class="modalfoot"><button class="btn" onclick="closeModal()">Fermer</button></div>'
+ ].join('');
  openModal('Configurateur de l’établissement avec ChatGPT',body);
- updateEstablishmentBriefSummary();
+ updateEstablishmentBriefComponentOptions();updateEstablishmentBriefSummary();
 }
 function establishmentImportList(items,kind){if(!Array.isArray(items)||!items.length)return '';const heading=kind==='errors'?'Erreurs bloquantes':'Avertissements',tone=kind==='errors'?'warn':'';return '<div class="section"><h3>'+heading+' ('+items.length+')</h3><div class="notice '+tone+'">'+items.slice(0,20).map(x=>'<div>• '+esc(x)+'</div>').join('')+(items.length>20?'<div class="hint">Et '+(items.length-20)+' autre(s) élément(s).</div>':'')+'</div></div>'}
 function establishmentImportSummary(summary,quality){const labels=[['classes','Classes'],['students','Fiches élèves'],['teachers','Profils professeurs'],['teacherAccounts','Comptes professeurs'],['rooms','Salles'],['scheduleSlots','Créneaux']];return '<div class="gradeStats">'+labels.map(([key,label])=>'<div class="metric"><small>'+label+'</small><b>'+Number(summary?.[key]||0)+'</b></div>').join('')+'</div><div class="notice section">Qualité estimée du rythme hebdomadaire : '+Number(quality?.classDaysWithGaps||0)+' journée(s) de classe/groupe avec des trous · '+Number(quality?.weeklyGapHours||0)+' h de trous côté classes · '+Number(quality?.teacherDaysWithGaps||0)+' journée(s) de professeur avec des trous · '+Number(quality?.teacherWeeklyGapHours||0)+' h côté professeurs. Ces indicateurs signalent des points à améliorer, pas des conflits bloquants.</div>'}
