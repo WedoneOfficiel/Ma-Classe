@@ -687,6 +687,49 @@ def verify_competency_workflow(page, output_dir: Path) -> None:
     expect(modal).to_contain_text("Justifier une réponse")
     modal.get_by_role("button",name="Fermer").click()
     page.evaluate("page='schedule';appSpace='teacher';selectedWeek=scheduleLocalDate('2026-11-09');scheduleView='week';render()")
+
+def verify_manual_room_settings(page) -> None:
+    """Manually create/edit room records, including same room number on two sites."""
+    page.set_viewport_size({"width":1280,"height":800})
+    page.evaluate("page='settings';appSpace='teacher';render()")
+
+    def add_room(site: str, capacity: str, equipment: str) -> None:
+        page.locator(".settingsRoomsCard").get_by_role("button",name="+ Ajouter une salle").click()
+        form=page.locator(".modalback.open form")
+        expect(form).to_be_visible()
+        form.locator('[name="name"]').fill("B204")
+        form.locator('[name="site"]').fill(site)
+        form.locator('[name="type"]').select_option("computer")
+        form.locator('[name="capacity"]').fill(capacity)
+        form.locator('[name="equipment"]').fill(equipment)
+        form.locator(".modalfoot .btn.primary").click()
+        expect(page.locator(".settingsRoomsCard .settingsRoomRow").filter(has_text=site+" — B204")).to_be_visible()
+
+    add_room("Site A","28","ordinateurs, vidéoprojecteur")
+    add_room("Site B","24","postes informatiques")
+    records=page.evaluate("""() => {
+      const rooms=(db.settings.rooms||[]).filter(r=>r&&r.name==='B204');
+      return rooms.map(r=>({id:r.id,site:r.site,capacity:r.capacity,equipment:r.equipment}));
+    }""")
+    if len(records)!=2 or {r["site"] for r in records}!={"Site A","Site B"}:
+        raise AssertionError(f"Deux salles B204 sur deux sites doivent rester distinctes: {records!r}")
+    if not all(r["id"] and r["capacity"] in (24,28) for r in records):
+        raise AssertionError(f"Les fiches manuelles doivent conserver identifiant et capacité: {records!r}")
+    options=page.evaluate("(id)=>scheduleRoomOptions('Site B — B204',id)",records[1]["id"])
+    if 'value="Site A — B204"' not in options or 'value="Site B — B204" selected' not in options:
+        raise AssertionError(f"Le Planner doit distinguer les salles du même nom par site: {options!r}")
+
+    row=page.locator(".settingsRoomsCard .settingsRoomRow").filter(has_text="Site A — B204")
+    row.get_by_role("button",name="Détails / modifier").click()
+    edit=page.locator(".modalback.open form")
+    expect(edit.locator('[name="site"]')).to_have_value("Site A")
+    expect(edit.locator('[name="capacity"]')).to_have_value("28")
+    edit.locator('[name="capacity"]').fill("30")
+    edit.locator(".modalfoot .btn.primary").click()
+    saved=page.evaluate("""() => (db.settings.rooms||[]).filter(r=>r&&r.name==='B204'&&r.site==='Site A').map(r=>r.capacity)""")
+    if saved!=[30]:
+        raise AssertionError(f"La modification manuelle de la salle doit être persistée: {saved!r}")
+
 def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
     """Check actual Settings card placement for each role at desktop and mobile widths."""
     is_student = role == "student"
@@ -853,6 +896,7 @@ def main() -> None:
                 acknowledge_release_notes(page, "direction")
                 verify_release_journal(page, "admin", Path("artifacts/browser-v25"))
                 verify_settings_grid_geometry(page, "admin", Path("artifacts/browser-v25"))
+                verify_manual_room_settings(page)
                 page.evaluate("page='adminUsers';appSpace='teacher';render()")
                 verify_establishment_generator(page, Path("artifacts/browser-v25"))
                 page.evaluate("setAppearanceTheme('light')")
