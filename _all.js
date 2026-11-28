@@ -2556,7 +2556,7 @@ function v217EnsureCompetencyEntry(name,level='',subject='',description='',repla
 }
 function v217SelectedCompetenciesFromForm(){return [...document.querySelectorAll('[data-v217-competency]:checked')].map(x=>x.value).filter(Boolean)}
 function v217RenderCompetencyPicker(selected=[],level='',subject=''){
- const items=v217CompetencyLibraryItems().filter(c=>v217CompetencyMatches(c,level,subject)),sel=new Set(selected),add='<button type="button" class="btn small" onclick="v217OpenCompetencyManager(true,null,this)">+ Créer une compétence</button>';
+ const items=v217CompetencyLibraryItems().filter(c=>v217CompetencyMatches(c,level,subject)),sel=new Set(selected),add='<button type="button" class="btn small" onclick="v217OpenCompetencyManager(true,null,this.closest('form'))">+ Créer une compétence</button>';
  if(!items.length)return '<div class="notice v217CompetencyEmpty">Aucune compétence n’est encore disponible pour '+esc(level||'ce niveau')+' / '+esc(subject||'cette matière')+'. Crée la première ici : '+add+'</div>';
  return '<div class="v217CompetencyPicker"><div class="muted" style="margin-bottom:8px">Compétences filtrées automatiquement selon le niveau et la matière de l’évaluation.</div><div class="v217PickerTools"><input class="input" id="v217CompetencySearch" placeholder="Rechercher une compétence…" oninput="v217FilterCompetencies(this.value)"><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(true)">Tout sélectionner</button><button type="button" class="btn small" onclick="v217ToggleAllCompetencies(false)">Tout désélectionner</button>'+add+'</div><div id="v217CompetencyOptions">'+items.map(c=>'<label class="v217CompetencyOption" data-name="'+esc(c.name.toLocaleLowerCase('fr-FR'))+'"><input type="checkbox" data-v217-competency value="'+esc(c.name)+'" '+(sel.has(c.name)?'checked':'')+' onchange="v217SyncCompetenciesHidden()"><span>'+esc(c.name)+(c.description?'<small class="muted" style="display:block">'+esc(c.description)+'</small>':'')+'</span></label>').join('')+'</div><div class="muted" id="v217CompetencyCount">'+items.filter(c=>sel.has(c.name)).length+' sélectionnée(s)</div></div>';
 }
@@ -2572,7 +2572,8 @@ window.v217RefreshCompetencyPicker=function(){
 }
 function v217OpenCompetencyManager(returnToEvaluation=false,editName='',sourceElement=null){
  if(returnToEvaluation){
-  const form=sourceElement?.closest?.('form[data-v217-meta]')||document.querySelector('#modal form[data-v217-meta]');
+  const sourceForm=sourceElement?.matches?.('form')?sourceElement:sourceElement?.closest?.('form');
+  const form=sourceForm||document.querySelector('#modal form[data-v217-meta]')||[...document.querySelectorAll('#modal form')].find(f=>f.querySelector('[name="classId"]')&&f.querySelector('#v217DeepCompetencies'));
   if(form){
    const values=Object.fromEntries(new FormData(form));let criteria=[];try{criteria=JSON.parse(values.criteriaJson||'[]')}catch(_){}
    const selected=String(form.querySelector('#v217DeepCompetencies')?.value||'').split(/\n/).map(x=>x.trim()).filter(Boolean);
@@ -2682,7 +2683,7 @@ function setGradeComment(eid,sid,v){const e=db.evaluations.find(x=>x.id===eid);i
       <div id="v217DeepGridPreview">${v217DeepGridPreview(e)}</div>
       <input type="hidden" name="criteriaJson" id="v217DeepCriteria" value="${esc(JSON.stringify(e.criteria||[]))}">
       <input type="hidden" name="competenciesText" id="v217DeepCompetencies" value="${esc((e.competencies||[]).join('\n'))}">
-      <div class="field" style="margin-top:12px"><label>Compétences à évaluer</label><div class="muted" style="margin-bottom:8px">Choisis les compétences que tu souhaites observer pour cette évaluation. Les niveaux des élèves seront saisis juste après la création.</div><div id="v217CompetencyPicker">${v217RenderCompetencyPicker(e.competencies||[],e.level||cls(cid)?.level||'',e.subject||'')}</div><button type="button" class="btn small section" onclick="v217OpenCompetencyManager(true,null,this)">Créer ou gérer les compétences</button></div>
+      <div class="field" style="margin-top:12px"><label>Compétences à évaluer</label><div class="muted" style="margin-bottom:8px">Choisis les compétences que tu souhaites observer pour cette évaluation. Les niveaux des élèves seront saisis juste après la création.</div><div id="v217CompetencyPicker">${v217RenderCompetencyPicker(e.competencies||[],e.level||cls(cid)?.level||'',e.subject||'')}</div><button type="button" class="btn small section" onclick="v217OpenCompetencyManager(true,null,this.closest('form'))">Créer ou gérer les compétences</button></div>
     </div>
    </div>
    <div class="v217GridOption section"><h3>3 · Publication aux élèves</h3><p class="muted">Les notes restent invisibles tant qu’elles ne sont pas publiées. Tu peux les publier immédiatement ou programmer leur mise en ligne.</p>
