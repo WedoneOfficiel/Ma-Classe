@@ -47,11 +47,24 @@ Une fois la PR fusionnée et la GitHub Release signée publiée, le gestionnaire
 - [ ] Nouveautés : chaque compte voit l'annonce de V25.2.0 à son premier accès ; l'accusé est mémorisé par compte/version et ne se répète pas à chaque appareil.
 - [ ] Journal : consulter l'historique des versions dans les trois espaces et vérifier les sources affichées.
 
+## 3 bis. Présentation des paramètres et menus déroulants
+
+- [ ] En Direction, les Paramètres affichent des colonnes indépendantes et compactes : Apparence, Salles et Configuration de l'établissement dans la première ; Périodes dans la deuxième ; Version, Mises à jour et Données dans la troisième.
+- [ ] Vérifier qu'aucune carte ne réserve une grande hauteur vide à côté d'une carte plus courte ; le configurateur doit immédiatement suivre Salles & ressources et ne doit plus se retrouver sous toute la grille.
+- [ ] Sur une sélection longue de composantes, ouvrir les menus de choix : ils doivent passer au-dessus des cartes voisines, ne pas être coupés par les conteneurs et se repositionner vers le haut s'il n'y a pas assez de place en dessous.
+- [ ] Fermer un menu par Échap, par clic à l'extérieur ou par sélection ; vérifier qu'il ne reste jamais visible après fermeture.
+
 ## 4. Configurateur structuré d'établissement
 
 - [ ] Vérifier que plusieurs composantes peuvent être cochées simultanément et que la structure de regroupement (groupe scolaire, cité scolaire, polyvalent…) reste distincte de l'implantation (site unique ou multi-sites).
 - [ ] Ajouter au moins deux lignes de classes de composantes différentes ; vérifier niveau, nombre de classes, effectif par classe et noms.
-- [ ] Ajouter plusieurs matières avec niveaux, volumes hebdomadaires et groupes différents selon les composantes.
+- [ ] Sélectionner une composante maternelle et préremplir le référentiel : TPS éventuelle, PS, MS, GS ; vérifier que les domaines (langage, motricité, arts, premiers outils mathématiques, temps/espace, découverte du monde et EVAR) sont détaillés sans quota horaire fictif et que le volume global de 24 h reste distinct.
+- [ ] Sélectionner l'élémentaire : vérifier les cinq niveaux CP à CM2, les moyennes des cycles 2/3 et les sous-domaines du français.
+- [ ] Vérifier les lignes de 6e à 3e, de seconde à terminale générale, et les séries technologiques réellement proposées ; cocher plusieurs spécialités pour confirmer qu'elles apparaissent comme choix et non comme cours obligatoires pour tous.
+- [ ] Vérifier les volumes annuels du lycée professionnel : les moyennes hebdomadaires sont décimales si nécessaire, modifiables dans le formulaire et identifiées comme calculées depuis un volume annuel ; demander un diplôme précis pour affiner les enseignements professionnels.
+- [ ] Contrôler que les effectifs/classes restent vides après préremplissage ; l'établissement doit les renseigner. Supprimer des lignes préremplies puis cliquer à nouveau ne doit pas créer de doublons.
+- [ ] Ajouter une matière locale (par exemple option théâtre ou langue régionale) et demander à ChatGPT de proposer des matières complémentaires facultatives ; vérifier qu'aucune proposition nouvelle n'est traitée comme obligatoire sans validation.
+- [ ] Ajouter plusieurs matières avec niveaux, volumes horaires et groupes différents selon les composantes.
 - [ ] Ajouter des affectations de professeurs pour deux composantes ; répéter un même pseudonyme et vérifier que le prompt demande un seul profil enseignant avec toutes ses affectations.
 - [ ] Ajouter des calendriers distincts pour deux composantes ; vérifier jours, horaires d'ouverture, pauses et récréations propres à chacune.
 - [ ] Décrire plusieurs salles avec site/bâtiment, nom, type, capacité et équipements ; vérifier qu'une même salle ne peut pas être déclarée deux fois sur le même site et que le total annoncé n'est pas inférieur au nombre de salles détaillées.
