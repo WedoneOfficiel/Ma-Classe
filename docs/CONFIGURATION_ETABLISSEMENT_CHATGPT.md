@@ -18,7 +18,7 @@ Les champs **Nombre de professeurs à prévoir** et **Nombre de salles à prévo
 
 Le formulaire guide la Direction sur les éléments nécessaires à la création d'un établissement complet, de la petite section à la terminale :
 
-Le cadrage distingue désormais les composantes pédagogiques (sélection multiple) de l'organisation de l'établissement (groupe scolaire, cité scolaire, polyvalent, multi-sites, etc.). Un même établissement peut donc sélectionner plusieurs cycles ou filières. Les anciens formulaires à choix unique sont repris automatiquement quand la correspondance est certaine ; une ancienne valeur ambiguë est conservée dans les précisions et doit être confirmée par la Direction. Le cadrage comprend aussi l'année scolaire, l'organisation par trimestres, semestres ou régime variable et les horaires de pause/récréation. Ces précisions sont facultatives : les dossiers déjà enregistrés restent compatibles et les nouveaux champs absents restent vides au rechargement. Un récapitulatif se met à jour pendant la saisie pour rappeler les choix structurants (fiches élèves, comptes professeurs et génération des emplois du temps). Le formulaire vérifie les champs obligatoires avant l'enregistrement ou la copie.
+Le cadrage distingue désormais les composantes pédagogiques (sélection multiple) de l'organisation de l'établissement (groupe scolaire, cité scolaire, polyvalent, multi-sites, etc.). Un même établissement peut donc sélectionner plusieurs cycles ou filières. Les anciens formulaires à choix unique sont repris automatiquement quand la correspondance est certaine ; une ancienne valeur ambiguë est conservée dans les précisions et doit être confirmée par la Direction. Le cadrage comprend aussi l'année scolaire, l'organisation par trimestres, semestres ou régime variable et les horaires de pause/récréation. Ces précisions sont facultatives : les dossiers déjà enregistrés restent compatibles et les nouveaux champs absents restent vides au rechargement. Un récapitulatif se met à jour pendant la saisie pour rappeler les choix structurants (fiches élèves, comptes professeurs et génération des emplois du temps). Le formulaire vérifie les champs obligatoires avant l'enregistrement ou la copie. Le récapitulatif indique désormais les lignes de salles décrites et les éventuelles incohérences ; une ligne attachée à une composante désélectionnée doit être corrigée avant transmission.
 
 
 - nom et année scolaire ;
@@ -31,11 +31,13 @@ Le cadrage distingue désormais les composantes pédagogiques (sélection multip
 - calendriers saisis séparément par composante : jours de cours, horaires de début/fin, pause méridienne, récréations et particularités ;
 - anciennes précisions libres conservées dans un panneau replié afin de préserver les formulaires antérieurs et les cas atypiques ;
 - création ou non des fiches élèves, avec des pseudonymes générés ;
-- nombre total de professeurs et de salles, capacités, types, équipements et indisponibilités ;
+- nombre total de professeurs et de salles ; salles détaillées par lignes (site/bâtiment, nom, type, capacité, équipements et restrictions), avec notes libres conservées en complément ;
 - création ou non des comptes professeurs ; les fiches et affectations pédagogiques restent créées même sans compte ;
 - génération ou non des emplois du temps, avec contrôle des contraintes communes et particulières de chaque composante.
 
 Les boutons « Ajouter un niveau », « Ajouter une matière », « Ajouter une affectation » et « Ajouter un calendrier » créent des lignes à compléter, sans obliger la Direction à rédiger un long descriptif. Une ligne doit toujours être rattachée à une composante. Les menus de composante suivent les cycles cochés ; si une seule composante est sélectionnée, elle est proposée par défaut.
+
+Les salles déjà connues se décrivent une par une : site ou bâtiment, nom, type, capacité, équipements et restrictions. Le nombre total de salles peut être supérieur au nombre de lignes renseignées ; ChatGPT doit alors compléter uniquement les salles restantes sans dupliquer celles déjà déclarées. Une salle portant le même nom sur deux sites différents reste deux salles distinctes.
 
 Le total de professeurs doit correspondre au nombre de pseudonymes uniques. Pour un professeur qui intervient dans plusieurs composantes, réutilise le même pseudonyme dans plusieurs lignes : ChatGPT doit regrouper les affectations dans un seul profil. Les calendriers peuvent varier d'une composante à l'autre.
 
