@@ -452,6 +452,13 @@ class EstablishmentImportTests(unittest.TestCase):
             "details": "Oral, vocabulaire, phonologie, lecture et entrée dans l'écrit.",
             "hoursBasis": "not_allocated",
             "reference": "BO n° 19 du 7 mai 2026",
+        }, {
+            "subject": "Ensemble des enseignements du cycle 1",
+            "hoursPerWeek": 24,
+            "group": "",
+            "details": "24 heures hebdomadaires pour l'ensemble du cycle.",
+            "hoursBasis": "global_cycle",
+            "reference": "Code de l'éducation ; Éduscol cycle 1",
         }]
         validation = importer.validate_bundle(bundle)
         self.assertEqual(validation["errors"], [])
