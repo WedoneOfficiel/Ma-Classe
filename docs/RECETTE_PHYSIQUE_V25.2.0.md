@@ -47,17 +47,35 @@ Une fois la PR fusionnée et la GitHub Release signée publiée, le gestionnaire
 - [ ] Nouveautés : chaque compte voit l'annonce de V25.2.0 à son premier accès ; l'accusé est mémorisé par compte/version et ne se répète pas à chaque appareil.
 - [ ] Journal : consulter l'historique des versions dans les trois espaces et vérifier les sources affichées.
 
-## 4. Générateur de configuration d'établissement
+## 4. Configurateur structuré d'établissement
 
-- [ ] Vérifier le téléchargement du modèle, du schéma et des instructions.
+- [ ] Vérifier que plusieurs composantes peuvent être cochées simultanément et que la structure de regroupement (groupe scolaire, cité scolaire, polyvalent…) reste distincte de l'implantation (site unique ou multi-sites).
+- [ ] Ajouter au moins deux lignes de classes de composantes différentes ; vérifier niveau, nombre de classes, effectif par classe et noms.
+- [ ] Ajouter plusieurs matières avec niveaux, volumes hebdomadaires et groupes différents selon les composantes.
+- [ ] Ajouter des affectations de professeurs pour deux composantes ; répéter un même pseudonyme et vérifier que le prompt demande un seul profil enseignant avec toutes ses affectations.
+- [ ] Ajouter des calendriers distincts pour deux composantes ; vérifier jours, horaires d'ouverture, pauses et récréations propres à chacune.
+- [ ] Vérifier l'ajout/retrait de lignes, la validation des champs et le récapitulatif dynamique.
+- [ ] Enregistrer, fermer puis rouvrir le configurateur : chaque ligne, son identifiant et ses valeurs doivent être conservés. Vérifier également que les anciennes précisions libres sont visibles dans le panneau replié et ne sont pas perdues.
+- [ ] Copier le bloc complet dans une conversation ChatGPT standard sans joindre aucun document annexe ; vérifier que le prompt comprend les lignes structurées et demande un seul fichier JSON.
 - [ ] Vérifier que l'export du contexte est anonymisé : pas de noms d'élèves, dates de naissance, emails, téléphones, identifiants ou données sensibles.
 - [ ] Prévisualiser un JSON valide et un JSON volontairement invalide ; confirmer que la prévisualisation ne modifie aucune donnée.
-- [ ] Tester groupes simples et multi-niveaux, effectifs, professeurs, matières, volumes horaires, salles, équipements, indisponibilités, cours partagés et récurrences.
 - [ ] Vérifier la limite de 25 Mo côté interface et serveur (sans importer de gros fichier sur la production).
 - [ ] Sur la copie seulement, confirmer l'import additif, la sauvegarde préalable, les identifiants créés localement, la remise unique des mots de passe provisoires et leur changement à la première connexion.
 - [ ] Confirmer que les classes, salles, comptes et collections existants restent présents et inchangés.
 
-## 5. Réseau, appareils clients et PDF
+## 5. Référentiel de compétences et évaluation
+
+- [ ] Ouvrir Évaluations → Référentiel de compétences et créer une compétence avec matière et niveaux limités.
+- [ ] Depuis une nouvelle évaluation, choisir classe et matière puis cliquer « Créer ou gérer les compétences » ; créer une autre compétence et vérifier que la classe, matière, titre, barème, publication, critères et compétences déjà cochées sont restaurés au retour.
+- [ ] Vérifier que la liste est filtrée par niveau de la classe et matière ; une compétence sans restriction reste disponible partout.
+- [ ] Enregistrer une évaluation avec deux compétences et vérifier l'apparition de leurs colonnes dans le tableau de saisie.
+- [ ] Saisir pour un élève les niveaux 1 (Insuffisant), 2 (Fragile), 3 (Bien) et 4 (Très bien) ; vérifier qu'une cellule vide signifie « non évalué ».
+- [ ] Confirmer que saisir ou effacer un niveau de maîtrise ne modifie pas la note chiffrée, les commentaires ni les résultats des autres compétences.
+- [ ] Ouvrir le bilan des compétences et vérifier que les nouveaux résultats sont visibles.
+- [ ] Contrôler une évaluation et une grille historiques : leurs compétences restent sélectionnables et leurs niveaux déjà enregistrés sont conservés.
+
+
+## 6. Réseau, appareils clients et PDF
 
 - [ ] Depuis trois ou quatre clients simultanés, vérifier les connexions, permissions, synchronisation, changements d'EDT, notifications et sessions.
 - [ ] Depuis un second poste, ouvrir et imprimer un bulletin PDF et télécharger une pièce jointe ; ne pas se limiter au navigateur de l'hôte.
@@ -77,7 +95,7 @@ Le mode AC privée par défaut nécessite d'approuver une fois data/tls/ca.crt s
 
 Tant que cette recette n'est pas passée, l'objectif « aucune configuration manuelle de certificat sur chaque ordinateur » reste **non validé**. Ne jamais contourner un avertissement TLS en ajoutant une exception aveugle ou en revenant en HTTP.
 
-## 6. Clôture et publication
+## 7. Clôture et publication
 
 - [ ] Consigner les résultats, appareils, dates, rôles et écarts éventuels sans enregistrer inutilement d'informations personnelles.
 - [ ] Obtenir la confirmation de l'utilisateur avant tout passage d'une anomalie de « Supposé résolu » à « Corrigé ».
