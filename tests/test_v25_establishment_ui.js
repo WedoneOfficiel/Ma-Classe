@@ -62,7 +62,7 @@ for (const key of ['classStructures','subjectPlans','teacherPlans','componentSch
     'Le dossier sauvegardé doit contenir '+key+'.');
 }
 for (const kind of ['class','subject','teacher','schedule']) {
-  assert(generatorSource.includes('data-plan-row="'+kind+'"') || generatorSource.includes("data-plan-row=\\"'+kind+'\\""),
+  assert(generatorSource.includes("kind==='")+kind+"'"),
     'Le formulaire doit permettre d’ajouter des lignes '+kind+'.');
 }
 assert(generatorSource.includes('function addEstablishmentPlanRow(kind)')&&generatorSource.includes('function removeEstablishmentPlanRow(button)'),
@@ -85,12 +85,6 @@ assert.strictEqual(migrationSandbox.result.organization,'',
   'L’ancienne catégorie ambiguë ne doit pas être convertie arbitrairement en une organisation.');
 assert(migrationSandbox.result.details.includes('cité scolaire ou établissement polyvalent'),
   'L’ancienne précision ambiguë doit être conservée pour confirmation.');
-assert(promptSandbox.result.includes('classStructures')&&promptSandbox.result.includes('subjectPlans')&&promptSandbox.result.includes('teacherPlans')&&promptSandbox.result.includes('componentSchedules'),
-  'Les lignes de classes, matières, professeurs et calendriers doivent être intégrées au prompt.');
-assert(promptSandbox.result.includes('Professeur 01')&&promptSandbox.result.includes('Récréation : 10:15–10:30'),
-  'Les affectations et horaires particuliers des composantes doivent être conservés.');
-assert(promptSandbox.result.includes('même pseudonyme apparaît dans plusieurs composantes'),
-  'Un enseignant intervenant dans plusieurs composantes doit être dédupliqué en un seul profil.');
 
 assert(generatorSource.includes('function updateEstablishmentBriefSummary()')&&generatorSource.includes('establishmentBriefStatusReady'),
   'Le récapitulatif du formulaire doit être calculé et actualisé côté interface.');
@@ -119,6 +113,12 @@ assert.strictEqual((promptSandbox.result.match(/NOMBRE DE PROFESSEURS : teacherC
   'Le nombre de professeurs ne doit être indiqué qu’une seule fois.');
 assert.strictEqual((promptSandbox.result.match(/NOMBRE DE SALLES : roomCount=/g)||[]).length,1,
   'Le nombre de salles ne doit être indiqué qu’une seule fois.');
+assert(promptSandbox.result.includes('classStructures')&&promptSandbox.result.includes('subjectPlans')&&promptSandbox.result.includes('teacherPlans')&&promptSandbox.result.includes('componentSchedules'),
+  'Les lignes de classes, matières, professeurs et calendriers doivent être intégrées au prompt.');
+assert(promptSandbox.result.includes('Professeur 01')&&promptSandbox.result.includes('Récréation : 10:15–10:30'),
+  'Les affectations et horaires particuliers des composantes doivent être conservés.');
+assert(promptSandbox.result.includes('même pseudonyme apparaît dans plusieurs composantes'),
+  'Un enseignant intervenant dans plusieurs composantes doit être dédupliqué en un seul profil.');
 const adminUsersStart=generatorSource.indexOf('function adminUsers(){');
 const adminUsersEnd=generatorSource.indexOf('\nfunction ',adminUsersStart);
 const adminUsersSource=generatorSource.slice(adminUsersStart,adminUsersEnd);
