@@ -76,9 +76,9 @@ const promptFunctionEnd=generatorSource.indexOf('async function copyEstablishmen
 assert(promptFunctionStart>=0&&promptFunctionEnd>promptFunctionStart,'La fonction de génération des consignes doit rester isolable.');
 const promptSandbox={};
 vm.runInNewContext(generatorSource.slice(promptFunctionStart,promptFunctionEnd)+
-  '\nresult=establishmentBriefPrompt({schoolTypes:["Collège","Lycée professionnel"],schoolOrganization:"Cité scolaire",schoolStructureDetails:"Section européenne",schoolOrganizationDetails:"Bâtiments séparés",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
+  '\nresult=establishmentBriefPrompt({schoolTypes:["Collège","Lycée professionnel"],schoolOrganization:"Cité scolaire",schoolSiteMode:"Plusieurs sites / antennes",schoolStructureDetails:"Section européenne",schoolOrganizationDetails:"Bâtiments séparés",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
   promptSandbox);
-assert(promptSandbox.result.includes('composantes pédagogiques sélectionnées=Collège ; Lycée professionnel')&&promptSandbox.result.includes('organisation=Cité scolaire'),
+assert(promptSandbox.result.includes('composantes pédagogiques sélectionnées=Collège ; Lycée professionnel')&&promptSandbox.result.includes('structure de regroupement=Cité scolaire')&&promptSandbox.result.includes('implantation=Plusieurs sites / antennes'),
   'Les composantes multiples et l’organisation de l’établissement doivent être injectées séparément.');
 assert(promptSandbox.result.includes('Section européenne')&&promptSandbox.result.includes('Bâtiments séparés'),
   'Les précisions de structure et de sites doivent parvenir à ChatGPT.');
