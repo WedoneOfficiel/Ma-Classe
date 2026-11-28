@@ -1199,6 +1199,15 @@ function establishmentPlanRowMarkup(kind,item={},components=[]){
    input('Fin de la pause méridienne','lunchEnd','13:30','time')+
    textarea('Autres pauses / récréations','breakNotes','Ex. Récréation 10:15–10:30')+
    textarea('Particularités de cette composante','notes','Ex. Pas de cours le mercredi après-midi');
+ }else if(kind==='room'){
+  title='Salle et ressources';
+  fields=
+   input('Nom de la salle *','name','Ex. Salle 101')+
+   input('Site / bâtiment (facultatif)','site','Ex. Site A')+
+   input('Type de salle','type','Ex. Salle ordinaire, laboratoire')+
+   input('Capacité maximale *','capacity','Ex. 30','number','min="0" max="5000" step="1"')+
+   input('Équipements','equipment','Ex. vidéoprojecteur, informatique')+
+   textarea('Indisponibilités / restrictions','unavailableNotes','Ex. indisponible le mardi de 10:00 à 12:00');
  }else{
   return '';
  }
@@ -1207,16 +1216,16 @@ function establishmentPlanRowMarkup(kind,item={},components=[]){
 function establishmentPlanRowsMarkup(kind,rows,components){
  const list=Array.isArray(rows)?rows:[];
  if(!list.length){
-  const labels={class:'Aucun niveau renseigné pour le moment. Ajoute une ligne par niveau ou ensemble de classes.',subject:'Aucune matière renseignée. Ajoute une ligne par matière, niveau et volume horaire.',teacher:'Aucune affectation renseignée. Tu peux ajouter les professeurs connus ; le pseudonyme permet de regrouper un enseignant qui intervient dans plusieurs composantes.',schedule:'Aucun horaire renseigné. Ajoute une ligne par composante lorsque ses jours et horaires sont connus.'};
+  const labels={class:'Aucun niveau renseigné pour le moment. Ajoute une ligne par niveau ou ensemble de classes.',subject:'Aucune matière renseignée. Ajoute une ligne par matière, niveau et volume horaire.',teacher:'Aucune affectation renseignée. Tu peux ajouter les professeurs connus ; le pseudonyme permet de regrouper un enseignant qui intervient dans plusieurs composantes.',schedule:'Aucun horaire renseigné. Ajoute une ligne par composante lorsque ses jours et horaires sont connus.',room:'Aucune salle détaillée. Ajoute les salles déjà connues ; les autres pourront être complétées à partir du nombre total et des contraintes.'};
   return '<div class="notice establishmentPlanEmpty">'+labels[kind]+'</div>';
  }
  return list.map(item=>establishmentPlanRowMarkup(kind,item,components)).join('');
 }
 function addEstablishmentPlanRow(kind){
- const ids={class:'establishmentClassRows',subject:'establishmentSubjectRows',teacher:'establishmentTeacherRows',schedule:'establishmentScheduleRows'};
+ const ids={class:'establishmentClassRows',subject:'establishmentSubjectRows',teacher:'establishmentTeacherRows',schedule:'establishmentScheduleRows',room:'establishmentRoomRows'};
  const root=document.getElementById(ids[kind]);if(!root)return;
  const form=document.getElementById('establishmentBriefForm');
- const components=form?[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(x=>x.value):[];
+ const components=kind==='room'?[]:(form?[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(x=>x.value):[]);
  root.querySelector('.establishmentPlanEmpty')?.remove();
  root.insertAdjacentHTML('beforeend',establishmentPlanRowMarkup(kind,{},components));
  updateEstablishmentBriefSummary();
@@ -1251,12 +1260,18 @@ function collectEstablishmentPlanRows(form,kind){
    result.days=[...row.querySelectorAll('[data-field-day]:checked')].map(x=>x.value);
    result.start=value('start');result.end=value('end');result.lunchStart=value('lunchStart');result.lunchEnd=value('lunchEnd');
    result.breakNotes=value('breakNotes');result.notes=value('notes');
+  }else if(kind==='room'){
+   result.name=value('name');result.site=value('site');result.type=value('type');
+   result.capacity=value('capacity')===''?null:Number(value('capacity'));
+   result.equipment=value('equipment');result.unavailableNotes=value('unavailableNotes');
   }
   return result;
  });
 }
 function validateEstablishmentBrief(brief){
  if(!brief.name)return 'Indique le nom de l’établissement.';
+ if(brief.teacherCount!==null&&(!Number.isInteger(brief.teacherCount)||brief.teacherCount<0||brief.teacherCount>300))return 'Le nombre de professeurs doit être un nombre entier compris entre 0 et 300.';
+ if(brief.roomCount!==null&&(!Number.isInteger(brief.roomCount)||brief.roomCount<0||brief.roomCount>2000))return 'Le nombre de salles doit être un nombre entier compris entre 0 et 2 000.';
  if(!brief.classStructures.length&&!brief.classPlanNotes)return 'Ajoute au moins une ligne dans « Classes et effectifs », ou conserve des précisions de classes dans les notes complémentaires.';
  for(const row of brief.classStructures){
   if(!row.component||!row.level||!Number.isInteger(row.classCount)||row.classCount<1||!Number.isInteger(row.studentsPerClass)||row.studentsPerClass<0)return 'Complète chaque ligne de classe : composante, niveau, nombre de classes et élèves par classe.';
@@ -1272,6 +1287,20 @@ function validateEstablishmentBrief(brief){
   if(!row.component||!row.days.length||!/^([01]\d|2[0-3]):[0-5]\d$/.test(row.start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(row.end)||row.start>=row.end)return 'Complète chaque calendrier de composante : composante, au moins un jour et horaires de début/fin valides.';
   if(Boolean(row.lunchStart)!==Boolean(row.lunchEnd)||row.lunchStart&&row.lunchStart>=row.lunchEnd)return 'Vérifie les heures de début et de fin de la pause méridienne.';
  }
+ const selectedComponents=new Set(Array.isArray(brief.schoolTypes)?brief.schoolTypes:[]);
+ if(selectedComponents.size){
+  for(const row of [...brief.classStructures,...brief.subjectPlans,...brief.teacherPlans,...brief.componentSchedules]){
+   if(row.component&&!selectedComponents.has(row.component))return 'La composante « '+row.component+' » est encore utilisée dans une ligne, mais elle n’est plus cochée dans l’identité de l’établissement. Modifie cette ligne ou recoche la composante.';
+  }
+ }
+ const roomNames=new Set();
+ for(const row of brief.roomStructures||[]){
+  if(!row.name||!Number.isInteger(row.capacity)||row.capacity<0||row.capacity>5000)return 'Complète chaque salle détaillée : nom et capacité entière comprise entre 0 et 5 000.';
+  const identity=[row.site,row.name].map(x=>String(x||'').trim().toLocaleLowerCase('fr')).join('|');
+  if(roomNames.has(identity))return 'Une même salle est déclarée plusieurs fois sur le même site : vérifie les lignes de salles.';
+  roomNames.add(identity);
+ }
+ if(brief.roomCount!==null&&(brief.roomStructures||[]).length>brief.roomCount)return 'Le nombre de salles détaillées dépasse le nombre total de salles annoncé.';
  if(brief.createSchedule&&!brief.componentSchedules.length&&!brief.schoolDaysNotes&&!brief.schoolHoursNotes&&!brief.schoolBreaksNotes)return 'Ajoute au moins un calendrier de composante, ou indique les jours et horaires dans les notes complémentaires.';
  if(brief.createSchedule&&!brief.subjectPlans.length&&!brief.subjectPlanNotes)return 'Ajoute les matières et volumes horaires des composantes si tu demandes la création des emplois du temps.';
  return '';
@@ -1284,6 +1313,7 @@ function collectEstablishmentBrief(form){
  const roomCount=values.roomCount===''?null:Number(values.roomCount);
  const classStructures=collectEstablishmentPlanRows(form,'class'),subjectPlans=collectEstablishmentPlanRows(form,'subject');
  const teacherPlans=collectEstablishmentPlanRows(form,'teacher'),componentSchedules=collectEstablishmentPlanRows(form,'schedule');
+ const roomStructures=collectEstablishmentPlanRows(form,'room');
  const classPlanNotes=String(values.classPlanNotes||'').trim(),teacherPlanNotes=String(values.teacherPlanNotes||'').trim();
  const subjectPlanNotes=String(values.subjectPlanNotes||'').trim(),schoolDaysNotes=String(values.schoolDaysNotes||'').trim();
  const schoolHoursNotes=String(values.schoolHoursNotes||'').trim(),schoolBreaksNotes=String(values.schoolBreaksNotes||'').trim();
@@ -1299,15 +1329,15 @@ function collectEstablishmentBrief(form){
   schoolStructureDetails:String(values.schoolStructureDetails||'').trim(),
   schoolOrganization:String(values.schoolOrganization||'').trim(),schoolSiteMode:String(values.schoolSiteMode||'').trim(),
   schoolOrganizationDetails:String(values.schoolOrganizationDetails||'').trim(),schoolYear:String(values.schoolYear||'').trim(),periodMode,
-  classStructures,teacherPlans,subjectPlans,componentSchedules,
+  classStructures,teacherPlans,subjectPlans,componentSchedules,roomStructures,
   classPlanNotes,teacherPlanNotes,subjectPlanNotes,schoolDaysNotes,schoolHoursNotes,schoolBreaksNotes,
   classPlan:joinNotes(classPlanStructured,classPlanNotes),teacherPlan:joinNotes(teacherPlanStructured,teacherPlanNotes),
   subjectPlan:joinNotes(subjectPlanStructured,subjectPlanNotes),schoolDays:joinNotes(schoolDaysStructured,schoolDaysNotes),
   schoolHours:joinNotes(schoolHoursStructured,schoolHoursNotes),schoolBreaks:joinNotes(schoolBreaksStructured,schoolBreaksNotes),
   createStudents:values.createStudents==='yes',
-  teacherCount:teacherCount===null?null:Math.max(0,Math.min(300,teacherCount)),
+  teacherCount:teacherCount===null?null:teacherCount,
   createTeacherAccounts:values.createTeacherAccounts==='yes',
-  roomCount:roomCount===null?null:Math.max(0,Math.min(2000,roomCount)),roomPlan:String(values.roomPlan||'').trim(),
+  roomCount:roomCount===null?null:roomCount,roomPlan:String(values.roomPlan||'').trim(),
   createSchedule:values.createSchedule==='yes',constraints:String(values.constraints||'').trim()
  };
 }
@@ -1315,17 +1345,19 @@ function updateEstablishmentBriefSummary(){
  const form=document.getElementById('establishmentBriefForm'),summary=document.getElementById('establishmentBriefStatus');
  if(!form||!summary)return;
  const brief=collectEstablishmentBrief(form),ready=!!(brief.name&&(brief.classStructures.length||brief.classPlanNotes));
+ const problem=validateEstablishmentBrief(brief),ready=!problem;
  const choices=[
   'Classes : '+brief.classStructures.length+' ligne(s)',
   'Matières : '+brief.subjectPlans.length+' ligne(s)',
   'Affectations professeurs : '+brief.teacherPlans.length+' ligne(s)',
+  'Salles détaillées : '+brief.roomStructures.length+' ligne(s)',
   'Calendriers : '+brief.componentSchedules.length+' composante(s)',
   'Fiches élèves : '+(brief.createStudents?'oui, avec pseudonymes':'non, effectifs uniquement'),
   'Comptes professeurs : '+(brief.createTeacherAccounts?'oui':'non, profils pédagogiques conservés'),
   'Emplois du temps : '+(brief.createSchedule?'à construire':'non demandés')
  ];
  summary.classList.toggle('establishmentBriefStatusReady',ready);
- summary.textContent=(ready?'Base du dossier renseignée.':'À compléter : nom de l’établissement et au moins une structure de classe.')+
+ summary.textContent=(ready?'Dossier cohérent, prêt à être enregistré.':'À compléter : '+problem)+
   ' Composantes : '+(brief.schoolTypes.length?brief.schoolTypes.join(', '):'à préciser')+'.'+
   (brief.schoolOrganization?' Regroupement : '+brief.schoolOrganization+'. ':'')+
   (brief.schoolSiteMode?'Implantation : '+brief.schoolSiteMode+'. ':'')+
@@ -1358,7 +1390,8 @@ function establishmentBriefPrompt(brief){
   'NOMBRE DE PROFESSEURS : teacherCount='+(brief.teacherCount===null?'non précisé':String(brief.teacherCount))+'. Utilise teacherPlan comme notes complémentaires uniquement ; les lignes teacherPlans structurées sont prioritaires. Si aucun pseudonyme ou affectation n’est renseigné et qu’il est impossible de construire un planning cohérent sans eux, pose les questions indispensables avant de générer.',
   'teachers : chaque objet contient key, first, last, subjects, classes et éventuellement username, profileNotes et unavailable. Profils pseudonymisés uniquement. Aucun mot de passe, email réel ni téléphone.',
   'students : si la création des fiches est demandée, crée une fiche distincte par élève avec key, first, last, class, level et group si nécessaire. Identités fictives stables uniquement, par exemple « Élève 6A-001 » (first=\"Élève\", last=\"6A-001\"). N’invente jamais de vraies identités.',
-  'NOMBRE DE SALLES : roomCount='+(brief.roomCount===null?'non précisé':String(brief.roomCount))+'. Si un nombre est renseigné, crée exactement ce nombre de salles. Utilise roomPlan comme liste prioritaire ; si le nombre est non précisé, déduis uniquement les salles indispensables aux emplois du temps, aux effectifs, aux équipements et aux disponibilités. Demande une précision si les contraintes ne permettent pas de déterminer les ressources nécessaires sans inventer.',
+  'SALLES STRUCTURÉES : roomStructures contient les salles déjà identifiées, avec leur site/bâtiment, leur nom, leur type, leur capacité, leurs équipements et leurs restrictions. Crée un objet rooms par ligne, préfixe le nom par le site lorsqu’il est renseigné (ex. « Site A — Salle 101 »), reporte fidèlement capacité/type/équipements et ne transforme les restrictions en indisponibilités horaires que si elles sont assez précises. Ne fusionne jamais deux salles de sites différents.',
+  'NOMBRE DE SALLES : roomCount='+(brief.roomCount===null?'non précisé':String(brief.roomCount))+'. Si un nombre est renseigné, crée exactement ce nombre de salles au total. Utilise roomStructures comme liste prioritaire des salles connues ; roomPlan ne contient que des précisions complémentaires ou anciennes. Si des salles restent à créer, complète le nombre sans dupliquer les salles déjà décrites. Si le nombre est non précisé, déduis uniquement les salles indispensables aux emplois du temps, aux effectifs, aux équipements et aux disponibilités. Demande une précision si les contraintes ne permettent pas de déterminer les ressources nécessaires sans inventer.',
   'rooms : chaque objet contient key, name, type, capacity, equipment et éventuellement unavailable. Si schoolSiteMode=Plusieurs sites / antennes, préfixe le nom de chaque salle par son site (ex. « Site A — Salle 101 ») : le format V1 ne possède pas de champ siteId dédié. Ne crée aucune propriété supplémentaire non prévue par le format.',
   'schedule : chaque cours contient key, day (0=lundi à 4=vendredi ou nom anglais du jour), start, end, subject, class ou classes, group, teacher ou teachers, room, recurrence, startDate, éventuellement endDate, exceptions et equipment. Récurrences : weekly, biweekly, triweekly, custom avec intervalWeeks ou once.',
   'PROFILS ET COMPTES PROFESSEURS : les profils enseignants pseudonymisés sont toujours décrits dans teachers et affectés aux classes, aux responsabilités de professeur principal et aux cours de schedule. createTeacherAccounts='+String(brief.createTeacherAccounts)+'. Si true, Ma Classe crée aussi un compte de connexion pour chaque profil et génère localement ses identifiants et mots de passe provisoires. Si false, les profils et toutes leurs affectations pédagogiques restent bien enregistrés, mais aucun compte utilisateur, identifiant de connexion ni mot de passe n’est créé ; omets alors la propriété username de chaque professeur. La Direction pourra ouvrir ultérieurement un compte depuis la fiche du professeur.',
@@ -1426,9 +1459,10 @@ function openEstablishmentImport(){
   '<div class="field"><label>Nombre total de professeurs (facultatif)</label><input class="input" type="number" min="0" max="300" name="teacherCount" value="'+esc(saved.teacherCount??'')+'" placeholder="Ex. 20"></div>',
   '<div class="field section"><label>Créer les comptes de connexion des professeurs ?</label><select class="select" name="createTeacherAccounts"><option value="yes" '+(saved.createTeacherAccounts!==false?'selected':'')+'>Oui, créer les accès professeurs</option><option value="no" '+(saved.createTeacherAccounts===false?'selected':'')+'>Non, conserver les fiches sans compte</option></select><div class="hint">Les fiches et affectations pédagogiques sont toujours créées. Seul le compte de connexion peut être différé ; les accès sont générés localement par Ma Classe.</div></div>',
   '<div id="establishmentTeacherRows" class="section">'+establishmentPlanRowsMarkup('teacher',saved.teacherPlans||[],selectedComponents)+'</div></section>',
-  '<section class="card establishmentWizardStep"><div class="sectionhead"><h3>5. Salles et ressources</h3></div>',
-  '<div class="field"><label>Nombre de salles à prévoir</label><input class="input" type="number" min="0" max="2000" name="roomCount" value="'+esc(saved.roomCount??'')+'" placeholder="Ex. 30"></div>',
-  '<div class="field section"><label>Détails des salles (facultatif)</label><textarea class="input" name="roomPlan" rows="4" placeholder="Site | nom de salle | capacité | type | équipements">'+esc(saved.roomPlan||'')+'</textarea><div class="hint">Pour un établissement multi-sites, indique le site dans le nom ou la description de chaque salle.</div></div></section>',
+  '<section class="card establishmentWizardStep"><div class="sectionhead"><div><h3>5. Salles et ressources</h3><div class="muted">Une ligne par salle connue ; les salles restantes pourront être complétées selon le nombre total et les besoins.</div></div><button type="button" class="btn small" onclick="addEstablishmentPlanRow(\'room\')">+ Ajouter une salle</button></div>',
+  '<div class="field"><label>Nombre total de salles à prévoir (facultatif)</label><input class="input" type="number" min="0" max="2000" step="1" name="roomCount" value="'+esc(saved.roomCount??'')+'" placeholder="Ex. 30"></div>',
+  '<div id="establishmentRoomRows" class="section">'+establishmentPlanRowsMarkup('room',saved.roomStructures||[],selectedComponents)+'</div>',
+  '<details class="section establishmentLegacyNotes"><summary>Notes complémentaires ou anciennes précisions sur les salles (facultatif)</summary><div class="field section"><textarea class="input" name="roomPlan" rows="3" placeholder="Ex. salles mutualisées, salles spécialisées, règles d’accès, précisions non couvertes par les lignes">'+esc(saved.roomPlan||'')+'</textarea></div></details></section>',
   '<section class="card establishmentWizardStep"><div class="sectionhead"><div><h3>6. Horaires et emplois du temps</h3><div class="muted">Décris les jours et horaires séparément lorsque les composantes ont des calendriers différents.</div></div><button type="button" class="btn small" onclick="addEstablishmentPlanRow(\'schedule\')">+ Ajouter un calendrier</button></div>',
   '<div class="field"><label>Générer les emplois du temps ?</label><select class="select" name="createSchedule"><option value="yes" '+(yes(saved.createSchedule)?'selected':'')+'>Oui, construire les emplois du temps complets</option><option value="no" '+(saved.createSchedule===false?'selected':'')+'>Non, créer la structure sans créneaux</option></select></div>',
   '<div id="establishmentScheduleRows" class="section">'+establishmentPlanRowsMarkup('schedule',saved.componentSchedules||[],selectedComponents)+'</div>',
