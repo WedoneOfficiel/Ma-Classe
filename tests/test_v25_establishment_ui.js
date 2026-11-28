@@ -49,11 +49,11 @@ assert(generatorSource.includes('function updateEstablishmentBriefSummary()')&&g
 assert(generatorSource.includes('form.reportValidity()'),
   'La sauvegarde et la copie doivent respecter les contrôles natifs du formulaire.');
 const promptFunctionStart=generatorSource.indexOf('function establishmentBriefPrompt(brief){');
-const promptFunctionEnd=generatorSource.indexOf('\\nasync function copyEstablishmentBrief()',promptFunctionStart);
+const promptFunctionEnd=generatorSource.indexOf('async function copyEstablishmentBrief()',promptFunctionStart);
 assert(promptFunctionStart>=0&&promptFunctionEnd>promptFunctionStart,'La fonction de génération des consignes doit rester isolable.');
 const promptSandbox={};
 vm.runInNewContext(generatorSource.slice(promptFunctionStart,promptFunctionEnd)+
-  '\\nresult=establishmentBriefPrompt({schoolType:"Collège",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
+  '\nresult=establishmentBriefPrompt({schoolType:"Collège",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
   promptSandbox);
 assert(promptSandbox.result.includes('type d’établissement=Collège')&&promptSandbox.result.includes('année scolaire=2026-2027'),
   'Les nouvelles informations de cadrage doivent être injectées dans les consignes.');
