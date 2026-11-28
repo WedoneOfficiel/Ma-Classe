@@ -1036,7 +1036,8 @@ Tests ajoutés : couverture des nouveaux champs et du texte produit dans tests/t
 À la demande de la Direction, la catégorie unique « type d'établissement » a été remplacée par une structure de cadrage plus fidèle aux établissements réels :
 
 - Composantes pédagogiques sélectionnables simultanément : maternelle, élémentaire, collège, lycée général, lycée technologique, lycée professionnel, post-bac, CFA/apprentissage, formation continue et autre composante.
-- Organisation de l'établissement séparée : site unique, groupe scolaire, cité scolaire, établissement polyvalent, plusieurs sites/antennes, réseau ou autre organisation.
+- Structure de regroupement séparée : établissement autonome, groupe scolaire, cité scolaire, établissement polyvalent, réseau ou autre organisation.
+- Implantation physique séparée : site unique ou plusieurs sites/antennes.
 - Champs de précisions distincts pour les composantes particulières et la répartition des bâtiments/sites.
 - Structure de classes et matières mieux guidée, avec une ligne par classe et des exemples qui couvrent plusieurs composantes.
 - Régime des périodes étendu à « variable selon les classes/composantes ».
