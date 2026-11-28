@@ -473,6 +473,29 @@ class EstablishmentImportTests(unittest.TestCase):
         self.assertEqual(requirement["hoursBasis"], "not_allocated")
         self.assertIn("vocabulaire", requirement["details"])
         self.assertEqual(requirement["reference"], "BO n° 19 du 7 mai 2026")
+        self.assertEqual(data["classes"][0]["subjectRequirements"][1]["hoursBasis"], "global_cycle")
+
+    def test_specialty_choice_is_not_required_for_every_pupil_in_a_class(self):
+        bundle = sample_bundle()
+        bundle["classes"][0]["subjectRequirements"] = [{
+            "subject": "Mathématiques",
+            "hoursPerWeek": 6,
+            "group": "Spécialité mathématiques",
+            "details": "Spécialité proposée uniquement aux élèves qui l'ont choisie.",
+            "hoursBasis": "specialty_choice",
+            "reference": "Éduscol, cycle terminal de la voie générale",
+        }]
+        validation = importer.validate_bundle(bundle)
+        self.assertEqual(validation["errors"], [])
+        data, _, _ = importer.build_data(
+            bundle,
+            {},
+            password_hasher=lambda value: "HASH:" + value,
+            token_factory=lambda size: "generated-token",
+        )
+        requirement = data["classes"][0]["subjectRequirements"][0]
+        self.assertEqual(requirement["hoursBasis"], "specialty_choice")
+        self.assertEqual(requirement["hoursPerWeek"], 6)
 
     def test_null_subject_hours_require_explicit_non_allocated_basis(self):
         bundle = sample_bundle()
