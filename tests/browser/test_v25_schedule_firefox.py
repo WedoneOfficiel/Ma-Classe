@@ -522,11 +522,11 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     output_dir.mkdir(parents=True,exist_ok=True)
     # The prompt-copy action scrolls the modal. Reset its own scroll position
     # so the light/dark screenshots show the first component-planning sections.
-    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
     page.screenshot(path=str(output_dir/"establishment-configurator-settings-light.png"),full_page=True,animations="disabled")
     page.evaluate("setAppearanceTheme('dark')")
     expect(page.locator("html")).to_have_attribute("data-mc-theme","dark")
-    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
     page.screenshot(path=str(output_dir/"establishment-configurator-settings-dark.png"),full_page=True,animations="disabled")
 
     protection=modal.locator(".establishmentPrivacyNotice")
@@ -608,7 +608,7 @@ def verify_competency_workflow(page, output_dir: Path) -> None:
     rating=modal.locator(".v217EntryTable tbody tr select").nth(0)
     rating.select_option("3")
     output_dir.mkdir(parents=True,exist_ok=True)
-    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
     page.screenshot(path=str(output_dir/"evaluation-competency-entry.png"),full_page=True,animations="disabled")
     result=page.evaluate("""() => {
       const e=(db.evaluations||[]).find(x=>x.title==='Évaluation compétence — recette');
@@ -620,7 +620,7 @@ def verify_competency_workflow(page, output_dir: Path) -> None:
     modal.get_by_role("button",name="Fermer").click()
     page.get_by_role("button",name="Référentiel de compétences").click()
     modal=page.locator("#modal")
-    modal.locator(".modal").evaluate("(el)=>el.scrollTo(0,0)")
+    modal.evaluate("(el)=>el.scrollTo(0,0)")
     page.screenshot(path=str(output_dir/"competency-library.png"),full_page=True,animations="disabled")
     expect(modal).to_contain_text("Comprendre un texte")
     expect(modal).to_contain_text("Justifier une réponse")
