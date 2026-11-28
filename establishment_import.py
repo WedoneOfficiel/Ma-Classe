@@ -829,6 +829,11 @@ def validate_bundle(bundle, existing_data=None):
             if student["class"] == class_key and student["group"]
         )
         for requirement in class_record["subjectRequirements"]:
+            # Un domaine sans quota horaire autonome (maternelle) ou un volume
+            # global de cycle ne doit pas être comparé à un cours disciplinaire
+            # individuel : seule la répartition réellement décidée est planifiée.
+            if requirement.get("hoursBasis") in ("not_allocated", "global_cycle"):
+                continue
             requested_group = requirement["group"]
             if requested_group and requested_group not in all_groups:
                 errors.append(
