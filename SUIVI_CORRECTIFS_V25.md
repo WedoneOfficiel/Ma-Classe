@@ -1018,3 +1018,15 @@ La tête de PR 7d4886fbd3071a2f04972882cc73e29ab3d4efc6 passe la campagne CI #22
 Le Planner parcourt maintenant tous les créneaux potentiellement libres, recherche les salles avant de retenir les huit propositions affichées et ne masque donc plus un créneau valide situé après les huit premiers créneaux sans salle. Le test navigateur valide également le calendrier mensuel après ajout d'un cours récurrent et remplacement de salle.
 
 État : validation automatique complète ; recette par la Direction sur la copie V25.2.0 encore requise. Aucun changement de production et aucune publication n'ont été faits.
+
+### Complément de cadrage du configurateur — 28 novembre 2026
+
+À la demande de la Direction, le formulaire Paramètres a été enrichi sans modifier le format d'import JSON V1 ni la structure des données existantes :
+- Type d'établissement, année scolaire et organisation par trimestres/semestres ajoutés comme contexte de génération.
+- Horaires de pause méridienne, récréations et interruptions transmis explicitement au générateur d'emploi du temps.
+- Récapitulatif dynamique des principaux choix : fiches élèves, comptes professeurs et création des EDT.
+- Validation native du formulaire avant enregistrement ou copie ; les nouveaux champs restent facultatifs afin de préserver les dossiers déjà enregistrés.
+- Clarification du choix sans compte : les fiches professeurs et leurs affectations sont conservées ; seul l'accès de connexion est différé.
+- Suppression des consignes répétées concernant le nombre de professeurs et le nombre de salles.
+
+Tests ajoutés : couverture des nouveaux champs et du texte produit dans tests/test_v25_establishment_ui.js, ainsi que sauvegarde/réouverture et contrôle du presse-papiers dans le parcours Firefox tests/browser/test_v25_schedule_firefox.py. Vérification syntaxique JavaScript et exécution ciblée du générateur de consignes réussies dans l'environnement de travail. **La nouvelle CI complète n'est pas encore confirmée** ; le statut reste donc « Supposé résolu » jusqu'à cette campagne et à la recette réelle sur la copie isolée.
