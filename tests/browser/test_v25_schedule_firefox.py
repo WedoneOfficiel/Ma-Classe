@@ -579,8 +579,18 @@ def verify_competency_workflow(page) -> None:
     create_form.locator('[name="subject"]').fill("Français")
     create_form.locator('input[name="levels"][value="6e"]').check()
     create_form.locator('[name="description"]').fill("Appuyer une réponse sur un élément précis.")
+    page_errors=[]
+    page.on("pageerror",lambda error:page_errors.append(str(error)))
     modal.get_by_role("button",name="Ajouter au référentiel").click()
 
+    return_state=page.evaluate("""() => ({
+      heading:document.querySelector('#modal h2')?.textContent||'',
+      hasMetaForm:!!document.querySelector('#modal form[data-v217-meta]'),
+      fields:[...document.querySelectorAll('#modal form input,#modal form select')].map(x=>({name:x.name,value:x.value})),
+      modalText:(document.querySelector('#modal')?.innerText||'').slice(0,1200)
+    })""")
+    if not modal.locator('[name="classId"]').count():
+        raise AssertionError(f"Le formulaire d’évaluation n’est pas restauré après la création : {return_state!r}; erreurs JavaScript : {page_errors!r}")
     expect(modal.locator('[name="classId"]')).to_have_value("firefox-class")
     expect(modal.locator('[name="subject"]')).to_have_value("Français")
     expect(modal.locator('[name="title"]')).to_have_value("Évaluation compétence — recette")
