@@ -1609,7 +1609,7 @@ function collectEstablishmentBrief(form){
  const techSeries=[...form.querySelectorAll('input[name="techSeries"]:checked')].map(x=>String(x.value||'').trim()).filter(Boolean);
  const generalSpecialties=[...form.querySelectorAll('input[name="generalSpecialties"]:checked')].map(x=>String(x.value||'').trim()).filter(Boolean);
  const classPlanStructured=classStructures.map(x=>[x.component,x.level,x.classCount+' classe(s)',x.studentsPerClass+' élèves/classe',x.classNames].filter(Boolean).join(' | ')).join('\n');
- const subjectPlanStructured=subjectPlans.map(x=>[x.component,x.level,x.subject,x.hoursPerWeek===null?'horaire non ventilé':x.hoursPerWeek+' h/semaine',x.group,x.details,x.hoursBasis,x.reference].filter(Boolean).join(' | ')).join('\n');
+ const subjectPlanStructured=subjectPlans.map(x=>[x.component,x.level,x.subject,x.hoursPerWeek===null?'horaire non ventilé':x.hoursPerWeek+' h/semaine',x.group,x.details,x.source,x.hoursBasis,x.reference].filter(Boolean).join(' | ')).join('\n');
  const teacherPlanStructured=teacherPlans.map(x=>[x.pseudonym,x.component,x.subjects,x.classes,x.hoursPerWeek===null?'':x.hoursPerWeek+' h/semaine'].filter(Boolean).join(' | ')).join('\n');
  const schoolDaysStructured=componentSchedules.map(x=>x.component+' : '+x.days.join(', ')).join('\n');
  const schoolHoursStructured=componentSchedules.map(x=>x.component+' : '+x.start+'–'+x.end).join('\n');
