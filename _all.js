@@ -2529,19 +2529,20 @@ function v217EnsureCompetencyEntry(name,level='',subject='',description='',repla
  db.competencyLibrary??=[];db.settings??={};db.settings.competencyLevels??={};db.settings.competencySubjects??={};db.settings.competencyDescriptions??={};
  const needle=label.toLocaleLowerCase('fr-FR');
  const existing=db.competencyLibrary.find(x=>String(typeof x==='string'?x:(x?.name||x?.label||'')).trim().toLocaleLowerCase('fr-FR')===needle);
- if(!existing)db.competencyLibrary.push(label);
+ const isNew=!existing;
+ if(isNew)db.competencyLibrary.push(label);
  const currentLevel=competencyLevels()[label];
  const oldLevels=Array.isArray(currentLevel)?currentLevel.map(String):String(currentLevel||'').split('|').filter(Boolean);
  const oldSubject=String(db.settings.competencySubjects[label]||'');
  let nextLevels=oldLevels,nextSubject=oldSubject,nextDescription=String(db.settings.competencyDescriptions[label]||'');
- if(replaceScope){
+ if(isNew||replaceScope){
   nextLevels=String(level||'').split('|').map(x=>x.trim()).filter(Boolean);
   nextSubject=String(subject||'').trim();
   nextDescription=String(description||'').trim();
  }else{
-  if(level){
+  if(level&&oldLevels.length){
    const requested=String(level).split('|').map(x=>x.trim()).filter(Boolean);
-   if(oldLevels.length)nextLevels=[...new Set(oldLevels.concat(requested))];
+   nextLevels=[...new Set(oldLevels.concat(requested))];
   }
   if(subject&&oldSubject)nextSubject=[...new Set(oldSubject.split('|').concat(String(subject).split('|')).map(x=>x.trim()).filter(Boolean))].join('|');
   if(description)nextDescription=String(description).trim();
