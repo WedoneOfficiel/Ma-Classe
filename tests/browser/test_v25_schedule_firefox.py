@@ -565,6 +565,14 @@ def verify_competency_workflow(page) -> None:
     expect(first_skill).to_be_visible()
     first_skill.check()
     modal.get_by_role("button",name="Créer ou gérer les compétences").click()
+    captured=page.evaluate("""() => ({
+      classId:window.v217CompetencyReturnDraft?.values?.classId||'',
+      subject:window.v217CompetencyReturnDraft?.values?.subject||'',
+      title:window.v217CompetencyReturnDraft?.values?.title||'',
+      competencies:window.v217CompetencyReturnDraft?.competencies||[]
+    })""")
+    if captured!={"classId":"firefox-class","subject":"Français","title":"Évaluation compétence — recette","competencies":["Comprendre un texte"]}:
+        raise AssertionError(f"Le brouillon d’évaluation doit être capturé avant l’ouverture du référentiel : {captured!r}")
     expect(modal).to_contain_text("Référentiel de compétences")
     create_form=modal.locator("form").first
     create_form.locator('[name="name"]').fill("Justifier une réponse")
