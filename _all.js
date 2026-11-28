@@ -1344,8 +1344,7 @@ function collectEstablishmentBrief(form){
 function updateEstablishmentBriefSummary(){
  const form=document.getElementById('establishmentBriefForm'),summary=document.getElementById('establishmentBriefStatus');
  if(!form||!summary)return;
- const brief=collectEstablishmentBrief(form),ready=!!(brief.name&&(brief.classStructures.length||brief.classPlanNotes));
- const problem=validateEstablishmentBrief(brief),ready=!problem;
+ const brief=collectEstablishmentBrief(form),problem=validateEstablishmentBrief(brief),ready=!problem;
  const choices=[
   'Classes : '+brief.classStructures.length+' ligne(s)',
   'Matières : '+brief.subjectPlans.length+' ligne(s)',
