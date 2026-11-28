@@ -1429,9 +1429,15 @@ function prefillNationalCurriculum(){
  });
  catalog.forEach(item=>{
   const key=item.component+'|'+item.level+'|'+item.subject;if(subjectSet.has(key))return;
-  subjectRoot.insertAdjacentHTML('beforeend',establishmentPlanRowMarkup('subject',item,components));
-  const row=subjectRoot.lastElementChild;
-  ['component','level','subject','hoursPerWeek','details','source','hoursBasis','reference'].forEach(field=>setValue(row,field,item[field]));
+  let group=[...subjectRoot.querySelectorAll('.establishmentSubjectLevel')].find(el=>el.dataset.subjectComponent===item.component&&el.dataset.subjectLevel===item.level);
+  if(!group){
+   subjectRoot.insertAdjacentHTML('beforeend','<details class="establishmentSubjectLevel" data-subject-component="'+esc(item.component)+'" data-subject-level="'+esc(item.level)+'"><summary><b>'+esc(item.component)+' · '+esc(item.level)+'</b><span class="establishmentSubjectGroupCount">0 matière(s)</span></summary><div class="establishmentSubjectGroupRows"></div></details>');
+   group=subjectRoot.lastElementChild;
+  }
+  const holder=group.querySelector('.establishmentSubjectGroupRows');
+  holder.insertAdjacentHTML('beforeend',establishmentPlanRowMarkup('subject',item,components));
+  const count=holder.querySelectorAll('[data-plan-row="subject"]').length;
+  group.querySelector('.establishmentSubjectGroupCount').textContent=count+' matière(s)';
   addedSubjects++;subjectSet.add(key);
  });
  window.mcSyncSelects?.();updateEstablishmentBriefSummary();
@@ -1500,12 +1506,22 @@ function establishmentPlanRowMarkup(kind,item={},components=[]){
  }
  return '<div class="establishmentPlanRow establishmentPlanRow-'+kind+'" data-plan-row="'+kind+'" data-plan-id="'+esc(id)+'"><div class="establishmentPlanRowHead"><b>'+title+'</b>'+remove+'</div><div class="establishmentPlanRowFields">'+fields+'</div></div>';
 }
+function establishmentSubjectGroupsMarkup(rows,components){
+ const groups=new Map();
+ (Array.isArray(rows)?rows:[]).forEach(item=>{
+  const key=String(item.component||'')+'\\u0000'+String(item.level||'');
+  if(!groups.has(key))groups.set(key,{component:String(item.component||''),level:String(item.level||''),items:[]});
+  groups.get(key).items.push(item);
+ });
+ return [...groups.values()].map(group=>'<details class="establishmentSubjectLevel" data-subject-component="'+esc(group.component)+'" data-subject-level="'+esc(group.level)+'"><summary><b>'+esc(group.component)+' · '+esc(group.level)+'</b><span class="establishmentSubjectGroupCount">'+group.items.length+' matière(s)</span></summary><div class="establishmentSubjectGroupRows">'+group.items.map(item=>establishmentPlanRowMarkup('subject',item,components)).join('')+'</div></details>').join('');
+}
 function establishmentPlanRowsMarkup(kind,rows,components){
  const list=Array.isArray(rows)?rows:[];
  if(!list.length){
   const labels={class:'Aucun niveau renseigné pour le moment. Ajoute une ligne par niveau ou ensemble de classes.',subject:'Aucune matière renseignée. Ajoute une ligne par matière, niveau et volume horaire.',teacher:'Aucune affectation renseignée. Tu peux ajouter les professeurs connus ; le pseudonyme permet de regrouper un enseignant qui intervient dans plusieurs composantes.',schedule:'Aucun horaire renseigné. Ajoute une ligne par composante lorsque ses jours et horaires sont connus.',room:'Aucune salle détaillée. Ajoute les salles déjà connues ; les autres pourront être complétées à partir du nombre total et des contraintes.'};
   return '<div class="notice establishmentPlanEmpty">'+labels[kind]+'</div>';
  }
+ if(kind==='subject')return establishmentSubjectGroupsMarkup(list,components);
  return list.map(item=>establishmentPlanRowMarkup(kind,item,components)).join('');
 }
 function addEstablishmentPlanRow(kind){
@@ -1519,7 +1535,9 @@ function addEstablishmentPlanRow(kind){
 }
 function removeEstablishmentPlanRow(button){
  const row=button?.closest('[data-plan-row]');if(!row)return;
- row.remove();updateEstablishmentBriefSummary();
+ const group=row.closest('.establishmentSubjectLevel');row.remove();
+ if(group){const count=group.querySelectorAll('[data-plan-row="subject"]').length;const label=group.querySelector('.establishmentSubjectGroupCount');if(label)label.textContent=count+' matière(s)';if(!count)group.remove();}
+ updateEstablishmentBriefSummary();
 }
 function updateEstablishmentBriefComponentOptions(){
  const form=document.getElementById('establishmentBriefForm');if(!form)return;
