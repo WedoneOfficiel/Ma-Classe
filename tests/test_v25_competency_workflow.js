@@ -17,6 +17,8 @@ assert(app.includes('Créer ou gérer les compétences'),
   'Le formulaire d’évaluation doit proposer une action claire pour créer une compétence.');
 assert(app.includes('Aucune compétence n’est encore disponible')&&app.includes('+ Créer une compétence'),
   'Une liste vide doit proposer immédiatement la création au lieu de renvoyer vers une bibliothèque introuvable.');
+assert(app.includes('window.v217DeepMeta=v217DeepMeta;')&&app.includes('window.v217DeepMeta(evaluationDraft,id)'),
+  'Le constructeur du formulaire d’évaluation doit être exposé au flux global de création de compétence.');
 assert(app.includes('data-v217-meta="1"')&&app.includes('window.v217CompetencyReturnDraft'),
   'Le formulaire d’évaluation doit être sauvegardé puis restauré après la création d’une compétence.');
 assert(app.includes("level=explicitLevel||cls(classId)?.level||''"),
