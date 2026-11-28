@@ -1,8 +1,8 @@
 # Historique des versions MaClasse
 
-> Registre historique consolidé le 26 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
+> Registre historique consolidé le 28 novembre 2026. Les contenus ci-dessous sont repris intégralement des fichiers sources indiqués ; ils sont conservés à titre de mémoire de version et ne constituent pas tous des procédures encore applicables. Pour l'état actuel, consulter le [README](../README.md), le [registre des bugs](../REGISTRE_BUGS_V25.md) et les guides actifs de ce dossier.
 
-## Candidat V25.2.0 — harmonisation des modules et configuration d’établissement (27/11/2026)
+## Candidat V25.2.0 — harmonisation des modules et configuration d’établissement (28/11/2026)
 
 **Statut : candidat en recette — non publié.** Les modifications sont sur la PR #20 et doivent encore être acceptées sur la copie isolée avant fusion et publication.
 
@@ -14,12 +14,21 @@
 ### Configurateur d’établissement
 - Configurateur retiré de la page Administration → Utilisateurs et centralisé dans Paramètres, avec une présentation responsive.
 - Formulaire de cadrage enregistré dans Ma Classe, puis copie en un bloc des consignes, du format et des réponses à coller dans ChatGPT. Aucun fichier de contexte, modèle ou guide n’est à joindre dans ChatGPT ; un seul fichier JSON final revient dans Ma Classe.
+- Sélection multiple des composantes pédagogiques, structure de regroupement et implantation physique séparées.
+- Saisie par lignes structurées et composante : classes/effectifs/noms, matières/niveaux/volumes, affectations professeurs et calendriers (jours, horaires, pauses et récréations). Les notes libres antérieures sont conservées dans un panneau replié.
+- Un pseudonyme enseignant répété dans plusieurs composantes identifie le même profil et ses affectations sont regroupées ; les périodes peuvent différer selon les classes.
 - Prise en compte d’établissements multi-niveaux, de la petite section à la terminale, avec classes, effectifs, fiches élèves pseudonymisées, professeurs, matières, salles et emplois du temps cohérents.
 - Fiches professeurs distinctes des comptes de connexion : les profils et leurs affectations pédagogiques sont conservés même si les comptes sont différés. La Direction peut créer un compte ultérieurement depuis la fiche, sans changer l’identifiant utilisé par les cours.
 - Création des fiches élèves facultative ; les effectifs prévus restent utilisés pour contrôler la capacité des salles. Les données personnelles réelles et mots de passe ne sont pas transmis à ChatGPT.
 
+### Référentiel et saisie des compétences
+- Accès direct au référentiel depuis Évaluations et depuis le formulaire de création d'une évaluation.
+- Création d'une compétence en cours de saisie sans perdre le brouillon : la classe, le groupe, la matière, le titre, le barème, les critères, les compétences déjà cochées et la publication sont restaurés.
+- Filtrage par niveau et matière ; migration/dédoublonnage des anciens libellés ; notes de maîtrise séparées de la note chiffrée.
+- Guide dédié `docs/COMPETENCES_EVALUATIONS.md` et recette navigateur dédiée.
+
 ### Preuves et limites
-- CI du candidat fonctionnel précédent : Linux/Python, Firefox réel et macOS Apple Silicon/launchd, 3/3 réussies. Les derniers changements de séparation profils/comptes et de sauvegarde sont soumis à une nouvelle CI.
+- CI #2314 / run `46151246564` sur le commit `35094bc524aa7e312b178284d74f40db9fbb652a` : Linux/Python, Firefox réel et macOS Apple Silicon/launchd, **3/3 réussies**. La campagne couvre les lignes structurées multi-composantes, la création/restauration du brouillon d'évaluation et la saisie d'un niveau de maîtrise. Les mises à jour documentaires postérieures repassent la CI sur la tête courante.
 - Aucun changement n’est publié ni déployé en production à ce stade. Une importation représentative de taille réelle et la validation humaine des emplois du temps restent indispensables.
 - La copie en un bloc élimine les pièces jointes de contexte, mais ne supprime pas les limites d’usage, de contexte ou de génération de fichiers qui peuvent s’appliquer à ChatGPT gratuit.
 
