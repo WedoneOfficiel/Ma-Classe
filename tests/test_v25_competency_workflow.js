@@ -11,7 +11,7 @@ assert(app.includes("function v217OpenCompetencyManager("),
   'Un référentiel de compétences accessible doit exister.');
 assert(app.includes('Référentiel de compétences')&&app.includes('onclick="v217OpenCompetencyManager()"'),
   'La page Évaluations doit donner un accès direct au référentiel.');
-assert(app.includes('onclick="v217OpenCompetencyManager(true,null,this)"'),
+assert(app.includes('onclick="v217OpenCompetencyManager(true,null,this.closest(&quot;form&quot;))"'),
   'La création d’une compétence doit être accessible depuis une évaluation.');
 assert(app.includes('Créer ou gérer les compétences'),
   'Le formulaire d’évaluation doit proposer une action claire pour créer une compétence.');
