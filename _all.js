@@ -1144,8 +1144,9 @@ function getSavedEstablishmentOrganization(saved={}){
 function getSavedEstablishmentStructureDetails(saved={}){
  if(typeof saved.schoolStructureDetails==='string'&&saved.schoolStructureDetails.trim())return saved.schoolStructureDetails.trim();
  const legacy=String(saved.schoolType||'').trim();
- const known=['École maternelle et élémentaire','Collège','Lycée général et technologique','Lycée professionnel'];
- return legacy&&!known.includes(legacy)&&legacy!=='Autre'?legacy:'';
+ const known=['École maternelle et élémentaire','Collège','Lycée général et technologique','Lycée professionnel','Cité scolaire ou établissement polyvalent'];
+ if(legacy==='Autre')return 'Ancien choix « Autre » : préciser la ou les composantes.';
+ return legacy&&!known.includes(legacy)?legacy:'';
 }
 function getSavedEstablishmentOrganizationDetails(saved={}){
  if(typeof saved.schoolOrganizationDetails==='string'&&saved.schoolOrganizationDetails.trim())return saved.schoolOrganizationDetails.trim();
