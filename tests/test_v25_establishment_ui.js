@@ -39,6 +39,30 @@ const generatorSource = fs.readFileSync('_all.js','utf8');
 const generatorGuide = fs.readFileSync('docs/CONFIGURATION_ETABLISSEMENT_CHATGPT.md','utf8');
 const generatorServer = fs.readFileSync('server.py','utf8');
 assert(generatorSource.includes("Configurateur de l’établissement avec ChatGPT"),'Le configurateur doit être présenté comme un outil guidé.');
+for (const field of ['schoolType','schoolYear','periodMode','schoolBreaks']) {
+  assert(generatorSource.includes('name="'+field+'"'), 'Le formulaire doit proposer le champ '+field+'.');
+  assert(generatorSource.includes(field+':String(values.'+field+'||\'\').trim()') || field==='periodMode',
+    'Le champ '+field+' doit être collecté dans le dossier enregistré.');
+}
+assert(generatorSource.includes('function updateEstablishmentBriefSummary()')&&generatorSource.includes('establishmentBriefStatusReady'),
+  'Le récapitulatif du formulaire doit être calculé et actualisé côté interface.');
+assert(generatorSource.includes('form.reportValidity()'),
+  'La sauvegarde et la copie doivent respecter les contrôles natifs du formulaire.');
+const promptFunctionStart=generatorSource.indexOf('function establishmentBriefPrompt(brief){');
+const promptFunctionEnd=generatorSource.indexOf('\\nasync function copyEstablishmentBrief()',promptFunctionStart);
+assert(promptFunctionStart>=0&&promptFunctionEnd>promptFunctionStart,'La fonction de génération des consignes doit rester isolable.');
+const promptSandbox={};
+vm.runInNewContext(generatorSource.slice(promptFunctionStart,promptFunctionEnd)+
+  '\\nresult=establishmentBriefPrompt({schoolType:"Collège",schoolYear:"2026-2027",periodMode:"semestres",schoolBreaks:"Pause 12h-13h30",teacherCount:20,roomCount:30,createTeacherAccounts:false,createStudents:false,createSchedule:true,subjectPlan:"6e | Français | 4",classPlan:"6e | 2 classes",teacherPlan:"",roomPlan:"",schoolDays:"Lundi-vendredi",schoolHours:"08:00-17:00",constraints:""});',
+  promptSandbox);
+assert(promptSandbox.result.includes('type d’établissement=Collège')&&promptSandbox.result.includes('année scolaire=2026-2027'),
+  'Les nouvelles informations de cadrage doivent être injectées dans les consignes.');
+assert(promptSandbox.result.includes('SchoolBreaks=Pause 12h-13h30'),
+  'Les pauses déclarées doivent être transmises aux consignes.');
+assert.strictEqual((promptSandbox.result.match(/NOMBRE DE PROFESSEURS : teacherCount=/g)||[]).length,1,
+  'Le nombre de professeurs ne doit être indiqué qu’une seule fois.');
+assert.strictEqual((promptSandbox.result.match(/NOMBRE DE SALLES : roomCount=/g)||[]).length,1,
+  'Le nombre de salles ne doit être indiqué qu’une seule fois.');
 const adminUsersStart=generatorSource.indexOf('function adminUsers(){');
 const adminUsersEnd=generatorSource.indexOf('\nfunction ',adminUsersStart);
 const adminUsersSource=generatorSource.slice(adminUsersStart,adminUsersEnd);
