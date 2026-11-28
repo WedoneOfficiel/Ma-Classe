@@ -394,20 +394,65 @@ def validate_bundle(bundle, existing_data=None):
                 if not isinstance(req, dict):
                     errors.append(f"Classe {key} : subjectRequirements[{index}] doit être un objet.")
                     continue
-                _check_fields(req, {"subject", "hoursPerWeek", "group"}, f"Classe {key} : subjectRequirements[{index}]", errors)
+                _check_fields(
+                    req,
+                    {"subject", "hoursPerWeek", "group", "details", "hoursBasis", "reference"},
+                    f"Classe {key} : subjectRequirements[{index}]",
+                    errors,
+                )
                 subject = _text(req.get("subject"), f"Classe {key} : matière requise", errors, required=True, maximum=80)
-                try:
-                    raw_hours = req.get("hoursPerWeek")
-                    if isinstance(raw_hours, bool) or not isinstance(raw_hours, (int, float)):
-                        raise ValueError()
-                    hours = float(raw_hours)
-                    if not (0 < hours <= 40):
-                        raise ValueError()
-                except (TypeError, ValueError):
-                    errors.append(f"Classe {key} : hoursPerWeek doit être compris entre 0 et 40.")
-                    hours = 0
+                hours_basis = _text(
+                    req.get("hoursBasis", "weekly"),
+                    f"Classe {key} : hoursBasis",
+                    errors,
+                    maximum=40,
+                )
+                allowed_hour_bases = {
+                    "weekly", "cycle_average", "annual_to_weekly",
+                    "not_allocated", "global_cycle", "specialty_choice",
+                }
+                if hours_basis not in allowed_hour_bases:
+                    errors.append(f"Classe {key} : hoursBasis n'est pas reconnu.")
+                    hours_basis = "weekly"
+                details = _text(
+                    req.get("details", ""),
+                    f"Classe {key} : détail de matière",
+                    errors,
+                    maximum=2000,
+                )
+                reference = _text(
+                    req.get("reference", ""),
+                    f"Classe {key} : référence du programme",
+                    errors,
+                    maximum=400,
+                )
+                raw_hours = req.get("hoursPerWeek")
+                if raw_hours is None:
+                    if hours_basis != "not_allocated" or not details:
+                        errors.append(
+                            f"Classe {key} : un horaire nul exige hoursBasis='not_allocated' "
+                            "et un détail pédagogique explicite."
+                        )
+                    hours = None
+                else:
+                    try:
+                        if isinstance(raw_hours, bool) or not isinstance(raw_hours, (int, float)):
+                            raise ValueError()
+                        hours = float(raw_hours)
+                        if not (0 < hours <= 40):
+                            raise ValueError()
+                    except (TypeError, ValueError):
+                        errors.append(f"Classe {key} : hoursPerWeek doit être compris entre 0 et 40, ou nul avec not_allocated.")
+                        hours = 0
                 group = _text(req.get("group", ""), f"Classe {key} : groupe de matière", errors, maximum=80)
-                clean_requirements.append({"subject": subject, "hoursPerWeek": hours, "group": group})
+                clean_requirements.append({
+                    "subject": subject,
+                    "hoursPerWeek": hours,
+                    "group": group,
+                    "details": details,
+                    "hoursBasis": hours_basis,
+                    "reference": reference,
+                })
         expected_count = raw.get("expectedStudentCount")
         if expected_count is not None and (isinstance(expected_count, bool) or not isinstance(expected_count, int) or expected_count < 0 or expected_count > 1000):
             errors.append(f"Classe {key} : expectedStudentCount doit être un entier de 0 à 1000.")
