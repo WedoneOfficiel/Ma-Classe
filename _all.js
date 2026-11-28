@@ -1159,6 +1159,255 @@ function establishmentPlanComponentOptions(components,selected=''){
  if(!values.length)return '<option value="">À préciser</option>';
  return '<option value="">Choisir une composante</option>'+values.map(value=>'<option value="'+esc(value)+'" '+(value===selected?'selected':'')+'>'+esc(value)+'</option>').join('');
 }
+function mcNationalCurriculumCatalog(components,techSeries=[],generalSpecialties=[]){
+ const out=[],selected=new Set(components||[]),series=new Set(techSeries||[]),specialties=new Set(generalSpecialties||[]);
+ const add=(component,level,subject,hoursPerWeek,details,hoursBasis='weekly',reference='')=>out.push({component,level,subject,hoursPerWeek,details,hoursBasis,source:'national',reference});
+ const addRows=(component,levels,rows)=>levels.forEach(level=>rows.forEach(row=>add(component,level,row[0],row[1],row[2],row[3]||'weekly',row[4]||'')));
+ const early=[
+  ['Développement et structuration du langage oral et écrit',null,'Oral, écoute et compréhension, vocabulaire, phonologie, articulation, syntaxe, conscience phonologique, entrée dans le principe alphabétique, découverte de l’écrit et premiers gestes d’écriture. Apprentissages réguliers et récurrents ; aucun quota horaire réglementaire propre à ce domaine.','not_allocated','BO n° 19 du 7 mai 2026 ; Éduscol cycle 1'],
+  ['Agir, s’exprimer, comprendre à travers l’activité physique',null,'Motricité, déplacements, équilibre, actions sur les objets, expression corporelle, coopération, jeux collectifs et opposition. Aucun quota horaire réglementaire propre au domaine.','not_allocated','BO n° 19 du 7 mai 2026 ; Éduscol cycle 1'],
+  ['Agir, s’exprimer, comprendre à travers les activités artistiques',null,'Arts visuels, productions plastiques, univers sonores, chants, écoute musicale, pratiques créatives et premières rencontres avec les œuvres. Aucun quota horaire réglementaire propre au domaine.','not_allocated','BO n° 19 du 7 mai 2026 ; Éduscol cycle 1'],
+  ['Acquisition des premiers outils mathématiques',null,'Construire le nombre, dénombrer, comparer, composer et décomposer, résoudre des problèmes, explorer les formes, les grandeurs, les suites organisées et les premières représentations. Aucun quota horaire réglementaire propre au domaine.','not_allocated','BO n° 19 du 7 mai 2026 ; Éduscol cycle 1'],
+  ['Se repérer dans le temps et l’espace',null,'Repères temporels, chronologie, durée, espace vécu et représenté, positions, déplacements, parcours et premières représentations spatiales. Aucun quota horaire réglementaire propre au domaine.','not_allocated','BO n° 19 du 7 mai 2026 ; Éduscol cycle 1'],
+  ['Découvrir le monde du vivant, des objets et de la matière',null,'Observer le vivant, les besoins et les cycles de vie, explorer les objets, les matériaux, les propriétés de la matière, manipuler, expérimenter et décrire. Aucun quota horaire réglementaire propre au domaine.','not_allocated','BO n° 19 du 7 mai 2026 ; Éduscol cycle 1'],
+  ['Éducation à la vie affective et relationnelle (EVAR)',null,'Respect de soi et d’autrui, relations, égalité, prévention des discriminations et des violences. Programme transversal ; ne pas lui attribuer artificiellement un horaire hebdomadaire autonome.','not_allocated','BO n° 6 du 6 février 2025']
+ ];
+ if(selected.has('Maternelle')){
+  const levels=['TPS (accueil éventuel)','Petite section','Moyenne section','Grande section'];
+  addRows('Maternelle',levels,early);
+  levels.forEach(level=>add('Maternelle',level,'Ensemble des enseignements du cycle 1',24,'24 heures d’enseignement par semaine sur 36 semaines pour l’ensemble du cycle. Les 24 heures sont réparties entre six domaines et les programmes transversaux ; aucun quota horaire distinct n’est fixé par domaine. Pour la TPS, l’accueil dépend des conditions locales.','global_cycle','Code de l’éducation ; BO n° 19 du 7 mai 2026 ; Éduscol cycle 1'));
+ }
+ const c2=[
+  ['Français',10,'Moyenne hebdomadaire du cycle 2 (CP-CE1-CE2). Oral, écoute et compréhension, lecture, compréhension de l’écrit, écriture et production d’écrits, vocabulaire, grammaire, orthographe, étude de la langue, fluence et littérature. Les activités quotidiennes d’oral, lecture et écriture irriguent les autres disciplines.','cycle_average','Éduscol, école élémentaire — horaires cycle 2'],
+  ['Mathématiques',5,'Moyenne hebdomadaire du cycle 2. Nombres et calculs, résolution de problèmes, calcul mental, grandeurs et mesures, espace et géométrie, organisation et gestion de données.','cycle_average','Éduscol, école élémentaire — horaires cycle 2'],
+  ['Langues vivantes étrangères ou régionales',1.5,'Première sensibilisation et apprentissages linguistiques, compréhension et expression orales, lexique, phonologie et interactions.','cycle_average','Éduscol, école élémentaire — horaires cycle 2'],
+  ['Éducation physique et sportive',3,'Motricité, performance mesurée, activités artistiques, affrontement collectif ou individuel, coopération et santé.','cycle_average','Éduscol, école élémentaire — horaires cycle 2'],
+  ['Enseignements artistiques',2,'Arts plastiques et éducation musicale : expérimenter, produire, écouter, comparer, s’exprimer et rencontrer des œuvres. Le partage interne relève de l’organisation pédagogique.','cycle_average','Éduscol, école élémentaire — horaires cycle 2'],
+  ['Questionner le monde et enseignement moral et civique',2.5,'Explorer le vivant, la matière, les objets, le temps et l’espace ; construire des repères scientifiques et citoyens. Le volume publié est globalisé avec l’EMC : 36 heures annuelles d’EMC, dont 30 minutes hebdomadaires de situations pratiques favorisant l’expression orale. Ne pas inventer une ventilation réglementaire du reliquat.','cycle_average','Éduscol, école élémentaire — horaires cycle 2']
+ ];
+ const c3=[
+  ['Français',8,'Moyenne hebdomadaire du cycle 3 à l’école (CM1-CM2). Oral, lecture et compréhension, écriture, vocabulaire, grammaire, orthographe, conjugaison, littérature et culture écrite. Au moins deux heures quotidiennes sont consacrées à la lecture et à l’écriture dans l’organisation des enseignements.','cycle_average','Éduscol, école élémentaire — horaires cycle 3'],
+  ['Mathématiques',5,'Moyenne hebdomadaire du cycle 3. Nombres et calculs, calcul mental, résolution de problèmes, fractions et décimaux, grandeurs et mesures, espace et géométrie, données et proportionnalité.','cycle_average','Éduscol, école élémentaire — horaires cycle 3'],
+  ['Langues vivantes',1.5,'Compréhension et expression orales, interactions, lexique, phonologie et découverte culturelle.','cycle_average','Éduscol, école élémentaire — horaires cycle 3'],
+  ['Éducation physique et sportive',3,'Développer les capacités motrices, s’exprimer, coopérer, s’opposer et entretenir sa santé.','cycle_average','Éduscol, école élémentaire — horaires cycle 3'],
+  ['Sciences et technologie',2,'Matière, mouvement, énergie, information, vivant, objets techniques, démarche expérimentale, observation, raisonnement et conception.','cycle_average','Éduscol, école élémentaire — horaires cycle 3'],
+  ['Enseignements artistiques',2,'Arts plastiques et éducation musicale : pratiques, expression, culture artistique, écoute, création et analyse.','cycle_average','Éduscol, école élémentaire — horaires cycle 3'],
+  ['Histoire-géographie et enseignement moral et civique',2.5,'Repères historiques et géographiques, sociétés, territoires, démarches documentaires et citoyenneté. Le volume publié est globalisé avec l’EMC : 36 heures annuelles d’EMC, dont 30 minutes hebdomadaires de situations pratiques favorisant l’expression orale.','cycle_average','Éduscol, école élémentaire — horaires cycle 3']
+ ];
+ if(selected.has('Élémentaire')){addRows('Élémentaire',['CP','CE1','CE2'],c2);addRows('Élémentaire',['CM1','CM2'],c3)}
+ if(selected.has('Collège')){
+  addRows('Collège',['6e'],[
+   ['Français',4.5,'Oral, lecture, compréhension, écriture, vocabulaire, grammaire, orthographe, littérature et culture.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Mathématiques',4.5,'Nombres et calculs, espace et géométrie, grandeurs et mesures, données et probabilités, algorithmique et résolution de problèmes.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Histoire-géographie et EMC',3,'Histoire, géographie, enseignement moral et civique ; 30 minutes d’EMC incluses dans les 3 heures.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Langue vivante',4,'Langue vivante A : compréhension, expression, interaction, médiation et repères culturels. Une seconde langue peut être proposée en classe bilangue à titre facultatif.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Sciences et technologie (SVT et physique-chimie)',3,'Volume regroupé de sciences : sciences de la vie et de la Terre et physique-chimie ; conserver la répartition interne comme choix d’organisation pédagogique.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Éducation physique et sportive',4,'Activités physiques, sportives et artistiques ; motricité, performance, santé, coopération et opposition.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Arts plastiques',1,'Pratique plastique, création, analyse d’images et culture artistique. Peut être organisé en alternance semestrielle avec l’éducation musicale.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Éducation musicale',1,'Pratique vocale et instrumentale, écoute, création et culture musicale. Peut être organisé en alternance semestrielle avec les arts plastiques.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026']
+  ]);
+  const c4=(french,hg)=>[
+   ['Français',french,'Oral, lecture, compréhension, écriture, vocabulaire, grammaire, orthographe, littérature et culture.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Mathématiques',3.5,'Nombres et calculs, expressions littérales, fonctions, données et probabilités, espace et géométrie, algorithmique et résolution de problèmes.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Histoire-géographie et EMC',hg,'Histoire, géographie et EMC ; 30 minutes d’EMC incluses dans le volume.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Langue vivante A',3,'Compréhension, expression, interaction, médiation et culture.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Langue vivante B',2.5,'Compréhension, expression, interaction, médiation et culture ; langue étrangère ou régionale selon l’offre.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Sciences de la vie et de la Terre',1.5,'Le vivant, la planète, le corps humain, santé, environnement et démarche scientifique.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Physique-chimie',1.5,'Matière, mouvements, énergie, signaux, expérimentations, mesures et modélisation.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Technologie',1.5,'Objets et systèmes techniques, conception, usages, programmation, impacts et démarche de projet.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Éducation physique et sportive',3,'Activités physiques, sportives et artistiques, motricité, performance, coopération et santé.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Arts plastiques',1,'Pratique plastique, création, analyse d’images et culture artistique.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026'],
+   ['Éducation musicale',1,'Pratique vocale et instrumentale, écoute, création et culture musicale.','weekly','Éduscol, organisation des enseignements au collège — rentrée 2026']
+  ];
+  addRows('Collège',['5e'],c4(4.5,3));addRows('Collège',['4e'],c4(4.5,3));addRows('Collège',['3e'],c4(4,3.5));
+ }
+ const second=[
+  ['Français',4,'Oral, lecture, écriture, littérature, langue et culture.','weekly','Éduscol, seconde générale et technologique'],
+  ['Histoire-géographie',3,'Histoire et géographie, analyse critique des documents, raisonnement et mise en perspective.','weekly','Éduscol, seconde générale et technologique'],
+  ['Langues vivantes A et B',5.5,'Horaire globalisé LVA + LVB ; compréhension, expression, interaction, médiation et culture.','weekly','Éduscol, seconde générale et technologique'],
+  ['Sciences économiques et sociales',1.5,'Science économique, sociologie et science politique ; méthodes et raisonnement.','weekly','Éduscol, seconde générale et technologique'],
+  ['Mathématiques',4,'Nombres, calcul, fonctions, géométrie, statistiques et probabilités, algorithmique.','weekly','Éduscol, seconde générale et technologique'],
+  ['Physique-chimie',3,'Matière, mouvements, énergie, signaux et démarche expérimentale.','weekly','Éduscol, seconde générale et technologique'],
+  ['Sciences de la vie et de la Terre',1.5,'Le vivant, la planète, corps humain, santé, environnement et démarche scientifique.','weekly','Éduscol, seconde générale et technologique'],
+  ['Éducation physique et sportive',2,'Pratiques physiques, sportives et artistiques, santé et engagement.','weekly','Éduscol, seconde générale et technologique'],
+  ['Enseignement moral et civique',0.5,'18 heures annuelles ; conversion en 0,5 h hebdomadaire pour la lecture du volume, sans imposer un cours chaque semaine.','annual_to_weekly','Éduscol, seconde générale et technologique'],
+  ['Sciences numériques et technologie',1.5,'Données, algorithmique, programmation, internet, réseaux, objets connectés et impacts du numérique.','weekly','Éduscol, seconde générale et technologique']
+ ];
+ if(selected.has('Lycée général')){
+  addRows('Lycée général',['Seconde générale et technologique'],second);
+  addRows('Lycée général',['Première générale'],[
+   ['Français',4,'Oral, lecture analytique, littérature, écriture, argumentation, langue et culture.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Histoire-géographie',3,'Histoire, géographie, analyse de sources, raisonnement critique et géopolitique.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Langues vivantes A et B',4.5,'Horaire globalisé LVA + LVB.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Enseignement scientifique',2,'Enseignement interdisciplinaire de culture scientifique.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Éducation physique et sportive',2,'Pratiques physiques, sportives et artistiques.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Enseignement moral et civique',0.5,'18 heures annuelles ; 0,5 h/semaine est une moyenne, pas nécessairement un créneau hebdomadaire fixe.','annual_to_weekly','Éduscol, cycle terminal voie générale']
+  ]);
+  addRows('Lycée général',['Terminale générale'],[
+   ['Philosophie',4,'Notions, problèmes, argumentation, explication de textes et dissertation.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Histoire-géographie',3,'Histoire, géographie, analyse de sources, raisonnement critique et géopolitique.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Langues vivantes A et B',4,'Horaire globalisé LVA + LVB.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Enseignement scientifique',2,'Enseignement interdisciplinaire de culture scientifique. Vérifier la majoration éventuelle liée au parcours mathématique et aux spécialités suivies.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Éducation physique et sportive',2,'Pratiques physiques, sportives et artistiques.','weekly','Éduscol, cycle terminal voie générale'],
+   ['Enseignement moral et civique',0.5,'18 heures annuelles ; 0,5 h/semaine est une moyenne.','annual_to_weekly','Éduscol, cycle terminal voie générale']
+  ]);
+  const generalList=['Arts','Biologie-écologie (lycées agricoles)','Éducation physique, pratiques et culture sportives','Histoire-géographie, géopolitique et sciences politiques','Humanités, littérature et philosophie','Langues, littératures et cultures étrangères et régionales','Littérature et langues et cultures de l’Antiquité','Mathématiques','Numérique et sciences informatiques','Sciences de la vie et de la Terre','Sciences de l’ingénieur','Physique-chimie','Sciences économiques et sociales'];
+  generalList.filter(x=>specialties.has(x)).forEach(subject=>{
+   add('Lycée général','Première générale',subject,4,'Spécialité : 3 enseignements sont suivis en première. Ne planifier que si la spécialité est proposée et effectivement choisie.','specialty_choice','Éduscol, cycle terminal voie générale');
+   add('Lycée général','Terminale générale',subject,6,'Spécialité : 2 enseignements sont suivis en terminale. Ne planifier que si la spécialité est proposée et effectivement choisie.','specialty_choice','Éduscol, cycle terminal voie générale');
+  });
+ }
+ if(selected.has('Lycée technologique')){
+  addRows('Lycée technologique',['Seconde générale et technologique'],second);
+  const common1=[
+   ['Français',3,'Enseignement commun de première technologique.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Histoire-géographie',1.5,'Enseignement commun.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Enseignement moral et civique',0.5,'18 heures annuelles ; 0,5 h/semaine est une moyenne indicative.','annual_to_weekly','Éduscol, cycle terminal voie technologique'],
+   ['Langues vivantes A et B avec ETLV',4,'Enveloppe globalisée LVA + LVB comprenant 1 h d’enseignement technologique en langue vivante.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Éducation physique et sportive',2,'Enseignement commun.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Mathématiques',3,'Enseignement commun.','weekly','Éduscol, cycle terminal voie technologique']
+  ];
+  const commonT=[
+   ['Philosophie',2,'Enseignement commun de terminale technologique.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Histoire-géographie',1.5,'Enseignement commun.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Enseignement moral et civique',0.5,'18 heures annuelles ; 0,5 h/semaine est une moyenne indicative.','annual_to_weekly','Éduscol, cycle terminal voie technologique'],
+   ['Langues vivantes A et B avec ETLV',4,'Enveloppe globalisée LVA + LVB comprenant 1 h d’ETLV.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Éducation physique et sportive',2,'Enseignement commun.','weekly','Éduscol, cycle terminal voie technologique'],
+   ['Mathématiques',3,'Enseignement commun.','weekly','Éduscol, cycle terminal voie technologique']
+  ];
+  const tech=(name,first,terminal)=>{
+   if(!series.has(name))return;
+   addRows('Lycée technologique',['Première '+name],common1.concat(first));
+   addRows('Lycée technologique',['Terminale '+name],commonT.concat(terminal));
+  };
+  tech('STMG',[
+   ['Sciences de gestion et numérique',7,'Enseignement de spécialité.','weekly','Éduscol, horaires STMG janvier 2026'],
+   ['Management',4,'Enseignement de spécialité.','weekly','Éduscol, horaires STMG janvier 2026'],
+   ['Droit et économie',4,'Enseignement de spécialité.','weekly','Éduscol, horaires STMG janvier 2026']
+  ],[
+   ['Management, sciences de gestion et numérique — enseignement spécifique',10,'Choix d’un enseignement spécifique parmi gestion et finance, mercatique, ressources humaines et communication, systèmes d’information de gestion. Ne pas planifier les quatre simultanément.','specialty_choice','Éduscol, horaires STMG janvier 2026'],
+   ['Droit et économie',6,'Enseignement de spécialité.','weekly','Éduscol, horaires STMG janvier 2026']
+  ]);
+  tech('ST2S',[
+   ['Physique-chimie pour la santé',3,'Enseignement de spécialité.','weekly','Éduscol, horaires ST2S janvier 2026'],
+   ['Biologie et physiopathologie humaines',5,'Enseignement de spécialité.','weekly','Éduscol, horaires ST2S janvier 2026'],
+   ['Sciences et techniques sanitaires et sociales',7,'Enseignement de spécialité.','weekly','Éduscol, horaires ST2S janvier 2026']
+  ],[
+   ['Chimie, biologie et physiopathologie humaines',8,'Enseignement de spécialité.','weekly','Éduscol, horaires ST2S janvier 2026'],
+   ['Sciences et techniques sanitaires et sociales',8,'Enseignement de spécialité.','weekly','Éduscol, horaires ST2S janvier 2026']
+  ]);
+  tech('STI2D',[
+   ['Innovation technologique',3,'Enseignement de spécialité.','weekly','Éduscol, horaires STI2D janvier 2026'],
+   ['Ingénierie et développement durable',9,'Enseignement de spécialité.','weekly','Éduscol, horaires STI2D janvier 2026'],
+   ['Physique-chimie et mathématiques',6,'Enseignement de spécialité.','weekly','Éduscol, horaires STI2D janvier 2026']
+  ],[
+   ['Ingénierie, innovation et développement durable',12,'Choix d’un enseignement spécifique parmi architecture et construction, énergies et environnement, innovation technologique et éco-conception, systèmes d’information et numérique. Ne pas cumuler les quatre.','specialty_choice','Éduscol, horaires STI2D janvier 2026'],
+   ['Physique-chimie et mathématiques',6,'Enseignement de spécialité.','weekly','Éduscol, horaires STI2D janvier 2026']
+  ]);
+  tech('STL',[
+   ['Physique-chimie et mathématiques',5,'Enseignement de spécialité.','weekly','Éduscol, horaires STL janvier 2026'],
+   ['Biochimie-biologie',4,'Enseignement de spécialité.','weekly','Éduscol, horaires STL janvier 2026'],
+   ['Biotechnologie ou sciences physiques et chimiques en laboratoire',9,'Parcours à choisir selon l’offre et la spécialité retenue.','specialty_choice','Éduscol, horaires STL janvier 2026']
+  ],[
+   ['Physique-chimie et mathématiques',5,'Enseignement de spécialité.','weekly','Éduscol, horaires STL janvier 2026'],
+   ['Biochimie-biologie-biotechnologie ou sciences physiques et chimiques en laboratoire',13,'Choix d’un enseignement de spécialité selon le parcours retenu. Ne pas cumuler les deux voies.','specialty_choice','Éduscol, horaires STL janvier 2026']
+  ]);
+  tech('STD2A',[
+   ['Physique-chimie',2,'Enseignement de spécialité.','weekly','Éduscol, horaires STD2A janvier 2026'],
+   ['Outils et langages numériques',2,'Enseignement de spécialité.','weekly','Éduscol, horaires STD2A janvier 2026'],
+   ['Design et métiers d’art',14,'Enseignement de spécialité.','weekly','Éduscol, horaires STD2A janvier 2026']
+  ],[
+   ['Analyse et méthodes en design',9,'Enseignement de spécialité.','weekly','Éduscol, horaires STD2A janvier 2026'],
+   ['Conception et création en design et métiers d’art',9,'Enseignement de spécialité.','weekly','Éduscol, horaires STD2A janvier 2026']
+  ]);
+  tech('STHR',[
+   ['Enseignement scientifique alimentation-environnement',3,'Enseignement de spécialité.','weekly','Éduscol, horaires STHR février 2026'],
+   ['Sciences et technologies culinaires et des services',10,'Enseignement de spécialité.','weekly','Éduscol, horaires STHR février 2026'],
+   ['Économie et gestion hôtelière',5,'Enseignement de spécialité.','weekly','Éduscol, horaires STHR février 2026']
+  ],[
+   ['Sciences et technologies culinaires et des services et enseignement scientifique alimentation-environnement',13,'Volume regroupé des enseignements de spécialité de terminale ; vérifier la ventilation interne selon la grille de la série.','weekly','Éduscol, horaires STHR février 2026'],
+   ['Économie et gestion hôtelière',5,'Enseignement de spécialité.','weekly','Éduscol, horaires STHR février 2026']
+  ]);
+  tech('S2TMD',[
+   ['Économie, droit et environnement du spectacle vivant',3,'Enseignement de spécialité.','weekly','Éduscol, horaires S2TMD janvier 2026'],
+   ['Culture et sciences chorégraphiques, musicales ou théâtrales',5.5,'Enseignement de spécialité selon la dominante choisie.','specialty_choice','Éduscol, horaires S2TMD janvier 2026'],
+   ['Pratique chorégraphique, musicale ou théâtrale',5.5,'Enseignement de spécialité selon la dominante choisie.','specialty_choice','Éduscol, horaires S2TMD janvier 2026']
+  ],[
+   ['Culture et sciences chorégraphiques, musicales ou théâtrales',7,'Enseignement de spécialité selon la dominante choisie.','specialty_choice','Éduscol, horaires S2TMD janvier 2026'],
+   ['Pratique chorégraphique, musicale ou théâtrale',7,'Enseignement de spécialité selon la dominante choisie.','specialty_choice','Éduscol, horaires S2TMD janvier 2026']
+  ]);
+ }
+ if(selected.has('Lycée professionnel')){
+  const bacSecond=[
+   ['Français, histoire-géographie et EMC',3.5,'105 h annuelles en seconde, moyenne sur 30 semaines. Les disciplines sont regroupées dans la grille ; préserver les répartitions réglementaires de la spécialité.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Mathématiques',1.5,'45 h annuelles en seconde, moyenne sur 30 semaines. Les groupements de mathématiques et de physique-chimie dépendent de la spécialité.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Langue vivante A',2,'60 h annuelles en seconde, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Physique-chimie ou langue vivante B',1.5,'45 h annuelles en seconde ; le choix dépend du référentiel de spécialité. Ne pas cumuler les deux par défaut.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Arts appliqués et culture artistique',1,'30 h annuelles en seconde, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Éducation physique et sportive',2.5,'75 h annuelles en seconde, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Enseignements professionnels de la spécialité',15,'450 h annuelles en seconde, moyenne sur 30 semaines. Contenus, plateaux techniques, co-intervention et périodes en entreprise dépendent du diplôme.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
+  ];
+  const bacFirst=[
+   ['Français, histoire-géographie et EMC',2.8,'84 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Mathématiques',1.87,'56 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Langue vivante A',1.87,'56 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Physique-chimie ou langue vivante B',1.4,'42 h annuelles en première ; option déterminée par le référentiel de spécialité.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Arts appliqués et culture artistique',0.93,'28 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Éducation physique et sportive',2.33,'70 h annuelles en première, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Enseignements professionnels de la spécialité',14,'420 h annuelles en première, moyenne sur 30 semaines. Contenus liés au diplôme.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
+  ];
+  const bacTerminal=[
+   ['Français, histoire-géographie et EMC',2.6,'78 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Mathématiques',1.3,'39 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Langue vivante A',1.73,'52 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Physique-chimie ou langue vivante B',1.3,'39 h annuelles en terminale ; choix défini par le référentiel de spécialité.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Arts appliqués et culture artistique',0.87,'26 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Éducation physique et sportive',2.17,'65 h annuelles en terminale, moyenne sur 30 semaines.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel'],
+   ['Enseignements professionnels de la spécialité',13,'390 h annuelles en terminale, moyenne sur 30 semaines. Contenus liés au diplôme et au parcours choisi.','annual_to_weekly','Arrêté du 21 novembre 2018 modifié ; grille élève Bac professionnel']
+  ];
+  addRows('Lycée professionnel',['Seconde professionnelle'],bacSecond);
+  addRows('Lycée professionnel',['Première professionnelle'],bacFirst);
+  addRows('Lycée professionnel',['Terminale professionnelle'],bacTerminal);
+ }
+ return out;
+}
+function prefillNationalCurriculum(){
+ const form=document.getElementById('establishmentBriefForm');if(!form)return toast('Formulaire introuvable. Rouvre le configurateur.');
+ const components=[...form.querySelectorAll('input[name="schoolTypes"]:checked')].map(x=>x.value);
+ if(!components.length)return toast('Sélectionne d’abord au moins une composante pédagogique.');
+ const techSeries=[...form.querySelectorAll('input[name="techSeries"]:checked')].map(x=>x.value);
+ const generalSpecialties=[...form.querySelectorAll('input[name="generalSpecialties"]:checked')].map(x=>x.value);
+ const catalog=mcNationalCurriculumCatalog(components,techSeries,generalSpecialties);
+ if(!catalog.length)return toast('Aucun référentiel national préchargé pour ces composantes. Ajoute les niveaux et matières manuellement.');
+ const classRoot=document.getElementById('establishmentClassRows'),subjectRoot=document.getElementById('establishmentSubjectRows');
+ if(!classRoot||!subjectRoot)return toast('Les sections Classes et Matières sont introuvables.');
+ classRoot.querySelector('.establishmentPlanEmpty')?.remove();subjectRoot.querySelector('.establishmentPlanEmpty')?.remove();
+ const classSet=new Set([...classRoot.querySelectorAll('[data-plan-row="class"]')].map(row=>(row.querySelector('[data-field="component"]')?.value||'')+'|'+(row.querySelector('[data-field="level"]')?.value||'')));
+ const subjectSet=new Set([...subjectRoot.querySelectorAll('[data-plan-row="subject"]')].map(row=>(row.querySelector('[data-field="component"]')?.value||'')+'|'+(row.querySelector('[data-field="level"]')?.value||'')+'|'+(row.querySelector('[data-field="subject"]')?.value||'')));
+ const setValue=(row,key,value)=>{const field=row.querySelector('[data-field="'+key+'"]');if(field)field.value=value===null?'':String(value)};
+ let addedLevels=0,addedSubjects=0;
+ const levels=[...new Map(catalog.map(x=>[x.component+'|'+x.level,{component:x.component,level:x.level}])).values()];
+ levels.forEach(item=>{
+  const key=item.component+'|'+item.level;if(classSet.has(key))return;
+  classRoot.insertAdjacentHTML('beforeend',establishmentPlanRowMarkup('class',{},components));
+  const row=classRoot.lastElementChild;setValue(row,'component',item.component);setValue(row,'level',item.level);
+  addedLevels++;classSet.add(key);
+ });
+ catalog.forEach(item=>{
+  const key=item.component+'|'+item.level+'|'+item.subject;if(subjectSet.has(key))return;
+  subjectRoot.insertAdjacentHTML('beforeend',establishmentPlanRowMarkup('subject',item,components));
+  const row=subjectRoot.lastElementChild;
+  ['component','level','subject','hoursPerWeek','details','source','hoursBasis','reference'].forEach(field=>setValue(row,field,item[field]));
+  addedSubjects++;subjectSet.add(key);
+ });
+ window.mcSyncSelects?.();updateEstablishmentBriefSummary();
+ const warnings=[];
+ if(components.includes('Maternelle'))warnings.push('maternelle : les 24 h sont globales, aucun quota horaire par domaine n’est fixé');
+ if(components.includes('Lycée technologique')&&!techSeries.length)warnings.push('lycée technologique : coche les séries proposées pour préremplir les programmes de première et terminale');
+ if(components.includes('Lycée général')&&!generalSpecialties.length)warnings.push('voie générale : sélectionne les spécialités proposées pour les ajouter au référentiel');
+ if(components.includes('Lycée professionnel'))warnings.push('voie professionnelle : les heures sont des moyennes calculées à partir des volumes annuels ; la spécialité du diplôme reste à préciser');
+ toast(addedLevels+' niveau(x) et '+addedSubjects+' ligne(s) de programme ajoutés. Les effectifs restent à renseigner ; tu peux modifier ou retirer chaque ligne.'+(warnings.length?' '+warnings.join(' ; ')+'.':''));
+}
 function establishmentPlanRowMarkup(kind,item={},components=[]){
  const id=String(item.id||uid()),component=String(item.component||components[0]||'');
  const select='<div class="field"><label>Composante *</label><select class="select" data-field="component" data-plan-component>'+establishmentPlanComponentOptions(components,component)+'</select></div>';
@@ -1177,9 +1426,12 @@ function establishmentPlanRowMarkup(kind,item={},components=[]){
   title='Matière et volume horaire';
   fields=select+
    input('Niveau *','level','Ex. 6e, 2nde générale')+
-   input('Matière *','subject','Ex. Français, SES')+
-   input('Heures par semaine *','hoursPerWeek','Ex. 4','number','min="0.5" max="40" step="0.5"')+
-   input('Groupe (facultatif)','group','Ex. Groupe A, demi-classe');
+   input('Matière / domaine *','subject','Ex. Français, lecture, SES')+
+   input('Heures par semaine','hoursPerWeek','Ex. 4','number','min="0.5" max="40" step="0.5"')+
+   input('Groupe (facultatif)','group','Ex. Groupe A, demi-classe')+
+   textarea('Contenu détaillé / sous-domaines','details','Ex. oral, lecture, écriture, vocabulaire, grammaire, orthographe…')+
+   '<div class="field full"><label>Statut dans le référentiel</label><div class="hint">'+(item.source==='national'?'Proposition issue du référentiel national · '+esc(item.hoursBasis||'horaire hebdomadaire')+(item.reference?' · '+esc(item.reference):''):'Matière ajoutée librement par l’établissement')+'</div></div>'+
+   '<input type="hidden" data-field="source" value="'+esc(item.source||'')+'"><input type="hidden" data-field="hoursBasis" value="'+esc(item.hoursBasis||'')+'"><input type="hidden" data-field="reference" value="'+esc(item.reference||'')+'>';
  }else if(kind==='teacher'){
   title='Affectation d’un professeur';
   fields=select+
@@ -1253,7 +1505,7 @@ function collectEstablishmentPlanRows(form,kind){
    result.level=value('level');result.classCount=value('classCount')===''?null:Number(value('classCount'));
    result.studentsPerClass=value('studentsPerClass')===''?null:Number(value('studentsPerClass'));result.classNames=value('classNames');
   }else if(kind==='subject'){
-   result.level=value('level');result.subject=value('subject');result.hoursPerWeek=value('hoursPerWeek')===''?null:Number(value('hoursPerWeek'));result.group=value('group');
+   result.level=value('level');result.subject=value('subject');result.hoursPerWeek=value('hoursPerWeek')===''?null:Number(value('hoursPerWeek'));result.group=value('group');result.details=value('details');result.source=value('source');result.hoursBasis=value('hoursBasis');result.reference=value('reference');
   }else if(kind==='teacher'){
    result.pseudonym=value('pseudonym');result.subjects=value('subjects');result.classes=value('classes');result.hoursPerWeek=value('hoursPerWeek')===''?null:Number(value('hoursPerWeek'));
   }else if(kind==='schedule'){
@@ -1277,7 +1529,9 @@ function validateEstablishmentBrief(brief){
   if(!row.component||!row.level||!Number.isInteger(row.classCount)||row.classCount<1||!Number.isInteger(row.studentsPerClass)||row.studentsPerClass<0)return 'Complète chaque ligne de classe : composante, niveau, nombre de classes et élèves par classe.';
  }
  for(const row of brief.subjectPlans){
-  if(!row.component||!row.level||!row.subject||!Number.isFinite(row.hoursPerWeek)||row.hoursPerWeek<=0||row.hoursPerWeek>40)return 'Complète chaque ligne de matière : composante, niveau, matière et heures par semaine.';
+  if(!row.component||!row.level||!row.subject)return 'Complète chaque ligne de matière : composante, niveau et matière.';
+  if(row.hoursPerWeek===null){if(!(row.source==='national'&&row.hoursBasis==='not_allocated'&&row.details))return 'Indique les heures par semaine, ou conserve la précision détaillée du référentiel national lorsqu’aucun horaire par matière n’est fixé.';}
+  else if(!Number.isFinite(row.hoursPerWeek)||row.hoursPerWeek<=0||row.hoursPerWeek>40)return 'Les heures par semaine doivent être supérieures à 0 et ne pas dépasser 40.';
  }
  for(const row of brief.teacherPlans){
   if(!row.component||!row.pseudonym||(!row.subjects&&!row.classes))return 'Pour chaque affectation de professeur, indique la composante, le pseudonyme et au moins une matière ou une classe.';
@@ -1317,15 +1571,17 @@ function collectEstablishmentBrief(form){
  const classPlanNotes=String(values.classPlanNotes||'').trim(),teacherPlanNotes=String(values.teacherPlanNotes||'').trim();
  const subjectPlanNotes=String(values.subjectPlanNotes||'').trim(),schoolDaysNotes=String(values.schoolDaysNotes||'').trim();
  const schoolHoursNotes=String(values.schoolHoursNotes||'').trim(),schoolBreaksNotes=String(values.schoolBreaksNotes||'').trim();
+ const techSeries=[...form.querySelectorAll('input[name="techSeries"]:checked')].map(x=>String(x.value||'').trim()).filter(Boolean);
+ const generalSpecialties=[...form.querySelectorAll('input[name="generalSpecialties"]:checked')].map(x=>String(x.value||'').trim()).filter(Boolean);
  const classPlanStructured=classStructures.map(x=>[x.component,x.level,x.classCount+' classe(s)',x.studentsPerClass+' élèves/classe',x.classNames].filter(Boolean).join(' | ')).join('\n');
- const subjectPlanStructured=subjectPlans.map(x=>[x.component,x.level,x.subject,x.hoursPerWeek+' h/semaine',x.group].filter(Boolean).join(' | ')).join('\n');
+ const subjectPlanStructured=subjectPlans.map(x=>[x.component,x.level,x.subject,x.hoursPerWeek===null?'horaire non ventilé':x.hoursPerWeek+' h/semaine',x.group,x.details,x.hoursBasis,x.reference].filter(Boolean).join(' | ')).join('\n');
  const teacherPlanStructured=teacherPlans.map(x=>[x.pseudonym,x.component,x.subjects,x.classes,x.hoursPerWeek===null?'':x.hoursPerWeek+' h/semaine'].filter(Boolean).join(' | ')).join('\n');
  const schoolDaysStructured=componentSchedules.map(x=>x.component+' : '+x.days.join(', ')).join('\n');
  const schoolHoursStructured=componentSchedules.map(x=>x.component+' : '+x.start+'–'+x.end).join('\n');
  const schoolBreaksStructured=componentSchedules.map(x=>x.component+' : '+[x.lunchStart&&x.lunchEnd?'pause méridienne '+x.lunchStart+'–'+x.lunchEnd:'',x.breakNotes,x.notes].filter(Boolean).join(' ; ')).join('\n');
  const joinNotes=(structured,notes)=>[structured,notes].filter(Boolean).join('\n');
  return {
-  name:String(values.name||'').trim(),schoolTypes,schoolType:schoolTypes.join(' + '),
+  name:String(values.name||'').trim(),schoolTypes,schoolType:schoolTypes.join(' + '),curriculumMode:String(values.curriculumMode||'national'),techSeries,generalSpecialties,extraSubjects:String(values.extraSubjects||'').trim(),
   schoolStructureDetails:String(values.schoolStructureDetails||'').trim(),
   schoolOrganization:String(values.schoolOrganization||'').trim(),schoolSiteMode:String(values.schoolSiteMode||'').trim(),
   schoolOrganizationDetails:String(values.schoolOrganizationDetails||'').trim(),schoolYear:String(values.schoolYear||'').trim(),periodMode,
@@ -1395,7 +1651,10 @@ function establishmentBriefPrompt(brief){
   'schedule : chaque cours contient key, day (0=lundi à 4=vendredi ou nom anglais du jour), start, end, subject, class ou classes, group, teacher ou teachers, room, recurrence, startDate, éventuellement endDate, exceptions et equipment. Récurrences : weekly, biweekly, triweekly, custom avec intervalWeeks ou once.',
   'PROFILS ET COMPTES PROFESSEURS : les profils enseignants pseudonymisés sont toujours décrits dans teachers et affectés aux classes, aux responsabilités de professeur principal et aux cours de schedule. createTeacherAccounts='+String(brief.createTeacherAccounts)+'. Si true, Ma Classe crée aussi un compte de connexion pour chaque profil et génère localement ses identifiants et mots de passe provisoires. Si false, les profils et toutes leurs affectations pédagogiques restent bien enregistrés, mais aucun compte utilisateur, identifiant de connexion ni mot de passe n’est créé ; omets alors la propriété username de chaque professeur. La Direction pourra ouvrir ultérieurement un compte depuis la fiche du professeur.',
   'ÉLÈVES : createStudentProfiles='+String(brief.createStudents)+'. Si false, retourne createStudentProfiles:false et students:[] tout en conservant expectedStudentCount pour chaque classe afin que les capacités des salles restent contrôlables. Si true, retourne createStudentProfiles:true et génère les pseudonymes et les fiches correspondant exactement aux effectifs annoncés.',
-  'MATIÈRES STRUCTURÉES : subjectPlans contient une ligne par composante, niveau, matière, heures par semaine et éventuel groupe. Reporte les volumes dans subjectRequirements pour chaque classe/groupe correspondant. Les anciennes notes subjectPlan ne sont que des précisions complémentaires. Ne fusionne pas deux matières de même nom si leurs volumes ou programmes diffèrent selon les composantes.',
+  'RÉFÉRENTIEL PÉDAGOGIQUE : régime choisi='+(brief.curriculumMode||'national')+' ; séries technologiques proposées='+(brief.techSeries||[]).join(', ')+' ; spécialités générales proposées='+(brief.generalSpecialties||[]).join(', ')+'. Les lignes source=national proviennent des programmes et grilles horaires officiels français applicables à la rentrée 2026-2027. Si l’établissement est hors contrat ou mixte, présente-les comme base de référence à confirmer et respecte les adaptations locales explicitement demandées.',
+  'PRÉCISION DES HORAIRES : conserve la distinction hoursBasis. weekly/cycle_average correspond à un horaire hebdomadaire ou à une moyenne de cycle ; annual_to_weekly est une moyenne calculée depuis un volume annuel et doit rester identifiée comme telle ; not_allocated signifie que le texte officiel ne fixe pas de quota par matière/domaine. En maternelle, le total est 24 h hebdomadaires pour l’ensemble du cycle, sans ventilation horaire réglementaire par domaine : garde les contenus détaillés, ne crée aucune répartition fictive et ne construis pas un emploi du temps disciplinaire détaillé sans arbitrage. global_cycle indique un volume global et non une matière à planifier.',
+  'MATIÈRES STRUCTURÉES : subjectPlans contient une ligne par composante, niveau, matière ou domaine, horaire, groupe, détail des sous-domaines et repère de statut. Conserve details, hoursBasis et reference dans subjectRequirements. Un horaire null avec hoursBasis=not_allocated est volontaire : ne le transforme pas en zéro ni en horaire inventé. N’éclate pas artificiellement une matière nationale en plusieurs horaires autonomes ; garde les sous-domaines dans details. Les anciennes notes subjectPlan sont complémentaires. Ne fusionne pas deux matières de même nom si les volumes ou les programmes diffèrent.',
+  'MATIÈRES COMPLÉMENTAIRES DEMANDÉES : '+(brief.extraSubjects||'Aucune matière complémentaire demandée.')+'. Ajoute les options, langues, enseignements locaux ou matières précisées ici dans la structure de classe et les propositions d’emploi du temps, en les distinguant clairement des enseignements nationaux obligatoires. Tu peux aussi proposer les matières pertinentes manquantes, mais marque-les comme optionnelles ou propres à l’établissement et demande confirmation avant de les traiter comme obligatoires.',
   'CALENDRIERS PAR COMPOSANTE : componentSchedules décrit les jours autorisés, les horaires de début/fin, les pauses et la récréation pour chaque composante. Respecte chaque calendrier séparément ; ne suppose pas que toutes les composantes ont les mêmes horaires. Si createSchedule=true et qu’un calendrier ou des matières manquent, pose les questions réellement bloquantes au lieu d’inventer des créneaux. Si createSchedule=false, retourne schedule:[] et ne crée aucun créneau.',
   'MATIÈRES ET EMPLOIS DU TEMPS : prends subjectPlans comme source prioritaire pour les matières et volumes horaires, puis subjectPlan comme notes complémentaires. Si createSchedule=true, construis tous les créneaux nécessaires ; si createSchedule=false, retourne schedule:[] et ne crée aucun créneau. Les cours des différentes classes doivent être concordants : aucun professeur, groupe/classe ou salle ne peut être mobilisé simultanément deux fois. Respecte les compétences et affectations, capacités, équipements, indisponibilités, calendriers, horaires, pauses et récréations. SchoolBreaks='+(brief.schoolBreaks||'non précisés')+'. Pour les sites multiples, respecte les temps de déplacement indiqués dans schoolOrganizationDetails et constraints ; si ces contraintes ne peuvent pas être garanties par les données ou le validateur, signale-le clairement au lieu d’inventer une solution. Vérifie les volumes et récurrences.',
   'ÉCHELLE : la configuration peut représenter de la petite section à la terminale, plusieurs centaines d’élèves (par exemple 500), plusieurs dizaines de professeurs et de salles, ainsi que 15 emplois du temps ou davantage qui doivent rester cohérents entre eux. Le format permet jusqu’à 20 000 fiches élèves, 300 classes, 3 000 profils enseignants, 2 000 salles, 50 000 créneaux ; le fichier final doit rester inférieur à 25 Mo.',
