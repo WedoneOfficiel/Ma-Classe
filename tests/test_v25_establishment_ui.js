@@ -48,6 +48,9 @@ assert(generatorSource.includes('name="schoolTypes"')&&generatorSource.includes(
   'Les composantes pédagogiques doivent être collectées sous forme de choix multiples.');
 assert(generatorSource.includes('getSavedEstablishmentComponents(saved)'),
   'Les anciens formulaires doivent être repris avec une conversion de compatibilité.');
+assert(generatorSource.includes("['trimestres','semestres','variable']"),
+  'Le formulaire doit accepter une organisation des périodes variable selon les composantes.');
+
 assert(generatorSource.includes('Plusieurs sites / antennes')&&generatorSource.includes('Cité scolaire'),
   'L’organisation physique doit être distinguée des composantes pédagogiques.');
 
@@ -79,6 +82,10 @@ assert(promptSandbox.result.includes('composantes pédagogiques sélectionnées=
   'Les composantes multiples et l’organisation de l’établissement doivent être injectées séparément.');
 assert(promptSandbox.result.includes('Section européenne')&&promptSandbox.result.includes('Bâtiments séparés'),
   'Les précisions de structure et de sites doivent parvenir à ChatGPT.');
+assert(promptSandbox.result.includes('Pour un établissement multi-sites')&&promptSandbox.result.includes('siteId dédié'),
+  'Les consignes doivent prévenir que le format V1 ne possède pas de champ site dédié.');
+assert(promptSandbox.result.includes('Si periodMode=variable'),
+  'Les consignes doivent préserver les régimes de périodes différents selon les classes.');
 assert(promptSandbox.result.includes('année scolaire=2026-2027'),
   'L’année scolaire doit rester injectée dans les consignes.');
 assert(promptSandbox.result.includes('SchoolBreaks=Pause 12h-13h30'),
