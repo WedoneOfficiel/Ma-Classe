@@ -376,6 +376,36 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     if blank_counts!={"teacherCount":None,"roomCount":None}:
         raise AssertionError(f"Un nombre laissé vide doit rester non renseigné : {blank_counts!r}")
 
+    # Préremplissage réel : maternelle sans ventilation horaire, et Bac Pro
+    # avec des moyennes annuelles décimales éditables.
+    modal.locator('[name="schoolTypes"][value="Maternelle"]').check()
+    modal.locator('[name="schoolTypes"][value="Lycée professionnel"]').check()
+    expect(modal.locator('[name="curriculumMode"]')).to_have_value("national")
+    modal.get_by_role("button",name="Préremplir les programmes nationaux").click()
+    prefetched_classes=modal.locator('#establishmentClassRows [data-plan-row="class"]')
+    prefetched_subjects=modal.locator('#establishmentSubjectRows [data-plan-row="subject"]')
+    expect(prefetched_classes).to_have_count(7)
+    expect(prefetched_subjects).to_have_count(52)
+    language_domain=prefetched_subjects.filter(has=modal.locator('[data-field="subject"][value="Développement et structuration du langage oral et écrit"]')).first
+    expect(language_domain.locator('[data-field="hoursPerWeek"]')).to_have_value("")
+    expect(language_domain.locator('[data-field="hoursBasis"]')).to_have_value("not_allocated")
+    expect(language_domain.locator('[data-field="details"]')).to_contain_text("vocabulaire")
+    arts_row=prefetched_subjects.filter(has=modal.locator('[data-field="subject"][value="Arts appliqués et culture artistique"]')).first
+    arts_hours=arts_row.locator('[data-field="hoursPerWeek"]')
+    expect(arts_hours).to_have_value("0.93")
+    if not arts_hours.evaluate("(el)=>el.checkValidity()"):
+        raise AssertionError("Une moyenne annuelle Bac Pro décimale doit être modifiable et valide dans le formulaire.")
+    if language_domain.locator(".hint").inner_text().find("BO n°")>=0:
+        raise AssertionError("Les références officielles ne doivent pas être affichées dans les champs du configurateur.")
+    # Le préremplissage ne renseigne jamais les effectifs : seul l'établissement les connaît.
+    if any(value for value in [prefetched_classes.nth(0).locator('[data-field="classCount"]').input_value(),prefetched_classes.nth(0).locator('[data-field="studentsPerClass"]').input_value()]):
+        raise AssertionError("Les effectifs et le nombre de classes ne doivent pas être inventés.")
+    while prefetched_subjects.count():
+        prefetched_subjects.nth(0).locator('.establishmentPlanRemove').click()
+    while prefetched_classes.count():
+        prefetched_classes.nth(0).locator('.establishmentPlanRemove').click()
+    modal.locator('[name="schoolTypes"][value="Maternelle"]').uncheck()
+
     modal.locator('[name="name"]').fill("Établissement de recette")
     modal.locator('[name="schoolTypes"][value="Collège"]').check()
     modal.locator('[name="schoolTypes"][value="Lycée professionnel"]').check()
@@ -679,7 +709,8 @@ def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
         rooms:rect('.settingsRoomsCard'),
         version:rect('.settingsVersionCard'),
         updates:rect('.settingsUpdateCard'),
-        data:rect('.settingsDataCard')
+        data:rect('.settingsDataCard'),
+        establishment:rect('.settingsEstablishmentCard')
       };
     }""")
     expected_columns = 2 if is_student else 3
@@ -692,16 +723,35 @@ def verify_settings_grid_geometry(page, role: str, output_dir: Path) -> None:
             raise AssertionError(f"Salles doit rester sous Apparence pour {role}: {state!r}")
         if abs(state["data"]["left"]-state["version"]["left"]) > 3:
             raise AssertionError(f"Données doit rester sous Version pour {role}: {state!r}")
+        if "settingsLayout" not in state["className"]:
+            raise AssertionError(f"La Direction et les professeurs doivent utiliser la grille compacte en colonnes: {state!r}")
         if role == "admin":
-            if "settingsAdminLayout" not in state["className"] or not state["updates"]:
-                raise AssertionError(f"La Direction doit recevoir la carte Mises à jour: {state!r}")
-            if abs(state["updates"]["left"]-state["version"]["left"]) > 3:
-                raise AssertionError(f"Mises à jour doit rester dans la colonne de droite: {state!r}")
-        elif "settingsAdminLayout" in state["className"] or state["updates"] is not None:
-            raise AssertionError(f"Le professeur ne doit pas recevoir le layout Direction: {state!r}")
+            if not state["updates"] or not state["establishment"]:
+                raise AssertionError(f"La Direction doit recevoir Mises à jour et Configuration de l’établissement: {state!r}")
+            if abs(state["establishment"]["left"]-state["appearance"]["left"]) > 3 or state["establishment"]["top"] <= state["rooms"]["top"]:
+                raise AssertionError(f"Le configurateur doit suivre les salles dans la première colonne, sans être rejeté sous la grille: {state!r}")
+            if not (state["version"]["top"] < state["updates"]["top"] < state["data"]["top"]):
+                raise AssertionError(f"Version, Mises à jour et Données doivent s’empiler dans la colonne droite: {state!r}")
+            if abs(state["updates"]["left"]-state["version"]["left"]) > 3 or abs(state["data"]["left"]-state["version"]["left"]) > 3:
+                raise AssertionError(f"Version, Mises à jour et Données doivent rester rapprochées dans la même colonne: {state!r}")
+        elif state["updates"] is not None or state["establishment"] is not None:
+            raise AssertionError(f"Le professeur ne doit pas recevoir les cartes réservées à la Direction: {state!r}")
     else:
         if "settingsStudentGrid" not in state["className"]:
             raise AssertionError(f"L'élève doit utiliser sa grille Paramètres dédiée: {state!r}")
+
+    # Le menu de période doit sortir de la pile locale et rester au-dessus des cartes voisines.
+    if not is_student:
+        period_trigger=page.locator('.settingsPeriodsCard .mc-select-trigger').first
+        expect(period_trigger).to_be_visible()
+        period_trigger.click()
+        overlay=page.locator('.mc-select-menu:popover-open').last
+        expect(overlay).to_be_visible()
+        overlay_state=overlay.evaluate("""el => ({popover:el.matches(':popover-open'),position:getComputedStyle(el).position,zIndex:getComputedStyle(el).zIndex,top:Math.round(el.getBoundingClientRect().top)})""")
+        if not overlay_state['popover'] or overlay_state['position']!='fixed' or int(overlay_state['zIndex'])<2147483640:
+            raise AssertionError(f"Le menu de sélection doit être dans la couche supérieure du navigateur: {overlay_state!r}")
+        page.keyboard.press('Escape')
+        expect(page.locator('.mc-select.open')).to_have_count(0)
 
     output_dir.mkdir(parents=True,exist_ok=True)
     page.screenshot(path=str(output_dir/f"settings-{role}-desktop.png"),full_page=True,animations="disabled")
