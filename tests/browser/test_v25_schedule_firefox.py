@@ -377,7 +377,11 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
         raise AssertionError(f"Un nombre laissé vide doit rester non renseigné : {blank_counts!r}")
 
     modal.locator('[name="name"]').fill("Établissement de recette")
-    modal.locator('[name="schoolType"]').select_option("Collège")
+    modal.locator('[name="schoolTypes"][value="Collège"]').check()
+    modal.locator('[name="schoolTypes"][value="Lycée professionnel"]').check()
+    modal.locator('[name="schoolOrganization"]').select_option("Cité scolaire")
+    modal.locator('[name="schoolStructureDetails"]').fill("Section européenne")
+    modal.locator('[name="schoolOrganizationDetails"]').fill("Bâtiments séparés sur deux sites")
     modal.locator('[name="schoolYear"]').fill("2026-2027")
     modal.locator('[name="periodMode"]').select_option("semestres")
     modal.locator('[name="classPlan"]').fill("6A | 1 classe | 26 élèves | 6A")
@@ -400,7 +404,11 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     expect(modal.locator('[name="classPlan"]')).to_have_value("6A | 1 classe | 26 élèves | 6A")
     expect(modal.locator('[name="createStudents"]')).to_have_value("no")
     expect(modal.locator('[name="createTeacherAccounts"]')).to_have_value("no")
-    expect(modal.locator('[name="schoolType"]')).to_have_value("Collège")
+    expect(modal.locator('[name="schoolTypes"][value="Collège"]')).to_be_checked()
+    expect(modal.locator('[name="schoolTypes"][value="Lycée professionnel"]')).to_be_checked()
+    expect(modal.locator('[name="schoolOrganization"]')).to_have_value("Cité scolaire")
+    expect(modal.locator('[name="schoolStructureDetails"]')).to_have_value("Section européenne")
+    expect(modal.locator('[name="schoolOrganizationDetails"]')).to_have_value("Bâtiments séparés sur deux sites")
     expect(modal.locator('[name="schoolYear"]')).to_have_value("2026-2027")
     expect(modal.locator('[name="periodMode"]')).to_have_value("semestres")
     expect(modal.locator('[name="schoolBreaks"]')).to_have_value("Pause méridienne : 12 h–13 h 30")
@@ -413,7 +421,7 @@ def verify_establishment_generator(page, output_dir: Path) -> None:
     modal.get_by_role("button",name="Copier les consignes et les données pour ChatGPT").click()
     expect(page.locator("#toast")).to_contain_text("Demande complète copiée")
     copied_prompt=page.evaluate("window.__capturedEstablishmentPrompt")
-    for required in ("createTeacherAccounts=false","createStudentProfiles=false","teacherCount",'"teacherCount": 20','"roomCount": 30','PROFILS ET COMPTES PROFESSEURS','NOMBRE DE PROFESSEURS','NOMBRE DE SALLES','un seul fichier JSON téléchargeable','type d’établissement=Collège','année scolaire=2026-2027','SchoolBreaks=Pause méridienne : 12 h–13 h 30'):
+    for required in ("createTeacherAccounts=false","createStudentProfiles=false","teacherCount",'"teacherCount": 20','"roomCount": 30','PROFILS ET COMPTES PROFESSEURS','NOMBRE DE PROFESSEURS','NOMBRE DE SALLES','un seul fichier JSON téléchargeable','composantes pédagogiques sélectionnées=Collège ; Lycée professionnel','organisation=Cité scolaire','Section européenne','Bâtiments séparés sur deux sites','année scolaire=2026-2027','SchoolBreaks=Pause méridienne : 12 h–13 h 30'):
         if required not in copied_prompt:
             raise AssertionError(f"La demande copiée doit inclure {required!r}")
     if copied_prompt.count("NOMBRE DE PROFESSEURS : teacherCount=")!=1 or copied_prompt.count("NOMBRE DE SALLES : roomCount=")!=1:
